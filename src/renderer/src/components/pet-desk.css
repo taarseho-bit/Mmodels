@@ -38,4 +38,45 @@
 @keyframes desk-stretch { to { transform: rotate(-5deg) scaleY(1.04); } }
 @keyframes desk-hop { 50% { transform: translateY(-7px); } }
 @keyframes desk-screen { to { opacity: .45; } }
+.pixel-walker { animation: pixel-step 1.6s steps(4) infinite; }
+.pixel-boot-left { transform-origin: 72px 124px; animation: pixel-leg .8s steps(2) infinite alternate; }
+.pixel-boot-right { transform-origin: 94px 124px; animation: pixel-leg .8s -.8s steps(2) infinite alternate; }
+.pixel-treasure { animation: scene-twinkle 1.8s steps(2) infinite; }
+.pixel-map { transform-origin: 109px 100px; animation: map-check 3s steps(3) infinite; }
+.research-head { transform-origin: 101px 74px; animation: research-look 4s ease-in-out infinite; }
+.research-lens { transform-origin: 126px 86px; animation: research-search 3.6s ease-in-out infinite; }
+.research-notes { animation: scene-notes 4s ease-in-out infinite; }
+.space-floater { transform-origin: 107px 91px; animation: zero-gravity 5s ease-in-out infinite; }
+.space-legs { transform-origin: 105px 123px; animation: space-kick 3s ease-in-out infinite alternate; }
+.space-reach { transform-origin: 125px 82px; animation: space-reach 3s ease-in-out infinite alternate; }
+.space-sample { animation: sample-float 3s ease-in-out infinite alternate; }
+.space-stars { animation: scene-twinkle 3s ease-in-out infinite; }
+.space-planet { transform-origin: 176px 153px; animation: planet-drift 8s ease-in-out infinite alternate; }
+.desktop-pet-stage.gesture-wave .research-lens { animation: research-search .55s ease-in-out 6; }
+.desktop-pet-stage.gesture-wave .space-reach { animation: space-reach .4s ease-in-out 6 alternate; }
+.desktop-pet-stage.gesture-wave .pixel-map { animation: map-check .5s steps(3) 6; }
+.desktop-pet-stage.gesture-celebrate .pixel-walker,
+.desktop-pet-stage.gesture-celebrate .research-person { animation: desk-hop .5s ease-in-out 6; }
+.desktop-pet-stage.gesture-celebrate .space-floater { animation: space-cheer 1.5s ease-in-out 2; }
+.desktop-pet-stage.gesture-think .pixel-map,
+.desktop-pet-stage.is-reading .pixel-map { animation: map-check 1s steps(3) infinite; }
+.desktop-pet-stage.gesture-think .research-lens,
+.desktop-pet-stage.is-reviewing .research-lens { animation: research-search 1.2s ease-in-out infinite; }
+.desktop-pet-stage.is-solving .space-sample { animation: sample-float .8s ease-in-out infinite alternate; }
+.desktop-pet-stage.is-stopping .pixel-walker,
+.desktop-pet-stage.is-stopping .research-lens,
+.desktop-pet-stage.is-stopping .space-floater { animation-play-state: paused; }
+@keyframes pixel-step { 50% { transform: translate(4px,-5px); } }
+@keyframes pixel-leg { to { transform: rotate(12deg); } }
+@keyframes map-check { 50% { transform: rotate(-9deg) translateY(-3px); } }
+@keyframes research-look { 50% { transform: rotate(5deg); } }
+@keyframes research-search { 50% { transform: rotate(-13deg); } }
+@keyframes scene-notes { 50% { transform: translateY(-4px); } }
+@keyframes zero-gravity { 0%,100% { transform: translate(-2px,2px) rotate(-10deg); } 50% { transform: translate(5px,-7px) rotate(7deg); } }
+@keyframes space-kick { to { transform: rotate(10deg); } }
+@keyframes space-reach { to { transform: rotate(-15deg); } }
+@keyframes sample-float { to { transform: translate(3px,-7px); } }
+@keyframes scene-twinkle { 50% { opacity: .4; } }
+@keyframes planet-drift { to { transform: rotate(9deg) translateY(-3px); } }
+@keyframes space-cheer { 50% { transform: translateY(-8px) rotate(24deg); } }
 @media (prefers-reduced-motion: reduce) { .pet-desk-avatar *, .pet-appearance-option { animation: none !important; transition: none !important; } }
