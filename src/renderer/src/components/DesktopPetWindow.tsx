@@ -16,14 +16,15 @@ import {
 } from '../store/chat-stream';
 import { PET_COPY, petStateFor } from '../lib/modeling-activity';
 import { Icon } from './Icon';
-import { PetDeskAvatar, resolvePetAppearance, type PetAppearance } from './PetDeskAvatar';
+import type { AppSettings } from '@shared/types';
+import { PET_APPEARANCES, PetDeskAvatar, resolvePetAppearance, type PetAppearance } from './PetDeskAvatar';
 
 type PetGesture = 'idle' | 'wave' | 'think' | 'celebrate' | 'stretch';
 
 const GESTURE_COPY: Record<Exclude<PetGesture, 'idle'>, string> = {
   wave: '嗨，我在这里。拖住我就能搬到你喜欢的位置。',
   think: '换个角度想一想，也许能找到更简单的模型。',
-  celebrate: '这一小步完成啦，继续把结果和结论对齐！',
+  celebrate: '给努力的你加个油！',
   stretch: '活动一下，回来继续拆问题。',
 };
 
@@ -33,6 +34,7 @@ interface DragState {
   startY: number;
   moved: boolean;
   character: boolean;
+  prop: boolean;
 }
 
 export function DesktopPetWindow(): JSX.Element {
@@ -41,6 +43,12 @@ export function DesktopPetWindow(): JSX.Element {
   const drag = useRef<DragState | null>(null);
   const [view, setView] = useState(EMPTY_STREAM);
   const [appearance, setAppearance] = useState<PetAppearance>('student');
+  const [preferences, setPreferences] = useState<Partial<AppSettings>>({});
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [bubbleVisible, setBubbleVisible] = useState(true);
+  const [landed, setLanded] = useState(false);
+  const landingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interactionCount = useRef(0);
 
   useEffect(() => {
     let live = true;
@@ -48,9 +56,13 @@ export function DesktopPetWindow(): JSX.Element {
     const unsubscribe = window.mathmodel.settings.onChanged((settings) => {
       changed = true;
       setAppearance(resolvePetAppearance(settings.modelingPetAppearance));
+      setPreferences(settings);
     });
     void window.mathmodel.settings.get().then((settings) => {
-      if (live && !changed) setAppearance(resolvePetAppearance(settings.modelingPetAppearance));
+      if (live && !changed) {
+        setAppearance(resolvePetAppearance(settings.modelingPetAppearance));
+        setPreferences(settings);
+      }
     });
     return () => { live = false; unsubscribe(); };
   }, []);
@@ -96,6 +108,7 @@ export function DesktopPetWindow(): JSX.Element {
 
   useEffect(() => () => {
     if (gestureTimer.current) clearTimeout(gestureTimer.current);
+    if (landingTimer.current) clearTimeout(landingTimer.current);
     window.mathmodel.pet.dragEnd();
   }, []);
 
@@ -120,12 +133,29 @@ export function DesktopPetWindow(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    if (state !== 'resting' || gesture !== 'idle') return;
+    setBubbleVisible(true);
+    const timer = setTimeout(() => setBubbleVisible(false), 6500);
+    return () => clearTimeout(timer);
+  }, [state, gestureCopy, appearance]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const dismiss = (event: PointerEvent): void => {
+      if (!(event.target as Element)?.closest('.pet-context-menu')) setMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent): void => { if (event.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('pointerdown', dismiss);
+    window.addEventListener('keydown', escape);
+    return () => { window.removeEventListener('pointerdown', dismiss); window.removeEventListener('keydown', escape); };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (state !== 'resting' || gesture !== 'idle' || preferences.modelingPetQuiet || dragging) return;
     const timer = setTimeout(() => {
       playGesture(Math.random() > 0.48 ? 'stretch' : 'think');
-    }, 9000 + Math.round(Math.random() * 5000));
+    }, (preferences.modelingPetMotion === 'gentle' ? 60000 : 22000) + Math.round(Math.random() * 15000));
     return () => clearTimeout(timer);
-  }, [gesture, playGesture, state]);
+  }, [gesture, playGesture, state, preferences.modelingPetQuiet, preferences.modelingPetMotion, dragging]);
 
   const beginDrag = (event: ReactPointerEvent<HTMLElement>): void => {
     if (event.button !== 0 || (event.target as Element).closest('button')) return;
@@ -137,6 +167,7 @@ export function DesktopPetWindow(): JSX.Element {
       startY: event.screenY,
       moved: false,
       character: event.currentTarget.dataset.petPart === 'character',
+      prop: !!(event.target as Element).closest('.desk-computer, .pixel-map, .pixel-treasure, .research-book, .research-lens, .space-planet, .space-sample'),
     };
     setDragging(true);
     window.mathmodel.pet.dragStart({ x: event.screenX, y: event.screenY });
@@ -154,13 +185,28 @@ export function DesktopPetWindow(): JSX.Element {
   const endDrag = (event: ReactPointerEvent<HTMLElement>): void => {
     const current = drag.current;
     if (!current || current.pointerId !== event.pointerId) return;
+    // 先清除状态，释放捕获触发的 lostpointercapture 不再重复收尾。
+    drag.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    drag.current = null;
     setDragging(false);
     window.mathmodel.pet.dragEnd();
-    if (!current.moved && current.character) playGesture('wave');
+    if (event.type !== 'pointerup') return;
+    if (current.moved) {
+      setLanded(true);
+      if (landingTimer.current) clearTimeout(landingTimer.current);
+      landingTimer.current = setTimeout(() => setLanded(false), 500);
+    } else if (current.character) {
+      interactionCount.current += 1;
+      playGesture(current.prop ? 'think' : interactionCount.current % 2 ? 'wave' : 'stretch');
+      if (current.prop) setGestureCopy({
+        student: '看看图表，再想想数据之间的关系。',
+        pixel: '地图展开啦，下一条路从哪里出发？',
+        researcher: '放大一点看看，说不定藏着新线索。',
+        astronaut: '发现一颗小晶体，靠近看看！',
+      }[appearance]);
+    }
   };
 
   const followPointer = (event: ReactPointerEvent<HTMLElement>): void => {
@@ -181,18 +227,19 @@ export function DesktopPetWindow(): JSX.Element {
 
   return (
     <main
-      className={`desktop-pet-stage is-${state} gesture-${gesture}${dragging ? ' is-dragging' : ''}`}
+      className={`desktop-pet-stage is-${state} gesture-${gesture}${dragging ? ' is-dragging' : ''}${landed ? ' is-landed' : ''}${preferences.modelingPetQuiet ? ' pet-quiet' : ''}${preferences.modelingPetMotion === 'gentle' ? ' pet-gentle' : ''}${preferences.modelingPetSize === 'small' ? ' pet-small' : ''}`}
       data-pet-state={state}
       style={stageStyle}
     >
       <section
-        className="desktop-pet-speech"
+        className={`desktop-pet-speech${!menuOpen && (preferences.modelingPetQuiet || (preferences.modelingPetBubble !== 'always' && !bubbleVisible)) ? ' pet-bubble-hidden' : ''}`}
         data-pet-interactive="true"
         data-pet-part="speech"
         onPointerDown={beginDrag}
         onPointerMove={moveDrag}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
       >
         <div className="desktop-pet-speech-head">
           <strong><span className="desktop-pet-status-dot" />小模</strong>
@@ -235,11 +282,12 @@ export function DesktopPetWindow(): JSX.Element {
         }}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
         onPointerLeave={() => !drag.current && setLook({ x: 0, y: 0 })}
         onDoubleClick={() => void window.mathmodel.pet.showMain()}
         onContextMenu={(event) => {
           event.preventDefault();
-          playGesture('celebrate');
+          setMenuOpen((open) => !open);
         }}
       >
         <span className="pet-math-symbol pet-math-symbol-one">∑</span>
@@ -248,6 +296,13 @@ export function DesktopPetWindow(): JSX.Element {
         <PetDeskAvatar appearance={appearance} />
         <span className="pet-celebration"><i /><i /><i /><i /><i /></span>
       </div>
+      {menuOpen && <div className="pet-context-menu" data-pet-interactive="true" role="group" aria-label="小模快捷操作">
+        <button type="button" onClick={() => { setMenuOpen(false); void window.mathmodel.pet.showMain(); }}>回到工作台</button>
+        <div className="pet-menu-looks">{PET_APPEARANCES.map((item) => <button key={item.id} type="button" aria-pressed={appearance === item.id}
+          onClick={() => { void window.mathmodel.settings.set({ modelingPetAppearance: item.id }); setMenuOpen(false); }}>{item.name}</button>)}</div>
+        <button type="button" onClick={() => { void window.mathmodel.settings.set({ modelingPetQuiet: !preferences.modelingPetQuiet }); setMenuOpen(false); }}>{preferences.modelingPetQuiet ? '恢复陪伴' : '进入安静模式'}</button>
+        <button type="button" onClick={() => void window.mathmodel.settings.set({ modelingPetEnabled: false })}>隐藏小模</button>
+      </div>}
     </main>
   );
 }

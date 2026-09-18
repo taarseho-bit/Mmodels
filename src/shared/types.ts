@@ -394,6 +394,10 @@ export interface AppSettings {
   /** 是否显示跟随真实任务状态变化的数学建模伙伴。 */
   modelingPetEnabled?: boolean;
   modelingPetAppearance?: 'student' | 'pixel' | 'researcher' | 'astronaut';
+  modelingPetQuiet?: boolean;
+  modelingPetSize?: 'small' | 'normal';
+  modelingPetMotion?: 'lively' | 'gentle';
+  modelingPetBubble?: 'progress' | 'always';
   /** 桌面小模窗口上次停留的位置。 */
   modelingPetPosition?: { x: number; y: number };
   /** 输入区的任务模式（自由对话 / 写论文 / 画图 / 评审 / 找数据） */

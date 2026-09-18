@@ -79,4 +79,21 @@
 @keyframes scene-twinkle { 50% { opacity: .4; } }
 @keyframes planet-drift { to { transform: rotate(9deg) translateY(-3px); } }
 @keyframes space-cheer { 50% { transform: translateY(-8px) rotate(24deg); } }
-@media (prefers-reduced-motion: reduce) { .pet-desk-avatar *, .pet-appearance-option { animation: none !important; transition: none !important; } }
+.desktop-pet-stage .pet-bubble-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.desktop-pet-stage .desktop-pet-speech { transition: opacity .2s ease, visibility .2s; }
+.desktop-pet-stage.pet-small .desktop-pet-character { width: 160px; height: 139px; top: 117px; }
+.desktop-pet-stage.is-dragging .pet-desk-avatar { transform: rotate(-3deg); }
+.desktop-pet-stage.is-landed .pet-desk-avatar { animation: pet-land .45s ease-out; transform-origin: bottom center; }
+.desktop-pet-stage .pet-desk-avatar { transition: transform .15s ease; }
+.desktop-pet-stage .desk-eyes { translate: var(--pet-look-x, 0px) var(--pet-look-y, 0px); }
+.desktop-pet-stage.pet-gentle .pet-desk-avatar * { animation-duration: 7s !important; }
+.desktop-pet-stage.pet-quiet *, .desktop-pet-stage.is-dragging .pet-desk-avatar * { animation-play-state: paused !important; }
+.pet-context-menu { position: absolute; z-index: 30; left: 8px; top: 8px; width: 205px; padding: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); color: var(--fg-primary); box-shadow: 0 6px 20px #0003; pointer-events: auto; }
+.pet-context-menu button { display: block; width: 100%; padding: 8px; border: 0; border-radius: 7px; background: transparent; color: inherit; text-align: left; cursor: pointer; font-size: 12px; }
+.pet-context-menu button:hover, .pet-context-menu button[aria-pressed=true] { background: var(--bg-hover); color: var(--accent); }
+.pet-context-menu button:focus-visible { outline: 2px solid var(--accent); }
+.pet-menu-looks { display: grid; grid-template-columns: 1fr 1fr; border-block: 1px solid var(--border); padding-block: 4px; }
+.pet-preference-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
+.pet-preference-controls label { display: flex; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap; }
+@keyframes pet-land { 0% { transform: translateY(-3px); } 50% { transform: scaleY(.96); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pet-desk-avatar, .pet-desk-avatar *, .pet-appearance-option { animation: none !important; transition: none !important; } }

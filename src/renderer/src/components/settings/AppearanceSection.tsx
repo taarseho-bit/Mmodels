@@ -83,6 +83,7 @@ export function AppearanceSection(): JSX.Element {
   const patchSettings = useApp((s) => s.patchSettings);
   const petAppearance = useApp((s) => resolvePetAppearance(s.settings?.modelingPetAppearance));
   const petEnabled = useApp((s) => s.settings?.modelingPetEnabled !== false);
+  const petPreferences = useApp((s) => s.settings);
   /** 当前生效的浅/深（决定两张卡片的说明文案：正在用 / 切到某模式时用） */
   const activeTheme =
     (document.documentElement.dataset.theme as 'light' | 'dark' | undefined) ?? 'light';
@@ -153,6 +154,12 @@ export function AppearanceSection(): JSX.Element {
               <span>{item.description}</span>
             </button>
           ))}
+        </div>
+        <div className="pet-preference-controls">
+          <label>角色大小<select className="select" value={petPreferences?.modelingPetSize ?? 'normal'} onChange={(e) => void patchSettings({ modelingPetSize: e.target.value as 'small' | 'normal' })}><option value="small">小巧</option><option value="normal">标准</option></select></label>
+          <label>动作频率<select className="select" value={petPreferences?.modelingPetMotion ?? 'lively'} onChange={(e) => void patchSettings({ modelingPetMotion: e.target.value as 'gentle' | 'lively' })}><option value="lively">活泼</option><option value="gentle">轻柔</option></select></label>
+          <label>提示气泡<select className="select" value={petPreferences?.modelingPetBubble ?? 'progress'} onChange={(e) => void patchSettings({ modelingPetBubble: e.target.value as 'progress' | 'always' })}><option value="progress">有进展时显示</option><option value="always">一直显示</option></select></label>
+          <label><input type="checkbox" checked={petPreferences?.modelingPetQuiet ?? false} onChange={(e) => void patchSettings({ modelingPetQuiet: e.target.checked })} />安静模式（暂停动作和气泡）</label>
         </div>
       </div>
       {/* ── 分区头：恢复默认（原版在标题行右侧）── */}
