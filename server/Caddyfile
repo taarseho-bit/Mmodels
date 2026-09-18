@@ -1,0 +1,25 @@
+# Caddy：域名自动申请并续期 Let's Encrypt 证书，无需 certbot。
+# 这就是选 Caddy 而不是 Nginx 的唯一理由，但对自建服务来说这个理由足够充分。
+
+{$DIAG_DOMAIN} {
+	encode zstd gzip
+
+	# 访问日志：出问题时能看到客户端到底有没有连上来。
+	# ⚠️ 注意日志里有客户端 IP，属于个人信息，保留期别设太长。
+	log {
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+
+	reverse_proxy app:8787
+
+	header {
+		# 服务端只被程序调用，不需要被搜索引擎/iframe 引用
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
+}

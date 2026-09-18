@@ -1,0 +1,117 @@
+// ⚠️ 证伪边界（看这行就够了）：本文件只能证明「系统提示词里确实写了这条规矩」，**不能**证明模型会遵守它 —— 行为验证必须靠实机 e2e。
+/**
+ * `buildSystemPrompt()` 里「长时任务：不要交还回合去等通知」这一节的回归测试。
+ *
+ * ## 这条规矩要防的是什么（实机观察到两次的缺陷）
+ *
+ * 模型会在真正干活的中途把回合交还，等一个「后台任务跑完唤醒我」——但那个唤醒永远不来：
+ *   1. 一次在后台下载进度 28/77 时交还，之后再也没醒（产物不完整：README 声称"67 个月"，
+ *      实际 csv 只有 13 个月有值）；
+ *   2. 一次在抓取 45/77 时交还，明确写着"它跑完会**自动通知我**接着做"，之后 8 条心跳全是"未在运行"。
+ *
+ * 根因（已定死，不在本文件覆盖范围）：`agent/session.ts` 把 prompt 当**字符串**传给 `query()`，
+ * SDK 据此判 `isSingleUserTurn=true`，首个 `result` 一到就 `endInput()` 关掉 stdin，
+ * CLI 随即退出，**后台任务被连坐收掉**。那个文件的正式修法（常驻队列）由另一个人负责。
+ *
+ * 本文件只管**止血**：系统提示词里必须立下"不许许空承诺、不许为等通知而交还回合"的规矩。
+ * 所以这里钉住的是**提示词文本**，不是模型行为 —— 见下面「这一组用例盖不住什么」。
+ *
+ * ## 反向对照（真跑过）
+ *
+ * 把新增的那一节整段删掉，第 1 组用例**必须真红**（已实跑验证，红色输出见汇报）。
+ * 所以它不是"顺手写的断言"，它确实拦得住回退。
+ *
+ * ## 这一组用例**盖不住**什么（证伪边界）
+ *
+ * 能钉住的：提示词里写了这个约定，且没把旧的中文解说/成品报路径两节挤掉。
+ * 钉不住的：**模型会不会遵守**。要验证行为，得在实机上跑一个必然产生长后台任务的提示词，
+ * 然后断言「末条助手消息不含'我会接着做 / 会自动通知我'这类措辞，且回合在后台任务结束时仍是活的」。
+ * 在那条实机判据落地之前，**不要**把本文件当成"这个缺陷已经修好了"的证据。
+ *
+ * ## 为什么这个文件要打这么多桩
+ *
+ * `ipc/session.ts` 是 IPC 装配层：它 import `electron`、`better-sqlite3`（按 Electron ABI 编译，
+ * 纯 Node 下 require 会抛 NODE_MODULE_VERSION 不匹配）、以及整个 IPC 注册链。
+ * 但 `buildSystemPrompt` 本身是**纯函数**（只依赖 `getSettings()` 与入参 cwd），
+ * 所以把重依赖逐个替换成空壳、只让真正被测的那份代码跑 —— 断言的是**真实的用户可见字符串**，
+ * 而不是"源码里有个变量"（后者改名就红、行为错了却不红）。
+ */
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+/** 可变小黑板：让 `getSettings()` 的返回值在用例里能被改写（注意 factory 会被提升，必须走 vi.hoisted） */
+const board = vi.hoisted(() => ({ systemPrompt: undefined as string | undefined }));
+
+vi.mock('electron', () => ({
+  ipcMain: { handle: () => {}, on: () => {} },
+  app: { getPath: () => '/tmp/mmodels-test', isPackaged: false },
+}));
+vi.mock('../db', () => ({ getDb: () => ({}) }));
+vi.mock('../store/config', () => ({
+  getSettings: () => ({ systemPrompt: board.systemPrompt }),
+  findProvider: () => undefined,
+  activeProvider: () => undefined,
+}));
+// 另一个队友正在改 agent/session.ts：这里换成空壳，既避开模块级副作用，也不跟他撞车。
+vi.mock('../agent/session', () => ({ SessionRegistry: class {} }));
+vi.mock('../agent/bridge-registry', () => ({ bridgeRegistry: {} }));
+// 整个 IPC 注册链（含 electron dialog/BrowserWindow、native 模块）在这里不需要被求值。
+vi.mock('./index', () => ({ safeWrap: (fn: unknown) => fn, pushToRenderer: () => {} }));
+vi.mock('./file', () => ({ currentProjectRoot: () => null }));
+
+import { buildSystemPrompt } from './session';
+
+afterEach(() => {
+  board.systemPrompt = undefined;
+});
+
+const CWD = 'C:\\proj\\demo';
+
+describe('长时任务：不要交还回合去等通知', () => {
+  it('提示词里四个关键点各至少出现一处（删掉这一节就红）', () => {
+    const text = buildSystemPrompt(CWD);
+
+    // ① 说清「唤醒不会来」
+    expect(text).toContain('收不到');
+    expect(text).toContain('自动唤醒');
+    // ② 有后台任务在跑时不许结束回合
+    expect(text).toContain('不要结束回合');
+    // ③ 万不得已交还回合时的**唯一合法话术**
+    expect(text).toContain('请你回复一句「继续」');
+    // ④ 明令禁止许空承诺
+    expect(text).toContain('禁止');
+    expect(text).toContain('跑完我会接着做');
+    expect(text).toContain('它跑完会自动通知我');
+  });
+
+  it('新增一节插在末尾（在旧的「提问与继续执行」之后）', () => {
+    const text = buildSystemPrompt(CWD);
+    expect(text).toContain('# 长时任务：不要交还回合去等通知');
+    expect(text.indexOf('# 长时任务：不要交还回合去等通知')).toBeGreaterThan(
+      text.indexOf('# 提问与继续执行'),
+    );
+  });
+
+  it('不回归：原有的「中文解说」「产出成品必须报出它在哪」两节仍在', () => {
+    const text = buildSystemPrompt(CWD);
+    expect(text).toContain('# 交流语言与过程解说（本地版要求）');
+    expect(text).toContain('**所有面向用户的文字一律用简体中文**');
+    expect(text).toContain('**产出成品时必须明确报出它在哪**');
+    expect(text).toContain('# 提问与继续执行');
+    expect(text).toContain('**拿到用户答案就直接继续执行**');
+    expect(text).toContain('不要一个工具调用发一条说明');
+    expect(text).toContain('默认隐藏 PATH、MSI、退出码、下载速度');
+    expect(text).toContain('正在换一种办法');
+    expect(text).toContain('只有确定是软件自身故障时才明确提示错误');
+    expect(text).toContain('`description`、`summary`、`reason`');
+    expect(text).toContain('不得把英文旁白藏进工具参数');
+  });
+
+  it('用户附加指令仍排在最后（新增一节没把它挤到前面去）', () => {
+    board.systemPrompt = '这是用户的附加指令 X';
+    const text = buildSystemPrompt(CWD);
+    expect(text).toContain('【用户附加指令】');
+    expect(text.indexOf('这是用户的附加指令 X')).toBeGreaterThan(
+      text.indexOf('# 长时任务：不要交还回合去等通知'),
+    );
+  });
+});

@@ -1,0 +1,5 @@
+owner: mmodels-local
+repo: MModels
+provider: github
+releaseType: release
+updaterCacheDirName: 'mmodels-updater'

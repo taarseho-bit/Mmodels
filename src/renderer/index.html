@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      CSP：渲染层不允许加载任何外部资源。
+      数学建模场景下模型会产出 HTML 预览，所以这条**必须**有。
+      dev 下 vite 需要 inline script 与 ws 连接，这里放宽到 'unsafe-inline'，
+      生产构建时由 electron-vite 的 build 流程再收紧。
+      media-src 额外放行 `mm-media:` —— 音视频预览走主进程注册的流式协议
+      （见 src/main/media/protocol.ts），不放行会静默播不出来。
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob: mm-media:; connect-src 'self' http://127.0.0.1:* http://localhost:* ws://localhost:* ws://127.0.0.1:*"
+    />
+    <title>MModels</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

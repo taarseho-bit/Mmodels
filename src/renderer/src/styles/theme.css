@@ -1,0 +1,629 @@
+/**
+ * 设计系统 —— 全部 CSS 变量集中在这里。
+ *
+ * 为什么不用 Tailwind：
+ *  1. 这是一个桌面应用，样式量可控（不是营销站点）
+ *  2. 数学建模界面需要大量定制组件（KaTeX 公式、Mermaid 图、
+ *     代码高亮、PDF 预览），原子类和它们的配合会很别扭
+ *  3. 零构建期依赖 —— electron-vite 直接一个 CSS 文件搞定
+ *
+ * 变量命名约定：
+ *  --bg-*      背景层级（画布 / 面板 / 浮层）
+ *  --fg-*      前景层级（主文 / 次文 / 弱化）
+ *  --border-*  边框
+ *  --accent-*  主题强调色
+ */
+
+:root {
+  /* ── 尺寸 ── */
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  /* 侧栏宽度：原版实测 239px（截图取样，CDP 探针 `aside` 宽度一致） */
+  --sidebar-w: 252px;
+  --topbar-h: 54px;
+  --statusbar-h: 26px;
+
+  /* ── 字体 ── */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas,
+    'Courier New', monospace;
+  --font-serif: 'Source Han Serif SC', 'Songti SC', Georgia, serif;
+
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+
+  /* ── 间距 ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* ── 过渡 ── */
+  --t-fast: 120ms ease;
+  --t-base: 200ms ease;
+
+  /* ── 阴影 ──
+   * `--shadow-sm` / `--shadow-lg` 逐字取自原版 `:root`（`index-SfRNRtmQ.css`）；
+   * 深色主题在下方 `[data-theme='dark']` 内覆盖为原版深色值。
+   * `--shadow` 原版无对应档，保留本项目自定义值。
+   * 注意：这三项不在 `store/app.ts` 的 `OWNED_VARS` 里，外观设置不会覆盖它们。 */
+  --shadow-sm: 0 1px 3px 0px #0000001a, 0 1px 2px -1px #0000001a;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 1px 3px 0px #0000001a, 0 4px 6px -1px #0000001a;
+}
+
+/* ── 浅色主题（默认）──
+ * 对照原版 `:root`（`index-SfRNRtmQ.css`）逐条核对：
+ *   --bg       #f5f3ef = --bg-canvas    --card   #faf9f6 = --bg-panel
+ *   --muted    #ece9e3 = --bg-sunken    --fg     #1f2420 = --fg-primary
+ *   --muted-fg #6e6a62 = --fg-muted     --border #ddd8ce = --border
+ *   --primary  #2f4a3b = --accent       --primary-fg #f6f4ee = --accent-fg
+ *   --accent   #e6ece5 = --accent-weak  --sidebar-accent #e4e9e2 = --bg-active
+ * 即浅色主题的语义色**已与原版一致**，本轮只去掉了两处蓝调残留
+ * （--code-bg / --scrollbar-thumb）。
+ * `--fg-secondary` 原版无中间档前景色 token，保持现值（本已属绿灰族）。
+ * 原版无 `--bg-hover` / `--border-weak` / `--border-strong` / `--accent-hover` 对应档，保留。 */
+:root,
+[data-theme='light'] {
+  --bg-canvas: #f5f3ef;
+  --bg-panel: #faf9f6;
+  --bg-sunken: #ece9e3;
+  --bg-hover: #e9e7e1;
+  --bg-active: #e4e9e2;
+  --bg-overlay: rgba(23, 25, 28, 0.45);
+
+  --fg-primary: #1f2420;
+  --fg-secondary: #4d554f;
+  --fg-muted: #6e6a62;
+  --fg-inverse: #ffffff;
+
+  --border-weak: #e7e2d9;
+  --border: #ddd8ce;
+  --border-strong: #c2bcb1;
+
+  --accent: #2f4a3b;
+  /* 浅色主题的主按钮底色（--accent 叠 20% 白） */
+  --accent-btn: #586e62;
+  --accent-hover: #263d31;
+  --accent-weak: #e6ece5;
+  --accent-fg: #f6f4ee;
+  /* 「强调色文字」专用档：浅色下强调色本身对比度已达标（8.10:1），
+   * 故与 --accent 同值，仅用于让深色主题能单独提亮（见下）。 */
+  --accent-contrast: #2f4a3b;
+
+  --success: #16a34a;
+  --success-weak: #e7f6ec;
+  --warning: #d97706;
+  --warning-weak: #fdf3e3;
+  --danger: #dc2626;
+  --danger-weak: #fdeaea;
+  --info: #0891b2;
+  --info-weak: #e5f6fa;
+
+  --code-bg: #ece9e3;
+  --scrollbar-thumb: #c2bcb1;
+}
+
+/* ── 深色主题 ──
+ * 对照原版 `:root[data-theme=dark]`（`index-SfRNRtmQ.css`）逐条对齐。
+ * 原版深色是一套**中性偏暖的灰**，复刻旧值是一套**蓝调灰**，这正是跨页
+ * 「强调色/激活块底色不一致」的根因；本轮把灰阶与强调色一起换回原版。
+ *
+ * 取值来源标注：
+ *   原版令牌  = 直接取原版 CSS 变量值
+ *   派生      = 原版无对应档，按原版色族/明度关系推导（见行内注释）
+ *   刻意偏离  = 见 `--accent-fg`
+ *
+ * 为什么可以这样改：`store/app.ts` 的 `APPEARANCE_DEFAULTS` 里，
+ * 「mathmodel」预设本身就是 `accent #5E7C69 / background #1C1C1C / foreground #F0EFE9`，
+ * 且 `touched:false` 时 `applyAppearance()` 会把内联变量全部 removeProperty，
+ * 让设计系统自带配色生效 —— 即原版本套值本就是本项目「未编辑时」的既定目标。 */
+[data-theme='dark'] {
+  /* 原版 --bg / --card */
+  --bg-canvas: #1c1c1c;
+  --bg-panel: #242423;
+  /* 派生：原版深色没有「凹陷」档（其 --muted #262625 比 --bg 更亮，不构成凹陷层级）。
+     保留复刻「比画布暗一档」的既有语义，仅去掉蓝调。 */
+  --bg-sunken: #141413;
+  /* 原版 --secondary / --accent（激活块底色，与原版采样的 #242926 同族） */
+  --bg-hover: #2a2a29;
+  --bg-active: #2b302c;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+
+  /* 原版 --fg / --sidebar-fg / --muted-fg
+     （原版深色只有 --fg + --muted-fg 两档文字，复刻是三级；
+      中间档取原版真实存在的次级前景色 --sidebar-fg，保持 14.8 / 11.7 / 6.6:1 的层次） */
+  --fg-primary: #f0efe9;
+  --fg-secondary: #d8d6cf;
+  --fg-muted: #a3a19a;
+  --fg-inverse: #1c1c1c;
+
+  /* 原版 --border 为 oklch(100% 0 0/.1)（10% 白叠加）。
+     改为同形式的半透明值后，描边在不同底色上按比例合成，与原件一致。 */
+  --border-weak: oklch(100% 0 0 / 0.06);
+  --border: oklch(100% 0 0 / 0.1);
+  --border-strong: oklch(100% 0 0 / 0.18);
+
+  /* 原版 --primary / --accent / --primary-fg */
+  --accent: #5e7c69;
+  /* 主按钮底色：原版实测 RGB(125,149,134)（= --accent 叠 20% 白），比 --accent 浅一档 */
+  --accent-btn: #7d9586;
+  /* 派生：原版无 hover 档（原件 hover 用 opacity 过渡）；#5e7c69 提亮约 10% */
+  --accent-hover: #6a8b78;
+  --accent-weak: #2b302c;
+  /* ⚠️ 刻意偏离原版 --primary-fg #f6f4ee：
+     白字在 #5e7c69 上 4.60:1（过 WCAG AA 正文 4.5:1），原版 #f6f4ee 只有 4.19:1。
+     这与 `applyAppearance()` 自己的推导也一致（accent 相对亮度 <0.55 → '#FFFFFF'）。 */
+  --accent-fg: #ffffff;
+  /* 「强调色文字」专用档：--accent 直接作前景压在 --accent-weak 上只有 2.92:1
+     （原版自身的胶囊也是这个量级，属原件固有的 a11y 弱点）。
+     深色下改用同色族提亮档，6.09:1 过 AA；浅色不需要，与 --accent 同值。 */
+  --accent-contrast: #8fb89c;
+
+  --success: #34d399;
+  --success-weak: #14291f;
+  --warning: #fbbf24;
+  --warning-weak: #2f2614;
+  --danger: #f87171;
+  --danger-weak: #331a1a;
+  --info: #22d3ee;
+  --info-weak: #122a2f;
+
+  /* 原版深色阴影（精确值） */
+  --shadow-sm: 0 1px 3px 0px #0000004d;
+  --shadow-lg: 0 4px 12px -2px #0006;
+
+  /* 派生：跟随 --bg-sunken 去蓝调 */
+  --code-bg: #141413;
+  --scrollbar-thumb: #4a4a47;
+}
+
+/* ── 基础重置 ── */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  /* 桌面应用不需要文本选择光标到处出现 */
+  user-select: none;
+}
+
+/* 正文内容允许选择 */
+.selectable,
+input,
+textarea,
+pre,
+code {
+  user-select: text;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  /* 链接是正文字号，用 --accent-contrast：
+   * 深色下裸 --accent(#5e7c69) 压在画布上只有 3.70:1（不达正文 AA），
+   * 换提亮档后 7.71:1；浅色下两者同值，行为不变。 */
+  color: var(--accent-contrast);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ── 滚动条 ── */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── 通用工具类 ── */
+
+.row {
+  display: flex;
+  align-items: center;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.muted {
+  color: var(--fg-muted);
+}
+.secondary {
+  color: var(--fg-secondary);
+}
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 按钮 ── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--fg-primary);
+  font-size: var(--fs-sm);
+  transition: background var(--t-fast), border-color var(--t-fast);
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--bg-hover);
+}
+.btn:active {
+  background: var(--bg-active);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent-btn, var(--accent));
+  border-color: var(--accent-btn, var(--accent));
+  color: var(--accent-fg);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.btn-ghost:hover {
+  background: var(--bg-hover);
+}
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--border);
+}
+.btn-danger:hover {
+  background: var(--danger-weak);
+  border-color: var(--danger);
+}
+.btn-sm {
+  height: 24px;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.btn-lg {
+  height: 34px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-md);
+}
+
+/* ── 输入框 ── */
+
+.input {
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+.input::placeholder {
+  color: var(--fg-muted);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  outline: none;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: inherit;
+}
+.textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+
+.select {
+  height: 30px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  outline: none;
+}
+.select:focus {
+  border-color: var(--accent);
+}
+
+/* ── 徽标 ── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+  white-space: nowrap;
+}
+/* 强调色底纹上的文字走 `--accent-contrast`：
+ * 浅色下与 --accent 同值（8.10:1，行为不变）；深色下换成提亮档，
+ * 避免 --accent(#5e7c69) 直接压在 --accent-weak(#2b302c) 上只有 2.92:1。 */
+.badge-accent {
+  background: var(--accent-weak);
+  color: var(--accent-contrast);
+}
+.badge-success {
+  background: var(--success-weak);
+  color: var(--success);
+}
+.badge-warning {
+  background: var(--warning-weak);
+  color: var(--warning);
+}
+.badge-danger {
+  background: var(--danger-weak);
+  color: var(--danger);
+}
+
+/* ── 卡片 / 面板 ── */
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-weak);
+  border-radius: var(--radius);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-weak);
+  margin: var(--sp-2) 0;
+}
+
+/* ── 加载动画 ── */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.pulse {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* ── 光标闪烁（流式输出时）── */
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+.caret::after {
+  content: '▍';
+  animation: blink 1s step-end infinite;
+  color: var(--accent);
+  margin-left: 1px;
+}
+
+/* ── 空状态 ── */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-8);
+  color: var(--fg-muted);
+  text-align: center;
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+/* ── Markdown 正文（聊天消息 / 文档预览共用）── */
+
+.md {
+  line-height: 1.75;
+  user-select: text;
+  word-break: break-word;
+}
+.md > *:first-child {
+  margin-top: 0;
+}
+.md > *:last-child {
+  margin-bottom: 0;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: var(--sp-5) 0 var(--sp-2);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.md h1 {
+  font-size: var(--fs-xl);
+}
+.md h2 {
+  font-size: var(--fs-lg);
+}
+.md h3 {
+  font-size: var(--fs-md);
+}
+.md h4 {
+  font-size: var(--fs-base);
+}
+.md p {
+  margin: var(--sp-3) 0;
+}
+.md ul,
+.md ol {
+  margin: var(--sp-3) 0;
+  padding-left: var(--sp-6);
+}
+.md li {
+  margin: var(--sp-1) 0;
+}
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+}
+.md pre {
+  margin: var(--sp-3) 0;
+  padding: var(--sp-3);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+  overflow-x: auto;
+  border: 1px solid var(--border-weak);
+}
+.md pre code {
+  padding: 0;
+  background: none;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+.md blockquote {
+  margin: var(--sp-3) 0;
+  padding-left: var(--sp-3);
+  border-left: 3px solid var(--border);
+  color: var(--fg-secondary);
+}
+.md table {
+  border-collapse: collapse;
+  margin: var(--sp-3) 0;
+  font-size: var(--fs-sm);
+  width: 100%;
+}
+.md th,
+.md td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.md th {
+  background: var(--bg-sunken);
+  font-weight: 600;
+}
+.md img {
+  max-width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-weak);
+}
+.md hr {
+  border: none;
+  border-top: 1px solid var(--border-weak);
+  margin: var(--sp-5) 0;
+}

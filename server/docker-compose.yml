@@ -1,0 +1,55 @@
+# 单机部署：Caddy（自动 HTTPS）+ 上报服务 + SQLite 无关的文件存储
+#
+# 用法：
+#   cp .env.example .env   # 填 DIAG_DOMAIN 与 DIAG_TOKEN
+#   docker compose up -d
+#
+# ⚠️ 首次启动前，域名必须已经解析到本机 IP，否则 Caddy 申请证书会失败。
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    # 只在内网暴露，公网流量一律经 Caddy 进来（少暴露一个面）
+    expose:
+      - '8787'
+    environment:
+      PORT: '8787'
+      DIAG_DATA_DIR: /data
+      DIAG_TOKEN: ${DIAG_TOKEN:?必须设置 DIAG_TOKEN，生成方式：openssl rand -hex 32}
+      DIAG_RETENTION_DAYS: ${DIAG_RETENTION_DAYS:-30}
+      DIAG_RATE_PER_MIN: ${DIAG_RATE_PER_MIN:-120}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # 邮件通知（全部选填，留空即关闭）
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-1}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_TO: ${MAIL_TO:-}
+      MAIL_MAX_PER_HOUR: ${MAIL_MAX_PER_HOUR:-20}
+    volumes:
+      # 数据就落在这个目录，备份 = 拷它
+      - ./data:/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    environment:
+      DIAG_DOMAIN: ${DIAG_DOMAIN:?必须设置 DIAG_DOMAIN，例如 diag.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # 证书与 ACME 账号状态：这个卷丢了会重新申请，可能撞 Let's Encrypt 频率限制
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

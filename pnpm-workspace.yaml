@@ -1,0 +1,20 @@
+# pnpm 10 配置
+#
+# ⚠️ 为什么需要这个文件：
+#   pnpm 10 默认**不执行依赖的 build script**，而且只在 install 末尾打一条
+#   警告就过去了：
+#       ╭ Warning ─────────────────────────────────────────╮
+#       │   Ignored build scripts: better-sqlite3, electron, │
+#       │   esbuild, node-pty.                               │
+#       ╰────────────────────────────────────────────────────╯
+#   后果很隐蔽：`require('electron/package.json').version` 会显示新版本号，
+#   但 `node_modules/electron/dist/electron.exe` **根本没下载** ——
+#   「看起来装好了」。原生模块同理，装完没有 .node，运行时才炸。
+#
+#   放行清单写在 `.npmrc` 里（onlyBuiltDependencies[]=…）在本版本**不生效**，
+#   pnpm 10.6+ 认的是 pnpm-workspace.yaml 里的这个字段。
+onlyBuiltDependencies:
+  - electron
+  - better-sqlite3
+  - node-pty
+  - esbuild

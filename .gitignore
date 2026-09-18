@@ -1,0 +1,46 @@
+# Dependencies and generated packages
+node_modules/
+dist/
+dist-*/
+release/
+out/
+*.tsbuildinfo
+*.timestamp-*.mjs
+electron.vite.config.*.mjs
+
+# Local audit, cache, and temporary workspaces
+.workbuddy/
+.backup-*/
+.baseline/
+.cache/
+.probe/
+.tmp/
+.vendor/
+_tmp-*/
+tmp/
+tmp-*.txt
+.tmp-*.txt
+_final*.txt
+.cap.txt
+.ie.txt
+.pr.txt
+.v2.txt
+leftovers.txt
+
+# Machine-local configuration and secrets
+.env
+.env.*
+!.env.example
+.npmrc
+*.log
+
+# Bundled third-party runtimes; kept on disk but not versioned
+resources/claude-code/
+resources/bin/
+resources/elevate.exe
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,129 @@
+# electron-builder 打包配置
+#
+# 复刻原版 MathModel 0.0.20 的打包形态（由 NSIS 安装包逆向得到）：
+#   - 原版 exe 名 `mathmodel.exe`，NSIS 安装器
+#   - 随包资源放在 `process.resourcesPath` 下：bin/ claude-code/ builtin-skills/
+#     builtin-examples/ pdfjs/ elevate.exe
+#   - `app.asar.unpacked` 里只有两个原生模块：better-sqlite3、node-pty
+#
+# ⚠️ 两个必须踩准的点：
+#   1. `extraResources` 的 `to: .` —— 让内容**直接落到 process.resourcesPath**，
+#      而不是再套一层 `resources/`。主进程按 `process.resourcesPath` 找随包文件
+#      （见 src/main/ipc/environment.ts），路径错一层就找不到 uv/skills。
+#   2. `npmRebuild: false` —— 原生模块已按目标 Electron ABI 就位，
+#      让 electron-builder 重编会要求本机装 VS 构建链，且可能编出别的 ABI。
+
+appId: com.mmodels.desktop
+productName: MModels
+copyright: Copyright © MModels
+
+directories:
+  output: dist
+  buildResources: build
+
+# ── 进包的文件 ────────────────────────────────────────────────
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/*.ts'
+  - '!**/*.tsx'
+  # 开发期脚本与测试产物不进包
+  - '!scripts/**'
+  - '!out/*.txt'
+  - '!out/*.json'
+  - '!out/*.log'
+  - '!out/*.png'
+  - '!out/*.mjs'
+  - '!out/git-test-bundle.cjs'
+  - '!out/env-test-bundle.cjs'
+  # ⚠️ **排掉 SDK 自带的平台二进制**（272 MB）。
+  #    它和 extraResources 里的 resources/claude-code/claude.exe 是同一个文件，
+  #    不排就是双份、白胖 272 MB。原版也只发了一份（在 resources/claude-code/）。
+  #    主进程通过 `pathToClaudeCodeExecutable` 指向随包那份，见 src/main/agent/env.ts。
+  - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
+
+  # ── 瘦身：只发 x64 需要的原生二进制 ──
+  # ⚠️ 这里筛掉的是「复刻版有、原版没有」的部分（见 scripts/diff-installed.cjs）。
+  #    原版反而把自己编译原生模块的 MSVC 中间产物也打进去了，那是它的冗余，不必照抄。
+  # 其它架构的 prebuild（本包只发 x64）
+  - '!node_modules/node-pty/prebuilds/win32-arm64/**'
+  - '!node_modules/node-pty/prebuilds/darwin-*/**'
+  - '!node_modules/node-pty/third_party/**'
+  # 原生模块源码与调试库（运行期不需要）
+  - '!node_modules/better-sqlite3/deps/**'
+  - '!node_modules/better-sqlite3/src/**'
+  - '!**/*.iobj'
+  - '!**/*.ipdb'
+  - '!**/*.pdb'
+  - '!**/*.tlog'
+  - '!**/*.lib'
+  - '!**/*.exp'
+
+# ── 原生模块必须解包（asar 里的 .node 无法 dlopen）────────────
+asarUnpack:
+  - node_modules/better-sqlite3/**
+  - node_modules/node-pty/**
+
+# ── 随包资源：直接铺到 process.resourcesPath ──────────────────
+# 540 MB：claude-code 272M + builtin-skills 199M + bin(uv) 65M
+#      + pdfjs 2.3M + builtin-examples 2.0M + elevate 0.1M
+extraResources:
+  - from: resources
+    to: .
+    filter:
+      - '**/*'
+      # 训示文件类型校验不需要，进包只是拖体积
+      - '!**/*.pdb'
+      - '!**/*.pyc'
+      - '!**/__pycache__/**'
+      - '!**/.DS_Store'
+      - '!**/Thumbs.db'
+
+# ── Windows ──────────────────────────────────────────────────
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  executableName: MModels
+  # 大文件较多，关掉压缩以缩短打包时间（原版安装包本身也是压缩的）
+  compression: normal
+
+nsis:
+  artifactName: ${productName}-${version}-${arch}-Setup.${ext}
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MModels
+  # 中文安装界面
+  installerLanguages:
+    - zh_CN
+    - en_US
+  language: '2052'
+  deleteAppDataOnUninstall: false
+  # 卸载时保留用户项目与配置（项目在工作目录里，删了是灾难）
+  runAfterFinish: true
+
+# 单文件免安装版：双击即可运行，配置与项目仍保存在用户目录，不会写回 exe 所在文件夹。
+portable:
+  artifactName: ${productName}-${version}-${arch}-Portable.${ext}
+
+# ── 不重编原生模块（理由见文件头）────────────────────────────
+npmRebuild: false
+buildDependenciesFromSource: false
+
+# ── 自动更新（原版用 GitHub Releases）────────────────────────
+# ⚠️ 复刻版不发版，此处仅保留结构；真要发版时改 publish 配置。
+publish: null
+
+# 关掉 asar 完整性校验之外的额外校验，减少打包噪音
+electronLanguages:
+  - zh-CN
+  - en-US

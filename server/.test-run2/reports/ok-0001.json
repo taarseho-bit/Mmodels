@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "ok-0001",
+  "createdAt": "",
+  "reason": "",
+  "app": {
+    "version": "",
+    "electron": "",
+    "chrome": "",
+    "node": ""
+  },
+  "system": {
+    "platform": "",
+    "arch": "",
+    "osVersion": "",
+    "locale": ""
+  },
+  "faults": [],
+  "logs": "hi"
+}

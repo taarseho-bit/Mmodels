@@ -1,0 +1,5 @@
+# 部署与运行产物，不要提交
+.env
+data/
+node_modules/
+*.log
