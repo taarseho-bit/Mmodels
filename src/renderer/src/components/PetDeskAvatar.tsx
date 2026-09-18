@@ -2,7 +2,7 @@ import './pet-desk.css';
 
 export const PET_APPEARANCES = [
   { id: 'student', name: '卫衣同学', description: '奶油色书桌、紫色卫衣，陪你一起拆题。' },
-  { id: 'pixel', name: '像素小人', description: '背着行囊跃过方块，举起地图寻找下一条路。' },
+  { id: 'pixel', name: '探险家', description: '背着行囊跃过方块，举起地图寻找下一条路。' },
   { id: 'researcher', name: '漫画研究员', description: '站着翻阅笔记，用放大镜捕捉遗漏的线索。' },
   { id: 'astronaut', name: '太空建模员', description: '失重漂浮、探索星球，伸手收集宇宙中的灵感。' },
 ] as const;
