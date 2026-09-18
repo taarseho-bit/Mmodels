@@ -46,9 +46,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-panel);
-  border-left: 1px solid var(--border-weak);
-  border-right: 1px solid var(--border-weak);
+  background: var(--bg-canvas);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
 }
 
 /* ── 顶栏 ── */
@@ -57,9 +57,11 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 0 14px;
-  background: color-mix(in srgb, var(--bg-panel) 94%, var(--accent) 6%);
-  border-bottom: 1px solid var(--border-weak);
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px) saturate(165%);
   -webkit-app-region: drag;
 }
 
@@ -76,9 +78,11 @@
   flex: 0 0 30px;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-weak));
-  color: var(--accent);
-  background: var(--bg-panel);
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: #1d1d1f;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 .topbar-context-copy {
   min-width: 0;
@@ -119,14 +123,14 @@
   gap: 6px;
   margin-left: 4px;
   padding: 0 9px;
-  border: 1px solid var(--border-strong);
-  border-radius: 5px;
-  background: var(--bg-panel);
-  color: var(--fg-primary);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
   font-size: 11px;
   white-space: nowrap;
 }
-.topbar-new-chat:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.topbar-new-chat:hover:not(:disabled) { border-color: var(--accent-hover); background: var(--accent-hover); color: #fff; box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 24%, transparent); }
 .topbar-new-chat:disabled { opacity: .45; }
 .topbar button,
 .topbar .topbar-no-drag {
@@ -192,9 +196,9 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
-  padding: 0 9px;
-  border-radius: var(--radius-sm);
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
   font-size: var(--fs-sm);
   color: var(--fg-secondary);
   background: transparent;
@@ -208,6 +212,11 @@
 .topbar-action:hover:not(:disabled) {
   background: var(--bg-hover);
   color: var(--fg-primary);
+}
+.topbar-action.is-active {
+  background: var(--accent-weak);
+  color: var(--accent-contrast);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .topbar-action:disabled {
   opacity: 0.4;
@@ -243,11 +252,13 @@
 }
 
 .rail-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 8px;
+  min-height: 34px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   font-size: var(--fs-base);
   color: var(--fg-secondary);
@@ -264,9 +275,20 @@
   color: var(--fg-primary);
 }
 .rail-item.active {
-  background: var(--accent-weak);
-  color: var(--accent);
-  font-weight: 500;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-panel));
+  color: var(--fg-primary);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+.rail-item.active::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 .rail-item.sm {
   padding: 5px 8px;
@@ -424,8 +446,10 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bg-sunken);
-  border-right: 1px solid var(--border-weak);
+  background: color-mix(in srgb, var(--bg-panel) 72%, transparent);
+  border-right: 1px solid var(--border);
+  box-shadow: 1px 0 18px rgba(0, 0, 0, 0.025);
+  backdrop-filter: blur(28px) saturate(150%);
   overflow: hidden;
 }
 
@@ -443,17 +467,19 @@
   justify-content: center;
   gap: 6px;
   border: 1px solid var(--border-weak);
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--accent) 9%, var(--bg-panel));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   color: var(--fg-primary);
   font-size: 12px;
   font-weight: 600;
 }
 .rail-create-strip button:last-child {
-  border-color: color-mix(in srgb, var(--accent) 38%, var(--border-weak));
-  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
-.rail-create-strip button:hover:not(:disabled) { border-color: var(--accent); color: var(--fg-primary); }
+.rail-create-strip button:hover:not(:disabled) { border-color: var(--accent-hover); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 20%, transparent); }
+.rail-create-strip button:last-child:hover:not(:disabled) { background: var(--accent-hover); color: #fff; }
 .rail-create-strip button:disabled { opacity: .38; }
 
 .sidebar-head {
@@ -690,7 +716,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 28px 0 22px;
+  padding: 32px 0 26px;
   background: var(--bg-canvas);
 }
 
@@ -748,8 +774,11 @@
 }
 .msg-avatar.assistant {
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-weak));
-  background: transparent;
-  color: var(--accent);
+  border: 0;
+  border-radius: 6px;
+  background: #1d1d1f;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .msg-body {
@@ -763,10 +792,11 @@
   grid-column: 1 / -1;
   justify-self: end;
   max-width: min(680px, 88%);
-  background: var(--accent-weak);
-  padding: 9px 13px;
-  border-radius: 7px;
-  border-top-right-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border-weak));
+  border-radius: 8px;
+  border-bottom-right-radius: 3px;
 }
 
 /* ── 对话过程：透明文字流，技术细节按需展开 ── */
@@ -942,9 +972,9 @@
 
 .composer {
   flex-shrink: 0;
-  border-top: 1px solid var(--border-weak);
-  background: var(--bg-panel);
-  padding: var(--sp-3) var(--sp-5) var(--sp-4);
+  border-top: 0;
+  background: var(--bg-canvas);
+  padding: var(--sp-3) var(--sp-5) 18px;
 }
 
 .composer-inner {
@@ -953,15 +983,15 @@
 }
 
 .composer-box {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  background: var(--bg-panel);
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
   overflow: hidden;
 }
 .composer-box:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-weak);
+  box-shadow: 0 0 0 3px var(--accent-weak), var(--shadow);
 }
 
 /* 拖入文件时的落点反馈。

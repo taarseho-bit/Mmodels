@@ -16,12 +16,12 @@
 
 :root {
   /* ── 尺寸 ── */
-  --radius-sm: 4px;
-  --radius: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 5px;
+  --radius: 7px;
+  --radius-lg: 10px;
   /* 侧栏宽度：原版实测 239px（截图取样，CDP 探针 `aside` 宽度一致） */
-  --sidebar-w: 252px;
-  --topbar-h: 54px;
+  --sidebar-w: 264px;
+  --topbar-h: 58px;
   --statusbar-h: 26px;
 
   /* ── 字体 ── */
@@ -49,17 +49,17 @@
   --sp-8: 32px;
 
   /* ── 过渡 ── */
-  --t-fast: 120ms ease;
-  --t-base: 200ms ease;
+  --t-fast: 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-base: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* ── 阴影 ──
    * `--shadow-sm` / `--shadow-lg` 逐字取自原版 `:root`（`index-SfRNRtmQ.css`）；
    * 深色主题在下方 `[data-theme='dark']` 内覆盖为原版深色值。
    * `--shadow` 原版无对应档，保留本项目自定义值。
    * 注意：这三项不在 `store/app.ts` 的 `OWNED_VARS` 里，外观设置不会覆盖它们。 */
-  --shadow-sm: 0 1px 3px 0px #0000001a, 0 1px 2px -1px #0000001a;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 1px 3px 0px #0000001a, 0 4px 6px -1px #0000001a;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 5px 18px rgba(0, 0, 0, 0.04);
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.09), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* ── 浅色主题（默认）──
@@ -75,31 +75,30 @@
  * 原版无 `--bg-hover` / `--border-weak` / `--border-strong` / `--accent-hover` 对应档，保留。 */
 :root,
 [data-theme='light'] {
-  --bg-canvas: #f5f3ef;
-  --bg-panel: #faf9f6;
-  --bg-sunken: #ece9e3;
-  --bg-hover: #e9e7e1;
-  --bg-active: #e4e9e2;
-  --bg-overlay: rgba(23, 25, 28, 0.45);
+  --bg-canvas: #f2f2f7;
+  --bg-panel: #ffffff;
+  --bg-sunken: #e9e9ef;
+  --bg-hover: rgba(60, 60, 67, 0.08);
+  --bg-active: rgba(0, 122, 255, 0.12);
+  --bg-overlay: rgba(20, 20, 24, 0.34);
 
-  --fg-primary: #1f2420;
-  --fg-secondary: #4d554f;
-  --fg-muted: #6e6a62;
+  --fg-primary: #1d1d1f;
+  --fg-secondary: #48484a;
+  --fg-muted: #76767c;
   --fg-inverse: #ffffff;
 
-  --border-weak: #e7e2d9;
-  --border: #ddd8ce;
-  --border-strong: #c2bcb1;
+  --border-weak: rgba(60, 60, 67, 0.10);
+  --border: rgba(60, 60, 67, 0.18);
+  --border-strong: rgba(60, 60, 67, 0.29);
 
-  --accent: #2f4a3b;
-  /* 浅色主题的主按钮底色（--accent 叠 20% 白） */
-  --accent-btn: #586e62;
-  --accent-hover: #263d31;
-  --accent-weak: #e6ece5;
-  --accent-fg: #f6f4ee;
+  --accent: #007aff;
+  --accent-btn: #007aff;
+  --accent-hover: #0068d9;
+  --accent-weak: rgba(0, 122, 255, 0.12);
+  --accent-fg: #ffffff;
   /* 「强调色文字」专用档：浅色下强调色本身对比度已达标（8.10:1），
    * 故与 --accent 同值，仅用于让深色主题能单独提亮（见下）。 */
-  --accent-contrast: #2f4a3b;
+  --accent-contrast: #0066cc;
 
   --success: #16a34a;
   --success-weak: #e7f6ec;
@@ -110,8 +109,8 @@
   --info: #0891b2;
   --info-weak: #e5f6fa;
 
-  --code-bg: #ece9e3;
-  --scrollbar-thumb: #c2bcb1;
+  --code-bg: #e9e9ef;
+  --scrollbar-thumb: rgba(60, 60, 67, 0.32);
 }
 
 /* ── 深色主题 ──
@@ -130,22 +129,22 @@
  * 让设计系统自带配色生效 —— 即原版本套值本就是本项目「未编辑时」的既定目标。 */
 [data-theme='dark'] {
   /* 原版 --bg / --card */
-  --bg-canvas: #1c1c1c;
-  --bg-panel: #242423;
+  --bg-canvas: #1c1c1e;
+  --bg-panel: #2c2c2e;
   /* 派生：原版深色没有「凹陷」档（其 --muted #262625 比 --bg 更亮，不构成凹陷层级）。
      保留复刻「比画布暗一档」的既有语义，仅去掉蓝调。 */
-  --bg-sunken: #141413;
+  --bg-sunken: #151517;
   /* 原版 --secondary / --accent（激活块底色，与原版采样的 #242926 同族） */
-  --bg-hover: #2a2a29;
-  --bg-active: #2b302c;
+  --bg-hover: rgba(235, 235, 245, 0.10);
+  --bg-active: rgba(10, 132, 255, 0.20);
   --bg-overlay: rgba(0, 0, 0, 0.6);
 
   /* 原版 --fg / --sidebar-fg / --muted-fg
      （原版深色只有 --fg + --muted-fg 两档文字，复刻是三级；
       中间档取原版真实存在的次级前景色 --sidebar-fg，保持 14.8 / 11.7 / 6.6:1 的层次） */
-  --fg-primary: #f0efe9;
-  --fg-secondary: #d8d6cf;
-  --fg-muted: #a3a19a;
+  --fg-primary: #f5f5f7;
+  --fg-secondary: #d1d1d6;
+  --fg-muted: #98989d;
   --fg-inverse: #1c1c1c;
 
   /* 原版 --border 为 oklch(100% 0 0/.1)（10% 白叠加）。
@@ -155,12 +154,12 @@
   --border-strong: oklch(100% 0 0 / 0.18);
 
   /* 原版 --primary / --accent / --primary-fg */
-  --accent: #5e7c69;
+  --accent: #0a84ff;
   /* 主按钮底色：原版实测 RGB(125,149,134)（= --accent 叠 20% 白），比 --accent 浅一档 */
-  --accent-btn: #7d9586;
+  --accent-btn: #0a84ff;
   /* 派生：原版无 hover 档（原件 hover 用 opacity 过渡）；#5e7c69 提亮约 10% */
-  --accent-hover: #6a8b78;
-  --accent-weak: #2b302c;
+  --accent-hover: #409cff;
+  --accent-weak: rgba(10, 132, 255, 0.20);
   /* ⚠️ 刻意偏离原版 --primary-fg #f6f4ee：
      白字在 #5e7c69 上 4.60:1（过 WCAG AA 正文 4.5:1），原版 #f6f4ee 只有 4.19:1。
      这与 `applyAppearance()` 自己的推导也一致（accent 相对亮度 <0.55 → '#FFFFFF'）。 */
@@ -168,7 +167,7 @@
   /* 「强调色文字」专用档：--accent 直接作前景压在 --accent-weak 上只有 2.92:1
      （原版自身的胶囊也是这个量级，属原件固有的 a11y 弱点）。
      深色下改用同色族提亮档，6.09:1 过 AA；浅色不需要，与 --accent 同值。 */
-  --accent-contrast: #8fb89c;
+  --accent-contrast: #64a8ff;
 
   --success: #34d399;
   --success-weak: #14291f;
@@ -184,8 +183,8 @@
   --shadow-lg: 0 4px 12px -2px #0006;
 
   /* 派生：跟随 --bg-sunken 去蓝调 */
-  --code-bg: #141413;
-  --scrollbar-thumb: #4a4a47;
+  --code-bg: #151517;
+  --scrollbar-thumb: rgba(235, 235, 245, 0.28);
 }
 
 /* ── 基础重置 ── */
@@ -229,6 +228,21 @@ button {
   border: none;
   background: none;
   color: inherit;
+  transition: transform var(--t-fast), background-color var(--t-fast), color var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), opacity var(--t-fast);
+}
+
+button:not(:disabled):active,
+[role='button']:not([aria-disabled='true']):active {
+  transform: scale(0.965);
+}
+
+button:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  outline-offset: 2px;
 }
 
 input,
@@ -330,6 +344,7 @@ a:hover {
 }
 .btn:active {
   background: var(--bg-active);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -339,6 +354,18 @@ a:hover {
   background: var(--accent-btn, var(--accent));
   border-color: var(--accent-btn, var(--accent));
   color: var(--accent-fg);
+  box-shadow: 0 1px 2px rgba(0, 77, 160, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 .btn-primary:hover {
   background: var(--accent-hover);

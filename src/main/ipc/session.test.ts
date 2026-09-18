@@ -83,6 +83,14 @@ describe('长时任务：不要交还回合去等通知', () => {
     expect(text).toContain('它跑完会自动通知我');
   });
 
+  it('先规划模式明确只给方案，不修改文件', () => {
+    const text = buildSystemPrompt(CWD, true);
+    expect(text).toContain('# 当前工作方式：先规划');
+    expect(text).toContain('不修改文件');
+    expect(text).toContain('完成方案后结束本轮');
+    expect(buildSystemPrompt(CWD, false)).not.toContain('# 当前工作方式：先规划');
+  });
+
   it('新增一节插在末尾（在旧的「提问与继续执行」之后）', () => {
     const text = buildSystemPrompt(CWD);
     expect(text).toContain('# 长时任务：不要交还回合去等通知');

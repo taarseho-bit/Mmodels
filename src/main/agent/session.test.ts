@@ -316,6 +316,34 @@ describe('上下文窗口 —— 真实占用与 90% 自动压缩', () => {
       usage: expect.objectContaining({ used: 91_000, total: 200_000, percentage: 45.5 }),
     });
   });
+
+  it('兼容端点一直返回同一个窗口值时，第二轮仍按真实 usage 推进', async () => {
+    installFakeQuery([assistant('ok'), result()]);
+    const session = new AgentSession('s-fixed-context');
+    const events: StreamEvent[] = [];
+    session.on('event', (event: StreamEvent) => events.push(event));
+    const options = {
+      sessionId: 's-fixed-context',
+      prompt: '第一轮',
+      provider: PROVIDER,
+      model: 'test-model',
+      cwd: '/tmp',
+      skillsPluginPath: '/tmp/skills-plugin',
+    };
+
+    await session.run(options);
+    const first = events
+      .filter((event): event is Extract<StreamEvent, { type: 'context-usage' }> => event.type === 'context-usage')
+      .at(-1)?.usage.used;
+
+    await session.run({ ...options, prompt: '第二轮' });
+    const second = events
+      .filter((event): event is Extract<StreamEvent, { type: 'context-usage' }> => event.type === 'context-usage')
+      .at(-1)?.usage.used;
+
+    expect(first).toBe(91_000);
+    expect(second).toBeGreaterThan(first ?? 0);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────

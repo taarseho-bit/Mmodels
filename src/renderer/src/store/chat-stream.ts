@@ -40,8 +40,8 @@ export const MAX_CACHED_SESSIONS = 8;
 /** 单个会话最多保留多少个过程块（超了从头丢，见 withBlocks） */
 export const MAX_BLOCKS_PER_SESSION = 400;
 
-/** 轮次生命周期：idle(还没跑过) → running → done */
-export type StreamPhase = 'idle' | 'running' | 'done';
+/** 轮次生命周期：idle(还没跑过) → running → stopping → done */
+export type StreamPhase = 'idle' | 'running' | 'stopping' | 'done';
 
 /** 一个会话的存活窗口 */
 export interface SessionStream {
@@ -74,6 +74,8 @@ export interface LiveWindow {
 /** `ChatPage` 的流式 state（原先是组件内的 `StreamState`，这里统一放 store 模块） */
 export interface StreamView extends LiveWindow {
   sessionId: string | null;
+  phase: StreamPhase;
+  stopping: boolean;
   usage: TokenUsage | null;
   contextUsage: ContextWindowUsage | null;
   lastCompaction: SessionStream['lastCompaction'];
@@ -85,6 +87,8 @@ export const EMPTY_STREAM: StreamView = {
   blocks: [],
   active: false,
   sessionId: null,
+  phase: 'idle',
+  stopping: false,
   usage: null,
   contextUsage: null,
   lastCompaction: null,
@@ -110,8 +114,10 @@ export function toView(entry: SessionStream | null | undefined): StreamView {
   if (!entry) return EMPTY_STREAM;
   return {
     blocks: entry.blocks,
-    active: entry.phase === 'running',
+    active: entry.phase === 'running' || entry.phase === 'stopping',
     sessionId: entry.sessionId || null,
+    phase: entry.phase,
+    stopping: entry.phase === 'stopping',
     usage: entry.usage,
     contextUsage: entry.contextUsage,
     lastCompaction: entry.lastCompaction,
@@ -353,6 +359,33 @@ export class ChatStreamStore {
    */
   interrupt(sessionId: string, now: number = Date.now()): SessionStream {
     const next: SessionStream = { ...this.snapshot(sessionId), phase: 'done', updatedAt: now };
+    this.put(sessionId, next);
+    return next;
+  }
+
+  /** 用户点了停止：冻结现有内容，但在主进程真正收尾前仍视为本轮进行中。 */
+  requestStop(sessionId: string, now: number = Date.now()): SessionStream {
+    const previous = this.snapshot(sessionId);
+    if (previous.phase !== 'running') return previous;
+    const next: SessionStream = { ...previous, phase: 'stopping', updatedAt: now };
+    this.put(sessionId, next);
+    return next;
+  }
+
+  /**
+   * 最终历史已经读回后，原子移交给数据库消息，清掉同一轮的临时窗口。
+   * 用量与最近一次压缩信息继续保留，模型旁的圆环不会因此跳回空值。
+   */
+  settleFromHistory(sessionId: string, now: number = Date.now()): SessionStream {
+    const previous = this.snapshot(sessionId);
+    const next: SessionStream = {
+      ...previous,
+      phase: 'done',
+      blocks: [],
+      firstIndex: 0,
+      error: null,
+      updatedAt: now,
+    };
     this.put(sessionId, next);
     return next;
   }

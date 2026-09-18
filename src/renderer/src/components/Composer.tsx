@@ -297,6 +297,7 @@ export interface ComposerProps {
   onSend: (text: string, opts?: ComposerSendOptions) => void;
   onAbort: () => void;
   isRunning: boolean;
+  isStopping?: boolean;
   /** 文本框 ref 由父级持有（自动撑高 / 聚焦用） */
   textareaRef?: React.RefObject<HTMLTextAreaElement>;
   /** 空会话时居中显示（去掉上边框） */
@@ -372,6 +373,7 @@ export function Composer({
   onSend,
   onAbort,
   isRunning,
+  isStopping = false,
   textareaRef,
   inline,
   contextUsage,
@@ -994,22 +996,12 @@ export function Composer({
       >
         {notice ? <div className="composer-notice">{notice}</div> : null}
 
-        {contextUsage && contextUsage.total > 0 ? (() => {
-          const pct = Math.round(Math.min(100, Math.max(0, contextUsage.percentage)));
-          const tone = pct >= 90 ? 'danger' : pct >= 75 ? 'warn' : '';
-          return (
-            <div className={`cz-context-meter ${tone}`} title={t('上下文用量：{{used}} / {{total}} tokens', {
-              used: contextUsage.used.toLocaleString('en-US'),
-              total: contextUsage.total.toLocaleString('en-US'),
-            })}>
-              <span className="cz-context-label">
-                {contextUsage.compacted ? t('上下文已自动整理') : t('上下文')}
-              </span>
-              <div className="cz-context-track"><span style={{ width: `${pct}%` }} /></div>
-              <span className="cz-context-value">{pct}%</span>
-            </div>
-          );
-        })() : null}
+        {planMode ? (
+          <div className="composer-work-mode" role="status">
+            <Icon name="list-tree" size={12} />
+            <span>{t('先给出方案，不会改文件')}</span>
+          </div>
+        ) : null}
 
         {/* ── ① 上下文栏 ── */}
         <div className="cz-bar">
@@ -1197,14 +1189,15 @@ export function Composer({
 
         {/* 比赛信息 */}
         {effectiveTpl && (mode === 'paper' || mode === 'review') && (
-          <button className="cz-btn ghost" onClick={() => setSetupOpen(true)}>
+          <button
+            className="cz-btn ghost"
+            title={positivePage(pageLimitDraft.maxPages)
+              ? t('比赛信息，正文最多 {{pages}} 页', { pages: pageLimitDraft.maxPages })
+              : t('填写比赛信息和页数要求')}
+            onClick={() => setSetupOpen(true)}
+          >
             <Icon name="clipboard-list" size={13} />
             <span>{tx('composer.composerContextBar.paperSetup')}</span>
-            {positivePage(pageLimitDraft.maxPages) ? (
-              <span className="cz-page-limit-badge">
-                ≤{pageLimitDraft.maxPages}页
-              </span>
-            ) : null}
           </button>
         )}
       </div>
@@ -1393,8 +1386,33 @@ export function Composer({
 
         {/* 模型 · 思考强度 */}
         <div className="cz-slot">
-          {/* 原版 chip 左侧的空心圆状态点 */}
-          <span className="cz-dot" aria-hidden />
+          {(() => {
+            const pct = Math.round(Math.min(100, Math.max(0, contextUsage?.percentage ?? 0)));
+            const tone = pct >= 90 ? ' danger' : pct >= 75 ? ' warn' : '';
+            const title = contextUsage && contextUsage.total > 0
+              ? t('上下文已用 {{percentage}}%，{{used}} / {{total}}', {
+                  percentage: pct,
+                  used: contextUsage.used.toLocaleString('zh-CN'),
+                  total: contextUsage.total.toLocaleString('zh-CN'),
+                })
+              : t('上下文用量将在对话开始后显示');
+            return (
+              <span className={`cz-context-ring${tone}`} title={title} aria-label={title}>
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  <circle className="cz-context-ring-bg" cx="12" cy="12" r="9" pathLength="100" />
+                  <circle
+                    className="cz-context-ring-value"
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    pathLength="100"
+                    strokeDasharray={`${pct} 100`}
+                  />
+                </svg>
+                {contextUsage?.compacted ? <span className="cz-context-ring-dot" /> : null}
+              </span>
+            );
+          })()}
           <button
             className="cz-btn ghost"
             title={tx('chat.modelPicker.selectModel')}
@@ -1490,7 +1508,12 @@ export function Composer({
 
         {/* 发送 / 停止 */}
         {isRunning ? (
-          <button className="cz-send stop" onClick={onAbort} title={tx('composer.composerPendingApprovalPanel.cancelTurnDescription')}>
+          <button
+            className={`cz-send stop${isStopping ? ' is-stopping' : ''}`}
+            onClick={onAbort}
+            disabled={isStopping}
+            title={isStopping ? t('正在停下') : tx('composer.composerPendingApprovalPanel.cancelTurnDescription')}
+          >
             <Icon name="square" size={14} />
           </button>
         ) : (

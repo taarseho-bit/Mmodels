@@ -1744,19 +1744,14 @@
  * 新建会话页（空会话时的居中布局，对齐原版 chat.newChatPage.*）
  * ───────────────────────────────────────────────────────────── */
 
-/* ── 对话页 / Composer 专用的原版取色 ──
-   原版深色主题的强调色是低饱和**橄榄绿**（从原版截图采样 #5E7C69），
-   而本仓库 dark 主题的 --accent 是亮蓝。涉及「进群反馈」「选中项标题」
-   「发送按钮未激活态」这几处时按原版取色，避免一眼可见的色差。
-   只新增 --cz-* 变量，不动全局主题色。 */
+/* 对话页沿用当前设计系统，不再保留旧版的绿灰专用色。 */
 :root {
-  --cz-accent: #2f4a3b;
-  --cz-send-idle: #2f4a3b;
+  --cz-accent: var(--accent-contrast);
+  --cz-send-idle: #d1d1d6;
 }
 [data-theme='dark'] {
-  --cz-accent: #5e7c69;
-  /* 原版发送按钮未激活态：低饱和深绿 (#37433C)，实心不透明 */
-  --cz-send-idle: #37433c;
+  --cz-accent: var(--accent-contrast);
+  --cz-send-idle: #48484a;
 }
 
 /* 原版首屏是**垂直居中**的（hero 顶边 ≈ 21% 视口高、内容底 ≈ 70%）。
@@ -1868,7 +1863,7 @@
   border-radius: var(--radius-lg);
   background: var(--bg-panel);
   padding: 8px 10px 6px;
-  transition: border-color var(--t-fast);
+  transition: border-color var(--t-fast), box-shadow var(--t-base), transform var(--t-fast);
 }
 .composer-box:focus-within {
   border-color: var(--accent);
@@ -1909,9 +1904,7 @@
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
-  transition:
-    background var(--t-fast),
-    color var(--t-fast);
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
 .cz-btn:hover {
   background: var(--bg-hover);
@@ -1922,6 +1915,24 @@
 }
 .cz-btn.ghost:hover {
   background: var(--bg-hover);
+}
+.cz-btn.active,
+.cz-btn[aria-pressed='true'] {
+  background: var(--accent-weak);
+  color: var(--accent-contrast);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 17%, transparent);
+}
+
+.composer-work-mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border-weak);
+  color: var(--accent-contrast);
+  font-size: 11px;
+  font-weight: 550;
 }
 
 .cz-page-limit-badge {
@@ -1989,14 +2000,42 @@
   font-weight: 600;
 }
 
-/* 模型 chip 左侧的空心圆状态点 */
-.cz-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  border: 1.5px solid var(--fg-muted);
+/* 模型旁的上下文用量圆环 */
+.cz-context-ring {
+  position: relative;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
-  margin-right: 4px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  cursor: help;
+}
+.cz-context-ring svg {
+  width: 22px;
+  height: 22px;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.cz-context-ring circle {
+  fill: none;
+  stroke-width: 3;
+}
+.cz-context-ring-bg { stroke: var(--border); }
+.cz-context-ring-value {
+  stroke: currentColor;
+  stroke-linecap: round;
+  transition: stroke-dasharray 320ms cubic-bezier(0.2, 0.8, 0.2, 1), stroke var(--t-base);
+}
+.cz-context-ring.warn { color: var(--warning); }
+.cz-context-ring.danger { color: var(--danger); }
+.cz-context-ring-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px var(--bg-panel);
 }
 
 .cz-icon-btn {
@@ -2028,11 +2067,16 @@
   max-height: 320px;
   overflow-y: auto;
   padding: 4px;
-  background: var(--bg-panel);
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  animation: fade-in 120ms ease-out;
+  backdrop-filter: blur(30px) saturate(170%);
+  animation: popover-in 170ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(5px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 /* 右对齐同样交给 JS 计算：portal 出来后弹层不再是按钮的兄弟节点，
    写 left/right 已无意义。这里只标记方向，位置由内联 style 给。 */
@@ -2578,12 +2622,13 @@
   border: 0;
   cursor: pointer;
   flex-shrink: 0;
-  transition:
-    background var(--t-fast),
-    opacity var(--t-fast);
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--accent) 24%, transparent);
+  transition: background var(--t-fast), opacity var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
 .cz-send:hover:not(:disabled) {
   background: var(--accent-hover);
+  transform: translateY(-1px) scale(1.035);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 /* 原版输入框为空时发送按钮是**低饱和深绿/灰的禁用观感**（实心，不透明），
    而复刻早期是「亮蓝实心 + opacity .4」—— 依然是蓝色，一眼可辨（00-main P2-10）。 */
@@ -2595,6 +2640,23 @@
 .cz-send.stop {
   background: var(--danger);
   color: var(--accent-fg);
+  box-shadow: 0 2px 9px color-mix(in srgb, var(--danger) 26%, transparent);
+}
+.cz-send.stop.is-stopping {
+  opacity: 1;
+  cursor: wait;
+  animation: stop-settle 760ms ease-in-out infinite;
+}
+.cz-send.stop.is-stopping svg {
+  animation: stop-square 760ms ease-in-out infinite;
+}
+@keyframes stop-settle {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 28%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger) 0%, transparent); }
+}
+@keyframes stop-square {
+  0%, 100% { transform: scale(0.72); opacity: 0.75; }
+  50% { transform: scale(0.48); opacity: 1; }
 }
 
 /* 输入区在「空会话居中」模式下不要外层边框（外层已有卡片感） */
@@ -5692,9 +5754,10 @@ audio.ap-media {
  */
 .task-panel {
   margin-bottom: 6px;
-  border: 1px solid var(--border-weak);
-  border-radius: var(--radius-sm);
-  background: var(--bg-sunken);
+  border: 0;
+  border-left: 2px solid var(--border);
+  border-radius: 0;
+  background: transparent;
   font-size: var(--fs-xs);
   overflow: hidden;
 }
@@ -5864,34 +5927,27 @@ audio.ap-media {
   border-color: color-mix(in srgb, var(--danger) 40%, var(--border-weak));
   color: var(--danger);
 }
-.cz-context-meter {
-  display: flex;
+.stream-stopping {
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 24px;
-  padding: 0 12px;
+  gap: 8px;
+  min-height: 28px;
   color: var(--fg-muted);
-  font-size: 10px;
-  border-bottom: 1px solid var(--border-weak);
+  font-size: 12px;
+  animation: stopping-in 180ms ease-out;
 }
-.cz-context-label { white-space: nowrap; }
-.cz-context-track {
-  flex: 1;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: var(--bg-sunken);
+.stream-stopping-ring {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
 }
-.cz-context-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  transition: width 160ms ease, background 160ms ease;
+@keyframes stopping-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
 }
-.cz-context-meter.warn .cz-context-track span { background: var(--warning); }
-.cz-context-meter.danger .cz-context-track span { background: var(--danger); }
-.cz-context-value { min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
 .error-notice {
   margin-top: 12px;
   padding: 8px 0;

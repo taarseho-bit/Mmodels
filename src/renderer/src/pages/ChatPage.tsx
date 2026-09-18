@@ -630,7 +630,13 @@ export function ChatPage(): JSX.Element {
       const adopted = res.inflight
         ? chatStreamStore.adoptInflight(sid, res.inflight, res.messages.map((m) => m.id))
         : null;
-      if (adopted) setStream(toView(adopted));
+      if (adopted) {
+        setStream(toView(adopted));
+      } else if (chatStreamStore.snapshot(sid).phase === 'done') {
+        // session-end 现在保证在最终消息落库后才到达。历史与临时窗口在同一批更新里
+        // 完成交接，避免停止/收尾时答案先消失、过一会又重新出现。
+        setStream(toView(chatStreamStore.settleFromHistory(sid)));
+      }
     } catch (e) {
       if (activeSessionIdRef.current !== sid) return;
       setLoadError(e instanceof Error ? e.message : String(e));
@@ -1083,9 +1089,9 @@ export function ChatPage(): JSX.Element {
 
   const onAbort = async (): Promise<void> => {
     if (!activeSessionId) return;
+    // 先冻结当前内容并进入“正在停下”，真正的 done 只由主进程 session-end 确认。
+    setStream(toView(chatStreamStore.requestStop(activeSessionId)));
     await window.mathmodel.session.abort(activeSessionId).catch(() => undefined);
-    // 收尾态写进 store（保留已产生的块）—— 切走再回来不会再显示成"正在运行"
-    setStream(toView(chatStreamStore.interrupt(activeSessionId)));
     await refreshSessions();
   };
 
@@ -1093,7 +1099,7 @@ export function ChatPage(): JSX.Element {
     return <div className="empty">{t('请先打开一个项目。')}</div>;
   }
 
-  const streamingMessage: ChatMessage | null = stream.active
+  const streamingMessage: ChatMessage | null = stream.phase !== 'idle' && stream.blocks.filter(Boolean).length > 0
     ? {
         id: 'streaming',
         role: 'assistant',
@@ -1102,7 +1108,7 @@ export function ChatPage(): JSX.Element {
       }
     : null;
 
-  const isEmpty = messages.length === 0 && !stream.active;
+  const isEmpty = messages.length === 0 && stream.blocks.filter(Boolean).length === 0;
 
   /** 输入区（空会话居中 / 有消息固定底部，用同一份配置） */
   const composerNode = (inline: boolean): JSX.Element => (
@@ -1113,6 +1119,7 @@ export function ChatPage(): JSX.Element {
       onSend={(text, opts) => void doSend(text, opts)}
       onAbort={() => void onAbort()}
       isRunning={isRunning}
+      isStopping={stream.stopping}
       textareaRef={textareaRef}
       contextUsage={contextUsage}
     />
@@ -1382,7 +1389,14 @@ export function ChatPage(): JSX.Element {
               </div>
               <div className="msg-body">
                 {stream.blocks.filter(Boolean).length > 0 ? <BlockList blocks={stream.blocks} streaming /> : null}
-                <WaitingLine blocks={stream.blocks} userText={latestUserText} />
+                {stream.stopping ? (
+                  <div className="stream-stopping" role="status">
+                    <span className="stream-stopping-ring" aria-hidden />
+                    <span>{t('正在停下，当前内容已经保留')}</span>
+                  </div>
+                ) : stream.active ? (
+                  <WaitingLine blocks={stream.blocks} userText={latestUserText} />
+                ) : null}
               </div>
             </div>
           )}

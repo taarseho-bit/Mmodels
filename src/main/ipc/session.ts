@@ -264,7 +264,7 @@ async function buildRunOptions(sessionId: string, prompt: string, cwd: string) {
       (provider.fastModeModels ?? []).some((candidate) => candidate.trim() === model),
     resumeSessionId: s.sdkSessionId,
     bridgeBaseUrl: bridgeBaseUrl ?? undefined,
-    systemPrompt: buildSystemPrompt(cwd),
+    systemPrompt: buildSystemPrompt(cwd, settings.planMode === true),
     /**
      * 权限模式（复刻口径 `'full' | 'approval'`）—— **原样透传，不在这里改名**。
      * 换算成原版口径 / SDK 口径的那一步只在 `agent/permissions.ts` 里做一次。
@@ -303,7 +303,7 @@ async function buildRunOptions(sessionId: string, prompt: string, cwd: string) {
  *    「后台任务跑完的自动唤醒」，而那个唤醒永远不会来（进程随回合结束而结束）。
  *    详见 `session.test.ts` 顶部注释里的证伪边界。
  */
-export function buildSystemPrompt(cwd: string): string {
+export function buildSystemPrompt(cwd: string, planOnly = false): string {
   const lines = [
     `当前项目根目录：${cwd}`,
     '论文模板与比赛字段配置位于 `.mathmodel/paper/config.json`（早期版本可能写在 `.mmodels/paper/config.json`，两者等价，都读得到）。',
@@ -347,6 +347,14 @@ export function buildSystemPrompt(cwd: string): string {
     '  **不要产出完却一声不吭** —— 用户看不到磁盘，只知道界面上有没有人跟他说话。',
     '- 若中途发现时间/轮次可能不够：**先保证能编译出「结构完整的成品」再打磨细节**，',
     '  并在小结里说明「哪些部分已完整、哪些还是骨架」，不要把话说到一半就停。',
+    ...(planOnly
+      ? [
+          '',
+          '# 当前工作方式：先规划',
+          '- 这一次只分析问题并给出可执行方案，不修改文件、不运行会改变项目的命令。',
+          '- 方案要说明目标、关键步骤、需要用户决定的地方和预计产物；完成方案后结束本轮。',
+        ]
+      : []),
 
     // ── 长时任务：不要交还回合去等通知（用户实机反馈，非原版内容）────
     // 实测两次：模型在后台下载 28/77、抓取 45/77 时交还回合，明确写着
@@ -574,6 +582,12 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       });
 
       const collected: ContentBlock[] = [];
+      /**
+       * `AgentSession` 发出 session-end 时，外层 Promise 的 `.then()` 还没来得及把
+       * assistant 消息写进数据库。先把结束事件扣住，落库完成后再转发，避免渲染层
+       * 重新读取历史时撞上“最终消息尚不存在”的短暂空窗。
+       */
+      let pendingEndEvent: Extract<StreamEvent, { type: 'session-end' }> | null = null;
 
       /**
        * 这一轮**即将落库**的 assistant 消息 id —— 回合开始时就定好。
@@ -605,8 +619,12 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
           writeSpill(getDb(), sessionId, assistantMsgId, collected.filter(Boolean), now);
         }
 
-        // 转发到渲染层
-        pushToRenderer(IPC.SESSION_STREAM, { sessionId, event: ev });
+        // 结束事件必须等最终消息与会话状态都落库后再发，其余事件继续实时转发。
+        if (ev.type === 'session-end') {
+          pendingEndEvent = ev;
+        } else {
+          pushToRenderer(IPC.SESSION_STREAM, { sessionId, event: ev });
+        }
       });
 
       runner.on('sdk-session', (sdkId: string) => {
@@ -667,12 +685,24 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
               runner.totalUsage.reasoningTokens ?? 0,
               sessionId,
             );
+          pushToRenderer(IPC.SESSION_STREAM, {
+            sessionId,
+            event: pendingEndEvent ?? { type: 'session-end', sessionId },
+          });
         })
         .catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : String(err);
           getDb()
             .prepare("UPDATE sessions SET status = 'error', error = ?, updated_at = ? WHERE id = ?")
             .run(msg, Date.now(), sessionId);
+          pushToRenderer(IPC.SESSION_STREAM, {
+            sessionId,
+            event: { type: 'session-error', message: '这次没有顺利收尾，已保留当前内容，可以重试。' },
+          });
+          pushToRenderer(IPC.SESSION_STREAM, {
+            sessionId,
+            event: pendingEndEvent ?? { type: 'session-end', sessionId, reason: 'error' },
+          });
         });
 
       return { messageId: userMsg.id };

@@ -18,6 +18,7 @@ import type {
   AskUserQuestion,
   AskUserRequest,
   ContentBlock,
+  ContextWindowUsage,
   ProviderConfig,
   SessionMeta,
   StreamEvent,
@@ -45,6 +46,22 @@ import {
 /** SDK 是按需加载的 —— 加载失败要给用户可读信息，而不是崩溃 */
 type QueryFn = typeof import('@anthropic-ai/claude-agent-sdk')['query'];
 type QueryHandle = ReturnType<QueryFn>;
+
+const CONTEXT_PROBE_TIMEOUT_MS = 2_500;
+
+async function withContextProbeTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('上下文统计暂时没有响应')), CONTEXT_PROBE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 /**
  * 推理强度取值域**不手写**，直接从 SDK 的 options 类型里取
@@ -202,6 +219,14 @@ export class AgentSession extends EventEmitter {
   private streamIndex = -1;
   /** 控制请求不能并发堆积；一次真实上下文探测没回来前忽略重复触发。 */
   private contextProbeBusy = false;
+  /** 超时后允许下一次探测；旧探测迟到时用版本号丢弃，避免倒写旧值。 */
+  private contextProbeVersion = 0;
+  /** 最近一次已经显示的窗口用量；兼容不会更新 getContextUsage() 的第三方端点。 */
+  private lastContextUsage: ContextWindowUsage | null = null;
+  /** SDK 用量帧带来的新增 token，下一次探测读数不变时用于平滑推进圆环。 */
+  private pendingContextTokens = 0;
+  /** 自动压缩发生后允许窗口读数下降一次。 */
+  private compactedContextTokens: number | null = null;
   /**
    * 正在等待用户作答的提问：requestId → resolve。
    *
@@ -258,33 +283,59 @@ export class AgentSession extends EventEmitter {
   private async emitContextUsage(query: QueryHandle): Promise<void> {
     if (this.contextProbeBusy) return;
     this.contextProbeBusy = true;
+    const probeVersion = ++this.contextProbeVersion;
+    const pendingAtStart = this.pendingContextTokens;
+    const timeout = setTimeout(() => {
+      if (this.contextProbeVersion === probeVersion) this.contextProbeBusy = false;
+    }, CONTEXT_PROBE_TIMEOUT_MS);
     try {
+      // 直接 await 保持 SDK 正常返回时的原有事件时序；定时器只负责在它卡住时
+      // 解除 busy，后续探测会递增版本号，迟到的旧结果因此不会覆盖新读数。
       const usage = await query.getContextUsage();
+      if (this.contextProbeVersion !== probeVersion) return;
       const total = Math.max(1, Number(usage.rawMaxTokens || usage.maxTokens || 0));
-      const used = Math.max(0, Number(usage.totalTokens || 0));
+      const sdkUsed = Math.max(0, Number(usage.totalTokens || 0));
+      let used = sdkUsed;
+
+      if (this.compactedContextTokens !== null) {
+        used = this.compactedContextTokens > 0 ? this.compactedContextTokens : sdkUsed;
+        this.compactedContextTokens = null;
+      } else if (this.lastContextUsage) {
+        const baseline = Math.max(sdkUsed, this.lastContextUsage.used);
+        // 某些兼容供应商永远返回初始化时的同一个数字。此时用本轮真实 usage
+        // 推进显示；只在探测值没有前进时启用，不覆盖能够正常更新的 SDK 读数。
+        used = sdkUsed > this.lastContextUsage.used
+          ? sdkUsed
+          : Math.min(total, baseline + pendingAtStart);
+      }
+
+      const normalized: ContextWindowUsage = {
+        used,
+        total,
+        percentage: Math.min(100, Math.max(0, (used / total) * 100)),
+        autoCompactThreshold: usage.autoCompactThreshold,
+        autoCompactEnabled: usage.isAutoCompactEnabled,
+        model: usage.model,
+      };
+      this.lastContextUsage = normalized;
+      this.pendingContextTokens = Math.max(0, this.pendingContextTokens - pendingAtStart);
       this.emitEvent({
         type: 'context-usage',
-        usage: {
-          used,
-          total,
-          percentage: Math.min(100, Math.max(0, (used / total) * 100)),
-          autoCompactThreshold: usage.autoCompactThreshold,
-          autoCompactEnabled: usage.isAutoCompactEnabled,
-          model: usage.model,
-        },
+        usage: normalized,
       });
     } catch (err) {
       // 这是辅助状态，不得让聊天因为统计不可用而失败。
       console.debug('[agent] 暂时无法读取上下文用量：', err instanceof Error ? err.message : err);
     } finally {
-      this.contextProbeBusy = false;
+      clearTimeout(timeout);
+      if (this.contextProbeVersion === probeVersion) this.contextProbeBusy = false;
     }
   }
 
   /** SDK 初始化后把自动压缩窗口设到模型原始窗口的 90%。 */
   private async configureContextWindow(query: QueryHandle): Promise<void> {
     try {
-      const initial = await query.getContextUsage();
+      const initial = await withContextProbeTimeout(query.getContextUsage());
       const rawMax = Number(initial.rawMaxTokens || initial.maxTokens || 0);
       const target = Math.floor(rawMax * 0.9);
       await query.applyFlagSettings({
@@ -779,7 +830,7 @@ export class AgentSession extends EventEmitter {
 
       case 'assistant': {
         const inner = m.message as { content?: unknown[]; usage?: any } | undefined;
-        if (inner?.usage) this.absorbUsage(inner.usage);
+        if (inner?.usage) this.absorbUsage(inner.usage, true);
         for (const block of inner?.content ?? []) {
           this.handleContentBlock(block);
         }
@@ -804,7 +855,7 @@ export class AgentSession extends EventEmitter {
       }
 
       case 'result': {
-        if (m.usage) this.absorbUsage(m.usage);
+        if (m.usage) this.absorbUsage(m.usage, false);
         if (m.subtype && m.subtype !== 'success') {
           // max_turns / error_* 都要让用户看见
           const detail = m.result ?? m.subtype;
@@ -867,6 +918,9 @@ export class AgentSession extends EventEmitter {
     switch (subtype) {
       case 'compact_boundary': {
         const metadata = (m.compact_metadata ?? m.compactMetadata ?? {}) as Record<string, unknown>;
+        const postTokens = Number(metadata.post_tokens ?? metadata.postTokens ?? 0);
+        this.compactedContextTokens = Number.isFinite(postTokens) ? Math.max(0, postTokens) : 0;
+        this.pendingContextTokens = 0;
         this.emitEvent({
           type: 'context-compacted',
           before: Number(metadata.pre_tokens ?? metadata.preTokens ?? 0),
@@ -908,12 +962,18 @@ export class AgentSession extends EventEmitter {
     }
   }
 
-  private absorbUsage(u: Record<string, any>): void {
+  private absorbUsage(u: Record<string, any>, countForContext: boolean): void {
     const input = Number(u.input_tokens ?? 0);
     const output = Number(u.output_tokens ?? 0);
     const reasoning = Number(u.reasoning_tokens ?? 0);
     const cacheRead = Number(u.cache_read_input_tokens ?? 0);
     const cacheWrite = Number(u.cache_creation_input_tokens ?? 0);
+
+    if (countForContext) {
+      // input_tokens 是本轮新进入窗口、output_tokens 是刚生成的内容；缓存命中代表
+      // 已存在的上下文，不重复累加。精确窗口仍优先采用 getContextUsage()。
+      this.pendingContextTokens += Math.max(0, input) + Math.max(0, output);
+    }
 
     // SDK 给的是「每轮增量」，累加
     this.usage.inputTokens += input;

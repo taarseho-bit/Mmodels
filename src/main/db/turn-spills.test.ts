@@ -241,6 +241,22 @@ describe('turn_spills —— 收尾', () => {
     expect(closeAt).toBeGreaterThan(ifAt);
     expect(finish.indexOf('clearSpill('), '本轮没有输出时快照也必须删掉').toBeGreaterThan(closeAt);
   });
+
+  it('session-end 必须在最终消息与状态落库之后再发，停止时不会出现历史空窗', () => {
+    const code = stripCommentLines(SESSION_SRC);
+    const listenerAt = code.indexOf("if (ev.type === 'session-end')");
+    const livePushAt = code.indexOf('pushToRenderer(IPC.SESSION_STREAM', listenerAt);
+    const finish = finishBlockSource();
+    const insertAt = finish.indexOf('insertMessage(');
+    const stateAt = finish.indexOf("UPDATE sessions SET status = 'idle'");
+    const endPushAt = finish.indexOf('pushToRenderer(IPC.SESSION_STREAM');
+
+    expect(listenerAt).toBeGreaterThan(-1);
+    expect(code.slice(listenerAt, livePushAt)).toContain('pendingEndEvent = ev');
+    expect(endPushAt, '收尾完成后没有转发 session-end').toBeGreaterThan(-1);
+    expect(endPushAt).toBeGreaterThan(insertAt);
+    expect(endPushAt).toBeGreaterThan(stateAt);
+  });
 });
 
 describe('turn_spills —— 陈旧快照必须被当成不存在', () => {

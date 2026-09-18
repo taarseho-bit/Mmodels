@@ -444,11 +444,33 @@ describe('chat-stream —— 轮次生命周期与 hydrate 口子', () => {
       blocks: [],
       active: false,
       sessionId: null,
+      phase: 'idle',
+      stopping: false,
       usage: null,
       contextUsage: null,
       lastCompaction: null,
       error: null,
     });
+  });
+
+  it('点停止后先进入 stopping，内容不消失；历史接管后才清空临时窗口', () => {
+    feed(store, 'A', [
+      { type: 'session-start', sessionId: 'A' },
+      ...textBlock(0, '已经生成的内容'),
+    ], 1);
+
+    const stopping = store.requestStop('A', 10);
+    expect(stopping.phase).toBe('stopping');
+    expect(toView(stopping)).toMatchObject({ active: true, stopping: true });
+    expect(stopping.blocks).toEqual([{ kind: 'text', text: '已经生成的内容' }]);
+
+    const ended = store.apply('A', { type: 'session-end', sessionId: 'A' }, 11);
+    expect(ended.phase).toBe('done');
+    expect(ended.blocks).toEqual([{ kind: 'text', text: '已经生成的内容' }]);
+
+    const reconciled = store.settleFromHistory('A', 12);
+    expect(reconciled.blocks).toEqual([]);
+    expect(reconciled.phase).toBe('done');
   });
 
   it('保存 SDK 实测上下文，并记录自动压缩边界', () => {

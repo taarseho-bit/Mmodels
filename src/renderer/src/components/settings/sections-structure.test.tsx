@@ -44,8 +44,8 @@ describe('设置页 外观 / 快捷键分区结构', () => {
     const html = renderToStaticMarkup(React.createElement(AppearanceSection));
     expect(html).toContain('appearance-seg');
     expect(html).toContain('mathmodel');
-    expect(html).toContain('#5E7C69');
-    expect(html).toContain('#2F4A3B');
+    expect(html).toContain('#0A84FF');
+    expect(html).toContain('#007AFF');
     // node 环境里 matchMedia 返回 false → 生效主题是 light
     expect(html).toContain('系统当前正在使用 light 主题。');
     expect(html).toContain('系统切换到 dark 时使用。');
