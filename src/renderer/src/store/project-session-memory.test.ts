@@ -91,6 +91,38 @@ beforeEach(() => {
 });
 
 describe('项目记忆 —— 切走项目再切回来，回到原来那个会话', () => {
+  it('快速点击两个项目时，较慢的旧响应不能把新项目覆盖回去', async () => {
+    let releaseFirst!: (value: ProjectMeta) => void;
+    projectOpen.mockImplementationOnce(() => new Promise<ProjectMeta>((resolve) => {
+      releaseFirst = resolve;
+    }));
+
+    const first = useApp.getState().openProject('p1');
+    const second = useApp.getState().openProject('p2');
+    await second;
+    releaseFirst(proj('p1'));
+    await first;
+
+    expect(useApp.getState().currentProject?.id).toBe('p2');
+    expect(useApp.getState().sessions.map((s) => s.id)).toEqual(['B', 'B2']);
+  });
+
+  it('旧项目的任务列表晚到时，不能覆盖当前项目', async () => {
+    let releaseFirst!: (value: SessionMeta[]) => void;
+    sessionList.mockImplementationOnce(() => new Promise<SessionMeta[]>((resolve) => {
+      releaseFirst = resolve;
+    }));
+    useApp.setState({ currentProject: proj('p1') });
+    const first = useApp.getState().refreshSessions();
+    useApp.setState({ currentProject: proj('p2') });
+    await useApp.getState().refreshSessions();
+    releaseFirst([sess('A', 'p1')]);
+    await first;
+
+    expect(useApp.getState().currentProject?.id).toBe('p2');
+    expect(useApp.getState().sessions.map((s) => s.id)).toEqual(['B', 'B2']);
+  });
+
   it('[反向对照] 甲里选中 A → 切到乙 → 切回甲 → 还是 A', async () => {
     await useApp.getState().openProject('p1');
     useApp.getState().selectSession('A');

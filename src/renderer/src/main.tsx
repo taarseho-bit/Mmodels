@@ -1,12 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
+import { DesktopPetWindow } from './components/DesktopPetWindow';
 import './styles/theme.css';
 import './styles/layout.css';
 import './styles/pages.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root 不存在');
+
+const desktopPetWindow = new URLSearchParams(window.location.search).get('window') === 'desktop-pet';
+if (desktopPetWindow) {
+  document.documentElement.classList.add('desktop-pet-document');
+  document.body.classList.add('desktop-pet-document');
+}
 
 /**
  * 全局拖拽兜底。
@@ -27,6 +34,6 @@ for (const type of ['dragover', 'drop'] as const) {
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <App />
+    {desktopPetWindow ? <DesktopPetWindow /> : <App />}
   </React.StrictMode>,
 );

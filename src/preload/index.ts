@@ -278,6 +278,15 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke(IPC.SETTINGS_SET, patch),
+    onChanged: (cb: (settings: AppSettings) => void): (() => void) =>
+      subscribe<AppSettings>(IPC.SETTINGS_CHANGED, cb),
+  },
+
+  // ── 桌面小模 ──────────────────────────────────────────────
+  pet: {
+    showMain: (): Promise<boolean> => ipcRenderer.invoke(IPC.PET_SHOW_MAIN),
+    setInteractive: (interactive: boolean): void =>
+      ipcRenderer.send(IPC.PET_SET_INTERACTIVE, interactive),
   },
 
   // ── 技能 ──────────────────────────────────────────────────

@@ -109,6 +109,13 @@ export function App(): JSX.Element {
     void bootstrap();
   }, [bootstrap]);
 
+  // 桌面小模可以在主窗口之外修改开关，主界面需要立即跟上，不能等到重启。
+  useEffect(() => {
+    return window.mathmodel.settings.onChanged((next) => {
+      useApp.setState({ settings: next });
+    });
+  }, []);
+
   // 界面语言跟随设置（原版：i18next 默认 zh-CN 可切 en）
   const lang = useLang();
   useEffect(() => {

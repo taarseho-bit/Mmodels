@@ -682,6 +682,8 @@ interface AppState {
   toggleSkill: (dirName: string, enabled: boolean) => Promise<void>;
 }
 
+let projectOpenVersion = 0;
+
 export const useApp = create<AppState>((set, get) => ({
   ready: false,
   bootError: null,
@@ -907,15 +909,23 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   openProject: async (id) => {
+    const requestVersion = ++projectOpenVersion;
     const meta = await api().project.open(id);
-    if (!meta) return;
+    if (!meta || requestVersion !== projectOpenVersion) return;
     /**
      * ① **先离开旧会话**（保持原样，别删这一句）：此刻 `sessions` 还是上一个项目的，
      *    若不置空，切项目的瞬间界面会持有**另一个项目**的会话 id（更糟的中间态）。
      */
-    set({ currentProject: meta, activeSessionId: null });
+    set({
+      currentProject: meta,
+      activeSessionId: null,
+      activeArtifact: null,
+      pendingPrompt: null,
+    });
     await get().refreshSettings();
+    if (requestVersion !== projectOpenVersion || get().currentProject?.id !== meta.id) return;
     await get().refreshSessions();
+    if (requestVersion !== projectOpenVersion || get().currentProject?.id !== meta.id) return;
     await get().refreshProjects();
     /**
      * ② **再**看要不要恢复「这个项目上次看的是哪个会话」。
@@ -967,6 +977,8 @@ export const useApp = create<AppState>((set, get) => ({
       return;
     }
     const sessions = await api().session.list(proj.id);
+    // A 项目的慢响应不能在用户已经切到 B 后覆盖 B 的任务列表。
+    if (get().currentProject?.id !== proj.id) return;
     set({ sessions });
   },
 
@@ -974,7 +986,9 @@ export const useApp = create<AppState>((set, get) => ({
     const proj = get().currentProject;
     if (!proj) return null;
     const meta = await api().session.create(proj.id, title);
+    if (get().currentProject?.id !== proj.id) return null;
     await get().refreshSessions();
+    if (get().currentProject?.id !== proj.id) return null;
     // 新建后自动选中它 —— 这也算"用户主动选中的入口"，一样要记进项目记忆
     set((s) => ({
       activeSessionId: meta.id,

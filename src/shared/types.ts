@@ -201,6 +201,7 @@ export interface AgentActivity {
 
 export type StreamEvent =
   | { type: 'session-start'; sessionId: string }
+  | { type: 'session-stopping'; sessionId: string }
   | { type: 'message-start'; messageId: string }
   | { type: 'block-start'; index: number; kind: BlockKind }
   | { type: 'text-delta'; index: number; delta: string }
@@ -392,6 +393,8 @@ export interface AppSettings {
   multiAgentEnabled?: boolean;
   /** 是否显示跟随真实任务状态变化的数学建模伙伴。 */
   modelingPetEnabled?: boolean;
+  /** 桌面小模窗口上次停留的位置。 */
+  modelingPetPosition?: { x: number; y: number };
   /** 输入区的任务模式（自由对话 / 写论文 / 画图 / 评审 / 找数据） */
   composerMode?: 'chat' | 'paper' | 'figure' | 'review' | 'data';
   /** 选中的论文模板 id */
@@ -684,6 +687,11 @@ export const IPC = {
   // 设置
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
+  SETTINGS_CHANGED: 'settings:changed',
+
+  // 桌面小模
+  PET_SHOW_MAIN: 'pet:show-main',
+  PET_SET_INTERACTIVE: 'pet:set-interactive',
 
   // 网络代理与机器人（设置 → 网络 / 机器人）
   /** 读取代理设置（等价于 settings.proxy，单独一条便于语义清晰） */

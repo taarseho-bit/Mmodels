@@ -55,6 +55,7 @@ interface FakeSdk {
   calls: number;
   options: Record<string, unknown> | null;
   appliedSettings: Array<Record<string, unknown>>;
+  closed: boolean;
 }
 
 /**
@@ -75,6 +76,7 @@ function installFakeQuery(script: unknown[]): FakeSdk {
     calls: 0,
     options: null,
     appliedSettings: [],
+    closed: false,
   };
 
   const isQueue = (p: unknown): p is SessionInputQueue =>
@@ -99,7 +101,7 @@ function installFakeQuery(script: unknown[]): FakeSdk {
     let i = 0;
 
     /** stdin 已经关了？关了就不该再有帧 —— 真实 CLI 此刻已经退出 */
-    const stdinClosed = (): boolean => (stringMode ? stringModeStdinClosed : isQueue(args.prompt) && args.prompt.isClosed);
+    const stdinClosed = (): boolean => sdk.closed || (stringMode ? stringModeStdinClosed : isQueue(args.prompt) && args.prompt.isClosed);
 
     return {
       getContextUsage: async () => ({
@@ -109,6 +111,9 @@ function installFakeQuery(script: unknown[]): FakeSdk {
       }),
       applyFlagSettings: async (settings: Record<string, unknown>) => {
         sdk.appliedSettings.push(settings);
+      },
+      close: () => {
+        sdk.closed = true;
       },
       [Symbol.asyncIterator](): AsyncIterator<unknown> {
         return {
@@ -486,6 +491,7 @@ describe('B 组 —— 后台任务在跑时，本轮不结束（这正是唤醒
     await expect(done).resolves.toBeUndefined();
 
     expect(sdk.queue?.isClosed).toBe(true);
+    expect(sdk.closed).toBe(true);
     expect(events.some((e) => e.type === 'session-end')).toBe(true);
   });
 });

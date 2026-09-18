@@ -611,6 +611,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
                       onClick={() => {
                         void openProject(p.id);
                         setProjectSwitcherOpen(false);
+                        if (route !== 'chat') setRoute('chat');
                       }}
                       title={p.root}
                       onContextMenu={(e) => {

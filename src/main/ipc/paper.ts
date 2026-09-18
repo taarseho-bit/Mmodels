@@ -27,6 +27,7 @@ import {
   type PaperTemplateLibraryResult,
 } from '@shared/types';
 import { safeWrap, type IpcContext } from './index';
+import { resolveResourcesRoot } from '../resources';
 import { currentProjectRoot } from './file';
 import { getSettings } from '../store/config';
 import {
@@ -49,7 +50,10 @@ import {
 
 /** 随包资源目录（打包后是 process.resourcesPath，开发期是 <appPath>/resources） */
 function resourcesDir(): string {
-  return app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
+  return resolveResourcesRoot(
+    ['builtin-skills', 'mma-paper', 'assets', 'template'],
+    '论文模板',
+  );
 }
 
 /**

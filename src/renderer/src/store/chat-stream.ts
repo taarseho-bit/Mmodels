@@ -167,6 +167,11 @@ export function applyStreamEvent(
     case 'session-start':
       return { ...entry, phase: 'running', error: null, updatedAt: now };
 
+    case 'session-stopping':
+      return entry.phase === 'running'
+        ? { ...entry, phase: 'stopping', updatedAt: now }
+        : entry;
+
     case 'block-start': {
       if (ev.kind !== 'text' && ev.kind !== 'thinking') return { ...entry, updatedAt: now };
       const i = ev.index - entry.firstIndex;

@@ -12,14 +12,15 @@
  *
  * 安装状态机：对每个 unique packageName 用 `python -c "import ..."` 探测（比 pip show 快且准）。
  */
-import { app, ipcMain } from 'electron';
+import { ipcMain } from 'electron';
 import { spawn, execFile } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync, rmSync } from 'node:fs';
+import { createWriteStream, mkdirSync, readFileSync, statSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { get as httpsGet } from 'node:https';
 import { IPC } from '@shared/types';
 import { findPython } from '../scan/environment';
+import { resolveResource } from '../resources';
 import { pushToRenderer, safeWrap, type IpcContext } from './index';
 
 type IpcCtx = IpcContext;
@@ -52,10 +53,9 @@ type RuntimeState = 'ready' | 'installable' | 'no-python' | 'broken';
 // ── 内部工具 ─────────────────────────────────────────────────
 
 function catalogPath(): string {
-  // 打包后随包资源在 process.resourcesPath；开发期从仓库根读
-  const packed = join(process.resourcesPath ?? '', 'algorithms', 'catalog.json');
-  if (existsSync(packed)) return packed;
-  return join(app.getAppPath(), 'resources', 'algorithms', 'catalog.json');
+  const found = resolveResource(['algorithms', 'catalog.json']);
+  if (found) return found;
+  throw new Error('没有找到内置算法资源。请重新打开应用；如果仍未恢复，请重新下载最新版免安装包。');
 }
 
 function loadCatalog(): CatalogFile {

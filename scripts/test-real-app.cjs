@@ -29,7 +29,8 @@ const path = require('node:path');
 const ROOT = 'D:/mathmodel-desktop';
 const APP = process.env.MATHMODEL_TEST_APP || path.join(ROOT, 'dist', 'win-unpacked', 'MModels.exe');
 const PORT = 9333;
-const SANDBOX = path.join(os.tmpdir(), 'mm-real-test');
+// 每轮使用独立 userData；Portable 外壳异常退出时，旧进程也不会抢走新一轮的单实例锁。
+const SANDBOX = path.join(os.tmpdir(), 'mm-real-test-' + process.pid);
 const USER_DATA = path.join(SANDBOX, 'userdata');
 const PROJECT_DIR = path.join(SANDBOX, 'project');
 const LOGFILE = path.join(ROOT, 'out', 'real-app-test.txt');
@@ -211,10 +212,14 @@ async function main() {
   const cdp = await connect(browserWs);
 
   let pageTarget = null;
+  let pageTargets = [];
+  let petSessionId = null;
   for (let i = 0; i < 50; i++) {
     const r = await cdp.send('Target.getTargets');
     const infos = (r && r.targetInfos) || [];
-    pageTarget = infos.find((t) => t.type === 'page' && t.url.indexOf('devtools://') !== 0);
+    pageTargets = infos.filter((t) => t.type === 'page' && t.url.indexOf('devtools://') !== 0);
+    // 桌面小模也是 page target；真实应用测试必须明确连接主窗口。
+    pageTarget = pageTargets.find((t) => t.url.indexOf('window=desktop-pet') < 0);
     if (pageTarget) break;
     await sleep(400);
   }
@@ -238,6 +243,28 @@ async function main() {
 
   log('✓ 已 attach 真实页面');
   log('  URL: ' + String(pageTarget.url).slice(0, 90));
+  const petTarget = pageTargets.find((t) => t.url.indexOf('window=desktop-pet') >= 0);
+  ok(
+    !!petTarget,
+    '桌面小模使用独立透明窗口运行',
+  );
+  if (petTarget) {
+    const petAttachment = await cdp.send('Target.attachToTarget', {
+      targetId: petTarget.targetId,
+      flatten: true,
+    });
+    petSessionId = petAttachment.sessionId;
+    await cdp.send('Runtime.enable', {}, petSessionId);
+    await cdp.send('Page.enable', {}, petAttachment.sessionId);
+    await sleep(500);
+    const petShot = await cdp.send('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: false,
+    }, petAttachment.sessionId);
+    fs.writeFileSync(path.join(ROOT, 'out', 'real-app-desktop-pet.png'), Buffer.from(petShot.data, 'base64'));
+    log('✓ 桌面小模截图已保存: out/real-app-desktop-pet.png');
+  }
   log('');
 
   // ── 等界面挂载 ──
@@ -285,6 +312,7 @@ async function main() {
       await f('skills', async function(){ return (await window.mathmodel.skill.list()).length; });
       await f('presets', async function(){ return (await window.mathmodel.llm.presets()).length; });
       await f('templates', async function(){ return (await window.mathmodel.paper.templates()).templates.length; });
+      await f('algorithms', async function(){ return (await window.mathmodel.algorithms.list()).algorithms.length; });
       await f('environment', async function(){
         var result = await window.mathmodel.env.check();
         return { count: result.items.length, drawio: result.items.find(function(item){ return item.id === 'drawio'; }) || null };
@@ -301,6 +329,7 @@ async function main() {
   log('  skill.list     : ' + mp.skills + ' 个（真实读盘）');
   log('  llm.presets    : ' + mp.presets + ' 个');
   log('  paper.templates: ' + mp.templates + ' 套（真实读 resources）');
+  log('  algorithms.list : ' + mp.algorithms + ' 个（真实读 resources）');
   log('  env.check      : ' + mp.environment.count + ' 项（真实探测本机）');
   log('  draw.io        : ' + JSON.stringify(mp.environment.drawio));
   log('  git.info       : ' + JSON.stringify(mp.git));
@@ -311,6 +340,7 @@ async function main() {
   ok(mp.skills > 0, '技能扫描返回结果');
   ok(mp.presets > 0, 'LLM 预设返回结果');
   ok(mp.templates > 0, '论文模板扫描返回结果');
+  ok(mp.algorithms > 0, '算法目录扫描返回结果');
   ok(mp.environment.count > 0, '环境检测返回结果');
   ok(
     mp.environment.drawio && mp.environment.drawio.status === 'ok',
@@ -476,10 +506,23 @@ async function main() {
       var petBody = document.querySelector('.modeling-pet-body');
       var beforeSettings = await window.mathmodel.settings.get();
       if (petToggle) petToggle.click();
-      await new Promise(function(r){ setTimeout(r, 80); });
-      var hidden = !document.querySelector('.modeling-pet');
-      if (petToggle) petToggle.click();
-      await new Promise(function(r){ setTimeout(r, 80); });
+      var hidden = false;
+      for (var i = 0; i < 30; i++) {
+        var hiddenSettings = await window.mathmodel.settings.get();
+        hidden = !document.querySelector('.modeling-pet') && hiddenSettings.modelingPetEnabled === false;
+        if (hidden) break;
+        await new Promise(function(r){ setTimeout(r, 50); });
+      }
+      var nextButtons = Array.from(document.querySelectorAll('.cz-btn'));
+      var petToggleAfter = nextButtons.find(function(el){ return el.textContent.trim() === '小模'; });
+      if (petToggleAfter) petToggleAfter.click();
+      var restored = false;
+      for (var j = 0; j < 30; j++) {
+        var restoredSettings = await window.mathmodel.settings.get();
+        restored = !!document.querySelector('.modeling-pet') && restoredSettings.modelingPetEnabled === true;
+        if (restored) break;
+        await new Promise(function(r){ setTimeout(r, 50); });
+      }
       var petAfter = document.querySelector('.modeling-pet');
       var afterSettings = await window.mathmodel.settings.get();
       return {
@@ -487,7 +530,7 @@ async function main() {
         petToggle: !!petToggle,
         petVisible: !!petBefore && !!petBody && petBefore.getAttribute('data-pet-state') === 'resting',
         hidden: hidden,
-        restored: !!petAfter && afterSettings.modelingPetEnabled === true,
+        restored: restored && !!petAfter && afterSettings.modelingPetEnabled === true,
         defaults: beforeSettings.multiAgentEnabled === true && beforeSettings.modelingPetEnabled === true
       };
     })()`,
@@ -749,6 +792,46 @@ async function main() {
   );
   log('页面内记录的错误数: ' + jsErr + '（-1 表示未挂探针）');
   log('');
+
+  // ── 10. 桌面小模独立生命周期 ──
+  if (petTarget && petSessionId) {
+    await cdp.send('Target.closeTarget', { targetId: pageTarget.targetId }, null);
+    await sleep(500);
+    const afterClose = await cdp.send('Target.getTargets', {}, null);
+    const remainingPetTarget = (afterClose.targetInfos || []).find(function(t){
+      return t.type === 'page' && t.url.indexOf('window=desktop-pet') >= 0;
+    });
+    ok(!!remainingPetTarget, '关闭主窗口后桌面小模继续留在电脑桌面');
+
+    const remainingPetAttachment = await cdp.send('Target.attachToTarget', {
+      targetId: remainingPetTarget.targetId,
+      flatten: true,
+    }, null);
+    await cdp.send('Runtime.evaluate', {
+      expression: 'window.mathmodel.pet.showMain()',
+      awaitPromise: true,
+      returnByValue: true,
+    }, remainingPetAttachment.sessionId);
+    let mainReturned = false;
+    let returnedMainTarget = null;
+    for (let i = 0; i < 20; i++) {
+      const targets = await cdp.send('Target.getTargets', {}, null);
+      returnedMainTarget = (targets.targetInfos || []).find(function(t){
+        return t.type === 'page' && t.url.indexOf('devtools://') !== 0 && t.url.indexOf('window=desktop-pet') < 0;
+      });
+      mainReturned = !!returnedMainTarget;
+      if (mainReturned) break;
+      await sleep(150);
+    }
+    ok(mainReturned, '点击桌面小模可以重新打开主窗口');
+    // 先关宠物、再关刚唤回的主窗口，确保 Portable 解压出来的子进程一并退出。
+    await cdp.send('Target.closeTarget', { targetId: remainingPetTarget.targetId }, null);
+    if (returnedMainTarget) {
+      await cdp.send('Target.closeTarget', { targetId: returnedMainTarget.targetId }, null);
+    }
+    await sleep(400);
+    log('');
+  }
 
   cdp.close();
   try {

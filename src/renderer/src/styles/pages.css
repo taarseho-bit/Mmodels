@@ -6033,6 +6033,231 @@ audio.ap-media {
   .modeling-pet *, .modeling-pet::before, .modeling-pet::after { animation: none !important; transition: none !important; }
 }
 
+/* 独立桌面小模窗口：整个网页背景透明，只有看得见的宠物和气泡接鼠标。 */
+html.desktop-pet-document,
+body.desktop-pet-document,
+body.desktop-pet-document #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent !important;
+}
+.desktop-pet-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--fg-primary);
+  pointer-events: none;
+  user-select: none;
+}
+.desktop-pet-speech {
+  position: absolute;
+  top: 10px;
+  right: 66px;
+  width: 224px;
+  min-height: 66px;
+  padding: 8px 9px 9px;
+  border: 1px solid color-mix(in srgb, var(--fg-primary) 16%, transparent);
+  border-radius: 10px 10px 3px 10px;
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  box-shadow: 0 10px 28px #0003, inset 0 1px 0 #fff8;
+  backdrop-filter: blur(18px) saturate(1.35);
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  animation: desktop-pet-speech-in 180ms ease-out;
+}
+.desktop-pet-speech::after {
+  position: absolute;
+  right: -8px;
+  bottom: -1px;
+  width: 14px;
+  height: 14px;
+  border-right: 1px solid color-mix(in srgb, var(--fg-primary) 16%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--fg-primary) 16%, transparent);
+  border-bottom-right-radius: 3px;
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  content: '';
+  transform: skewX(38deg);
+}
+.desktop-pet-speech-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.desktop-pet-speech-head strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 680;
+}
+.desktop-pet-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 14%, transparent);
+}
+.desktop-pet-stage:not(.is-resting) .desktop-pet-status-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  animation: desktop-pet-status 1.35s ease-in-out infinite;
+}
+.desktop-pet-actions { display: flex; gap: 3px; }
+.desktop-pet-actions button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-muted);
+  transition: background 120ms ease, color 120ms ease, transform 80ms ease;
+}
+.desktop-pet-actions button:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.desktop-pet-actions button:active { transform: scale(.9); }
+.desktop-pet-speech p {
+  position: relative;
+  z-index: 1;
+  margin: 5px 0 0;
+  color: var(--fg-secondary);
+  font-size: 11px;
+  line-height: 1.48;
+  letter-spacing: 0;
+}
+.desktop-pet-character {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  width: 112px;
+  height: 112px;
+  pointer-events: auto;
+  cursor: grab;
+  -webkit-app-region: drag;
+}
+.desktop-pet-character:active { cursor: grabbing; }
+.desktop-pet-shell {
+  position: absolute;
+  z-index: 3;
+  right: 16px;
+  bottom: 20px;
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 67px;
+  border: 1px solid color-mix(in srgb, var(--fg-primary) 22%, transparent);
+  border-radius: 27px 27px 30px 30px;
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+  box-shadow: 0 12px 26px #0004, inset 0 1px 0 #fff9;
+  backdrop-filter: blur(16px) saturate(1.3);
+  animation: desktop-pet-breathe 2.4s ease-in-out infinite;
+}
+.desktop-pet-eyes {
+  position: absolute;
+  top: 21px;
+  left: 22px;
+  display: flex;
+  gap: 15px;
+}
+.desktop-pet-eyes i {
+  width: 5px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: desktop-pet-blink 4.8s steps(1) infinite;
+}
+.desktop-pet-antenna {
+  position: absolute;
+  z-index: 2;
+  right: 49px;
+  bottom: 84px;
+  width: 2px;
+  height: 15px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--fg-primary) 50%, transparent);
+  transform: rotate(7deg);
+  transform-origin: bottom;
+}
+.desktop-pet-antenna i {
+  position: absolute;
+  top: -5px;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.desktop-pet-arm {
+  position: absolute;
+  z-index: 2;
+  bottom: 48px;
+  width: 22px;
+  height: 8px;
+  border: 3px solid color-mix(in srgb, var(--fg-primary) 33%, transparent);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+}
+.desktop-pet-arm.is-left { right: 77px; transform: rotate(28deg); }
+.desktop-pet-arm.is-right { right: 4px; transform: rotate(-28deg); }
+.desktop-pet-feet {
+  position: absolute;
+  z-index: 2;
+  right: 21px;
+  bottom: 13px;
+  display: flex;
+  gap: 31px;
+}
+.desktop-pet-feet i {
+  width: 19px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--fg-primary) 28%, transparent);
+}
+.desktop-pet-orbit {
+  position: absolute;
+  z-index: 1;
+  right: 9px;
+  bottom: 13px;
+  width: 88px;
+  height: 88px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  border-radius: 50%;
+  opacity: 0;
+}
+.desktop-pet-stage.is-collaborating .desktop-pet-orbit,
+.desktop-pet-stage.is-solving .desktop-pet-orbit,
+.desktop-pet-stage.is-reviewing .desktop-pet-orbit {
+  opacity: 1;
+  animation: desktop-pet-orbit 1.6s ease-out infinite;
+}
+.desktop-pet-stage.is-reading .desktop-pet-shell { animation-name: desktop-pet-read; animation-duration: 1.8s; }
+.desktop-pet-stage.is-writing .desktop-pet-arm.is-right { animation: desktop-pet-write .62s ease-in-out infinite; }
+.desktop-pet-stage.is-plotting .desktop-pet-shell { border-color: color-mix(in srgb, #ff9f0a 62%, var(--border)); }
+.desktop-pet-stage.is-stopping .desktop-pet-shell { animation: desktop-pet-stop .7s ease-in-out infinite alternate; }
+@keyframes desktop-pet-speech-in { from { opacity: 0; transform: translateY(5px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes desktop-pet-status { 50% { opacity: .38; } }
+@keyframes desktop-pet-breathe { 0%,100% { transform: translateY(1px) scale(1); } 50% { transform: translateY(-3px) scale(1.025); } }
+@keyframes desktop-pet-blink { 0%,46%,50%,100% { transform: scaleY(1); } 48% { transform: scaleY(.12); } }
+@keyframes desktop-pet-orbit { from { transform: scale(.76); opacity: .72; } to { transform: scale(1.17); opacity: 0; } }
+@keyframes desktop-pet-read { 0%,100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-3px); } }
+@keyframes desktop-pet-write { 0%,100% { transform: rotate(-28deg); } 50% { transform: rotate(-8deg); } }
+@keyframes desktop-pet-stop { from { transform: scale(1); opacity: 1; } to { transform: scale(.94); opacity: .7; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-pet-stage *, .desktop-pet-stage::before, .desktop-pet-stage::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    消息级操作行（msg-ops-*）
    ───────────────────────────────────────────────────────────────

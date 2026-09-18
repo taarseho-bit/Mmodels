@@ -28,6 +28,10 @@ import { warmupSkillsPlugin } from './agent/skills-plugin';
 import { getSettings, syncProxyRuntime, updateSettings } from './store/config';
 import { isRenderingScreenshots } from './runtime/guards';
 import { registerMediaProtocol, registerMediaScheme } from './media/protocol';
+import {
+  configureDesktopPetWindow,
+  syncDesktopPetWindow,
+} from './windows/desktop-pet';
 
 // ─────────────────────────────────────────────────────────────
 // 全局单例
@@ -67,11 +71,7 @@ if (!gotLock) {
 }
 
 app.on('second-instance', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-  }
+  showMainApplicationWindow();
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -174,6 +174,14 @@ function createMainWindow(): BrowserWindow {
   return win;
 }
 
+function showMainApplicationWindow(): BrowserWindow {
+  if (!mainWindow || mainWindow.isDestroyed()) mainWindow = createMainWindow();
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  return mainWindow;
+}
+
 // ─────────────────────────────────────────────────────────────
 // 启动流程
 // ─────────────────────────────────────────────────────────────
@@ -266,6 +274,8 @@ async function bootstrap(): Promise<void> {
   });
   log('ipc registered');
 
+  configureDesktopPetWindow(showMainApplicationWindow);
+
   // ── 3.2 音视频流式协议（mm-media://file/<相对路径>）──
   registerMediaProtocol();
   log('media protocol registered');
@@ -286,6 +296,7 @@ async function bootstrap(): Promise<void> {
 
   // ── 4. 窗口 ──
   mainWindow = createMainWindow();
+  syncDesktopPetWindow(getSettings().modelingPetEnabled !== false);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -298,10 +309,8 @@ app.whenReady().then(bootstrap).catch((err) => {
 });
 
 app.on('activate', () => {
-  // macOS: 点 dock 图标时若无窗口则重建
-  if (BrowserWindow.getAllWindows().length === 0) {
-    mainWindow = createMainWindow();
-  }
+  // 桌面小模本身也是一个窗口，不能再用 getAllWindows() 判断主界面是否存在。
+  showMainApplicationWindow();
 });
 
 app.on('window-all-closed', () => {

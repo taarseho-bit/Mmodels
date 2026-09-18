@@ -238,6 +238,8 @@ export interface SessionLoopOptions {
   onConclude: (state: TurnState) => void;
   /** 取消检查（abortController） */
   isAborted: () => boolean;
+  /** 取消信号用于唤醒正在等待下一帧的循环，不能只在下一帧到达后轮询。 */
+  signal?: AbortSignal;
   /** 诊断日志出口，默认 `console.debug` */
   log?: (message: string) => void;
   /** 兜底上限，默认 `BACKGROUND_WAIT_CAP_MS` */
@@ -251,6 +253,7 @@ export interface SessionLoopOptions {
 type Wake =
   | { kind: 'msg'; result: IteratorResult<unknown> }
   | { kind: 'error'; error: unknown }
+  | { kind: 'abort' }
   | { kind: 'timer' };
 
 /** 一个可取消的定时器 —— 必须可取消，否则长上限会把测试进程钉住不退出。 */
@@ -263,6 +266,23 @@ function armTimer(ms: number): { promise: Promise<Wake>; cancel: () => void } {
     promise,
     cancel: () => {
       if (handle !== undefined) clearTimeout(handle);
+    },
+  };
+}
+
+function armAbort(signal?: AbortSignal): { promise: Promise<Wake>; cancel: () => void } {
+  if (!signal) return { promise: new Promise<Wake>(() => undefined), cancel: () => undefined };
+  if (signal.aborted) return { promise: Promise.resolve({ kind: 'abort' }), cancel: () => undefined };
+  let listener: (() => void) | null = null;
+  const promise = new Promise<Wake>((resolve) => {
+    listener = () => resolve({ kind: 'abort' });
+    signal.addEventListener('abort', listener, { once: true });
+  });
+  return {
+    promise,
+    cancel: () => {
+      if (listener) signal.removeEventListener('abort', listener);
+      listener = null;
     },
   };
 }
@@ -285,6 +305,7 @@ export async function runSessionLoop(o: SessionLoopOptions): Promise<SessionLoop
 
   const state = createTurnState();
   const iterator = o.stream[Symbol.asyncIterator]();
+  const abortWake = armAbort(o.signal);
 
   /**
    * 只发一次、可跨轮复用的 `next()`。
@@ -319,7 +340,7 @@ export async function runSessionLoop(o: SessionLoopOptions): Promise<SessionLoop
     if (remaining <= 0) return { kind: 'timer' };
     const timer = armTimer(remaining);
     try {
-      return await Promise.race([takeNext(), timer.promise]);
+      return await Promise.race([takeNext(), timer.promise, abortWake.promise]);
     } finally {
       timer.cancel();
     }
@@ -334,58 +355,65 @@ export async function runSessionLoop(o: SessionLoopOptions): Promise<SessionLoop
     return { kind: 'capped', waitedMs: waitStartedAt === null ? 0 : now() - waitStartedAt };
   };
 
-  for (;;) {
-    if (o.isAborted()) {
-      log('[agent] 会话被中断，停止消费事件流');
-      return { kind: 'aborted' };
-    }
+  try {
+    for (;;) {
+      if (o.isAborted()) {
+        log('[agent] 会话被中断，停止消费事件流');
+        return { kind: 'aborted' };
+      }
 
-    const waiting = !concluded && waitStartedAt !== null;
-    const wake = waiting ? await takeNextBefore((waitStartedAt as number) + capMs) : await takeNext();
+      const waiting = !concluded && waitStartedAt !== null;
+      const wake = waiting
+        ? await takeNextBefore((waitStartedAt as number) + capMs)
+        : await Promise.race([takeNext(), abortWake.promise]);
 
-    if (wake.kind === 'timer') return capReached();
-    if (wake.kind === 'error') throw wake.error;
-    if (wake.result.done) {
-      if (!concluded) log('[agent] 事件流在收尾条件达成前就结束了（CLI 提前退出？）');
-      return { kind: 'stream-ended' };
-    }
+      if (wake.kind === 'abort') {
+        log('[agent] 会话被中断，停止消费事件流');
+        return { kind: 'aborted' };
+      }
+      if (wake.kind === 'timer') return capReached();
+      if (wake.kind === 'error') throw wake.error;
+      if (wake.result.done) {
+        if (!concluded) log('[agent] 事件流在收尾条件达成前就结束了（CLI 提前退出？）');
+        return { kind: 'stream-ended' };
+      }
 
-    const msg = wake.result.value;
-    const effect = applyTurnFrame(state, msg);
-    o.onMessage(msg);
+      const msg = wake.result.value;
+      const effect = applyTurnFrame(state, msg);
+      o.onMessage(msg);
 
-    if (effect === 'conclude') {
-      concluded = true;
-      waitStartedAt = null;
-      log(
-        `[agent] 本轮收尾：收到 result 且后台任务集合为空（${state.backgroundTasks.size} 个），关闭输入队列`,
-      );
-      o.onConclude(state);
-      // 进入排空阶段：继续把剩下的帧派发出去，直到流结束或超出宽限
-      const drainDeadline = now() + drainGraceMs;
-      for (;;) {
-        const drained = await takeNextBefore(drainDeadline);
-        if (drained.kind === 'timer') {
-          log(`[agent] 排空超过 ${drainGraceMs}ms，提前结束消费（CLI 未按时退出）`);
-          return { kind: 'settled' };
+      if (effect === 'conclude') {
+        concluded = true;
+        waitStartedAt = null;
+        log(
+          `[agent] 本轮收尾：收到 result 且后台任务集合为空（${state.backgroundTasks.size} 个），关闭输入队列`,
+        );
+        o.onConclude(state);
+        // 进入排空阶段：继续把剩下的帧派发出去，直到流结束或超出宽限
+        const drainDeadline = now() + drainGraceMs;
+        for (;;) {
+          const drained = await takeNextBefore(drainDeadline);
+          if (drained.kind === 'abort') return { kind: 'aborted' };
+          if (drained.kind === 'timer') {
+            log(`[agent] 排空超过 ${drainGraceMs}ms，提前结束消费（CLI 未按时退出）`);
+            return { kind: 'settled' };
+          }
+          if (drained.kind === 'error') throw drained.error;
+          if (drained.result.done) return { kind: 'settled' };
+          o.onMessage(drained.result.value);
         }
-        if (drained.kind === 'error') throw drained.error;
-        if (drained.result.done) return { kind: 'settled' };
-        o.onMessage(drained.result.value);
+      }
+
+      if (state.sawResult && state.backgroundTasks.size > 0 && waitStartedAt === null) {
+        waitStartedAt = now();
+        log(
+          `[agent] 本轮 result 已到，但仍有 ${state.backgroundTasks.size} 个后台任务在跑 → ` +
+            `不关队列，等唤醒（兜底上限 ${capMs}ms）：${describeTasks(state)}`,
+        );
       }
     }
-
-    /**
-     * 收尾条件不满足时，进入「等唤醒」状态并武装兜底。
-     * 触发条件写全：**本轮已经见过 result** 且**还有后台任务在跑**。
-     */
-    if (state.sawResult && state.backgroundTasks.size > 0 && waitStartedAt === null) {
-      waitStartedAt = now();
-      log(
-        `[agent] 本轮 result 已到，但仍有 ${state.backgroundTasks.size} 个后台任务在跑 → ` +
-          `不关队列，等唤醒（兜底上限 ${capMs}ms）：${describeTasks(state)}`,
-      );
-    }
+  } finally {
+    abortWake.cancel();
   }
 }
 

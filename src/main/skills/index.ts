@@ -35,6 +35,7 @@ import {
 } from 'node:fs';
 import type { SkillMeta } from '@shared/types';
 import { disabledSkillDirs, enabledSkillDirs, setSkillDisabled } from '../store/config';
+import { resolveResource } from '../resources';
 
 // ─────────────────────────────────────────────────────────────
 // 技能根目录
@@ -46,10 +47,9 @@ import { disabledSkillDirs, enabledSkillDirs, setSkillDisabled } from '../store/
  * 打包后：<appPath>/resources/builtin-skills  （由 electron-builder 的 extraResources 放进去）
  */
 export function builtinSkillsRoot(): string {
-  if (app.isPackaged) {
-    return join(process.resourcesPath, 'builtin-skills');
-  }
-  return join(app.getAppPath(), 'resources', 'builtin-skills');
+  const found = resolveResource(['builtin-skills']);
+  if (found) return found;
+  throw new Error('没有找到内置技能。请重新打开应用；如果仍未恢复，请重新下载最新版免安装包。');
 }
 
 /** 用户技能目录（可写） */

@@ -95,6 +95,24 @@ function candidateRoots(override?: string): string[] {
   return [...new Set(roots)];
 }
 
+/** Packaged resource roots, including the layout used by the single-file portable build. */
+function packagedResourceRoots(): string[] {
+  const roots: string[] = [];
+  if (process.resourcesPath) roots.push(process.resourcesPath);
+  try {
+    const electron = nodeRequire('electron') as {
+      app?: { getAppPath?: () => string; getPath?: (name: string) => string };
+    };
+    const appPath = electron?.app?.getAppPath?.();
+    if (appPath?.toLowerCase().endsWith('.asar')) roots.push(dirname(appPath));
+    const exePath = electron?.app?.getPath?.('exe');
+    if (exePath) roots.push(join(dirname(exePath), 'resources'));
+  } catch {
+    /* 非 electron 环境 */
+  }
+  return [...new Set(roots)];
+}
+
 /**
  * 定位 claude 可执行文件。
  *
@@ -112,9 +130,8 @@ export function resolveClaudeExecutable(projectRootOverride?: string): string | 
   // ── 1. 随包分发（打包后优先，也是原版的布局）──
   //    electron-builder 的 extraResources 配成 `to: .`，
   //    所以内容直接落在 process.resourcesPath 下。
-  const rp = process.resourcesPath;
-  if (rp) {
-    for (const n of CLI_NAMES) cands.push(join(rp, 'claude-code', n));
+  for (const resourceRoot of packagedResourceRoots()) {
+    for (const n of CLI_NAMES) cands.push(join(resourceRoot, 'claude-code', n));
   }
 
   // ── 2. 开发期：<项目根>/resources/claude-code/ ──

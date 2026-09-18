@@ -31,6 +31,7 @@ import { registerStatsHandlers } from './stats';
 import { registerAlgorithmHandlers } from './algorithms';
 import { registerCollabHandlers } from './collab';
 import { registerNetworkHandlers } from './network';
+import { registerPetHandlers } from './pet';
 
 export interface IpcContext {
   getServerInfo: () => ServerInfo | null;
@@ -88,6 +89,7 @@ export function registerIpcHandlers(ctx: IpcContext): void {
   registerAlgorithmHandlers(ctx);
   registerCollabHandlers();
   registerNetworkHandlers(ctx);
+  registerPetHandlers(ctx);
 }
 
 /** 向渲染层推送事件（主窗口） */

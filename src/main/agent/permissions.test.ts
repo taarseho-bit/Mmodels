@@ -343,7 +343,9 @@ describe('结构级判据 —— agent/session.ts 里的顺序与"别跟着改"�
   });
 
   it('`abort()` 里审批与提问**都**被松开，且都在 abort 之前', () => {
-    const abortBody = SRC.slice(SRC.indexOf('  abort(): void {'), SRC.indexOf('  abort(): void {') + 500);
+    const abortStart = SRC.indexOf('  abort(): void {');
+    const abortEnd = SRC.indexOf('  answerUserQuestion(', abortStart);
+    const abortBody = SRC.slice(abortStart, abortEnd);
     const qAt = abortBody.indexOf('settleAllQuestions(null)');
     const aAt = abortBody.indexOf("settleAllApprovals('cancel')");
     const ctrlAt = abortBody.indexOf('this.abortController?.abort()');

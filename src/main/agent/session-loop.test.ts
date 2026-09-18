@@ -313,6 +313,18 @@ describe('A 组护栏 —— 一轮里没有后台任务时，收尾条件与改
     expect(r.outcome).toEqual({ kind: 'aborted' });
     expect(r.concludeCalls).toBe(0);
   });
+
+  it('等待下一帧时收到停止信号也会立即醒来，不依赖 SDK 再发消息', async () => {
+    const controller = new AbortController();
+    const pending = drive([], {
+      stream: streamThatHangsAfter([]),
+      signal: controller.signal,
+      isAborted: () => controller.signal.aborted,
+    });
+    controller.abort();
+
+    await expect(pending).resolves.toMatchObject({ outcome: { kind: 'aborted' } });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────

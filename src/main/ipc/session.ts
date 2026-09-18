@@ -13,7 +13,7 @@
  *   如果 agent 崩了/用户关了窗口，至少用户发过的话还在。
  *   反过来（跑完再落库）会丢消息。
  */
-import { ipcMain, app } from 'electron';
+import { ipcMain } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -44,6 +44,7 @@ import { safeWrap, pushToRenderer, type IpcContext } from './index';
 import { applyStreamEvent } from './stream-blocks';
 import { currentProjectRoot } from './file';
 import { saveVersion } from '../git';
+import { resolveResourcesRoot } from '../resources';
 
 /** 全局会话注册表（整个应用一份） */
 export const sessionRegistry = new SessionRegistry();
@@ -401,7 +402,10 @@ function ensureProjectInstructions(cwd: string): void {
 
 /** 随包资源目录（打包后是 process.resourcesPath，开发期是 <appPath>/resources） */
 function resourcesDir(): string {
-  return app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
+  return resolveResourcesRoot(
+    ['builtin-skills', 'mma-paper', 'assets', 'template'],
+    '论文模板',
+  );
 }
 
 /**
@@ -516,7 +520,21 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
   ipcMain.handle(
     IPC.SESSION_ABORT,
     safeWrap((_e, id: string) => {
-      sessionRegistry.get(id).abort();
+      const runner = sessionRegistry.get(id);
+      pushToRenderer(IPC.SESSION_STREAM, {
+        sessionId: id,
+        event: { type: 'session-stopping', sessionId: id },
+      });
+      if (!runner.isRunning) {
+        getDb().prepare("UPDATE sessions SET status = 'idle', updated_at = ? WHERE id = ?")
+          .run(Date.now(), id);
+        pushToRenderer(IPC.SESSION_STREAM, {
+          sessionId: id,
+          event: { type: 'session-end', sessionId: id },
+        });
+        return true;
+      }
+      runner.abort();
       return true;
     }, '中断会话'),
   );

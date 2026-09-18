@@ -216,6 +216,8 @@ function normalizeQuestions(input: Record<string, unknown>): AskUserQuestion[] {
 /** 会话运行器：一个会话一个实例 */
 export class AgentSession extends EventEmitter {
   private abortController: AbortController | null = null;
+  private activeQuery: QueryHandle | null = null;
+  private activeInput: SessionInputQueue | null = null;
   private running = false;
   /** 累积的用量统计 */
   private usage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
@@ -365,7 +367,14 @@ export class AgentSession extends EventEmitter {
     // 松开时给 `'cancel'`（原版语义：中断本轮），而不是 `'decline'` ——
     // 用户按的是「停止」，不该让模型以为"用户拒绝了但可以接着干别的"。
     this.settleAllApprovals('cancel');
+    this.activeInput?.close();
     this.abortController?.abort();
+    try {
+      // SDK 文档明确要求在仍在运行时用 close() 结束底层进程。
+      this.activeQuery?.close();
+    } catch {
+      /* 取消信号已经发出，关闭句柄失败也不应变成用户可见错误。 */
+    }
   }
 
   /**
@@ -757,9 +766,11 @@ export class AgentSession extends EventEmitter {
        * 收尾靠 `runSessionLoop` 的显式条件（见 `session-loop.ts` 文件头）。
        */
       const input = new SessionInputQueue();
+      this.activeInput = input;
       input.push(opts.prompt);
 
       const stream = query({ prompt: input, options });
+      this.activeQuery = stream;
       let contextConfigured = false;
 
       // abort 时立刻关队列：让 SDK 的 `streamInput()` 走完 `for await`，CLI 干净退出
@@ -786,10 +797,13 @@ export class AgentSession extends EventEmitter {
           },
           onConclude: () => input.close(),
           isAborted: () => controller.signal.aborted,
+          signal: controller.signal,
         });
       } finally {
         controller.signal.removeEventListener('abort', onAbort);
         input.close();
+        if (this.activeInput === input) this.activeInput = null;
+        if (this.activeQuery === stream) this.activeQuery = null;
       }
 
       if (outcome.kind === 'capped') {
@@ -809,6 +823,10 @@ export class AgentSession extends EventEmitter {
         this.emitEvent({ type: 'session-end', sessionId: this.sessionId });
       }
     } catch (err) {
+      if (controller.signal.aborted) {
+        this.emitEvent({ type: 'session-end', sessionId: this.sessionId });
+        return;
+      }
       const message = err instanceof Error ? err.message : String(err);
       this.emitEvent({ type: 'session-error', message });
       this.emitEvent({ type: 'session-end', sessionId: this.sessionId, reason: 'error' });

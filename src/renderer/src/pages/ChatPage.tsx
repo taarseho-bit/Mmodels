@@ -37,6 +37,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
 import { AgentCollaboration } from '../components/AgentCollaboration';
 import { ModelingPet } from '../components/ModelingPet';
+import { sessionTitleFromPrompt } from '../lib/session-title';
 import { t, tx } from '../i18n';
 import {
   forkErrorText,
@@ -867,7 +868,7 @@ export function ChatPage(): JSX.Element {
     async (content: string): Promise<boolean> => {
       let sid = activeSessionId;
       if (!sid) {
-        const meta = await createSession(content.slice(0, 24));
+        const meta = await createSession(sessionTitleFromPrompt(content));
         if (!meta) return false;
         sid = meta.id;
       }

@@ -1,5 +1,12 @@
 # MModels 交接报告（HANDOFF）
 
+> **最新状态（2026-09-18 19:35）**：以功能正确基线 `009f7f3` 对照修复了免安装版资源路径、
+> 项目/任务切换竞态和停止卡住问题，同时保留新 UI、多智能体与任务批次。技能、论文模板、算法已在
+> 最终打包应用中分别实读到 13 / 14 / 29 项。“小模”现为独立透明桌面窗口，主窗口关闭后仍保留，
+> 可重新唤回主窗口。TypeScript 0 错，Vitest **45 个文件 / 847 条**全绿，脚本检查 **45/45**，
+> 最终 `release` 解压版和单文件免安装版均 **44/44**。免安装版 SHA256：
+> `1d47a7f9d470584b2d48cda34ea9bb9142cfdc28c8bc56ffef4ae16a8b08e2f5`。
+
 > **最新状态（2026-09-18 18:12）**：任务面板已经改成“当前批次”，新一轮自动清掉旧任务，
 > 完成项折叠，整批完成后面板消失；重启只恢复最近一轮任务。Claude Agent SDK 的四个数学建模
 > 子智能体已接入，复杂任务最多并行 3 个，界面显示真实协作状态。代码原生动态伙伴“小模”已接入
@@ -32,10 +39,10 @@
 | 原版参照 | 装在 `C:\Users\xh\AppData\Local\Programs\@mathmodeldesktop\`（`mathmodel.exe`，`resources/app.asar` 可直读） |
 | 原版真实 userData | `C:\Users\xh\AppData\Roaming\@mathmodel\desktop\`（**注意不是** `%APPDATA%\mathmodel-desktop`，那只有 config.json/db） |
 | 类型检查 | `tsc` node / web **均 0 错误** |
-| 测试 | vitest **43 个文件 / 837 条全绿**；脚本检查 **45/45**；最终打包应用 **40/40**（2026-09-18 18:12 实测） |
-| 当前包 | `release/win-unpacked/resources/app.asar` 47,054,001 B，sha256 `1b49e264afdd7eeb3dd47244f12f17837930354e04e91491eb3235e6273addee` |
-| 免安装版 | `release/MModels-0.1.0-x64-Portable.exe` 321,887,268 B，sha256 `7ae68aa35a06f68d8e0892b90cb1cdf7a38117f742d3460ced046581f9d38228` |
-| 安装包 | `release/MModels-0.1.0-x64-Setup.exe` 322,054,010 B，sha256 `9d7b484811f3498161a94390026de17d2ec305b140c9982fff1409eb5936b326`（未签名，首次运行可能被 SmartScreen/杀软提示） |
+| 测试 | vitest **45 个文件 / 847 条全绿**；脚本检查 **45/45**；最终打包应用 **44/44**（2026-09-18 19:35 实测） |
+| 当前包 | `release/win-unpacked/resources/app.asar` 47,076,572 B，sha256 `f126cb9c572fc42e751b5fd75901359cd9aa94cafe62f82f2f55274fcc2d599a` |
+| 免安装版 | `release/MModels-0.1.0-x64-Portable.exe` 321,891,247 B，sha256 `1d47a7f9d470584b2d48cda34ea9bb9142cfdc28c8bc56ffef4ae16a8b08e2f5` |
+| 安装包 | `release/MModels-0.1.0-x64-Setup.exe` 322,057,991 B，sha256 `fd3bdb484bb59da80581b2cf5555d2fcc1c83c945fbde04a6cc0e8e971048e6e`（未签名，首次运行可能被 SmartScreen/杀软提示） |
 | **最重要的一句话** | 最新需求已进入源码与最终包，自动化和真实打包应用验收均已通过。 |
 
 ---
