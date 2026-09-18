@@ -79,6 +79,8 @@ extraResources:
       - '!**/__pycache__/**'
       - '!**/.DS_Store'
       - '!**/Thumbs.db'
+  - from: build/icon.png
+    to: tray-icon.png
 
 # ── Windows ──────────────────────────────────────────────────
 win:

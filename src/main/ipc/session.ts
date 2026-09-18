@@ -521,13 +521,11 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
     IPC.SESSION_ABORT,
     safeWrap((_e, id: string) => {
       const runner = sessionRegistry.get(id);
-      pushToRenderer(IPC.SESSION_STREAM, {
-        sessionId: id,
-        event: { type: 'session-stopping', sessionId: id },
-      });
+      // “停止”是即时动作：先把会话状态改为空闲，再向 SDK 发取消信号。
+      // 最终 session-end 仍等消息落库后再发，避免已显示内容短暂消失。
+      getDb().prepare("UPDATE sessions SET status = 'idle', updated_at = ? WHERE id = ?")
+        .run(Date.now(), id);
       if (!runner.isRunning) {
-        getDb().prepare("UPDATE sessions SET status = 'idle', updated_at = ? WHERE id = ?")
-          .run(Date.now(), id);
         pushToRenderer(IPC.SESSION_STREAM, {
           sessionId: id,
           event: { type: 'session-end', sessionId: id },

@@ -15,11 +15,11 @@ import type { ServerInfo } from '../server';
 import { registerAppHandlers } from './app';
 import { registerFileHandlers } from './file';
 import { registerProjectHandlers } from './project';
-import { registerSessionHandlers } from './session';
+import { registerSessionHandlers, sessionRegistry } from './session';
 import { registerLlmHandlers } from './llm';
 import { registerSettingsHandlers } from './settings';
 import { registerSkillHandlers } from './skill';
-import { registerTerminalHandlers } from './terminal';
+import { killAllTerms, registerTerminalHandlers } from './terminal';
 import { registerAutomationHandlers } from './automation';
 import { registerGitHandlers } from './git';
 import { registerDiagramHandlers } from './diagram';
@@ -90,6 +90,12 @@ export function registerIpcHandlers(ctx: IpcContext): void {
   registerCollabHandlers();
   registerNetworkHandlers(ctx);
   registerPetHandlers(ctx);
+}
+
+/** 彻底退出应用前，先结束由 MModels 自己启动的长驻任务与终端子进程。 */
+export function shutdownIpcRuntimes(): void {
+  sessionRegistry.disposeAll();
+  killAllTerms();
 }
 
 /** 向渲染层推送事件（主窗口） */

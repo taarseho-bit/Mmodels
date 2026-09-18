@@ -83,15 +83,13 @@ export function DesktopPetWindow(): JSX.Element {
         title="拖动小模到桌面的任意位置"
         aria-label={`桌面数学建模伙伴：${PET_COPY[state]}`}
       >
-        <span className="desktop-pet-orbit" />
-        <span className="desktop-pet-antenna"><i /></span>
-        <span className="desktop-pet-arm is-left" />
-        <span className="desktop-pet-arm is-right" />
-        <span className="desktop-pet-shell">
-          <Icon name={state === 'collaborating' ? 'brain' : 'sigma'} size={31} strokeWidth={2.35} />
-          <span className="desktop-pet-eyes"><i /><i /></span>
+        {/* 与原软件内小模共用同一套形象类，避免桌面版长成另一只。 */}
+        <span className="modeling-pet-aura" />
+        <span className="modeling-pet-shell">
+          <Icon name={state === 'collaborating' ? 'brain' : 'sigma'} size={30} strokeWidth={2.4} />
+          <span className="modeling-pet-eyes"><i /><i /></span>
         </span>
-        <span className="desktop-pet-feet"><i /><i /></span>
+        <span className="modeling-pet-feet"><i /><i /></span>
       </div>
     </main>
   );

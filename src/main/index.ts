@@ -20,18 +20,20 @@
 import { app, BrowserWindow, shell, nativeTheme, dialog, Menu } from 'electron';
 import { join } from 'node:path';
 import { LocalServer, type ServerInfo } from './server';
-import { registerIpcHandlers } from './ipc';
+import { pushToRenderer, registerIpcHandlers, shutdownIpcRuntimes } from './ipc';
+import { IPC } from '@shared/types';
 import { mountRoutes } from './server/routes';
 import { closeDb, initDb } from './db';
 import { bootstrapDefaultProject } from './ipc/project';
 import { warmupSkillsPlugin } from './agent/skills-plugin';
 import { getSettings, syncProxyRuntime, updateSettings } from './store/config';
-import { isRenderingScreenshots } from './runtime/guards';
+import { isRenderingScreenshots, markQuitting } from './runtime/guards';
 import { registerMediaProtocol, registerMediaScheme } from './media/protocol';
 import {
   configureDesktopPetWindow,
   syncDesktopPetWindow,
 } from './windows/desktop-pet';
+import { createAppTray, destroyAppTray } from './windows/tray';
 
 // ─────────────────────────────────────────────────────────────
 // 全局单例
@@ -39,6 +41,7 @@ import {
 
 const localServer = new LocalServer();
 let mainWindow: BrowserWindow | null = null;
+let quittingCompletely = false;
 
 // 与原版并存：Windows 应用身份、通知和任务栏分组均使用独立品牌。
 app.setName('MModels');
@@ -171,6 +174,13 @@ function createMainWindow(): BrowserWindow {
     mainWindow = null;
   });
 
+  // 右上角 X 只收进系统托盘；真正退出统一走托盘里的“完全退出”。
+  win.on('close', (event) => {
+    if (quittingCompletely) return;
+    event.preventDefault();
+    win.hide();
+  });
+
   return win;
 }
 
@@ -180,6 +190,26 @@ function showMainApplicationWindow(): BrowserWindow {
   mainWindow.show();
   mainWindow.focus();
   return mainWindow;
+}
+
+function hideMainApplicationWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+}
+
+function setDesktopPetEnabled(enabled: boolean): void {
+  const next = updateSettings({ modelingPetEnabled: enabled });
+  syncDesktopPetWindow(enabled);
+  pushToRenderer(IPC.SETTINGS_CHANGED, next);
+}
+
+function quitApplicationCompletely(): void {
+  if (quittingCompletely) return;
+  quittingCompletely = true;
+  markQuitting();
+  shutdownIpcRuntimes();
+  syncDesktopPetWindow(false);
+  destroyAppTray();
+  app.quit();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -297,6 +327,14 @@ async function bootstrap(): Promise<void> {
   // ── 4. 窗口 ──
   mainWindow = createMainWindow();
   syncDesktopPetWindow(getSettings().modelingPetEnabled !== false);
+  createAppTray({
+    showMain: () => { showMainApplicationWindow(); },
+    hideMain: hideMainApplicationWindow,
+    isMainVisible: () => !!mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible(),
+    togglePet: setDesktopPetEnabled,
+    isPetEnabled: () => getSettings().modelingPetEnabled !== false,
+    quitCompletely: quitApplicationCompletely,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -326,6 +364,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', async () => {
+  quittingCompletely = true;
+  markQuitting();
+  shutdownIpcRuntimes();
+  destroyAppTray();
   log('shutting down...');
   try {
     await localServer.stop();

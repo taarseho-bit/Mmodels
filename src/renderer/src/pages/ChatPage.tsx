@@ -36,7 +36,6 @@ import { Composer } from '../components/Composer';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
 import { AgentCollaboration } from '../components/AgentCollaboration';
-import { ModelingPet } from '../components/ModelingPet';
 import { sessionTitleFromPrompt } from '../lib/session-title';
 import { t, tx } from '../i18n';
 import {
@@ -441,7 +440,6 @@ export function ChatPage(): JSX.Element {
   const activeSessionId = useApp((s) => s.activeSessionId);
   const newChatRequest = useApp((s) => s.newChatRequest);
   const settings = useApp((s) => s.settings);
-  const patchSettings = useApp((s) => s.patchSettings);
   const createSession = useApp((s) => s.createSession);
   const refreshSessions = useApp((s) => s.refreshSessions);
   const selectSession = useApp((s) => s.selectSession);
@@ -550,7 +548,11 @@ export function ChatPage(): JSX.Element {
   });
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
-  const isRunning = stream.active || activeSession?.status === 'running';
+  // 用户点过停止后，存活窗口会立刻进入 done。会话列表里的 running 是异步快照，
+  // 不能让它把停止按钮又顶回来；真正的后台收尾仍由 pendingTurnRef 把关。
+  const isRunning = stream.phase === 'done'
+    ? false
+    : stream.active || activeSession?.status === 'running';
 
   const findMatches = useMemo(() => {
     const needle = findQuery.trim().toLowerCase();
@@ -1010,6 +1012,15 @@ export function ChatPage(): JSX.Element {
       const content = text.trim();
       if (!content) return;
 
+      // 停止按钮已经让界面立即回到可输入状态，但旧 runner 可能还在做最后几毫秒的
+      // 清理。此时的新消息先入队，收到真正的 session-end 后自动发送，避免撞上
+      // “该会话已有正在执行的任务”。
+      if (activeSessionId && pendingTurnRef.current === activeSessionId && !isRunning) {
+        enqueueFollowUp(content);
+        setInput('');
+        return;
+      }
+
       // 运行中又发了一条 → 三选一（决策抽在 store 里，便于穷举单测）
       const action = decideFollowUpAction({
         isRunning,
@@ -1091,12 +1102,15 @@ export function ChatPage(): JSX.Element {
   }, [activeSessionId, dispatch, followUpQueue, isRunning, markFollowUpError, takeFollowUp]);
 
 
-  const onAbort = async (): Promise<void> => {
+  const onAbort = (): void => {
     if (!activeSessionId) return;
-    // 先冻结当前内容并进入“正在停下”，真正的 done 只由主进程 session-end 确认。
-    setStream(toView(chatStreamStore.requestStop(activeSessionId)));
-    await window.mathmodel.session.abort(activeSessionId).catch(() => undefined);
-    await refreshSessions();
+    const sid = activeSessionId;
+    // 当前帧立刻退出运行态，同时完整保留已经显示的文字、工具结果和任务。
+    // 主进程继续在后台把这些内容落库；真正收尾前 pendingTurnRef 会阻止并发发送。
+    setStream(toView(chatStreamStore.interrupt(sid)));
+    void window.mathmodel.session.abort(sid)
+      .then(() => refreshSessions())
+      .catch(() => undefined);
   };
 
   if (!currentProject) {
@@ -1471,15 +1485,6 @@ export function ChatPage(): JSX.Element {
           <div className="composer-inner">{composerNode(false)}</div>
         </div>
       )}
-      {settings?.modelingPetEnabled !== false ? (
-        <ModelingPet
-          active={isRunning}
-          stopping={stream.stopping}
-          blocks={stream.blocks.filter(Boolean)}
-          agents={stream.agents}
-          onClose={() => void patchSettings({ modelingPetEnabled: false })}
-        />
-      ) : null}
     </div>
   );
 }
