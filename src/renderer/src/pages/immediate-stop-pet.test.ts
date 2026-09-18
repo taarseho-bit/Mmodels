@@ -12,6 +12,14 @@ const sessionIpc = readFileSync(
   fileURLToPath(new URL('../../../main/ipc/session.ts', import.meta.url)),
   'utf8',
 );
+const petWindow = readFileSync(
+  fileURLToPath(new URL('../../../main/windows/desktop-pet.ts', import.meta.url)),
+  'utf8',
+);
+const petIpc = readFileSync(
+  fileURLToPath(new URL('../../../main/ipc/pet.ts', import.meta.url)),
+  'utf8',
+);
 
 describe('立即停止', () => {
   it('点击后立刻把当前窗口置为 done，并在后台请求取消', () => {
@@ -57,13 +65,18 @@ describe('桌面小模', () => {
     expect(chat).not.toContain('<ModelingPet');
   });
 
-  it('桌面窗口复用原小模形象，并允许拖动身体和气泡', () => {
-    expect(desktopPet).toContain('className="modeling-pet-shell"');
-    expect(desktopPet).toContain('className="modeling-pet-eyes"');
-    expect(desktopPet).toContain('className="modeling-pet-feet"');
-    expect(desktopPet).not.toContain('desktop-pet-antenna');
-    expect(css).toMatch(/\.desktop-pet-character\s*\{[\s\S]*?-webkit-app-region:\s*drag;/);
-    expect(css).toMatch(/\.desktop-pet-speech\s*\{[\s\S]*?-webkit-app-region:\s*drag;/);
-    expect(css).toMatch(/\.desktop-pet-actions button\s*\{[\s\S]*?-webkit-app-region:\s*no-drag;/);
+  it('桌面窗口使用可切换的桌前角色，并通过明确的屏幕坐标移动真实窗口', () => {
+    expect(desktopPet).toContain('<PetDeskAvatar appearance={appearance} />');
+    expect(desktopPet).toContain('playGesture(\'wave\')');
+    expect(desktopPet).toContain('dragStart({ x: event.screenX, y: event.screenY })');
+    expect(desktopPet).toContain('dragMove({ x: event.screenX, y: event.screenY })');
+    expect(desktopPet).toContain('window.mathmodel.pet.dragEnd()');
+    expect(petIpc).toContain('IPC.PET_DRAG_START');
+    expect(petIpc).toContain('IPC.PET_DRAG_MOVE');
+    expect(petWindow).toContain('validScreenPoint(input)');
+    expect(petWindow).toContain('cursor.y - current.offsetY');
+    expect(petWindow).toContain('win.setBounds(');
+    expect(css).toContain('.desktop-pet-stage.gesture-celebrate');
+    expect(css).toContain('.desktop-pet-stage.is-writing .pet-human-arm-right');
   });
 });

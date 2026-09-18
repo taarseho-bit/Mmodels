@@ -393,6 +393,7 @@ export interface AppSettings {
   multiAgentEnabled?: boolean;
   /** 是否显示跟随真实任务状态变化的数学建模伙伴。 */
   modelingPetEnabled?: boolean;
+  modelingPetAppearance?: 'student' | 'pixel' | 'researcher' | 'astronaut';
   /** 桌面小模窗口上次停留的位置。 */
   modelingPetPosition?: { x: number; y: number };
   /** 输入区的任务模式（自由对话 / 写论文 / 画图 / 评审 / 找数据） */
@@ -692,6 +693,9 @@ export const IPC = {
   // 桌面小模
   PET_SHOW_MAIN: 'pet:show-main',
   PET_SET_INTERACTIVE: 'pet:set-interactive',
+  PET_DRAG_START: 'pet:drag-start',
+  PET_DRAG_MOVE: 'pet:drag-move',
+  PET_DRAG_END: 'pet:drag-end',
 
   // 网络代理与机器人（设置 → 网络 / 机器人）
   /** 读取代理设置（等价于 settings.proxy，单独一条便于语义清晰） */

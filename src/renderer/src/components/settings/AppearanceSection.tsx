@@ -13,6 +13,7 @@
  * 这里只负责改状态 + 持久化。
  */
 import { useState } from 'react';
+import { PetDeskAvatar, PET_APPEARANCES, resolvePetAppearance } from '../PetDeskAvatar';
 import { tx } from '../../i18n';
 import {
   getAppearance,
@@ -80,6 +81,8 @@ export function AppearanceSection(): JSX.Element {
   // 语言走的是 settings.locale（不是外观状态）
   const locale = useApp((s) => s.settings?.locale ?? 'zh-CN');
   const patchSettings = useApp((s) => s.patchSettings);
+  const petAppearance = useApp((s) => resolvePetAppearance(s.settings?.modelingPetAppearance));
+  const petEnabled = useApp((s) => s.settings?.modelingPetEnabled !== false);
   /** 当前生效的浅/深（决定两张卡片的说明文案：正在用 / 切到某模式时用） */
   const activeTheme =
     (document.documentElement.dataset.theme as 'light' | 'dark' | undefined) ?? 'light';
@@ -132,6 +135,26 @@ export function AppearanceSection(): JSX.Element {
 
   return (
     <section className="appearance-sec">
+      <div className="appearance-card pet-appearance-settings">
+        <div className="appearance-row">
+          <div className="appearance-row-main">
+            <div className="appearance-row-label">桌面小模</div>
+            <div className="appearance-row-hint">选择你的建模伙伴，外观立即生效并自动保存。按住人物或气泡可一起拖动。</div>
+          </div>
+          <button type="button" className={`switch${petEnabled ? ' on' : ''}`} aria-label="显示桌面小模" aria-pressed={petEnabled}
+            onClick={() => void patchSettings({ modelingPetEnabled: !petEnabled })}><span className="switch-knob" /></button>
+        </div>
+        <div className="pet-appearance-grid" role="group" aria-label="小模外观">
+          {PET_APPEARANCES.map((item) => (
+            <button key={item.id} type="button" className={`pet-appearance-option${petAppearance === item.id ? ' selected' : ''}`}
+              aria-pressed={petAppearance === item.id} onClick={() => void patchSettings({ modelingPetAppearance: item.id })}>
+              <PetDeskAvatar appearance={item.id} />
+              <strong>{item.name}{petAppearance === item.id ? ' · 已选择' : ''}</strong>
+              <span>{item.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       {/* ── 分区头：恢复默认（原版在标题行右侧）── */}
       <div className="appearance-head">
         <div className="grow" />

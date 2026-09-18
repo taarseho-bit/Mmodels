@@ -287,6 +287,11 @@ const api = {
     showMain: (): Promise<boolean> => ipcRenderer.invoke(IPC.PET_SHOW_MAIN),
     setInteractive: (interactive: boolean): void =>
       ipcRenderer.send(IPC.PET_SET_INTERACTIVE, interactive),
+    dragStart: (point: { x: number; y: number }): void =>
+      ipcRenderer.send(IPC.PET_DRAG_START, point),
+    dragMove: (point: { x: number; y: number }): void =>
+      ipcRenderer.send(IPC.PET_DRAG_MOVE, point),
+    dragEnd: (): void => ipcRenderer.send(IPC.PET_DRAG_END),
   },
 
   // ── 技能 ──────────────────────────────────────────────────
