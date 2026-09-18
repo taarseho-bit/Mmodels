@@ -24,12 +24,12 @@ import {
   type SkillMeta,
 } from '@shared/types';
 import { useApp } from '../store/app';
-import { openSettings } from '../lib/settings-nav';
 import { tx, txPlural, t } from '../i18n';
 import { Icon } from '../components/Icon';
 import { Markdown } from '../components/Markdown';
 import { AlgorithmsMarket } from '../components/AlgorithmsMarket';
 import { ConnectorsSection } from '../components/ConnectorsSection';
+import { LocalPluginsPanel } from '../components/LocalPluginsPanel';
 
 type Tab = 'skills' | 'templates' | 'algorithms' | 'plugins' | 'connectors';
 /** SKILL.md 的两种查看方式（原版 viewToggle） */
@@ -114,7 +114,7 @@ export function ExtensionsPage({
             <AlgorithmsMarket />
           </div>
         )}
-        {tab === 'plugins' && <PluginsTab />}
+        {tab === 'plugins' && <LocalPluginsPanel />}
         {tab === 'connectors' && (
           <div className="ext-single">
             <ConnectorsSection />
@@ -971,72 +971,6 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
 //   一行置灰说明 + 运行环境入口，避免出现原版没有的整块区域。
 // ─────────────────────────────────────────────────────────────
 
-function PluginsTab(): JSX.Element {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState('');
-
-  return (
-    <>
-      <div className="ext-list">
-        <div className="ext-list-head">
-          {searchOpen ? (
-            <>
-              <input
-                className="input ext-search"
-                autoFocus
-                placeholder={tx('extensions.extensionsPage.searchSection', {
-                  section: tx('extensions.sections.plugins'),
-                })}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <button
-                className="ext-icon-btn"
-                title={tx('extensions.extensionsPage.closeSearch')}
-                onClick={() => {
-                  setSearchOpen(false);
-                  setQuery('');
-                }}
-              >
-                <Icon name="x" size={14} />
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="ext-list-title">{tx('extensions.sections.plugins')}</span>
-              <div className="grow" />
-              <button
-                className="ext-icon-btn"
-                title={tx('extensions.extensionsPage.searchSection', {
-                  section: tx('extensions.sections.plugins'),
-                })}
-                onClick={() => setSearchOpen(true)}
-              >
-                <Icon name="search" size={15} />
-              </button>
-            </>
-          )}
-        </div>
-        <div className="ext-list-body">
-          {/* 本机 Claude Code 插件列表尚未接入 → 与原版一致显示「没有结果」 */}
-          <div className="empty">{tx('extensions.extensionsPage.noResults')}</div>
-        </div>
-      </div>
-
-      <div className="ext-detail">
-        <div className="empty">{t('选择左侧的插件查看详情')}</div>
-        <div className="ext-section-note" style={{ margin: '0 20px 18px' }}>
-          <Icon name="circle-slash" size={13} />
-          <span>{t('按既定决策排除的在线服务，本地版不提供。')}</span>
-          <div className="grow" />
-          <button className="btn btn-sm" onClick={() => openSettings('env')}>
-            {t('前往「设置 → 运行环境」')}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────
 // 帮助弹窗 / 二次确认弹窗

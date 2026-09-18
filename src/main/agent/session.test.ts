@@ -200,6 +200,31 @@ const PROVIDER: ProviderConfig = {
   enabled: true,
 };
 
+describe('原版核心选项对齐', () => {
+  it('保留基础系统提示，追加中文约定和工作区说明，额外插件不丢失', async () => {
+    const sdk = installFakeQuery([assistant('完成'), result()]);
+    const { done } = runOnce('任务', { systemPrompt: '中文交流', workspaceInstructions: '项目约定', extraPluginPaths: ['/tmp/project-plugin'], effort: 'max' });
+    await done;
+    expect(sdk.options?.systemPrompt).toEqual({ type: 'preset', preset: 'claude_code', append: '项目约定\n\n中文交流' });
+    expect(sdk.options?.plugins).toEqual([{ type: 'local', path: '/tmp/skills-plugin' }, { type: 'local', path: '/tmp/project-plugin' }]);
+    expect(sdk.options?.thinking).toEqual({ type: 'enabled', display: 'summarized' });
+    expect(sdk.options?.effort).toBe('max');
+  });
+  it('启动检查发现必需技能缺失时，不发送用户任务并关闭SDK', async () => {
+    let closed = false;
+    let prompt: SessionInputQueue | undefined;
+    h.queryImpl = args => {
+      prompt = args.prompt as SessionInputQueue;
+      return { supportedCommands: async () => [], close: () => { closed = true; } };
+    };
+    const { events, done } = runOnce('/mma-paper 写论文');
+    await done;
+    expect(closed).toBe(true);
+    expect(prompt?.isClosed).toBe(true);
+    expect(events.some(e => e.type === 'session-error' && e.message.includes('没有把任务降级'))).toBe(true);
+  });
+});
+
 function runOnce(promptText: string, extra: Partial<Parameters<AgentSession['run']>[0]> = {}) {
   const session = new AgentSession('s1');
   const events: StreamEvent[] = [];

@@ -14,6 +14,7 @@ import { IPC, type ContentBlock, type UsageDay, type UsageStats } from '@shared/
 import { getDb } from '../db';
 import { listProviders } from '../store/config';
 import { listSkills } from '../skills';
+import { aggregateCapabilityUsage } from '../agent/usage-stats';
 import { safeWrap } from './index';
 
 /** 本地时区的 YYYY-MM-DD */
@@ -204,6 +205,9 @@ export function registerStatsHandlers(): void {
         .sort((a, b) => b.runs - a.runs || a.name.localeCompare(b.name))
         .slice(0, 20);
 
+      const capabilityUsage = aggregateCapabilityUsage(db.prepare<[], { session_id: string; role: string; blocks: string }>(
+        'SELECT session_id, role, blocks FROM messages ORDER BY created_at',
+      ).all());
       return {
         totalTokens: totals.tokens,
         promptCount,
@@ -218,8 +222,8 @@ export function registerStatsHandlers(): void {
         byProvider,
         byProject,
         byPlugin,
-        skillsExplored: byPlugin.length,
-        skillsUsed: byPlugin.reduce((sum, p) => sum + p.runs, 0),
+        ...capabilityUsage,
+        enabledSkillCount: listSkills().filter(s => s.enabled).length,
         skillCount,
       };
     }, '统计用量'),

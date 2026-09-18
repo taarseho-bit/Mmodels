@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { UsageStats } from '@shared/types';
 import { useApp } from '../../store/app';
-import { tx, txPlural, t } from '../../i18n';
+import { tx, t } from '../../i18n';
 import { Section } from './shared';
 
 function fmtTokens(n: number): string {
@@ -240,13 +240,17 @@ export function ProfileSection(): JSX.Element {
               <span>{dash(topProject?.name)}</span>
             </div>
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">{tx('profile.profileSettingsPanel.skillsExplored')}</span>
+              <span className="muted">涉及的技能种类</span>
               <span>{stats && stats.skillsExplored > 0 ? String(stats.skillsExplored) : '—'}</span>
             </div>
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">{tx('profile.profileSettingsPanel.totalSkillsUsed')}</span>
+              <span className="muted">模型主动调用技能</span>
               <span>{stats && stats.skillsUsed > 0 ? String(stats.skillsUsed) : '—'}</span>
             </div>
+            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">已启用技能</span><span>{stats?.enabledSkillCount ?? '—'} / {stats?.skillCount ?? '—'}</span></div>
+            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">技能入口指令</span><span>{stats?.skillEntryCount ?? '—'}</span></div>
+            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">子智能体调用</span><span>{stats?.agentRuns ?? '—'}</span></div>
+            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">连接器调用</span><span>{stats?.connectorRuns ?? '—'}</span></div>
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <span className="muted">{tx('profile.profileSettingsPanel.totalThreads')}</span>
               <span>{stats ? String(stats.sessionCount) : '—'}</span>
@@ -256,24 +260,25 @@ export function ProfileSection(): JSX.Element {
 
         <div className="col grow" style={{ gap: 10, minWidth: 0 }}>
           <span style={{ fontWeight: 600, fontSize: 14 }}>
-            {tx('profile.profileSettingsPanel.mostUsedPlugins')}
+            常用技能（入口与调用记录）
           </span>
           <div className="panel col" style={{ padding: 14, gap: 10, fontSize: 12.5 }}>
-            {!stats || stats.byPlugin.length === 0 ? (
+            {!stats || !stats.bySkill?.length ? (
               <span className="muted" style={{ fontSize: 12 }}>
                 {tx('profile.profileSettingsPanel.noSkillsYet')}
               </span>
             ) : (
-              stats.byPlugin.map((p) => (
+              stats.bySkill.slice(0, 20).map((p) => (
                 <div key={p.name} className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
                   <span className="truncate">{p.name}</span>
                   <span className="muted" style={{ flexShrink: 0 }}>
-                    {txPlural('profile.profileSettingsPanel.runs', p.runs, { value: p.runs })}
+                    {p.runs} 条记录
                   </span>
                 </div>
               ))
             )}
           </div>
+          <span className="muted" style={{ fontSize: 11 }}>入口表示发起技能任务，调用表示模型加载技能；不等于任务已成功完成。子智能体与连接器单独统计。</span>
         </div>
       </div>
 

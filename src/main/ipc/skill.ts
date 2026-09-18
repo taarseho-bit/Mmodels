@@ -11,7 +11,11 @@ import {
   deleteSkill,
 } from '../skills';
 import { invalidateSkillsPluginCache } from '../agent/skills-plugin';
-import { safeWrap, type IpcContext } from './index';
+import { safeWrap, pushToRenderer, type IpcContext } from './index';
+import { getCapabilities } from '../agent/capabilities';
+import { getSettings, updateSettings } from '../store/config';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 /**
  * 技能增删/启停后要让下次会话重新物化插件目录。
@@ -22,6 +26,20 @@ function afterSkillsChanged(): void {
 }
 
 export function registerSkillHandlers(ctx: IpcContext): void {
+  ipcMain.handle(IPC.SKILL_RUNTIME, safeWrap((_e, sessionId?: string) => getCapabilities(sessionId), '读取实际可用能力'));
+  ipcMain.handle(IPC.PLUGIN_ADD, safeWrap(async () => {
+    const result = await dialog.showOpenDialog({ title: '选择本地插件目录（包含 .claude-plugin/plugin.json）', properties: ['openDirectory'] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const path = result.filePaths[0];
+    try {
+      const manifest = JSON.parse(readFileSync(join(path, '.claude-plugin', 'plugin.json'), 'utf8'));
+      if (typeof manifest.name !== 'string' || !manifest.name.trim()) throw new Error();
+    } catch { throw new Error('该目录没有有效的插件清单，请选择插件根目录'); }
+    const plugins = getSettings().localPlugins ?? [];
+    const updated = updateSettings({ localPlugins: [...plugins.filter(p => p.path !== path), { path, enabled: true }] });
+    pushToRenderer(IPC.SETTINGS_CHANGED, updated);
+    return updated;
+  }, '启用本地插件'));
   ipcMain.handle(
     IPC.SKILL_LIST,
     safeWrap(() => listSkills(), '读取技能列表'),

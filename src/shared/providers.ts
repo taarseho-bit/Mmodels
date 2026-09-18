@@ -38,7 +38,7 @@ export const PRESET_PROVIDERS: PresetProvider[] = [
     name: 'DeepSeek',
     apiFormat: 'openai',
     baseUrl: 'https://api.deepseek.com/v1',
-    defaultModel: 'deepseek-chat',
+    defaultModel: 'deepseek-flash',
     docsUrl: 'https://platform.deepseek.com',
     note: '⚠️ V4 系列默认开思考(high)会烧光输出预算导致正文为空，务必在设置里关掉思考',
   },

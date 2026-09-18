@@ -42,7 +42,7 @@ async function testProvider(p: ProviderConfig): Promise<{ ok: boolean; detail: s
     }
 
     // Anthropic 协议：用 messages 端点发一个极小请求
-    const url = `${base}/v1/messages`;
+    const url = `${base.endsWith('/v1') ? base : `${base}/v1`}/messages`;
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'anthropic-version': '2023-06-01',
@@ -62,11 +62,10 @@ async function testProvider(p: ProviderConfig): Promise<{ ok: boolean; detail: s
       }),
       signal: timeout,
     });
-    if (res.ok || res.status === 400) {
-      // 400 通常是模型名不对，但说明地址和密钥是对的
+    if (res.ok) {
       return {
         ok: true,
-        detail: res.ok ? '连接成功' : `连接成功（模型名可能需调整，HTTP ${res.status}）`,
+        detail: '连接成功',
       };
     }
     return { ok: false, detail: `HTTP ${res.status}：${(await res.text().catch(() => '')).slice(0, 200)}` };

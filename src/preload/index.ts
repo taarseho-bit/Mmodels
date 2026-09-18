@@ -296,6 +296,8 @@ const api = {
 
   // ── 技能 ──────────────────────────────────────────────────
   skill: {
+    runtime: (sessionId?: string): Promise<{ sessionId: string; model: string; skills: string[]; tools: string[]; mcpServers: { name: string; status: string }[]; checkedAt: number } | null> => ipcRenderer.invoke(IPC.SKILL_RUNTIME, sessionId),
+    addPlugin: (): Promise<AppSettings | null> => ipcRenderer.invoke(IPC.PLUGIN_ADD),
     list: (): Promise<SkillMeta[]> => ipcRenderer.invoke(IPC.SKILL_LIST),
     toggle: (dirName: string, enabled: boolean): Promise<SkillMeta[]> =>
       ipcRenderer.invoke(IPC.SKILL_TOGGLE, dirName, enabled),

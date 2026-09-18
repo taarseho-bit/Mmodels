@@ -437,6 +437,8 @@ export interface AppSettings {
    * 传给 Agent SDK 的 mcpServers 选项。
    */
   mcpServers?: McpServerConfig[];
+  /** 用户明确启用的本地 Claude Code 插件目录。 */
+  localPlugins?: { path: string; enabled: boolean }[];
   /**
    * 网络代理（对应原版 `settings.proxySection`）。
    * 存在这里而不是渲染层 localStorage —— 因为**主进程要用它**：
@@ -455,6 +457,7 @@ export interface AppSettings {
 /** MCP 服务器配置（与原版条目形状一致） */
 export interface McpServerConfig {
   name: string;
+  enabled?: boolean;
   transport: 'stdio' | 'http';
   command?: string;
   args?: string[];
@@ -610,6 +613,14 @@ export interface UsageStats {
   skillsUsed: number;
   /** 已安装技能数 */
   skillCount: number;
+  enabledSkillCount?: number;
+  skillEntryCount?: number;
+  skillLoadCount?: number;
+  agentRuns?: number;
+  connectorRuns?: number;
+  bySkill?: { name: string; runs: number; sessions: number }[];
+  byAgent?: { name: string; runs: number; sessions: number }[];
+  byConnector?: { name: string; runs: number; sessions: number }[];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -617,6 +628,8 @@ export interface UsageStats {
 // ─────────────────────────────────────────────────────────────
 
 export const IPC = {
+  SKILL_RUNTIME: 'skill:runtime',
+  PLUGIN_ADD: 'plugin:add',
   // 应用
   APP_VERSION: 'app:version',
   APP_OPEN_PATH: 'app:open-path',

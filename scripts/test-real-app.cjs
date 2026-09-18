@@ -349,6 +349,26 @@ async function main() {
   log('');
 
   // ── 3. 真实数据库（better-sqlite3 在打包后能用吗） ──
+  if (process.env.MATHMODEL_TEST_CORE_ONLY === '1') {
+    const core = await cdp.eval(`(async function(){
+      return {
+        runtime: await window.mathmodel.skill.runtime(),
+        addPlugin: typeof window.mathmodel.skill.addPlugin === 'function',
+        stats: await window.mathmodel.stats.get(),
+        settings: !!(await window.mathmodel.settings.get()),
+      };
+    })()`);
+    ok(core.runtime === null, '新资料库的能力记录为空，不伪造已加载');
+    ok(core.addPlugin, '新增本地插件入口已进入实际 preload');
+    ok(Array.isArray(core.stats.bySkill) && Array.isArray(core.stats.byAgent) && Array.isArray(core.stats.byConnector), '技能/子智能体/连接器真实统计通道分开');
+    ok(core.settings, '设置通道可读');
+    log('核心启动检查：' + out.filter(l => l.startsWith('PASS')).length + ' 通过 / ' + fails + ' 失败；未发送模型请求。');
+    await cdp.send('Browser.close', {}, null).catch(() => {});
+    cdp.close();
+    await sleep(1000);
+    if (child.exitCode === null) child.kill();
+    process.exit(fails === 0 ? 0 : 1);
+  }
   const db = await cdp.eval(
     `(async function(){
       try {

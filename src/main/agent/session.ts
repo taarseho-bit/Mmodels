@@ -27,6 +27,8 @@ import type {
   TokenUsage,
 } from '@shared/types';
 import { MODELING_AGENTS } from './modeling-agents';
+import { sdkModel, userMcpOptions, knownContextWindow } from './runtime-options';
+import { recordCapabilities } from './capabilities';
 import { buildChildEnv, buildProviderEnv, resolveClaudeExecutable } from './env';
 import {
   approvalDetailOf,
@@ -103,6 +105,7 @@ export interface RunOptions {
   cwd: string;
   /** 已物化的技能插件目录（省略时自动物化 `<userData>/skills-plugin`） */
   skillsPluginPath?: string;
+  extraPluginPaths?: string[];
   /** 系统提示词 */
   systemPrompt?: string;
   /** 工作区指令（写进 AGENTS.md 的内容） */
@@ -234,6 +237,7 @@ export class AgentSession extends EventEmitter {
   private pendingContextTokens = 0;
   /** 自动压缩发生后允许窗口读数下降一次。 */
   private compactedContextTokens: number | null = null;
+  private modelContextCapacity: number | undefined;
   /** SDK task id 对应的子智能体活动，用于把后续 progress/update 帧补全。 */
   private subagentTasks = new Map<string, AgentActivity>();
   /**
@@ -302,7 +306,7 @@ export class AgentSession extends EventEmitter {
       // 解除 busy，后续探测会递增版本号，迟到的旧结果因此不会覆盖新读数。
       const usage = await query.getContextUsage();
       if (this.contextProbeVersion !== probeVersion) return;
-      const total = Math.max(1, Number(usage.rawMaxTokens || usage.maxTokens || 0));
+      const total = Math.max(1, this.modelContextCapacity ?? Number(usage.rawMaxTokens || usage.maxTokens || 0));
       const sdkUsed = Math.max(0, Number(usage.totalTokens || 0));
       let used = sdkUsed;
 
@@ -345,7 +349,7 @@ export class AgentSession extends EventEmitter {
   private async configureContextWindow(query: QueryHandle): Promise<void> {
     try {
       const initial = await withContextProbeTimeout(query.getContextUsage());
-      const rawMax = Number(initial.rawMaxTokens || initial.maxTokens || 0);
+      const rawMax = this.modelContextCapacity ?? Number(initial.rawMaxTokens || initial.maxTokens || 0);
       const target = Math.floor(rawMax * 0.9);
       await query.applyFlagSettings({
         autoCompactEnabled: true,
@@ -608,6 +612,7 @@ export class AgentSession extends EventEmitter {
       const claudePath = resolveClaudeExecutable();
       const providerEnv = buildProviderEnv(opts.provider, opts.model, opts.bridgeBaseUrl);
       const childEnv = buildChildEnv(providerEnv);
+      this.modelContextCapacity = knownContextWindow(opts.provider, opts.model);
 
       if (opts.debug) {
         console.log('[agent] provider =', opts.provider.name, opts.provider.apiFormat);
@@ -674,11 +679,14 @@ export class AgentSession extends EventEmitter {
         settings: {
           autoCompactEnabled: true,
           precomputeCompactionEnabled: true,
+          ...(this.modelContextCapacity ? { autoCompactWindow: Math.floor(this.modelContextCapacity * 0.9) } : {}),
         },
       };
 
       if (claudePath) options.pathToClaudeCodeExecutable = claudePath;
-      if (opts.model) options.model = opts.model;
+      if (opts.model) options.model = sdkModel(opts.provider, opts.model);
+      // 原版兼容接口不暴露 Anthropic 服务端搜索，改用实际可用的浏览器/网页工具。
+      if (opts.provider.apiFormat === 'openai') options.disallowedTools = ['WebSearch'];
       // SDK 的快速模式属于 settings 层，而不是 query options 顶层字段。
       // 只有调用方确认当前供应商/模型支持时才注入，避免第三方端点收到未知配置。
       if (opts.fastMode === true) {
@@ -688,7 +696,10 @@ export class AgentSession extends EventEmitter {
           fastModePerSessionOptIn: true,
         };
       }
-      if (opts.systemPrompt) options.systemPrompt = opts.systemPrompt;
+      options.systemPrompt = {
+        type: 'preset', preset: 'claude_code',
+        append: [opts.workspaceInstructions, opts.systemPrompt].filter(Boolean).join('\n\n'),
+      };
       if (opts.resumeSessionId) options.resume = opts.resumeSessionId;
       if (opts.multiAgentEnabled) {
         options.agents = MODELING_AGENTS;
@@ -700,19 +711,13 @@ export class AgentSession extends EventEmitter {
       // 用户配置的 MCP 服务器（设置/扩展里的「连接器」，原版 settings.mcpServers 语义）：
       // stdio 型 → SDK stdio server；http 型 → SDK http server。
       // 延迟 import 避免循环依赖（config store 不依赖本模块）。
-      try {
-        const { getSettings } = await import('../store/config');
-        const userMcp = getSettings().mcpServers ?? [];
-        if (userMcp.length) {
-          options.mcpServers = userMcp.map((m) =>
-            m.transport === 'http'
-              ? { type: 'http' as const, name: m.name, url: m.url ?? '', headers: m.headers ?? {} }
-              : { type: 'stdio' as const, name: m.name, command: m.command ?? '', args: m.args ?? [], env: m.env ?? {} },
-          );
-        }
-      } catch {
-        /* 设置读不到就不注入 MCP，会话照常 */
+      const { getSettings } = await import('../store/config');
+      const mcp = userMcpOptions(getSettings().mcpServers ?? []);
+      if (opts.builtinMcpEnabled) {
+        const { buildBuiltinMcp } = await import('./builtin-mcp');
+        Object.assign(mcp, await buildBuiltinMcp(opts));
       }
+      if (Object.keys(mcp).length) options.mcpServers = mcp;
 
       // ── 技能插件 ────────────────────────────────────────────
       // 技能必须作为**完整的 Claude Code 插件**交给 SDK，否则 CLI 不注册斜杠命令，
@@ -734,19 +739,17 @@ export class AgentSession extends EventEmitter {
           try {
             skillsPluginDir = materializeSkillsPlugin();
           } catch (err) {
-            console.warn(
-              '[agent] 技能插件物化失败，本次会话没有斜杠命令：',
-              err instanceof Error ? err.message : err,
-            );
+            throw new Error(`技能库未能加载，请到扩展页检查后重试：${err instanceof Error ? err.message : String(err)}`);
           }
         }
       }
       if (skillsPluginDir) {
-        options.plugins = [{ type: 'local' as const, path: skillsPluginDir }];
+        options.plugins = [...new Set([skillsPluginDir, ...(opts.extraPluginPaths ?? [])])]
+          .map(path => ({ type: 'local' as const, path }));
       }
 
       if (opts.effort) options.effort = opts.effort;
-      if (opts.disableThinking) options.thinking = { type: 'disabled' };
+      options.thinking = opts.disableThinking ? { type: 'disabled' } : { type: 'enabled', display: 'summarized' };
 
       // ── 消费事件流 ────────────────────────────────────────
       /**
@@ -767,10 +770,20 @@ export class AgentSession extends EventEmitter {
        */
       const input = new SessionInputQueue();
       this.activeInput = input;
-      input.push(opts.prompt);
 
       const stream = query({ prompt: input, options });
       this.activeQuery = stream;
+      if (typeof stream.supportedCommands === 'function') {
+        const commands = await stream.supportedCommands();
+        const names = commands.map(c => c.name);
+        recordCapabilities({ sessionId: this.sessionId, model: opts.model, skills: names, tools: [], mcpServers: [], checkedAt: Date.now() });
+        const requested = /^\s*\/([\w-]+(?::[\w-]+)?)(?=\s|$)/.exec(opts.prompt)?.[1];
+        if (requested && !names.some(n => n === requested || n.endsWith(`:${requested}`))) {
+          throw new Error(`本轮未能加载 ${requested} 技能，请到扩展页启用或修复后重试；没有把任务降级为普通聊天`);
+        }
+      }
+      if (controller.signal.aborted) { input.close(); stream.close(); return; }
+      input.push(opts.prompt);
       let contextConfigured = false;
 
       // abort 时立刻关队列：让 SDK 的 `streamInput()` 走完 `for await`，CLI 干净退出
@@ -832,6 +845,10 @@ export class AgentSession extends EventEmitter {
       this.emitEvent({ type: 'session-end', sessionId: this.sessionId, reason: 'error' });
     } finally {
       this.running = false;
+      this.activeInput?.close();
+      this.activeQuery?.close();
+      this.activeInput = null;
+      this.activeQuery = null;
       this.abortController = null;
     }
   }
@@ -852,6 +869,9 @@ export class AgentSession extends EventEmitter {
     switch (m.type) {
       case 'system': {
         if (m.subtype === 'init' && typeof m.session_id === 'string') {
+          recordCapabilities({ sessionId: this.sessionId, model: String(m.model ?? ''),
+            skills: Array.isArray(m.skills) ? m.skills : [], tools: Array.isArray(m.tools) ? m.tools : [],
+            mcpServers: Array.isArray(m.mcp_servers) ? m.mcp_servers : [], checkedAt: Date.now() });
           this.emit('sdk-session', m.session_id as string);
           if (m.model) this.emit('model', m.model as string);
           return;

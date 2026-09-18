@@ -14,8 +14,7 @@
  * ── 覆盖范围（刻意保守）─────────────────────────────────────
  * 支持：system / user / assistant 消息、多模态文本、tool_use / tool_result、
  *      流式 SSE 的 text_delta / input_json_delta / message_delta / message_stop
- * 不支持：image 输入（转 base64 传）、Anthropic 的 extended thinking 回传
- *       —— 遇到时如实报错，不静默降级
+ * 支持图片与推理回传。无法转换的内容须明确报错，不能静默丢弃。
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -39,14 +38,20 @@ export interface AnthropicToolUseBlock {
 export interface AnthropicToolResultBlock {
   type: 'tool_result';
   tool_use_id: string;
-  content?: string | AnthropicTextBlock[];
+  content?: string | Array<AnthropicTextBlock | AnthropicImageBlock>;
   is_error?: boolean;
 }
+
+export interface AnthropicImageBlock {
+  type: 'image';
+  source: { type: 'base64'; media_type: string; data: string } | { type: 'url'; url: string };
+}
+export interface AnthropicThinkingBlock { type: 'thinking'; thinking: string; signature?: string }
 
 export type AnthropicContentBlock =
   | AnthropicTextBlock
   | AnthropicToolUseBlock
-  | AnthropicToolResultBlock;
+  | AnthropicToolResultBlock | AnthropicImageBlock | AnthropicThinkingBlock;
 
 export interface AnthropicMessage {
   role: 'user' | 'assistant';
@@ -70,6 +75,8 @@ export interface AnthropicRequest {
   top_p?: number;
   stream?: boolean;
   stop_sequences?: string[];
+  thinking?: { type: string };
+  output_config?: { effort?: string };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -84,7 +91,8 @@ export interface OpenAIToolCall {
 
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  content: string | null | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+  reasoning_content?: string;
   tool_calls?: OpenAIToolCall[];
   tool_call_id?: string;
 }
@@ -99,6 +107,19 @@ export interface OpenAIRequest {
   top_p?: number;
   stream?: boolean;
   stop?: string[];
+  stream_options?: { include_usage: boolean };
+  thinking?: { type: string };
+  reasoning_effort?: string;
+}
+
+function multimodal(blocks: Array<AnthropicTextBlock | AnthropicImageBlock>): OpenAIMessage['content'] {
+  const parts = blocks.map(b => {
+    if (b.type === 'text') return { type: 'text', text: b.text };
+    if (b.type === 'image') return { type: 'image_url', image_url: { url: b.source.type === 'url'
+      ? b.source.url : `data:${b.source.media_type};base64,${b.source.data}` } };
+    throw new Error('当前接口不能传递这种附件，请换用支持该格式的接口');
+  });
+  return parts.some(p => p.type === 'image_url') ? parts : parts.map(p => p.text).join('\n');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -120,10 +141,13 @@ function convertAssistantMessage(msg: AnthropicMessage): OpenAIMessage[] {
   const texts: string[] = [];
   const toolCalls: OpenAIToolCall[] = [];
   const toolResults: OpenAIMessage[] = [];
+  const thoughts: string[] = [];
 
   for (const block of msg.content) {
     if (block.type === 'text') {
       texts.push(block.text);
+    } else if (block.type === 'thinking') {
+      thoughts.push(block.thinking);
     } else if (block.type === 'tool_use') {
       toolCalls.push({
         id: block.id,
@@ -138,20 +162,21 @@ function convertAssistantMessage(msg: AnthropicMessage): OpenAIMessage[] {
       const content =
         typeof block.content === 'string'
           ? block.content
-          : (block.content ?? []).map((b) => b.text).join('\n');
+          : multimodal(block.content ?? []);
       toolResults.push({
         role: 'tool',
         tool_call_id: block.tool_use_id,
         content,
       });
-    }
+    } else throw new Error(`当前接口不能传递助手返回的 ${block.type} 内容，不能忽略后继续`);
   }
 
   const out: OpenAIMessage[] = [];
-  if (texts.length > 0 || toolCalls.length > 0) {
+  if (texts.length > 0 || toolCalls.length > 0 || thoughts.length > 0) {
     out.push({
       role: 'assistant',
       content: texts.length > 0 ? texts.join('\n') : null,
+      ...(thoughts.length ? { reasoning_content: thoughts.join('') } : {}),
       ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
     });
   }
@@ -165,25 +190,25 @@ function convertUserMessage(msg: AnthropicMessage): OpenAIMessage[] {
     return [{ role: 'user', content: msg.content }];
   }
 
-  const texts: string[] = [];
+  const parts: Array<AnthropicTextBlock | AnthropicImageBlock> = [];
   const toolResults: OpenAIMessage[] = [];
 
   for (const block of msg.content) {
-    if (block.type === 'text') {
-      texts.push(block.text);
+    if (block.type === 'text' || block.type === 'image') {
+      parts.push(block);
     } else if (block.type === 'tool_result') {
       const content =
         typeof block.content === 'string'
           ? block.content
-          : (block.content ?? []).map((b) => b.text).join('\n');
+          : multimodal(block.content ?? []);
       toolResults.push({ role: 'tool', tool_call_id: block.tool_use_id, content });
-    }
+    } else throw new Error(`当前接口不支持 ${block.type} 内容，不能忽略后继续`);
   }
 
   const out: OpenAIMessage[] = [];
   // tool 消息必须紧跟要回应的 assistant 消息，所以先发
   out.push(...toolResults);
-  if (texts.length > 0) out.push({ role: 'user', content: texts.join('\n') });
+  if (parts.length > 0) out.push({ role: 'user', content: multimodal(parts) });
   // 两者都空时要保证至少有一条，否则部分厂商会 400
   if (out.length === 0) out.push({ role: 'user', content: '' });
   return out;
@@ -206,8 +231,9 @@ export function anthropicToOpenAIRequest(req: AnthropicRequest): OpenAIRequest {
   const openai: OpenAIRequest = {
     model: req.model,
     messages,
-    stream: req.stream !== false,
+    stream: req.stream === true,
   };
+  if (openai.stream) openai.stream_options = { include_usage: true };
 
   if (req.max_tokens != null) openai.max_tokens = req.max_tokens;
   if (req.temperature != null) openai.temperature = req.temperature;
@@ -227,6 +253,7 @@ export function anthropicToOpenAIRequest(req: AnthropicRequest): OpenAIRequest {
 
   if (req.tool_choice) {
     if (req.tool_choice.type === 'auto') openai.tool_choice = 'auto';
+    else if (req.tool_choice.type === 'none') openai.tool_choice = 'none';
     else if (req.tool_choice.type === 'any') openai.tool_choice = 'required';
     else if (req.tool_choice.type === 'tool' && req.tool_choice.name) {
       openai.tool_choice = { type: 'function', function: { name: req.tool_choice.name } };
@@ -244,7 +271,7 @@ export interface OpenAIResponse {
   id?: string;
   model?: string;
   choices?: Array<{
-    message?: { role?: string; content?: string | null; tool_calls?: OpenAIToolCall[] };
+    message?: { role?: string; content?: string | null; reasoning_content?: string; tool_calls?: OpenAIToolCall[] };
     finish_reason?: string;
   }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
@@ -269,6 +296,7 @@ export function openAIToAnthropicResponse(res: OpenAIResponse): unknown {
   const choice = res.choices?.[0];
   const msg = choice?.message;
   const content: unknown[] = [];
+  if (msg?.reasoning_content) content.push({ type: 'thinking', thinking: msg.reasoning_content, signature: '' });
 
   if (msg?.content) content.push({ type: 'text', text: msg.content });
 
@@ -278,7 +306,7 @@ export function openAIToAnthropicResponse(res: OpenAIResponse): unknown {
       input = tc.function.arguments ? JSON.parse(tc.function.arguments) : {};
     } catch {
       // 参数不是合法 JSON 时，包一层，别丢信息
-      input = { __raw: tc.function.arguments };
+      throw new Error('工具参数不完整，请重试这一轮');
     }
     content.push({ type: 'tool_use', id: tc.id, name: tc.function.name, input });
   }
@@ -307,7 +335,7 @@ export function openAIToAnthropicResponse(res: OpenAIResponse): unknown {
 
 interface OpenAIStreamChunk {
   choices?: Array<{
-    delta?: { content?: string | null; tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> };
+    delta?: { content?: string | null; reasoning_content?: string; tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> };
     finish_reason?: string | null;
   }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -327,7 +355,9 @@ export class AnthropicStreamEncoder {
   private textIndex = -1;
   private nextIndex = 0;
   private textOpen = false;
-  private openToolBlocks = new Map<number, { anthropicIndex: number; id: string; name: string }>();
+  private thinkingIndex = -1;
+  private thinkingOpen = false;
+  private openToolBlocks = new Map<number, { id: string; name: string; arguments: string }>();
   private started = false;
   private inputTokens = 0;
   private outputTokens = 0;
@@ -376,6 +406,17 @@ export class AnthropicStreamEncoder {
 
     const delta = choice.delta;
 
+    if (delta?.reasoning_content) {
+      if (!this.thinkingOpen) {
+        out += this.closeText();
+        this.thinkingIndex = this.nextIndex++;
+        this.thinkingOpen = true;
+        out += this.ev('content_block_start', { type: 'content_block_start', index: this.thinkingIndex, content_block: { type: 'thinking', thinking: '' } });
+      }
+      out += this.ev('content_block_delta', { type: 'content_block_delta', index: this.thinkingIndex, delta: { type: 'thinking_delta', thinking: delta.reasoning_content } });
+    }
+    if (this.thinkingOpen && (delta?.content || delta?.tool_calls?.length)) out += this.closeThinking();
+
     // 文本增量
     if (delta?.content) {
       if (!this.textOpen) {
@@ -400,26 +441,16 @@ export class AnthropicStreamEncoder {
       let st = this.openToolBlocks.get(tc.index);
       if (!st) {
         out += this.closeText();
-        const anthropicIndex = this.nextIndex++;
         st = {
-          anthropicIndex,
-          id: tc.id ?? `toolu_${Date.now().toString(36)}${tc.index}`,
-          name: tc.function?.name ?? '',
+          id: '',
+          name: '',
+          arguments: '',
         };
         this.openToolBlocks.set(tc.index, st);
-        out += this.ev('content_block_start', {
-          type: 'content_block_start',
-          index: anthropicIndex,
-          content_block: { type: 'tool_use', id: st.id, name: st.name, input: {} },
-        });
       }
-      if (tc.function?.arguments) {
-        out += this.ev('content_block_delta', {
-          type: 'content_block_delta',
-          index: st.anthropicIndex,
-          delta: { type: 'input_json_delta', partial_json: tc.function.arguments },
-        });
-      }
+      if (tc.id) st.id = tc.id;
+      if (tc.function?.name) st.name += tc.function.name;
+      if (tc.function?.arguments) st.arguments += tc.function.arguments;
     }
 
     if (choice.finish_reason) {
@@ -435,18 +466,22 @@ export class AnthropicStreamEncoder {
 
   finish(): string {
     let out = this.ensureStart();
+    out += this.closeThinking();
     out += this.closeText();
-    for (const st of [...this.openToolBlocks.values()].sort(
-      (a, b) => a.anthropicIndex - b.anthropicIndex,
-    )) {
-      out += this.ev('content_block_stop', { type: 'content_block_stop', index: st.anthropicIndex });
+    for (const [, st] of [...this.openToolBlocks].sort((a, b) => a[0] - b[0])) {
+      if (!st.id || !st.name) throw new Error('工具调用信息不完整，请重试这一轮');
+      JSON.parse(st.arguments || '{}');
+      const index = this.nextIndex++;
+      out += this.ev('content_block_start', { type: 'content_block_start', index, content_block: { type: 'tool_use', id: st.id, name: st.name, input: {} } });
+      out += this.ev('content_block_delta', { type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: st.arguments || '{}' } });
+      out += this.ev('content_block_stop', { type: 'content_block_stop', index });
     }
     this.openToolBlocks.clear();
 
     out += this.ev('message_delta', {
       type: 'message_delta',
       delta: { stop_reason: this.stopReason ?? 'end_turn', stop_sequence: null },
-      usage: { output_tokens: this.outputTokens },
+      usage: { input_tokens: this.inputTokens, output_tokens: this.outputTokens },
     });
     out += this.ev('message_stop', { type: 'message_stop' });
     return out;
@@ -455,10 +490,18 @@ export class AnthropicStreamEncoder {
   /** 出错时也要发一个合法的 message_stop，否则 SDK 会挂住 */
   fail(message: string): string {
     let out = this.ensureStart();
+    out += this.closeThinking();
     out += this.closeText();
     out += this.ev('error', { type: 'error', error: { type: 'api_error', message } });
     out += this.ev('message_stop', { type: 'message_stop' });
     return out;
+  }
+
+  private closeThinking(): string {
+    if (!this.thinkingOpen) return '';
+    this.thinkingOpen = false;
+    return this.ev('content_block_delta', { type: 'content_block_delta', index: this.thinkingIndex, delta: { type: 'signature_delta', signature: '' } })
+      + this.ev('content_block_stop', { type: 'content_block_stop', index: this.thinkingIndex });
   }
 }
 
@@ -470,8 +513,10 @@ export interface BridgeOptions {
   /** 目标 OpenAI 兼容端点，如 https://api.deepseek.com/v1 */
   openaiBaseUrl: string;
   apiKey: string;
-  /** 只允许这一个模型通过（避免 claude 乱传模型名） */
+  /** 本轮用户实际选择的模型；不能固定成供应商列表首项。 */
   forceModel?: string;
+  effort?: string;
+  disableThinking?: boolean;
   /** 调试日志 */
   debug?: boolean;
 }
@@ -483,6 +528,7 @@ async function readBody(req: IncomingMessage): Promise<string> {
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
+  if (res.destroyed || res.writableEnded) return;
   const text = JSON.stringify(body);
   res.writeHead(status, {
     'content-type': 'application/json',
@@ -493,22 +539,30 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 
 export function createAnthropicBridgeHandler(opts: BridgeOptions) {
   return async function handle(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
-    const url = req.url ?? '';
-    // 只接管 messages 与 count_tokens，其余放行
-    const isMessages = url.includes('/v1/messages');
-    if (!isMessages || req.method !== 'POST') return false;
+    const url = new URL(req.url ?? '/', 'http://localhost').pathname;
+    if (!['/v1/messages', '/v1/messages/count_tokens'].includes(url) || req.method !== 'POST') return false;
+    if (url.endsWith('/count_tokens')) {
+      sendJson(res, 501, { type: 'error', error: { type: 'not_found_error', message: '兼容接口不提供精确计数，请使用实际用量或本地估算' } });
+      return true;
+    }
+    const controller = new AbortController();
+    const cancel = (): void => { if (!res.writableEnded) controller.abort(); };
+    req.once('aborted', cancel);
+    res.once('close', cancel);
+    try {
 
     let body: AnthropicRequest;
     try {
       body = JSON.parse(await readBody(req)) as AnthropicRequest;
     } catch {
-      sendJson(res, 400, { type: 'error', error: { type: 'invalid_request_error', message: 'invalid json' } });
+      sendJson(res, 400, { type: 'error', error: { type: 'invalid_request_error', message: '请求内容格式不完整，请重新发送' } });
       return true;
     }
 
     if (opts.forceModel) body.model = opts.forceModel;
     const openaiReq = anthropicToOpenAIRequest(body);
     if (opts.forceModel) openaiReq.model = opts.forceModel;
+    applyReasoning(openaiReq, body, opts);
 
     const upstream = `${opts.openaiBaseUrl.replace(/\/+$/, '')}/chat/completions`;
     if (opts.debug) console.log('[bridge] →', upstream, openaiReq.model);
@@ -522,18 +576,18 @@ export function createAnthropicBridgeHandler(opts: BridgeOptions) {
           authorization: `Bearer ${opts.apiKey}`,
         },
         body: JSON.stringify(openaiReq),
+        signal: controller.signal,
       });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      sendJson(res, 502, { type: 'error', error: { type: 'api_error', message: `upstream unreachable: ${msg}` } });
+    } catch {
+      if (!controller.signal.aborted) sendJson(res, 502, { type: 'error', error: { type: 'api_error', message: '暂时未能连接模型服务，请检查网络或稍后重试' } });
       return true;
     }
 
     if (!upstreamRes.ok) {
-      const detail = await upstreamRes.text().catch(() => '');
+      await upstreamRes.body?.cancel();
       sendJson(res, upstreamRes.status, {
         type: 'error',
-        error: { type: 'api_error', message: `upstream ${upstreamRes.status}: ${detail.slice(0, 500)}` },
+        error: { type: 'api_error', message: `模型服务暂未完成请求（${upstreamRes.status}），请检查模型配置或稍后重试` },
       });
       return true;
     }
@@ -555,46 +609,68 @@ export function createAnthropicBridgeHandler(opts: BridgeOptions) {
     const encoder = new AnthropicStreamEncoder(openaiReq.model);
     const reader = upstreamRes.body?.getReader();
     if (!reader) {
-      res.end(encoder.fail('upstream returned no body'));
+      res.end(encoder.fail('模型服务没有返回内容，请稍后重试'));
       return true;
     }
 
     const decoder = new TextDecoder();
     let buffer = '';
+    let streamDone = false;
     try {
-      for (;;) {
+      while (!streamDone && !controller.signal.aborted) {
         const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+        if (done && buffer.trim()) buffer += '\n\n';
 
         // SSE 以空行分帧
-        let sep: number;
-        while ((sep = buffer.indexOf('\n\n')) !== -1) {
-          const frame = buffer.slice(0, sep);
-          buffer = buffer.slice(sep + 2);
+        let separator: RegExpExecArray | null;
+        while ((separator = /\r?\n\r?\n/.exec(buffer))) {
+          const frame = buffer.slice(0, separator.index);
+          buffer = buffer.slice(separator.index + separator[0].length);
 
           for (const line of frame.split('\n')) {
             if (!line.startsWith('data:')) continue;
             const payload = line.slice(5).trim();
-            if (!payload || payload === '[DONE]') continue;
-            try {
-              const chunk = JSON.parse(payload) as OpenAIStreamChunk;
-              const out = encoder.handleChunk(chunk);
-              if (out) res.write(out);
-            } catch {
-              // 单个分片解析失败不该中断整条流
-              if (opts.debug) console.warn('[bridge] bad chunk', payload.slice(0, 200));
-            }
+            if (!payload) continue;
+            if (payload === '[DONE]') { streamDone = true; break; }
+            const chunk = JSON.parse(payload) as OpenAIStreamChunk & { error?: { message?: string } };
+            if (chunk.error) throw new Error(chunk.error.message ?? '模型服务未能完成本轮请求');
+            const out = encoder.handleChunk(chunk);
+            if (out) res.write(out);
           }
+          if (streamDone) break;
         }
+        if (done) break;
       }
-      res.write(encoder.finish());
+      if (!controller.signal.aborted) res.write(encoder.finish());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      res.write(encoder.fail(msg));
+      if (!controller.signal.aborted && !res.destroyed) res.write(encoder.fail(msg));
     } finally {
+      await reader.cancel().catch(() => undefined);
       res.end();
     }
     return true;
+    } catch (error) {
+      if (!controller.signal.aborted && !res.destroyed) {
+        if (!res.headersSent) sendJson(res, 400, { type: 'error', error: { type: 'invalid_request_error', message: error instanceof Error ? error.message : '本轮请求未能完成，请重试' } });
+        else res.end();
+      }
+      return true;
+    } finally {
+      req.off('aborted', cancel);
+      res.off('close', cancel);
+    }
   };
+}
+
+/** Endpoint-aware effort mapping; DeepSeek documents low/high/max, not five distinct levels. */
+export function applyReasoning(out: OpenAIRequest, req: AnthropicRequest, opts: BridgeOptions): void {
+  const deepseek = /^deepseek[-/]/i.test(out.model) || new URL(opts.openaiBaseUrl).hostname === 'api.deepseek.com';
+  const effort = opts.effort ?? req.output_config?.effort;
+  const disabled = opts.disableThinking ?? (req.thinking?.type === 'disabled');
+  if (deepseek) {
+    out.thinking = { type: disabled ? 'disabled' : 'enabled' };
+    if (!disabled && effort) out.reasoning_effort = effort === 'low' ? 'low' : ['max', 'xhigh'].includes(effort) ? 'max' : 'high';
+  } else if (effort && !disabled) out.reasoning_effort = effort === 'max' ? 'xhigh' : effort;
 }

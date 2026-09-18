@@ -209,7 +209,7 @@ async function executeAutomation(a: AutomationRecord): Promise<void> {
     // ⚠️ 这里不能直接 await sessionRunner.run() —— 因为 send 的实现在 ipc/session.ts
     //    里。为了避免循环依赖，我们在这里直接调 runner。
     const { sessionRegistry } = await import('./session');
-    const { currentProjectRoot } = await import('./file');
+    const { getProject } = await import('./project');
     const runner = sessionRegistry.get(session.id);
 
     const providerId = session.providerId || null;
@@ -218,14 +218,22 @@ async function executeAutomation(a: AutomationRecord): Promise<void> {
     if (!provider) throw new Error('未配置模型供应商，自动化任务无法执行');
 
     const { bridgeRegistry } = await import('../agent/bridge-registry');
-    const bridgeBaseUrl = await bridgeRegistry.ensureFor(provider);
+    const selectedModel = session.model || getSettings().defaultModel || provider.models?.[0] || '';
+    const bridgeBaseUrl = await bridgeRegistry.ensureFor(provider, { model: selectedModel, effort: getSettings().effort ?? undefined, disableThinking: getSettings().disableThinking });
+    const project = getProject(a.projectId);
+    if (!project) throw new Error('定时任务所属项目不存在');
+    const { extraPlugins, workspaceInstructions } = await import('../agent/project-plugins');
+    const { buildSystemPrompt } = await import('./session');
 
     await runner.run({
       sessionId: session.id,
       prompt: a.prompt,
       provider,
-      model: session.model || getSettings().defaultModel || provider.models?.[0] || '',
-      cwd: currentProjectRoot(),
+      model: selectedModel,
+      cwd: project.root,
+      extraPluginPaths: extraPlugins(project.root, getSettings()),
+      workspaceInstructions: workspaceInstructions(project.root),
+      systemPrompt: buildSystemPrompt(project.root),
       // 技能插件由 session.ts 自动物化挂载（<userData>/skills-plugin），这里不用管
       builtinMcpEnabled: getSettings().builtinMcpEnabled,
       effort: getSettings().effort ?? undefined,

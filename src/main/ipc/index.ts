@@ -32,6 +32,8 @@ import { registerAlgorithmHandlers } from './algorithms';
 import { registerCollabHandlers } from './collab';
 import { registerNetworkHandlers } from './network';
 import { registerPetHandlers } from './pet';
+import { closeAgentBrowsers } from '../agent/browser-tools';
+import { bridgeRegistry } from '../agent/bridge-registry';
 
 export interface IpcContext {
   getServerInfo: () => ServerInfo | null;
@@ -96,6 +98,8 @@ export function registerIpcHandlers(ctx: IpcContext): void {
 export function shutdownIpcRuntimes(): void {
   sessionRegistry.disposeAll();
   killAllTerms();
+  closeAgentBrowsers();
+  void bridgeRegistry.stop();
 }
 
 /** 向渲染层推送事件（主窗口） */
