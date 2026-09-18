@@ -30,8 +30,15 @@ import { NotifySection } from '../components/settings/NotifySection';
 import { BotsSection } from '../components/settings/BotsSection';
 import { TourSection } from '../components/settings/TourSection';
 import { AboutSection } from '../components/settings/AboutSection';
+import { GalleryPage } from './GalleryPage';
+import { CompetitionsPage } from './CompetitionsPage';
+import { DatabasePage } from './DatabasePage';
+import { AutomationPage } from './AutomationPage';
+import { ExtensionsPage } from './ExtensionsPage';
+import type { Route } from '../App';
 
 type SectionId =
+  | 'gallery' | 'competitions' | 'datasets' | 'automation' | 'extensions'
   | 'profile'
   | 'paper'
   | 'chat'
@@ -51,6 +58,8 @@ export function SettingsPage({
   onBack,
   onOpenAutomations,
   requestedSection,
+  requestedExtensionTab,
+  onNavigate,
 }: {
   /** 「返回应用」——回到对话页 */
   onBack: () => void;
@@ -58,6 +67,8 @@ export function SettingsPage({
   onOpenAutomations: () => void;
   /** 外部请求打开设置页时指定的分区（见 lib/settings-nav.ts）；null = 用默认分区 */
   requestedSection?: string | null;
+  requestedExtensionTab?: string | null;
+  onNavigate: (route: Route) => void;
 }): JSX.Element {
   const settings = useApp((s) => s.settings);
 
@@ -81,6 +92,11 @@ export function SettingsPage({
    * 顺序即原版侧栏顺序（个人资料 → 关于）。
    */
   const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
+    { id: 'gallery', label: '科研绘图', icon: 'chart-column' },
+    { id: 'competitions', label: '竞赛日历', icon: 'calendar-days' },
+    { id: 'datasets', label: '数据集', icon: 'database' },
+    { id: 'automation', label: '自动化', icon: 'clock' },
+    { id: 'extensions', label: '扩展 · 技能与模板', icon: 'blocks' },
     { id: 'profile', label: tx('settings.settingsPage.nav.profile'), icon: 'user' },
     { id: 'paper', label: tx('settings.settingsPage.nav.paperCompetition'), icon: 'file-text' },
     { id: 'chat', label: tx('settings.settingsPage.nav.conversation'), icon: 'message-square' },
@@ -128,7 +144,7 @@ export function SettingsPage({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="settings-group-label">{settings.profileName ?? 'MModels'}</div>
+        <div className="settings-group-label">工具与偏好 · {settings.profileName ?? 'MModels'}</div>
         <nav className="settings-nav">
           {visible.map((s) => (
             <button
@@ -151,8 +167,13 @@ export function SettingsPage({
         <div className="page-head">
           <span className="page-title">{SECTIONS.find((s) => s.id === section)?.label ?? t('设置')}</span>
         </div>
-        <div className="page-scroll">
-          <div className="settings-content">
+        <div className={`page-scroll${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-scroll' : ''}`}>
+          <div className={`settings-content${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-content' : ''}`}>
+            {section === 'gallery' && <GalleryPage />}
+            {section === 'competitions' && <CompetitionsPage />}
+            {section === 'datasets' && <DatabasePage />}
+            {section === 'automation' && <AutomationPage />}
+            {section === 'extensions' && <ExtensionsPage requestedTab={requestedExtensionTab} onNavigate={onNavigate} />}
             {section === 'profile' && <ProfileSection />}
             {section === 'paper' && <PaperSection />}
             {section === 'chat' && <ChatSection />}

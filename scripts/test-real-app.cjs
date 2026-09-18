@@ -180,6 +180,7 @@ async function main() {
   const child = spawn(
     APP,
     [
+      ...(process.env.MATHMODEL_TEST_ENTRY ? [process.env.MATHMODEL_TEST_ENTRY] : []),
       '--remote-debugging-port=' + PORT,
       '--user-data-dir=' + USER_DATA,
       '--disable-gpu',
@@ -350,6 +351,65 @@ async function main() {
 
   // ── 3. 真实数据库（better-sqlite3 在打包后能用吗） ──
   if (process.env.MATHMODEL_TEST_CORE_ONLY === '1') {
+    if (process.env.MATHMODEL_TEST_STUDIO_UI === '1') {
+      const route = async name => { await cdp.eval(`window.dispatchEvent(new CustomEvent('mm:open-route',{detail:{route:${JSON.stringify(name)}}}))`); await sleep(450); };
+      const shot = async name => {
+        await sleep(350);
+        await cdp.eval('document.querySelector(".studio-page")?.scrollTo(0,0)');
+        const img = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+        fs.writeFileSync(path.join(ROOT, 'out', 'studio-' + name + '.png'), Buffer.from(img.data, 'base64'));
+      };
+      await route('workbench');
+      ok(await cdp.eval('!!document.querySelector(".studio-workbench")'), '比赛工作台真实挂载');
+      ok(await cdp.eval('document.querySelectorAll(".rail-nav [data-route]").length === 3'), '主导航仅保留工作台、对话、论文库');
+      await cdp.eval('document.documentElement.setAttribute("data-theme","light")');
+      await shot('workbench');
+      log('工作台布局：' + JSON.stringify(await cdp.eval(`(()=>{const h=document.querySelector('.studio-page-heading');const p=document.querySelector('.studio-page');const b=document.querySelector('.studio-savebar .btn-primary');const i=document.querySelector('.studio-card .input');return {heading:h.getBoundingClientRect().toJSON(),scroll:p.scrollTop,buttonBg:getComputedStyle(b).backgroundColor,buttonColor:getComputedStyle(b).color,inputBorder:getComputedStyle(i).borderColor,theme:document.documentElement.dataset.theme};})()`)));
+      const workbench = await cdp.eval(`(async()=>{ const p=await window.mathmodel.project.current();const s=await window.mathmodel.competition.ensureProject(p.id);const d=s.projects.find(v=>v.id===p.id);d.rules='仅用于隔离测试的规则';await window.mathmodel.competition.saveProject(d);return (await window.mathmodel.competition.state()).projects.find(v=>v.id===p.id).rules;})()`);
+        ok(workbench === '仅用于隔离测试的规则', '工作台使用真实主进程保存到当前项目记录');
+        await cdp.eval('document.querySelector(".studio-workbench textarea").focus()');
+        await cdp.send('Input.insertText', { text: '页面切换保留草稿' });
+        await route('papers');
+        await route('workbench');
+        ok(await cdp.eval('document.querySelector(".studio-workbench textarea").value.includes("页面切换保留草稿")'), '切换页面保留未保存草稿，不打断输入');
+        await route('papers');
+      ok(await cdp.eval('document.body.innerText.includes("优秀获奖论文") && document.body.innerText.includes("尚未添加论文")'), '论文库为空时不伪造论文或获奖信息');
+      await shot('papers');
+      await cdp.eval('[...document.querySelectorAll("button")].find(b=>b.textContent.includes("上传优秀论文")).click()');
+        ok(await cdp.eval('!!document.querySelector(".studio-import")'), '单篇/批量上传弹窗可打开');
+        ok(await cdp.eval('!!document.activeElement.closest(".studio-import")'), '上传对话框打开时键盘焦点进入窗口');
+      await shot('upload');
+      await cdp.eval('document.querySelector("[aria-label=关闭上传窗口]").click()');
+      for (const name of ['gallery', 'competitions', 'datasets', 'automation', 'extensions']) {
+        await route(name);
+          const rendered = await cdp.eval('(()=>{const p=document.querySelector(".settings-shell .settings-tool-content");return !!p && p.children.length>0 && p.innerText.trim().length>30 && document.querySelectorAll(".sidebar").length===0;})()');
+          ok(rendered, name + ' 旧入口转到设置内，功能组件实际渲染');
+      }
+      await shot('settings');
+        await route('chat');
+        ok(await cdp.eval('document.querySelectorAll(".starter").length === 3 && !document.body.innerText.includes("2023 华数杯")'), '真题样例移除，保留三个通用任务起点');
+        ok(await cdp.eval('document.querySelectorAll(".topbar-actions button").length === 2 && !document.querySelector(".topbar-new-chat")'), '顶栏仅保留文件与更多，移除重复新任务');
+        await shot('chat');
+        await cdp.eval('document.querySelector("[aria-label=更多任务操作]").click()');
+        ok(await cdp.eval('document.querySelectorAll(".studio-task-menu [role^=menuitem]").length === 8'), '低频功能完整收纳到更多菜单');
+        await shot('task-menu');
+        await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+        ok(await cdp.eval('!document.querySelector(".studio-task-menu") && document.activeElement.getAttribute("aria-label")==="更多任务操作"'), '更多菜单可按 Escape 关闭并恢复焦点');
+        await cdp.eval('document.querySelector("[aria-label=任务选项]").click()');
+        ok(await cdp.eval('document.querySelector(".cz-pop")?.innerText.includes("多智能体协作") && !document.querySelector(".cz-foot").innerText.includes("小模")'), '任务选项保留规划和协作，小模不再挤占输入栏');
+        await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 980, height: 700, deviceScaleFactor: 1, mobile: false });
+        await sleep(200);
+        await shot('chat-compact');
+        ok(await cdp.eval('document.documentElement.scrollWidth <= innerWidth && document.querySelector(".cz-foot").scrollWidth <= document.querySelector(".cz-foot").clientWidth + 1'), '窄窗口没有页面或输入工具栏横向溢出');
+        await cdp.send('Emulation.clearDeviceMetricsOverride');
+        await cdp.eval('document.querySelector("[aria-label=更多任务操作]").click()');
+        await cdp.eval('[...document.querySelectorAll(".studio-task-menu button")].find(b=>b.textContent.includes("运行环境设置")).click()');
+        await sleep(450);
+        ok(await cdp.eval('document.querySelector(".settings-nav-item.active")?.textContent.includes("运行环境")'), '运行环境入口直达设置的正确分区');
+        await cdp.eval('document.documentElement.setAttribute("data-theme","dark")');
+      await route('workbench'); await shot('workbench-dark');
+    }
     const core = await cdp.eval(`(async function(){
       return {
         runtime: await window.mathmodel.skill.runtime(),
@@ -362,7 +422,8 @@ async function main() {
     ok(core.addPlugin, '新增本地插件入口已进入实际 preload');
     ok(Array.isArray(core.stats.bySkill) && Array.isArray(core.stats.byAgent) && Array.isArray(core.stats.byConnector), '技能/子智能体/连接器真实统计通道分开');
     ok(core.settings, '设置通道可读');
-    log('核心启动检查：' + out.filter(l => l.startsWith('PASS')).length + ' 通过 / ' + fails + ' 失败；未发送模型请求。');
+      log('核心启动检查：' + out.filter(l => l.startsWith('PASS')).length + ' 通过 / ' + fails + ' 失败；未发送模型请求。');
+      fs.writeFileSync(LOGFILE, out.join('\n'), 'utf8');
     await cdp.send('Browser.close', {}, null).catch(() => {});
     cdp.close();
     await sleep(1000);
@@ -519,44 +580,42 @@ async function main() {
 
   const agentPetUi = await cdp.eval(
     `(async function(){
-      var buttons = Array.from(document.querySelectorAll('.cz-btn'));
-      var collab = buttons.find(function(el){ return el.textContent.trim() === '协作'; });
-      var petToggle = buttons.find(function(el){ return el.textContent.trim() === '小模'; });
-      var petBefore = document.querySelector('.modeling-pet');
-      var petBody = document.querySelector('.modeling-pet-body');
-      var beforeSettings = await window.mathmodel.settings.get();
-      if (petToggle) petToggle.click();
+      var api = window.mathmodel;
+      var beforeSettings = await api.settings.get();
+      document.querySelector('[aria-label="任务选项"]')?.click();
+      await new Promise(r => setTimeout(r, 50));
+      var collab = [...document.querySelectorAll('.cz-pop-item')].find(el => el.textContent.includes('多智能体协作'));
+      var collabEnabled = collab?.getAttribute('aria-pressed') === 'true';
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      document.querySelector('[aria-label="更多任务操作"]')?.click();
+      await new Promise(r => setTimeout(r, 50));
+      var petToggle = [...document.querySelectorAll('.studio-task-menu button')].find(el => el.textContent.includes('桌面小模'));
+      petToggle?.click();
       var hidden = false;
       for (var i = 0; i < 30; i++) {
-        var hiddenSettings = await window.mathmodel.settings.get();
-        hidden = !document.querySelector('.modeling-pet') && hiddenSettings.modelingPetEnabled === false;
+        hidden = (await api.settings.get()).modelingPetEnabled === false;
         if (hidden) break;
-        await new Promise(function(r){ setTimeout(r, 50); });
+        await new Promise(r => setTimeout(r, 50));
       }
-      var nextButtons = Array.from(document.querySelectorAll('.cz-btn'));
-      var petToggleAfter = nextButtons.find(function(el){ return el.textContent.trim() === '小模'; });
-      if (petToggleAfter) petToggleAfter.click();
+      document.querySelector('[aria-label="更多任务操作"]')?.click();
+      await new Promise(r => setTimeout(r, 50));
+      [...document.querySelectorAll('.studio-task-menu button')].find(el => el.textContent.includes('桌面小模'))?.click();
       var restored = false;
       for (var j = 0; j < 30; j++) {
-        var restoredSettings = await window.mathmodel.settings.get();
-        restored = !!document.querySelector('.modeling-pet') && restoredSettings.modelingPetEnabled === true;
+        restored = (await api.settings.get()).modelingPetEnabled === true;
         if (restored) break;
-        await new Promise(function(r){ setTimeout(r, 50); });
+        await new Promise(r => setTimeout(r, 50));
       }
-      var petAfter = document.querySelector('.modeling-pet');
-      var afterSettings = await window.mathmodel.settings.get();
       return {
-        collab: !!collab && collab.getAttribute('aria-pressed') === 'true',
-        petToggle: !!petToggle,
-        petVisible: !!petBefore && !!petBody && petBefore.getAttribute('data-pet-state') === 'resting',
-        hidden: hidden,
-        restored: restored && !!petAfter && afterSettings.modelingPetEnabled === true,
+        collab: collabEnabled, petToggle: !!petToggle,
+        desktopOnly: !document.querySelector('.modeling-pet'),
+        hidden, restored,
         defaults: beforeSettings.multiAgentEnabled === true && beforeSettings.modelingPetEnabled === true
       };
     })()`,
   );
-  ok(agentPetUi.collab && agentPetUi.defaults, '多智能体协作默认启用且可见');
-  ok(agentPetUi.petToggle && agentPetUi.petVisible, '数学建模伙伴按真实空闲状态显示');
+  ok(agentPetUi.collab && agentPetUi.defaults, '多智能体协作默认启用，可从任务选项访问');
+  ok(agentPetUi.petToggle && agentPetUi.desktopOnly, '小模开关在更多菜单，主界面不重复显示宠物');
   ok(agentPetUi.hidden && agentPetUi.restored, '数学建模伙伴可以关闭并重新打开');
 
   const pageLimitUi = await cdp.eval(

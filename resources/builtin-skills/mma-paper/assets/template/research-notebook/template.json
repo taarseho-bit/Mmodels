@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "name": { "zh-CN": "建模研究稿 · 过程与证据", "en": "Modeling Research Notebook" },
+  "description": { "zh-CN": "用于练习、方案对照与复算记录的通用中文研究稿；不是任何竞赛的官方提交模板。", "en": "Research and reproducibility notes; not an official competition submission template." },
+  "language": "zh-CN", "entryFile": "document.tex", "order": 150, "defaultFor": [], "fields": [], "profileFields": []
+}

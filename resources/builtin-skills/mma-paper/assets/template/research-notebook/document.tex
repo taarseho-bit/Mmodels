@@ -1,0 +1,32 @@
+% MModels 建模研究稿：练习与过程记录，不预设竞赛提交规范。使用 XeLaTeX 编译。
+\documentclass[UTF8,fontset=fandol,12pt,a4paper]{ctexart}
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,graphicx,longtable}
+\usepackage[hidelinks]{hyperref}
+\title{建模研究记录}
+\author{}
+\date{\today}
+\begin{document}
+\maketitle
+\begin{abstract}
+说明问题、使用的方法、已验证的结果和适用边界。正式结果产生前不要填入虚构数值。
+\end{abstract}
+\section{问题与规则}
+记录题目来源、目标、约束、数据范围，以及已核对的当届规则。
+\section{基线与候选方案}
+\begin{longtable}{p{.2\textwidth}p{.28\textwidth}p{.36\textwidth}}
+\toprule 方案 & 评价口径 & 结果与适用边界 \\ \midrule
+待研究 & 待确认 & 未运行 \\ \bottomrule
+\end{longtable}
+\section{模型与求解}
+定义变量、单位、假设和约束，写明求解方法及停止条件。
+\section{验证与敏感性}
+记录目标复算、约束残差、基线对照与不确定性；区分已运行结果和计划实验。
+\section{结论证据索引}
+每项主要结论关联到数据、计算脚本、结果文件和图表。
+\section{局限与下一步}
+说明尚未解决的问题及其对结论的影响。
+\appendix
+\section{复算说明}
+记录环境、运行入口、输入输出和随机种子。按比赛要求决定最终稿是否保留本附录。
+\end{document}

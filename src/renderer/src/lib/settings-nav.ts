@@ -25,6 +25,7 @@ export interface OpenSettingsDetail {
 
 /** 可跳转的页面 —— 与 App.tsx 的 Route 联合保持一致（这里不带运行时依赖，故手写） */
 export type AppRoute =
+  | 'workbench'
   | 'chat'
   | 'gallery'
   | 'papers'

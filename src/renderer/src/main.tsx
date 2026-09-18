@@ -5,6 +5,7 @@ import { DesktopPetWindow } from './components/DesktopPetWindow';
 import './styles/theme.css';
 import './styles/layout.css';
 import './styles/pages.css';
+import './styles/competition-studio.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root 不存在');

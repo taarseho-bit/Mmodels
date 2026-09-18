@@ -129,27 +129,6 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
       offSearch();
     };
   }, []);
-  /** 当前项目有数据文件时才显示「数据集」导航项（对齐原版行为） */
-  const [hasDatasets, setHasDatasets] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!current) {
-      setHasDatasets(false);
-      return;
-    }
-    void (async () => {
-      try {
-        const r = (await window.mathmodel.dataset.list()) as { files: unknown[] };
-        if (!cancelled) setHasDatasets(r.files.length > 0);
-      } catch {
-        if (!cancelled) setHasDatasets(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [current, sessions.length]);
 
   const handleNewChat = (): void => {
     beginNewChat();
@@ -459,12 +438,9 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
       : [];
 
   const navigation: Array<{ icon: string; label: string; route?: Route; onClick?: () => void; id?: string }> = [
-    { icon: 'chart-column', label: tx('shell.sidebar.gallery'), route: 'gallery' },
-    { icon: 'file-text', label: tx('shell.sidebar.papers'), route: 'papers' },
-    { icon: 'calendar-days', label: tx('shell.sidebar.competitions'), route: 'competitions' },
-    ...(hasDatasets ? [{ icon: 'database', label: tx('shell.sidebar.datasets'), route: 'datasets' as Route }] : []),
-    { icon: 'plug', label: tx('shell.sidebar.automation'), route: 'automation' },
-    { icon: 'blocks', label: tx('shell.sidebar.extensions'), route: 'extensions' },
+    { icon: 'chart-column', label: '比赛工作台', route: 'workbench' },
+    { icon: 'message-square', label: '建模对话', route: 'chat' },
+    { icon: 'file-text', label: '优秀获奖论文', route: 'papers' },
   ];
 
   // 会话过滤（搜索框）
@@ -476,6 +452,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
 
   return (
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+      <div className="studio-brand"><span>模</span><div><strong>MModels</strong><small>数学建模 · 写作与求解</small></div></div>
       {/* ── 顶部图标行（原版：收起侧栏 + 搜索，两个图标在导航项上方）── */}
       <div className="rail-top">
         <button
@@ -732,7 +709,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
             <span className="rail-account-name truncate">{settings?.profileName ?? 'MModels'}</span>
             <span className="rail-account-sub">
               <Icon name="shield-check" size={11} />
-              <span className="truncate">{t('永久 VIP · 本地版')}</span>
+              <span className="truncate">{t('本地工作空间')}</span>
             </span>
           </span>
         </button>

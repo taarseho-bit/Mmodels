@@ -10,6 +10,7 @@
  */
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { IPC } from '@shared/types';
+import { COMPETITION_IPC, type CompetitionLibraryApi } from '../shared/competition-studio';
 import type {
   AppSettings,
   AskUserRequest,
@@ -88,7 +89,21 @@ try {
   serverInfo = null;
 }
 
+const competition: CompetitionLibraryApi = {
+  state: () => ipcRenderer.invoke(COMPETITION_IPC.state),
+  ensureProject: id => ipcRenderer.invoke(COMPETITION_IPC.ensureProject, id),
+  saveProject: p => ipcRenderer.invoke(COMPETITION_IPC.saveProject, p),
+  pickPapers: () => ipcRenderer.invoke(COMPETITION_IPC.pickPapers),
+  importPapers: (rows, rights) => ipcRenderer.invoke(COMPETITION_IPC.importPapers, rows, rights),
+  paperNote: (id, notes, favorite) => ipcRenderer.invoke(COMPETITION_IPC.paperNote, id, notes, favorite),
+  openPaper: id => ipcRenderer.invoke(COMPETITION_IPC.openPaper, id),
+  libraryFolder: () => ipcRenderer.invoke(COMPETITION_IPC.libraryFolder),
+  revealLibrary: () => ipcRenderer.invoke(COMPETITION_IPC.revealLibrary),
+  revealProject: id => ipcRenderer.invoke(COMPETITION_IPC.revealProject, id),
+  onState: cb => subscribe(COMPETITION_IPC.changed, cb),
+};
 const api = {
+  competition,
   // ── 本地服务凭据 ──────────────────────────────────────────
   /** 随机端口（0 表示服务未起来） */
   serverPort: serverInfo?.port ?? 0,

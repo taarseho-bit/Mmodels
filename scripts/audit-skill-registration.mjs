@@ -1,7 +1,7 @@
 /** Initialize the real bundled CLI without sending a prompt or using API credentials. */
 import * as sdk from '@anthropic-ai/claude-agent-sdk';
 const { query } = sdk;
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, symlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
 import { tmpdir } from 'node:os';
@@ -20,6 +20,19 @@ const code = ts.transpileModule(readFileSync(resolve('src/main/agent/project-plu
 }).outputText;
 new Function('require', 'module', 'exports', code)(name => name === 'electron' ? { app: { getPath: () => temp } } : require(name), moduleObject, moduleObject.exports);
 const projectPlugin = moduleObject.exports.projectSkillsPlugin(workspace, temp);
+let builtinPlugin = process.argv[2] || 'C:/Users/xh/AppData/Roaming/mmodels-desktop/skills-plugin';
+if (process.argv.includes('--source-skills')) {
+  builtinPlugin = join(temp, 'builtin-plugin');
+  mkdirSync(join(builtinPlugin, '.claude-plugin'), { recursive: true });
+  mkdirSync(join(builtinPlugin, 'skills'));
+  writeFileSync(join(builtinPlugin, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'mathmodel', version: '0.1.0', description: 'Offline source registration audit' }));
+  for (const entry of readdirSync(resolve('resources/builtin-skills'), { withFileTypes: true })) {
+    const source = resolve('resources/builtin-skills', entry.name);
+    if (entry.isDirectory() && existsSync(join(source, 'SKILL.md')) && !existsSync(join(source, '.disabled-by-default'))) {
+      symlinkSync(source, join(builtinPlugin, 'skills', entry.name), process.platform === 'win32' ? 'junction' : 'dir');
+    }
+  }
+}
 // Real SDK servers and schemas; application services are unavailable by design.
 // This checks registration only: no tool handler may read or modify user data.
 function loadRegistrationSource(file) {
@@ -56,7 +69,7 @@ const q = query({
   options: {
     cwd: workspace, env, settingSources: [], abortController,
     pathToClaudeCodeExecutable: resolve('resources/claude-code/claude.exe'),
-    plugins: [{ type: 'local', path: process.argv[2] || 'C:/Users/xh/AppData/Roaming/mmodels-desktop/skills-plugin' }, { type: 'local', path: projectPlugin }],
+    plugins: [{ type: 'local', path: builtinPlugin }, { type: 'local', path: projectPlugin }],
     systemPrompt: { type: 'preset', preset: 'claude_code', append: '离线技能注册检查。没有用户任务，不执行任何工作。' },
     model: 'deepseek-flash[1m]',
     mcpServers,
@@ -67,6 +80,7 @@ try {
   const commands = await q.supportedCommands();
   if (!commands.some(c => c.name.includes('audit-project-fixture'))) throw new Error('项目技能未注册');
   if (!commands.some(c => c.name === 'mathmodel:mma-paper')) throw new Error('论文技能未注册');
+  if (process.argv.includes('--source-skills') && !commands.some(c => c.name === 'mathmodel:competition-audit')) throw new Error('新增比赛核验技能未注册');
   const context = await q.getContextUsage();
   if (!context.isAutoCompactEnabled || context.autoCompactThreshold > 900000) throw new Error('压缩触发线未在真实容量的90%以内');
   let connectors = await q.mcpServerStatus();

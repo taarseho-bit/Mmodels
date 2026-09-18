@@ -23,12 +23,8 @@ import { SidePanel } from './components/SidePanel';
 import { ChatPage } from './pages/ChatPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { SettingsPage } from './pages/SettingsPage';
-import { ExtensionsPage } from './pages/ExtensionsPage';
-import { AutomationPage } from './pages/AutomationPage';
-import { CompetitionsPage } from './pages/CompetitionsPage';
-import { GalleryPage } from './pages/GalleryPage';
+import { WorkbenchPage } from './pages/WorkbenchPage';
 import { PapersPage } from './pages/PapersPage';
-import { DatabasePage } from './pages/DatabasePage';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { GuidedTour } from './components/GuidedTour';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -48,6 +44,7 @@ import { installKeybindings, registerCommand, RULES, APP_COMMANDS } from './keyb
 
 /** 路由 —— 与原版顶栏导航一致（不含账号相关页面） */
 export type Route =
+  | 'workbench'
   | 'chat'
   | 'competitions'
   | 'gallery'
@@ -79,7 +76,13 @@ export function App(): JSX.Element {
   /** 编辑器视图·编辑区里内联打开的文件（原版：文件树选中 → 编辑区） */
   const activeArtifact = useApp((s) => s.activeArtifact);
   const openArtifact = useApp((s) => s.openArtifact);
-  const [route, setRoute] = useState<Route>('chat');
+  const [route, setActualRoute] = useState<Route>('chat');
+  const [settingsSection, setSettingsSection] = useState<string | null>(null);
+  const setRoute = useCallback((next: Route) => {
+    if (['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(next)) {
+      setSettingsSection(next); setActualRoute('settings');
+    } else setActualRoute(next);
+  }, []);
 
   /**
    * 编辑器视图的三栏状态（`original/08-editorview.png`：文件树 | 编辑区 | 对话）。
@@ -147,7 +150,6 @@ export function App(): JSX.Element {
   // ⚠️ 分区必须**存下来**带给 SettingsPage：设置页自己的分区监听是在它 mount
   //    之后才注册的，从设置页**外面**调 openSettings(section) 时事件已经过去了，
   //    没人听 —— 页面会停在默认分区（踩过：教程卡跳「论文与比赛」落到「个人资料」）。
-  const [settingsSection, setSettingsSection] = useState<string | null>(null);
   useEffect(() => {
     return onOpenSettings(({ section }) => {
       setSettingsSection(section ?? null);
@@ -332,7 +334,7 @@ export function App(): JSX.Element {
 
   return (
     <ErrorBoundary key={lang}>
-      <div className={`app-shell${route === 'settings' ? ' no-topbar' : ''}`}>
+      <div className={`app-shell competition-shell${route === 'settings' ? ' no-topbar' : ''}`}>
         {/*
           ⚠️ 设置页是**全屏接管**（原版实机取证：`original/s05-env.txt` 里没有
           新建会话/科研绘图/… 这些应用侧栏项，设置导航从 x≈10 就开始）。
@@ -349,7 +351,7 @@ export function App(): JSX.Element {
             onOpenVersions={() =>
               editorView ? setEditorCol('versions') : setSidePanel('versions')
             }
-            onOpenEnvironment={() => setRoute('settings')}
+            onOpenEnvironment={() => { setSettingsSection('env'); setRoute('settings'); }}
             onOpenShare={() => setShowShare(true)}
             onOpenCollab={() => setShowCollab(true)}
             editorView={editorView}
@@ -571,27 +573,17 @@ export function App(): JSX.Element {
                 </>
               ) : (
                 <div key="stage" className="app-main-stage">
-                  {route === 'competitions' && <CompetitionsPage />}
-                  {route === 'gallery' && <GalleryPage />}
-                  {route === 'datasets' && <DatabasePage />}
+                  {route === 'workbench' && <WorkbenchPage />}
                   {route === 'papers' && <PapersPage />}
                   {route === 'settings' && (
                     <SettingsPage
                       onBack={() => setRoute('chat')}
                       onOpenAutomations={() => setRoute('automation')}
                       requestedSection={settingsSection}
+                      requestedExtensionTab={extensionsSection}
+                      onNavigate={setRoute}
                     />
                   )}
-                  {route === 'extensions' && (
-                    // `onNavigate`：模板 tab 的「使用此模板」要"选中后回到新会话"
-                    // （原版 extensionsHelpDialog.templatesBody），路由在 App 手里，
-                    // 所以把 setRoute 递进去 —— 与 GuidedTour 同一套做法。
-                    <ExtensionsPage
-                      requestedTab={extensionsSection}
-                      onNavigate={(r) => setRoute(r)}
-                    />
-                  )}
-                  {route === 'automation' && <AutomationPage />}
                 </div>
               )}
             </div>

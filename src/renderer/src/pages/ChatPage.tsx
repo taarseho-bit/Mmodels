@@ -354,44 +354,18 @@ export const STARTER_HINT =
  * 原版把这类文案当富文本渲染；我们不做 dangerouslySetInnerHTML，
  * 只识别这一个受控标签，避免注入风险。
  */
-function renderMuted(raw: string): React.ReactNode[] {
-  return raw
-    .split(/(<muted>[\s\S]*?<\/muted>)/g)
-    .filter(Boolean)
-    .map((part, i) => {
-      const m = /^<muted>([\s\S]*?)<\/muted>$/.exec(part);
-      return m ? (
-        <span key={i} className="muted">
-          {m[1]}
-        </span>
-      ) : (
-        <span key={i}>{part}</span>
-      );
-    });
-}
-
 const STARTERS: Array<{ title: string; desc: string; tags: string[]; prompt: string }> = [
   {
-    title: '2023 华数杯 C 题',
-    desc: '母亲身心健康对婴儿成长的影响',
-    // 标签逐字取自原版卡片
-    tags: ['统计', '回归分析', '分类预测'],
-    prompt:
-      '/mma-paper 完成 2023 年华数杯 C 题「母亲身心健康对婴儿成长的影响」的完整建模求解与论文撰写。',
+    title: '一起拆解题目', desc: '先明确目标、约束与缺少的资料', tags: ['读题', '规划'],
+    prompt: '请根据我提供的题目和附件，梳理各问目标、约束、数据需求与候选方法。缺少题目时先提醒我添加，不要猜题。',
   },
   {
-    title: '2024 高教杯 C 题',
-    desc: '农作物的种植策略',
-    tags: ['优化', '规划', '种植策略'],
-    prompt:
-      '/mma-paper 完成 2024 年高教杯 C 题「农作物的种植策略」的完整建模求解与论文撰写。',
+    title: '把结果写成论文', desc: '沿用完整论文技能，先核验再成文', tags: ['求解', '论文'],
+    prompt: '/mma-paper 请读取当前项目的题目、数据、比赛规则和已有结果，先复核关键结论，再完成论文；不以写作代替求解。',
   },
   {
-    title: '2023 国赛 A 题',
-    desc: '定日镜场的优化设计',
-    tags: ['优化', '物理建模', '几何计算'],
-    prompt:
-      '/mma-paper 完成 2023 年全国大学生数学建模竞赛 A 题「定日镜场的优化设计」的完整建模求解与论文撰写。',
+    title: '提交前再看一遍', desc: '核对数字、证据、规则与最终文件', tags: ['复算', '提交'],
+    prompt: '/competition-audit 请检查当前项目的论文、代码和比赛要求，报告已验证、未通过与待人工确认的项目。',
   },
 ];
 
@@ -417,18 +391,18 @@ function BrandMark({ size = 40 }: { size?: number }): JSX.Element {
       data-brand="mathmodel"
       style={{ display: 'block', flexShrink: 0 }}
     >
-      <rect x="0.5" y="0.5" width="31" height="31" rx="9.5" fill="#f3f3f3" />
+      <rect x="0.5" y="0.5" width="31" height="31" rx="5" fill="var(--fg-primary)" />
       <g
         fill="none"
-        stroke="#6285c7"
+        stroke="var(--bg-panel)"
         strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
         {/* ∫ */}
-        <path d="M17.2 6C13.2 3.8 10.8 5.6 10.4 9.4l-2 11.8C7.9 25 5.6 26.4 2.6 24.8" />
+        <path d="M7 23V9l9 9 9-9v14" />
         {/* ∞ */}
-        <path d="M22.5 19.8C18.5 13.6 15.5 15.5 15.5 19.8C15.5 24.1 18.5 26 22.5 19.8C26.5 13.6 29.5 15.5 29.5 19.8C29.5 24.1 26.5 26 22.5 19.8" />
+        <path d="M12 25h8" />
       </g>
     </svg>
   );
@@ -1185,11 +1159,7 @@ export function ChatPage(): JSX.Element {
               <div className="newchat-hero">
                 <BrandMark />
                 <h1 className="newchat-title">
-                  {renderMuted(
-                    tx('chat.newChatPage.titleWithProject', {
-                      name: currentProject?.name ?? tx('shell.sidebar.projects'),
-                    }),
-                  )}
+                  {currentProject?.name ?? '建模对话'}<small>添加题目或文件，开始新的建模任务。</small>
                 </h1>
               </div>
 
@@ -1203,7 +1173,7 @@ export function ChatPage(): JSX.Element {
               {/* ── 真题案例 ── */}
               <div className="newchat-examples">
                 <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                  {tx('chat.newChatPage.examplesTitle')}
+                  选择一个起点 · 填入后可修改，不会自动发送
                 </div>
 
                 <div className="starters" id="tour-examples">
@@ -1211,7 +1181,7 @@ export function ChatPage(): JSX.Element {
                     <button
                       key={s.title}
                       className="starter"
-                      onClick={() => void doSend(s.prompt)}
+                      onClick={() => useApp.getState().fillPrompt(s.prompt)}
                       disabled={isRunning}
                     >
                       <span className="starter-title">{t(s.title)}</span>
@@ -1228,15 +1198,7 @@ export function ChatPage(): JSX.Element {
                 </div>
 
                 <div className="newchat-beta">
-                  {tx('chat.newChatPage.betaNotice')}
-                  <a
-                    className="newchat-beta-link"
-                    href="https://qm.qq.com/"
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    {tx('chat.newChatPage.betaFeedback')}
-                  </a>
+                  题目、数据和比赛规则越清楚，协作越有方向。重要结论请保留复算依据。
                 </div>
               </div>
             </div>

@@ -408,7 +408,7 @@ export function Composer({
 
   // ── 下拉开关 ──
   const [openMenu, setOpenMenu] = useState<
-    null | 'project' | 'mode' | 'template' | 'perm' | 'model' | 'plus'
+    null | 'project' | 'mode' | 'template' | 'perm' | 'model' | 'plus' | 'options'
   >(null);
   // ── 「＋」菜单（原版 `data-tour="composer-plus"` 那个 Popover）──
   /**
@@ -464,7 +464,6 @@ export function Composer({
   const mode: ComposerMode = settings?.composerMode ?? 'paper';
   const planMode = settings?.planMode === true;
   const multiAgentEnabled = settings?.multiAgentEnabled !== false;
-  const modelingPetEnabled = settings?.modelingPetEnabled !== false;
   const perm: PermissionMode = settings?.permissionMode ?? 'full';
   const templateId = settings?.paperTemplateId ?? null;
   const template = templates.find((t) => t.id === templateId) ?? null;
@@ -1331,37 +1330,27 @@ export function Composer({
           </Popover>
         </div>
 
-        {/* 权限 */}
-        <button
-          type="button"
-          className={`cz-btn ghost${planMode ? ' active' : ''}`}
-          aria-pressed={planMode}
-          title={planMode ? tx('composer.composer.planModeTooltip') : tx('composer.composer.planMode')}
-          onClick={() => void patchSettings({ planMode: !planMode })}
-        >
-          <Icon name="list-tree" size={13} />
-          <span>{tx('composer.composer.planMode')}</span>
-        </button>
-        <button
-          type="button"
-          className={`cz-btn ghost${multiAgentEnabled ? ' active' : ''}`}
-          aria-pressed={multiAgentEnabled}
-          title={multiAgentEnabled ? '复杂任务会按需分给建模伙伴并行核对' : '开启多智能体协作'}
-          onClick={() => void patchSettings({ multiAgentEnabled: !multiAgentEnabled })}
-        >
-          <Icon name="brain" size={13} />
-          <span>协作</span>
-        </button>
-        <button
-          type="button"
-          className={`cz-btn ghost${modelingPetEnabled ? ' active' : ''}`}
-          aria-pressed={modelingPetEnabled}
-          title={modelingPetEnabled ? '隐藏数学建模伙伴小模' : '显示数学建模伙伴小模'}
-          onClick={() => void patchSettings({ modelingPetEnabled: !modelingPetEnabled })}
-        >
-          <Icon name="sigma" size={13} />
-          <span>小模</span>
-        </button>
+        {/* Less frequent execution options stay one click away; permissions remain visible. */}
+        <div className="cz-slot">
+          <button type="button" className={`cz-btn ghost${planMode ? ' active' : ''}`}
+            aria-label="任务选项" aria-expanded={openMenu === 'options'}
+            title="先规划、多智能体协作" onClick={() => setOpenMenu(openMenu === 'options' ? null : 'options')}>
+            <Icon name="settings-2" size={14} /><span>{planMode ? '先规划' : '选项'}</span>
+          </button>
+          <Popover open={openMenu === 'options'} onClose={close}>
+            <button className={`cz-pop-item${planMode ? ' selected' : ''}`} aria-pressed={planMode}
+              onClick={() => { void patchSettings({ planMode: !planMode }); close(); }}>
+              <Icon name="list-tree" size={14} /><span>先规划，不改文件</span><span className="grow" />
+              {planMode && <Icon name="check" size={13} />}
+            </button>
+            <button className={`cz-pop-item${multiAgentEnabled ? ' selected' : ''}`} aria-pressed={multiAgentEnabled}
+              title="复杂任务按需分给建模伙伴协作"
+              onClick={() => { void patchSettings({ multiAgentEnabled: !multiAgentEnabled }); close(); }}>
+              <Icon name="brain" size={14} /><span>多智能体协作</span><span className="grow" />
+              {multiAgentEnabled && <Icon name="check" size={13} />}
+            </button>
+          </Popover>
+        </div>
         <div className="cz-slot">
           <button
             className="cz-btn ghost"
