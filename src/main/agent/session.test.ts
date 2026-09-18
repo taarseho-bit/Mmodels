@@ -16,7 +16,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContentBlock, ProviderConfig, StreamEvent } from '@shared/types';
-import { AgentSession } from './session';
+import { AgentSession, SessionRegistry } from './session';
 import { SessionInputQueue } from './session-loop';
 import { applyStreamEvent } from '../ipc/stream-blocks';
 
@@ -418,6 +418,44 @@ describe('传输层 —— prompt 形态决定 SDK 会不会在首个 result 后
     expect(typeof sdk.prompt).not.toBe('string');
     expect(typeof (sdk.prompt as AsyncIterable<unknown>)[Symbol.asyncIterator]).toBe('function');
     expect(sdk.queue).toBeInstanceOf(SessionInputQueue);
+  });
+});
+
+describe('立即停止后同一会话可重新运行', () => {
+  it('replace 切断旧 runner，新 runner 不等待旧轮收尾即可启动', async () => {
+    const waiting = installFakeQuery([bgChanged(['old-bg']), assistant('旧任务仍在等'), result()]);
+    const registry = new SessionRegistry();
+    const oldRunner = registry.get('restartable');
+    const oldDone = oldRunner.run({
+      sessionId: 'restartable',
+      prompt: '旧任务',
+      provider: PROVIDER,
+      model: 'test-model',
+      cwd: '/tmp',
+      skillsPluginPath: '/tmp/skills-plugin',
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(oldRunner.isRunning).toBe(true);
+    expect(waiting.queue?.isClosed).toBe(false);
+
+    const nextRunner = registry.replace('restartable');
+    expect(nextRunner).not.toBe(oldRunner);
+    expect(registry.get('restartable')).toBe(nextRunner);
+
+    installFakeQuery([assistant('新任务已开始'), result()]);
+    const nextDone = nextRunner.run({
+      sessionId: 'restartable',
+      prompt: '新任务',
+      provider: PROVIDER,
+      model: 'test-model',
+      cwd: '/tmp',
+      skillsPluginPath: '/tmp/skills-plugin',
+    });
+
+    await expect(nextDone).resolves.toBeUndefined();
+    await expect(oldDone).resolves.toBeUndefined();
+    expect(nextRunner.isRunning).toBe(false);
   });
 });
 

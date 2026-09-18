@@ -1139,6 +1139,21 @@ export class SessionRegistry {
     return r;
   }
 
+  /**
+   * 用户停止后立即换一个干净 runner。旧 runner 在后台退出，但不再占用这个会话，
+   * 下一条指令可以立刻开始，也不会与旧轮共享监听器和取消控制器。
+   */
+  replace(sessionId: string): AgentSession {
+    const previous = this.runners.get(sessionId);
+    if (previous) {
+      previous.abort();
+      previous.removeAllListeners();
+    }
+    const next = new AgentSession(sessionId);
+    this.runners.set(sessionId, next);
+    return next;
+  }
+
   has(sessionId: string): boolean {
     return this.runners.has(sessionId);
   }

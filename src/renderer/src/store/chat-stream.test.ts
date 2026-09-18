@@ -460,6 +460,7 @@ describe('chat-stream —— 轮次生命周期与 hydrate 口子', () => {
       active: false,
       sessionId: null,
       phase: 'idle',
+      interrupted: false,
       stopping: false,
       usage: null,
       contextUsage: null,
@@ -467,6 +468,24 @@ describe('chat-stream —— 轮次生命周期与 hydrate 口子', () => {
       agents: [],
       error: null,
     });
+  });
+
+  it('硬停止后忽略旧 runner 的迟到事件，新一轮仍可立即正常开始', () => {
+    store.beginTurn('A', 1);
+    store.apply('A', { type: 'block-start', index: 0, kind: 'text' }, 2);
+    store.apply('A', { type: 'text-delta', index: 0, delta: '停在这里' }, 3);
+    const stopped = store.interrupt('A', 4);
+
+    expect(stopped.interrupted).toBe(true);
+    store.apply('A', { type: 'session-start', sessionId: 'A' }, 5);
+    store.apply('A', { type: 'text-delta', index: 0, delta: '迟到内容' }, 6);
+    expect(toView(store.snapshot('A')).active).toBe(false);
+    expect(store.snapshot('A').blocks[0]?.text).toBe('停在这里');
+
+    const restarted = store.beginTurn('A', 7);
+    expect(restarted.interrupted).toBe(false);
+    expect(restarted.phase).toBe('running');
+    expect(restarted.blocks).toEqual([]);
   });
 
   it('点停止后先进入 stopping，内容不消失；历史接管后才清空临时窗口', () => {

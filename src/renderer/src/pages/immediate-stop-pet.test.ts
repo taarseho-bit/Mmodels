@@ -26,16 +26,28 @@ describe('立即停止', () => {
     expect(handler).not.toContain('await window.mathmodel.session.abort');
   });
 
-  it('主进程立即写入空闲状态，再取消 runner；最终结束事件仍由收尾路径发送', () => {
+  it('主进程立即保存半截内容并更换 runner，让下一条指令无需等待', () => {
     const start = sessionIpc.indexOf('IPC.SESSION_ABORT');
     const end = sessionIpc.indexOf("}, '中断会话')", start);
     const handler = sessionIpc.slice(start, end);
-    const idleAt = handler.indexOf("UPDATE sessions SET status = 'idle'");
-    const abortAt = handler.indexOf('runner.abort()');
 
-    expect(idleAt).toBeGreaterThan(-1);
-    expect(abortAt).toBeGreaterThan(idleAt);
+    expect(handler).toContain('finishInterruptedTurn(turn)');
+    expect(sessionIpc).toContain('sessionRegistry.replace(turn.sessionId)');
+    expect(sessionIpc).toContain("UPDATE sessions SET status = 'idle', error = NULL");
+    expect(sessionIpc).toContain("event: { type: 'session-end', sessionId: turn.sessionId }");
     expect(handler).not.toContain("type: 'session-stopping'");
+  });
+
+  it('停止令牌先于运行参数准备，准备期间点击停止也不会重新启动', () => {
+    const registerAt = sessionIpc.indexOf('activeTurns.set(sessionId, activeTurn)');
+    const prepareAt = sessionIpc.indexOf('await buildRunOptions(sessionId, text, cwd)');
+    const runAt = sessionIpc.indexOf('.run(opts as Parameters<typeof runner.run>[0])');
+    const guardAt = sessionIpc.indexOf('if (activeTurn.finalized) return { messageId: userMsg.id }', prepareAt);
+
+    expect(registerAt).toBeGreaterThan(-1);
+    expect(registerAt).toBeLessThan(prepareAt);
+    expect(guardAt).toBeGreaterThan(prepareAt);
+    expect(guardAt).toBeLessThan(runAt);
   });
 });
 

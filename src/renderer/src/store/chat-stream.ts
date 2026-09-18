@@ -47,6 +47,8 @@ export type StreamPhase = 'idle' | 'running' | 'stopping' | 'done';
 export interface SessionStream {
   sessionId: string;
   phase: StreamPhase;
+  /** 用户已主动停止这一轮；下一轮 beginTurn 前不接受旧 runner 的迟到事件。 */
+  interrupted: boolean;
   /** 本会话**尚未落库**（或刚落库但为了兜底仍留着）的过程块，按时间序 */
   blocks: ContentBlock[];
   usage: TokenUsage | null;
@@ -71,6 +73,7 @@ export interface SessionStream {
 export interface LiveWindow {
   active: boolean;
   blocks: ContentBlock[];
+  interrupted?: boolean;
 }
 
 /** `ChatPage` 的流式 state（原先是组件内的 `StreamState`，这里统一放 store 模块） */
@@ -91,6 +94,7 @@ export const EMPTY_STREAM: StreamView = {
   active: false,
   sessionId: null,
   phase: 'idle',
+  interrupted: false,
   stopping: false,
   usage: null,
   contextUsage: null,
@@ -103,6 +107,7 @@ export function emptySessionStream(sessionId: string | null): SessionStream {
   return {
     sessionId: sessionId ?? '',
     phase: 'idle',
+    interrupted: false,
     blocks: [],
     usage: null,
     contextUsage: null,
@@ -122,6 +127,7 @@ export function toView(entry: SessionStream | null | undefined): StreamView {
     active: entry.phase === 'running' || entry.phase === 'stopping',
     sessionId: entry.sessionId || null,
     phase: entry.phase,
+    interrupted: entry.interrupted,
     stopping: entry.phase === 'stopping',
     usage: entry.usage,
     contextUsage: entry.contextUsage,
@@ -285,6 +291,7 @@ export function panelTasks(
   historyBlocks: ContentBlock[],
   live: LiveWindow | null | undefined,
 ): TaskState {
+  if (live?.interrupted) return EMPTY_TASK_STATE;
   const liveBlocks = (live?.blocks ?? []).filter(Boolean);
 
   // 新一轮就是新的“当前计划”。旧历史不能再次混进来，否则用户追问修改论文时，
@@ -346,6 +353,9 @@ export class ChatStreamStore {
    */
   apply(sessionId: string, ev: StreamEvent, now: number = Date.now()): SessionStream {
     const prev = this.map.get(sessionId) ?? emptySessionStream(sessionId);
+    // 停止是本轮的终态。SDK/IPC 队列里已经在路上的旧事件不能把它重新点亮，
+    // 尤其不能让迟到的 session-start 再显示“正在思考”。
+    if (prev.interrupted && ev.type !== 'session-end') return prev;
     const next = applyStreamEvent(prev, ev, now);
     this.put(sessionId, next);
     return next;
@@ -376,6 +386,7 @@ export class ChatStreamStore {
     const next: SessionStream = {
       ...emptySessionStream(sessionId),
       phase: 'running',
+      interrupted: false,
       contextUsage: previous.contextUsage,
       lastCompaction: previous.lastCompaction,
       agents: [],
@@ -390,7 +401,12 @@ export class ChatStreamStore {
    * **保留**已经产生的块：用户没理由因为点了停止就看不到刚才的过程。
    */
   interrupt(sessionId: string, now: number = Date.now()): SessionStream {
-    const next: SessionStream = { ...this.snapshot(sessionId), phase: 'done', updatedAt: now };
+    const next: SessionStream = {
+      ...this.snapshot(sessionId),
+      phase: 'done',
+      interrupted: true,
+      updatedAt: now,
+    };
     this.put(sessionId, next);
     return next;
   }
@@ -507,6 +523,7 @@ export class ChatStreamStore {
      * `blocks.length > 0` 是必须的：刚 `beginTurn` 的空槽位没什么可丢的，该灌就灌。
      */
     const prev = this.map.get(sessionId);
+    if (prev?.interrupted) return null;
     if (
       prev &&
       prev.phase === 'running' &&

@@ -36,7 +36,7 @@ import {
   writeSpill,
 } from '../db/turn-spills';
 import { getSettings, findProvider, activeProvider } from '../store/config';
-import { SessionRegistry } from '../agent/session';
+import { AgentSession, SessionRegistry } from '../agent/session';
 import { bridgeRegistry } from '../agent/bridge-registry';
 import { PROJECT_INSTRUCTIONS, detectSlashCommand } from '../agent/prompts';
 import { initPaperProjectConfig, listPaperTemplates, paperConfigPath } from '../scan/paper-templates';
@@ -48,6 +48,18 @@ import { resolveResourcesRoot } from '../resources';
 
 /** 全局会话注册表（整个应用一份） */
 export const sessionRegistry = new SessionRegistry();
+
+interface ActiveTurn {
+  sessionId: string;
+  runner: AgentSession;
+  assistantMsgId: string;
+  collected: ContentBlock[];
+  model: string;
+  finalized: boolean;
+}
+
+/** 当前真正占用 runner 的一轮；停止时用它同步保存半截内容并切断旧 runner。 */
+const activeTurns = new Map<string, ActiveTurn>();
 
 interface SessionRow {
   id: string;
@@ -520,19 +532,19 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
   ipcMain.handle(
     IPC.SESSION_ABORT,
     safeWrap((_e, id: string) => {
-      const runner = sessionRegistry.get(id);
-      // “停止”是即时动作：先把会话状态改为空闲，再向 SDK 发取消信号。
-      // 最终 session-end 仍等消息落库后再发，避免已显示内容短暂消失。
-      getDb().prepare("UPDATE sessions SET status = 'idle', updated_at = ? WHERE id = ?")
-        .run(Date.now(), id);
-      if (!runner.isRunning) {
+      const turn = activeTurns.get(id);
+      if (turn) {
+        finishInterruptedTurn(turn);
+      } else {
+        const runner = sessionRegistry.get(id);
+        if (runner.isRunning) sessionRegistry.replace(id);
+        getDb().prepare("UPDATE sessions SET status = 'idle', error = NULL, updated_at = ? WHERE id = ?")
+          .run(Date.now(), id);
         pushToRenderer(IPC.SESSION_STREAM, {
           sessionId: id,
           event: { type: 'session-end', sessionId: id },
         });
-        return true;
       }
-      runner.abort();
       return true;
     }, '中断会话'),
   );
@@ -624,6 +636,18 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
        */
       const assistantMsgId = randomUUID();
 
+      // 必须在 buildRunOptions 之前登记。渲染层会先亮出停止按钮；若用户在环境/提示词
+      // 准备期间就点击停止，这个令牌能阻止准备完成后又把旧任务启动起来。
+      const activeTurn: ActiveTurn = {
+        sessionId,
+        runner,
+        assistantMsgId,
+        collected,
+        model: '',
+        finalized: false,
+      };
+      activeTurns.set(sessionId, activeTurn);
+
       /** 上一次写快照的时间；0 = 还没写过（第一个事件就会写） */
       let lastSpillAt = 0;
 
@@ -660,7 +684,17 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       });
 
       // 3) 跑（不 await，立即返回让界面进入流式状态）
-      const opts = await buildRunOptions(sessionId, text, cwd);
+      let opts: Awaited<ReturnType<typeof buildRunOptions>>;
+      try {
+        opts = await buildRunOptions(sessionId, text, cwd);
+      } catch (err) {
+        if (activeTurn.finalized) return { messageId: userMsg.id };
+        activeTurn.finalized = true;
+        if (activeTurns.get(sessionId) === activeTurn) activeTurns.delete(sessionId);
+        throw err;
+      }
+      if (activeTurn.finalized) return { messageId: userMsg.id };
+      activeTurn.model = opts.model;
 
       getDb()
         .prepare("UPDATE sessions SET status = 'running', updated_at = ? WHERE id = ?")
@@ -669,6 +703,9 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       void runner
         .run(opts as Parameters<typeof runner.run>[0])
         .then(() => {
+          if (activeTurn.finalized) return;
+          activeTurn.finalized = true;
+          if (activeTurns.get(sessionId) === activeTurn) activeTurns.delete(sessionId);
           const blocks = collected.filter(Boolean);
           if (blocks.length) {
             // ⚠️ P0 只加列，这里**故意不传 agentMsgUuid**：它的值来自 agent 侧回的
@@ -716,6 +753,9 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
           });
         })
         .catch((err: unknown) => {
+          if (activeTurn.finalized) return;
+          activeTurn.finalized = true;
+          if (activeTurns.get(sessionId) === activeTurn) activeTurns.delete(sessionId);
           const msg = err instanceof Error ? err.message : String(err);
           getDb()
             .prepare("UPDATE sessions SET status = 'error', error = ?, updated_at = ? WHERE id = ?")
@@ -733,6 +773,45 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       return { messageId: userMsg.id };
     }, '发送消息'),
   );
+}
+
+/** 停止必须同步完成：保存当前可见内容、释放会话占用、立即发结束事件。 */
+function finishInterruptedTurn(turn: ActiveTurn): void {
+  if (turn.finalized) return;
+  turn.finalized = true;
+  if (activeTurns.get(turn.sessionId) === turn) activeTurns.delete(turn.sessionId);
+
+  // replace 会 abort 并摘掉旧监听器；之后同一 sessionId 可立即启动新一轮。
+  sessionRegistry.replace(turn.sessionId);
+
+  const blocks = turn.collected.filter(Boolean);
+  if (blocks.length) {
+    insertMessage(turn.sessionId, {
+      id: turn.assistantMsgId,
+      role: 'assistant',
+      blocks,
+      createdAt: Date.now(),
+      model: turn.model,
+      usage: turn.runner.totalUsage,
+    });
+  }
+  clearSpill(getDb(), turn.sessionId);
+  getDb()
+    .prepare(
+      `UPDATE sessions SET status = 'idle', error = NULL, updated_at = ?,
+         input_tokens = ?, output_tokens = ?, reasoning_tokens = ? WHERE id = ?`,
+    )
+    .run(
+      Date.now(),
+      turn.runner.totalUsage.inputTokens,
+      turn.runner.totalUsage.outputTokens,
+      turn.runner.totalUsage.reasoningTokens ?? 0,
+      turn.sessionId,
+    );
+  pushToRenderer(IPC.SESSION_STREAM, {
+    sessionId: turn.sessionId,
+    event: { type: 'session-end', sessionId: turn.sessionId },
+  });
 }
 
 export { getSession, getMessages, listSessions, createSession };
