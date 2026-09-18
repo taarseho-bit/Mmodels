@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   onboardingDone: false,
   permissionMode: 'full',
   planMode: false,
+  multiAgentEnabled: true,
+  modelingPetEnabled: true,
   // ⚠️ 必须是 'paper'，与原版一致。
   //    原版的 zod schema 与运行时兜底都是 "paper"。
   //    只有 paper 模式才显示「比赛模板 + 比赛信息」、并把占位文字换成

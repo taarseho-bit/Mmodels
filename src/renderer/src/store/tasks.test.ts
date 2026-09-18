@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { ContentBlock } from '@shared/types';
-import { extractTasks, progressOf, type TaskState } from './tasks';
+import { extractTasks, latestTaskBlocks, progressOf, type TaskState } from './tasks';
 import { setLang, tx } from '../i18n';
 
 let seq = 0;
@@ -145,6 +145,20 @@ describe('extractTasks —— 从工具调用流还原任务清单', () => {
     expect(state.list[0].status).toBe('pending');
     expect(state.list[0].toolId).toBeUndefined(); // 兜底键 k1（见 tasks.ts 注释）
     expect(state.list[0].key).toBe('k1');
+  });
+});
+
+describe('latestTaskBlocks —— 重启后只恢复最近一批任务', () => {
+  it('不会把前几轮已经结束的任务重新拼进当前清单', () => {
+    const old = create('旧任务', 'Task #1 created successfully: 旧任务');
+    const current = create('当前任务', 'Task #2 created successfully: 当前任务');
+    const messages = [
+      { role: 'assistant', blocks: [old, update('1', 'completed')] },
+      { role: 'user', blocks: [{ kind: 'text' as const, text: '继续修改论文' }] },
+      { role: 'assistant', blocks: [current] },
+    ];
+    const state = extractTasks(latestTaskBlocks(messages));
+    expect(state.list.map((task) => task.subject)).toEqual(['当前任务']);
   });
 });
 

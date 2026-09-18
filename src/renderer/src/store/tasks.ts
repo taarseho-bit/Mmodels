@@ -195,6 +195,26 @@ export function blocksOf(messages: Array<{ blocks: ContentBlock[] }>): ContentBl
   return messages.flatMap((m) => m.blocks ?? []);
 }
 
+/**
+ * 重启后恢复面板时只看最近一轮含任务操作的助手消息。
+ * 把整个会话的 TaskCreate 全部拼起来会让早已结束的论文阶段重新出现。
+ */
+export function latestTaskBlocks(
+  messages: Array<{ role?: string; blocks: ContentBlock[] }>,
+): ContentBlock[] {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role && message.role !== 'assistant') continue;
+    const blocks = message.blocks ?? [];
+    if (blocks.some((block) => {
+      if (block?.kind !== 'tool_use' || !block.toolName) return false;
+      const name = shortToolName(block.toolName);
+      return name === 'TaskCreate' || name === 'TaskUpdate' || name === 'TodoWrite';
+    })) return blocks;
+  }
+  return [];
+}
+
 /** x/y 计数与「当前进行中」 */
 export function progressOf(state: TaskState): TaskProgress {
   let completed = 0;

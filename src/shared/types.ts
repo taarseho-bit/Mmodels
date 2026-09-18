@@ -174,6 +174,27 @@ export interface ContextWindowUsage {
   model?: string;
 }
 
+export type AgentActivityStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'killed'
+  | 'paused';
+
+/** SDK 子智能体的实时状态；只描述真实任务，不生成模拟进度。 */
+export interface AgentActivity {
+  taskId: string;
+  agentType: string;
+  description: string;
+  status: AgentActivityStatus;
+  summary?: string;
+  lastToolName?: string;
+  totalTokens?: number;
+  toolUses?: number;
+  durationMs?: number;
+}
+
 // ─────────────────────────────────────────────────────────────
 // 流式事件（main → renderer）
 // ─────────────────────────────────────────────────────────────
@@ -189,6 +210,9 @@ export type StreamEvent =
   | { type: 'usage'; usage: TokenUsage }
   | { type: 'context-usage'; usage: ContextWindowUsage }
   | { type: 'context-compacted'; before: number; after?: number; trigger: 'manual' | 'auto' }
+  | { type: 'agent-start'; activity: AgentActivity }
+  | { type: 'agent-progress'; activity: AgentActivity }
+  | { type: 'agent-end'; activity: AgentActivity }
   | { type: 'message-stop'; messageId: string }
   | { type: 'session-error'; message: string }
   | { type: 'session-end'; sessionId: string; reason?: string };
@@ -364,6 +388,10 @@ export interface AppSettings {
   permissionMode?: 'full' | 'approval';
   /** 本会话发送时让 Agent 先规划、不修改工作区；输入区 Shift+Tab 切换。 */
   planMode?: boolean;
+  /** 复杂建模任务是否允许主智能体调用专门的子智能体并行分析。 */
+  multiAgentEnabled?: boolean;
+  /** 是否显示跟随真实任务状态变化的数学建模伙伴。 */
+  modelingPetEnabled?: boolean;
   /** 输入区的任务模式（自由对话 / 写论文 / 画图 / 评审 / 找数据） */
   composerMode?: 'chat' | 'paper' | 'figure' | 'review' | 'data';
   /** 选中的论文模板 id */

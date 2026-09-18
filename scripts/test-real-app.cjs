@@ -467,6 +467,35 @@ async function main() {
     '输入区已移除预计 token 消耗',
   );
 
+  const agentPetUi = await cdp.eval(
+    `(async function(){
+      var buttons = Array.from(document.querySelectorAll('.cz-btn'));
+      var collab = buttons.find(function(el){ return el.textContent.trim() === '协作'; });
+      var petToggle = buttons.find(function(el){ return el.textContent.trim() === '小模'; });
+      var petBefore = document.querySelector('.modeling-pet');
+      var petBody = document.querySelector('.modeling-pet-body');
+      var beforeSettings = await window.mathmodel.settings.get();
+      if (petToggle) petToggle.click();
+      await new Promise(function(r){ setTimeout(r, 80); });
+      var hidden = !document.querySelector('.modeling-pet');
+      if (petToggle) petToggle.click();
+      await new Promise(function(r){ setTimeout(r, 80); });
+      var petAfter = document.querySelector('.modeling-pet');
+      var afterSettings = await window.mathmodel.settings.get();
+      return {
+        collab: !!collab && collab.getAttribute('aria-pressed') === 'true',
+        petToggle: !!petToggle,
+        petVisible: !!petBefore && !!petBody && petBefore.getAttribute('data-pet-state') === 'resting',
+        hidden: hidden,
+        restored: !!petAfter && afterSettings.modelingPetEnabled === true,
+        defaults: beforeSettings.multiAgentEnabled === true && beforeSettings.modelingPetEnabled === true
+      };
+    })()`,
+  );
+  ok(agentPetUi.collab && agentPetUi.defaults, '多智能体协作默认启用且可见');
+  ok(agentPetUi.petToggle && agentPetUi.petVisible, '数学建模伙伴按真实空闲状态显示');
+  ok(agentPetUi.hidden && agentPetUi.restored, '数学建模伙伴可以关闭并重新打开');
+
   const pageLimitUi = await cdp.eval(
     `(async function(){
       var button = Array.from(document.querySelectorAll('button')).find(function(el){

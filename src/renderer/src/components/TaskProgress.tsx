@@ -41,6 +41,7 @@ export function TaskProgressPanel({ state }: { state: TaskState }): JSX.Element 
 
   const { completed, total, current } = progressOf(state);
   const summary = summaryOf(state, completed, total, current);
+  const remaining = state.list.filter((item) => item.status !== 'completed');
 
   return (
     <div className="task-panel" data-task-panel="1">
@@ -72,7 +73,7 @@ export function TaskProgressPanel({ state }: { state: TaskState }): JSX.Element 
 
       {open && (
         <div className="task-panel-body" data-task-body="1">
-          {state.list.map((item) => (
+          {remaining.map((item) => (
             <div
               key={item.key}
               className={`task-item is-${item.status}`}
@@ -87,6 +88,12 @@ export function TaskProgressPanel({ state }: { state: TaskState }): JSX.Element 
               </span>
             </div>
           ))}
+          {completed > 0 ? (
+            <div className="task-panel-completed">
+              <Icon name="check" size={12} />
+              <span>{t('已收起 {{count}} 个完成项', { count: completed })}</span>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

@@ -5841,6 +5841,197 @@ audio.ap-media {
 .task-item-spin {
   animation: spin 900ms linear infinite;
 }
+.task-panel-completed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+  color: var(--fg-muted);
+}
+
+/* 数学建模协作组：只显示 SDK 真实启动的子智能体。 */
+.agent-collab {
+  margin-bottom: 7px;
+  padding: 7px 9px;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  font-size: var(--fs-xs);
+}
+.agent-collab-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-muted);
+}
+.agent-collab-head strong { color: var(--fg-primary); font-weight: 650; }
+.agent-collab-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+.agent-collab-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 4px 12px;
+  margin-top: 5px;
+}
+.agent-collab-item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 5px;
+  min-width: 0;
+  padding: 4px 0;
+}
+.agent-collab-icon { display: grid; place-items: center; height: 18px; color: var(--accent); }
+.agent-collab-item.is-completed .agent-collab-icon { color: var(--success); }
+.agent-collab-item.is-failed .agent-collab-icon,
+.agent-collab-item.is-killed .agent-collab-icon { color: var(--warning); }
+.agent-collab-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.agent-collab-copy strong { color: var(--fg-primary); font-weight: 600; }
+.agent-collab-copy span { overflow: hidden; color: var(--fg-muted); text-overflow: ellipsis; white-space: nowrap; }
+.agent-collab-item time { padding-top: 1px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+
+/*
+ * 小模运行壳：动作只由当前工具和子智能体事件驱动。角色图集准备好后可直接把
+ * `.modeling-pet-shell` 换成同尺寸 sprite renderer，拖动、停靠和状态机无需重写。
+ */
+.modeling-pet {
+  position: fixed;
+  z-index: 34;
+  width: 92px;
+  height: 118px;
+  pointer-events: none;
+  user-select: none;
+  touch-action: none;
+}
+.modeling-pet-body {
+  position: absolute;
+  inset: 26px 5px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 82px;
+  height: 88px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+.modeling-pet-body:active { cursor: grabbing; }
+.modeling-pet-shell {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 1px solid color-mix(in srgb, var(--fg-primary) 18%, transparent);
+  border-radius: 22px 22px 25px 25px;
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  box-shadow: 0 9px 22px color-mix(in srgb, #000 16%, transparent), inset 0 1px 0 #fff8;
+  backdrop-filter: blur(14px) saturate(1.25);
+  transition: transform 180ms ease, border-color 180ms ease;
+  animation: modeling-pet-breathe 2.4s ease-in-out infinite;
+}
+.modeling-pet-eyes {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  gap: 12px;
+}
+.modeling-pet-eyes i {
+  width: 4px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: modeling-pet-blink 4.8s steps(1) infinite;
+}
+.modeling-pet-feet { position: absolute; z-index: 1; bottom: 9px; display: flex; gap: 28px; }
+.modeling-pet-feet i { width: 16px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--fg-primary) 22%, transparent); }
+.modeling-pet-aura {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  opacity: 0;
+}
+.modeling-pet-copy {
+  position: absolute;
+  right: 3px;
+  bottom: 86px;
+  width: min(240px, calc(100vw - 28px));
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px 8px 2px 8px;
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+  box-shadow: var(--shadow);
+  color: var(--fg-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+  transform: translateX(0);
+  backdrop-filter: blur(16px) saturate(1.2);
+  pointer-events: none;
+  animation: modeling-pet-copy-in 160ms ease-out;
+}
+.modeling-pet.is-left .modeling-pet-copy {
+  right: auto;
+  left: 3px;
+  border-radius: 8px 8px 8px 2px;
+}
+.modeling-pet-close {
+  position: absolute;
+  top: 22px;
+  right: 1px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  box-shadow: 0 2px 8px #0002;
+  color: var(--fg-muted);
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.modeling-pet:hover .modeling-pet-close,
+.modeling-pet:focus-within .modeling-pet-close { opacity: 1; }
+.modeling-pet-close:active { transform: scale(.9); }
+.modeling-pet.is-collaborating .modeling-pet-aura,
+.modeling-pet.is-solving .modeling-pet-aura,
+.modeling-pet.is-reviewing .modeling-pet-aura { opacity: 1; animation: modeling-pet-pulse 1.5s ease-out infinite; }
+.modeling-pet.is-reading .modeling-pet-shell { animation-name: modeling-pet-read; animation-duration: 1.8s; }
+.modeling-pet.is-writing .modeling-pet-shell { animation-name: modeling-pet-write; animation-duration: .8s; }
+.modeling-pet.is-plotting .modeling-pet-shell { border-color: color-mix(in srgb, #ff9f0a 54%, var(--border)); animation-name: modeling-pet-plot; animation-duration: 1.4s; }
+.modeling-pet.is-stopping .modeling-pet-shell { animation: modeling-pet-stop .7s ease-in-out infinite alternate; }
+@keyframes modeling-pet-breathe { 0%,100% { transform: translateY(1px) scale(1); } 50% { transform: translateY(-2px) scale(1.02); } }
+@keyframes modeling-pet-blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.15); } }
+@keyframes modeling-pet-pulse { from { transform: scale(.75); opacity: .6; } to { transform: scale(1.2); opacity: 0; } }
+@keyframes modeling-pet-read { 0%,100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
+@keyframes modeling-pet-write { 0%,100% { transform: translateX(-1px); } 50% { transform: translateX(2px); } }
+@keyframes modeling-pet-plot { 0%,100% { transform: translateY(1px) rotate(0); } 50% { transform: translateY(-3px) rotate(3deg); } }
+@keyframes modeling-pet-stop { from { transform: scale(1); opacity: 1; } to { transform: scale(.94); opacity: .74; } }
+@keyframes modeling-pet-copy-in { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 720px) {
+  .agent-collab-list { grid-template-columns: 1fr; }
+  .modeling-pet { transform: scale(.88); transform-origin: bottom right; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modeling-pet *, .modeling-pet::before, .modeling-pet::after { animation: none !important; transition: none !important; }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    消息级操作行（msg-ops-*）

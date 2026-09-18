@@ -13,6 +13,8 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import type {
+  AgentActivity,
+  AgentActivityStatus,
   ApprovalDecision,
   ApprovalRequest,
   AskUserQuestion,
@@ -24,6 +26,7 @@ import type {
   StreamEvent,
   TokenUsage,
 } from '@shared/types';
+import { MODELING_AGENTS } from './modeling-agents';
 import { buildChildEnv, buildProviderEnv, resolveClaudeExecutable } from './env';
 import {
   approvalDetailOf,
@@ -148,6 +151,8 @@ export interface RunOptions {
    * 这个**顺序**是极易写错的，留出字段 + 单测钉住顺序，B2 只需要往里传值。
    */
   interactionMode?: InteractionMode;
+  /** 允许主智能体按任务需要调用数学建模协作组。 */
+  multiAgentEnabled?: boolean;
 }
 
 /**
@@ -227,6 +232,8 @@ export class AgentSession extends EventEmitter {
   private pendingContextTokens = 0;
   /** 自动压缩发生后允许窗口读数下降一次。 */
   private compactedContextTokens: number | null = null;
+  /** SDK task id 对应的子智能体活动，用于把后续 progress/update 帧补全。 */
+  private subagentTasks = new Map<string, AgentActivity>();
   /**
    * 正在等待用户作答的提问：requestId → resolve。
    *
@@ -583,6 +590,7 @@ export class AgentSession extends EventEmitter {
     this.abortController = controller;
     this.blocks = [];
     this.streamIndex = -1;
+    this.subagentTasks.clear();
 
     this.emitEvent({ type: 'session-start', sessionId: this.sessionId });
 
@@ -673,6 +681,12 @@ export class AgentSession extends EventEmitter {
       }
       if (opts.systemPrompt) options.systemPrompt = opts.systemPrompt;
       if (opts.resumeSessionId) options.resume = opts.resumeSessionId;
+      if (opts.multiAgentEnabled) {
+        options.agents = MODELING_AGENTS;
+        options.agentProgressSummaries = true;
+        // 生命周期事件足以呈现协作状态；不把子智能体长篇过程混入主对话。
+        options.forwardSubagentText = false;
+      }
 
       // 用户配置的 MCP 服务器（设置/扩展里的「连接器」，原版 settings.mcpServers 语义）：
       // stdio 型 → SDK stdio server；http 型 → SDK http server。
@@ -906,12 +920,10 @@ export class AgentSession extends EventEmitter {
    *      stale running indicator"。它的状态累积在 `session-loop.ts` 的 `TurnState` 里
    *     （那里才是收尾判定的家），这里只留一条可诊断日志。
    *   · `task_started`（`:4663`）/ `task_progress`（`:4641`）/ `task_updated`（`:4687`）/
-   *     `task_notification`（`:4623`）—— **已知未消费**。
+   *     `task_notification`（`:4623`）—— 转成协作组的实时开始、进度与结束事件。
    *
-   * ── 为什么"未消费"也要写出来 ──
-   *   本轮**不**把它们转发到渲染层：`shared/types.ts:168-179` 的 `StreamEvent` 联合里
-   *   没有 task 类事件，只加主进程侧会造成"发了没人收"。按"显式落日志 + 写明已知未消费"
-   *   处理，而不是用默认分支藏起来 —— 藏起来正是这个 bug 的一部分。
+   * 子智能体帧只在带 `subagent_type` 时进入协作面板；普通后台 Bash 仍由
+   * `background_tasks_changed` 管理收尾，不冒充多智能体。
    */
   private handleSystemSubtype(m: Record<string, any>): void {
     const subtype = typeof m.subtype === 'string' ? m.subtype : '(缺失)';
@@ -938,24 +950,87 @@ export class AgentSession extends EventEmitter {
         );
         return;
       }
-      case 'task_started':
-        console.debug(
-          `[agent] task_started（已知未消费，不转发渲染层）：${String(m.task_id ?? '')} ${String(m.description ?? '')}`,
-        );
+      case 'task_started': {
+        const taskId = String(m.task_id ?? '');
+        const agentType = typeof m.subagent_type === 'string' ? m.subagent_type : '';
+        if (!taskId || !agentType) return;
+        const activity: AgentActivity = {
+          taskId,
+          agentType,
+          description: String(m.description ?? '正在协作分析'),
+          status: 'running',
+        };
+        this.subagentTasks.set(taskId, activity);
+        this.emitEvent({ type: 'agent-start', activity });
         return;
-      case 'task_progress':
-        console.debug(`[agent] task_progress（已知未消费）：${String(m.task_id ?? '')}`);
+      }
+      case 'task_progress': {
+        const taskId = String(m.task_id ?? '');
+        const previous = this.subagentTasks.get(taskId);
+        const agentType = typeof m.subagent_type === 'string' ? m.subagent_type : previous?.agentType;
+        if (!taskId || !agentType) return;
+        const usage = (m.usage ?? {}) as Record<string, unknown>;
+        const activity: AgentActivity = {
+          taskId,
+          agentType,
+          description: String(m.description ?? previous?.description ?? '正在协作分析'),
+          status: 'running',
+          ...(typeof m.summary === 'string' && m.summary.trim() ? { summary: m.summary } : {}),
+          ...(typeof m.last_tool_name === 'string' ? { lastToolName: m.last_tool_name } : {}),
+          totalTokens: Number(usage.total_tokens ?? previous?.totalTokens ?? 0),
+          toolUses: Number(usage.tool_uses ?? previous?.toolUses ?? 0),
+          durationMs: Number(usage.duration_ms ?? previous?.durationMs ?? 0),
+        };
+        this.subagentTasks.set(taskId, activity);
+        this.emitEvent({ type: 'agent-progress', activity });
         return;
-      case 'task_updated':
-        console.debug(
-          `[agent] task_updated（已知未消费）：${String(m.task_id ?? '')} ${String(m.patch?.status ?? '')}`,
-        );
+      }
+      case 'task_updated': {
+        const taskId = String(m.task_id ?? '');
+        const previous = this.subagentTasks.get(taskId);
+        if (!previous) return;
+        const patch = (m.patch ?? {}) as Record<string, unknown>;
+        const allowed = new Set<AgentActivityStatus>([
+          'pending', 'running', 'completed', 'failed', 'killed', 'paused',
+        ]);
+        const rawStatus = String(patch.status ?? previous.status) as AgentActivityStatus;
+        const activity: AgentActivity = {
+          ...previous,
+          status: allowed.has(rawStatus) ? rawStatus : previous.status,
+          ...(typeof patch.description === 'string' ? { description: patch.description } : {}),
+          ...(typeof patch.error === 'string'
+            ? { summary: '这一路没有顺利完成，主智能体正在接手。' }
+            : {}),
+        };
+        this.subagentTasks.set(taskId, activity);
+        this.emitEvent({
+          type: activity.status === 'running' || activity.status === 'pending' || activity.status === 'paused'
+            ? 'agent-progress'
+            : 'agent-end',
+          activity,
+        });
         return;
-      case 'task_notification':
-        console.debug(
-          `[agent] task_notification（已知未消费）：${String(m.task_id ?? '')} ${String(m.status ?? '')}`,
-        );
+      }
+      case 'task_notification': {
+        const taskId = String(m.task_id ?? '');
+        const previous = this.subagentTasks.get(taskId);
+        if (!previous) return;
+        const status: AgentActivityStatus = m.status === 'completed'
+          ? 'completed'
+          : m.status === 'stopped' ? 'killed' : 'failed';
+        const usage = (m.usage ?? {}) as Record<string, unknown>;
+        const activity: AgentActivity = {
+          ...previous,
+          status,
+          ...(typeof m.summary === 'string' && m.summary.trim() ? { summary: m.summary } : {}),
+          totalTokens: Number(usage.total_tokens ?? previous.totalTokens ?? 0),
+          toolUses: Number(usage.tool_uses ?? previous.toolUses ?? 0),
+          durationMs: Number(usage.duration_ms ?? previous.durationMs ?? 0),
+        };
+        this.subagentTasks.set(taskId, activity);
+        this.emitEvent({ type: 'agent-end', activity });
         return;
+      }
       default:
         console.debug('[agent] 未消费的 system 子类型（已知未处理）:', subtype);
         return;

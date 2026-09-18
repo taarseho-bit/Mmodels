@@ -176,6 +176,16 @@ const taskNotification = (id: string) => ({
   session_id: 'sdk-1',
 });
 
+const subagentStarted = (id: string, agentType: string) => ({
+  type: 'system', subtype: 'task_started', task_id: id, subagent_type: agentType,
+  description: '正在独立核对约束', uuid: 'u', session_id: 'sdk-1',
+});
+const subagentProgress = (id: string, agentType: string) => ({
+  type: 'system', subtype: 'task_progress', task_id: id, subagent_type: agentType,
+  description: '正在独立核对约束', summary: '已经复算目标函数', last_tool_name: 'Bash',
+  usage: { total_tokens: 120, tool_uses: 2, duration_ms: 3000 }, uuid: 'u', session_id: 'sdk-1',
+});
+
 const PROVIDER: ProviderConfig = {
   id: 'p1',
   name: '测试供应商',
@@ -292,6 +302,46 @@ describe('快速模式 —— 只通过 SDK settings 层注入', () => {
       autoCompactEnabled: true,
       precomputeCompactionEnabled: true,
     });
+  });
+});
+
+describe('数学建模多智能体 —— SDK 原生 agents 与真实进度事件', () => {
+  it('开启后注册四个专门角色并转发开始、进度、完成状态', async () => {
+    const sdk = installFakeQuery([
+      subagentStarted('agent-1', 'model-solver'),
+      subagentProgress('agent-1', 'model-solver'),
+      taskNotification('agent-1'),
+      assistant('已经汇总'),
+      result(),
+    ]);
+    const { events, done } = runOnce('复杂建模任务', { multiAgentEnabled: true });
+    await done;
+
+    expect(Object.keys(sdk.options?.agents as Record<string, unknown>)).toEqual([
+      'problem-analyst', 'data-analyst', 'model-solver', 'paper-reviewer',
+    ]);
+    expect(sdk.options?.agentProgressSummaries).toBe(true);
+    expect(sdk.options?.forwardSubagentText).toBe(false);
+    expect(events).toContainEqual({
+      type: 'agent-start',
+      activity: expect.objectContaining({ taskId: 'agent-1', agentType: 'model-solver', status: 'running' }),
+    });
+    expect(events).toContainEqual({
+      type: 'agent-progress',
+      activity: expect.objectContaining({ summary: '已经复算目标函数', totalTokens: 120, toolUses: 2 }),
+    });
+    expect(events).toContainEqual({
+      type: 'agent-end',
+      activity: expect.objectContaining({ taskId: 'agent-1', status: 'completed' }),
+    });
+  });
+
+  it('关闭时不向 SDK 注册协作组', async () => {
+    const sdk = installFakeQuery([assistant('ok'), result()]);
+    const { done } = runOnce('简单问题', { multiAgentEnabled: false });
+    await done;
+    expect(sdk.options?.agents).toBeUndefined();
+    expect(sdk.options?.agentProgressSummaries).toBeUndefined();
   });
 });
 

@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ContentBlock, InflightTurn } from '@shared/types';
 import { decideFollowUpAction, followUpHeadFor, readFollowUpBehavior, useApp } from '../store/app';
-import { blocksOf } from '../store/tasks';
+import { latestTaskBlocks } from '../store/tasks';
 import {
   EMPTY_STREAM,
   chatStreamStore,
@@ -35,6 +35,8 @@ import {
 import { Composer } from '../components/Composer';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
+import { AgentCollaboration } from '../components/AgentCollaboration';
+import { ModelingPet } from '../components/ModelingPet';
 import { t, tx } from '../i18n';
 import {
   forkErrorText,
@@ -438,6 +440,7 @@ export function ChatPage(): JSX.Element {
   const activeSessionId = useApp((s) => s.activeSessionId);
   const newChatRequest = useApp((s) => s.newChatRequest);
   const settings = useApp((s) => s.settings);
+  const patchSettings = useApp((s) => s.patchSettings);
   const createSession = useApp((s) => s.createSession);
   const refreshSessions = useApp((s) => s.refreshSessions);
   const selectSession = useApp((s) => s.selectSession);
@@ -590,7 +593,7 @@ export function ChatPage(): JSX.Element {
    *    而 store 的槽位是按 sessionId 存的 —— 切回来取到的是**同一份**块序列，
    *    子任务的文本与勾选状态因此逐一相等（不是"看起来差不多"）。
    */
-  const historyBlocks = useMemo(() => blocksOf(messages), [messages]);
+  const historyBlocks = useMemo(() => latestTaskBlocks(messages), [messages]);
   const taskState = useMemo(
     () => panelTasks(historyBlocks, stream),
     [historyBlocks, stream],
@@ -1461,11 +1464,21 @@ export function ChatPage(): JSX.Element {
         <div className="composer">
           {/* 任务进度面板：紧贴输入卡片上方 —— 用户要的「在对话框上面」 */}
           <div className="composer-inner">
+            <AgentCollaboration activities={stream.agents} active={isRunning} />
             <TaskProgressPanel state={taskState} />
           </div>
           <div className="composer-inner">{composerNode(false)}</div>
         </div>
       )}
+      {settings?.modelingPetEnabled !== false ? (
+        <ModelingPet
+          active={isRunning}
+          stopping={stream.stopping}
+          blocks={stream.blocks.filter(Boolean)}
+          agents={stream.agents}
+          onClose={() => void patchSettings({ modelingPetEnabled: false })}
+        />
+      ) : null}
     </div>
   );
 }

@@ -463,6 +463,8 @@ export function Composer({
   //    兜底写成 chat 会让首屏看不到任何比赛相关内容 —— 用户会以为功能没做。
   const mode: ComposerMode = settings?.composerMode ?? 'paper';
   const planMode = settings?.planMode === true;
+  const multiAgentEnabled = settings?.multiAgentEnabled !== false;
+  const modelingPetEnabled = settings?.modelingPetEnabled !== false;
   const perm: PermissionMode = settings?.permissionMode ?? 'full';
   const templateId = settings?.paperTemplateId ?? null;
   const template = templates.find((t) => t.id === templateId) ?? null;
@@ -1339,6 +1341,26 @@ export function Composer({
         >
           <Icon name="list-tree" size={13} />
           <span>{tx('composer.composer.planMode')}</span>
+        </button>
+        <button
+          type="button"
+          className={`cz-btn ghost${multiAgentEnabled ? ' active' : ''}`}
+          aria-pressed={multiAgentEnabled}
+          title={multiAgentEnabled ? '复杂任务会按需分给建模伙伴并行核对' : '开启多智能体协作'}
+          onClick={() => void patchSettings({ multiAgentEnabled: !multiAgentEnabled })}
+        >
+          <Icon name="brain" size={13} />
+          <span>协作</span>
+        </button>
+        <button
+          type="button"
+          className={`cz-btn ghost${modelingPetEnabled ? ' active' : ''}`}
+          aria-pressed={modelingPetEnabled}
+          title={modelingPetEnabled ? '隐藏数学建模伙伴小模' : '显示数学建模伙伴小模'}
+          onClick={() => void patchSettings({ modelingPetEnabled: !modelingPetEnabled })}
+        >
+          <Icon name="sigma" size={13} />
+          <span>小模</span>
         </button>
         <div className="cz-slot">
           <button

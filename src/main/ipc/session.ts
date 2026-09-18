@@ -265,6 +265,7 @@ async function buildRunOptions(sessionId: string, prompt: string, cwd: string) {
     resumeSessionId: s.sdkSessionId,
     bridgeBaseUrl: bridgeBaseUrl ?? undefined,
     systemPrompt: buildSystemPrompt(cwd, settings.planMode === true),
+    multiAgentEnabled: settings.multiAgentEnabled !== false && settings.planMode !== true,
     /**
      * 权限模式（复刻口径 `'full' | 'approval'`）—— **原样透传，不在这里改名**。
      * 换算成原版口径 / SDK 口径的那一步只在 `agent/permissions.ts` 里做一次。
@@ -299,9 +300,8 @@ async function buildRunOptions(sessionId: string, prompt: string, cwd: string) {
  *    这不是人格设定，是**输出约定**，放在这里而不是 `agent/prompts.ts`，
  *    是为了不破坏那个文件「逐字取自原版」的保真语义。
  *
- *    第三节（2026-09-18）针对的是另一个实机缺陷：模型干到一半交还回合去等
- *    「后台任务跑完的自动唤醒」，而那个唤醒永远不会来（进程随回合结束而结束）。
- *    详见 `session.test.ts` 顶部注释里的证伪边界。
+ *    第三节最初用于规避单轮 query 提前关闭 stdin；常驻 SessionInputQueue 修复后，
+ *    SDK 的后台完成通知已经能继续同一次运行。现在该节改为要求等待真实结果并自行汇总。
  */
 export function buildSystemPrompt(cwd: string, planOnly = false): string {
   const lines = [
@@ -356,18 +356,27 @@ export function buildSystemPrompt(cwd: string, planOnly = false): string {
         ]
       : []),
 
+    ...(!planOnly && getSettings().multiAgentEnabled !== false
+      ? [
+          '',
+          '# 数学建模协作组',
+          '- 面对含两个以上可独立核对部分的复杂任务，可以调用 Agent 工具，让题意分析、数据分析、建模求解、论文核验子智能体并行工作。',
+          '- 一次最多并行 3 个，只派发边界清楚、能独立返回证据的任务；简单问答和单文件小改动不要调用子智能体。',
+          '- 子智能体只负责分析与核验，正式代码、图表和论文文件由主智能体统一写入，避免并行覆盖。',
+          '- 子智能体结论不能直接照抄：主智能体必须检查冲突、复算关键结果，再形成最终结论。',
+          '- 多步骤工作先用 TaskCreate/TaskUpdate 或 TodoWrite 建立当前任务清单；新需求到来时建立新一批，新增任务及时加入，取消的任务及时删除。',
+        ]
+      : []),
+
     // ── 长时任务：不要交还回合去等通知（用户实机反馈，非原版内容）────
     // 实测两次：模型在后台下载 28/77、抓取 45/77 时交还回合，明确写着
     // 「它跑完会自动通知我接着做」，结果后台任务随进程一起被收掉，用户只能自己敲「继续」。
-    // 根因在 `agent/session.ts`（单轮 query 首个 result 关 stdin），这里只做行为约束。
+    // 常驻 SessionInputQueue 已接通 SDK 自动续跑；这里约束模型不要提前下最终结论。
     '',
-    '# 长时任务：不要交还回合去等通知',
-    '- 你**收不到**"后台任务跑完"的自动唤醒：这一轮一结束，进程就结束，后台任务会被一起收掉。',
-    '- 因此**有后台任务在跑时不要结束回合**：要么用前台方式等它跑完（分批、设超时、边跑边报进度），',
-    '  要么拆成"这一轮做一部分、下一轮接着做"。',
-    '- 只有**必须等用户回复才能继续**时才交还回合，且必须写清一句：',
-    '  "后台还有 <做什么> 在跑，我已经停下了，**请你回复一句「继续」我接着做**"，并列出已完成/未完成清单。',
-    '- **禁止**写"跑完我会接着做""它跑完会自动通知我"这类你无法兑现的话。',
+    '# 长时任务与后台协作',
+    '- SDK 会在后台命令或子智能体完成后继续当前运行；只要还有后台任务，就不要提前给出最终结论。',
+    '- 等全部结果回来后再汇总、核验并完成当前任务，不要让用户额外回复“继续”。',
+    '- 必须等待用户提供新信息时才停下来，并清楚说明缺少什么；不要假装仍在后台工作。',
   ];
   // 用户在「设置 → 系统提示词」里写的附加指令（本地存储，原版同位置功能）
   const custom = getSettings().systemPrompt?.trim();

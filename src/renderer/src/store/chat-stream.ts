@@ -31,8 +31,8 @@
  *    这个坑的实机证据）—— 队列会提前开火，撞上主进程「该会话已有正在执行的任务」，
  *    消息被静默丢弃。所以 phase 只管轮次生命周期，error 单独记。
  */
-import type { ContentBlock, ContextWindowUsage, InflightTurn, StreamEvent, TokenUsage } from '@shared/types';
-import { extractTasks, type TaskState } from './tasks';
+import type { AgentActivity, ContentBlock, ContextWindowUsage, InflightTurn, StreamEvent, TokenUsage } from '@shared/types';
+import { EMPTY_TASK_STATE, extractTasks, type TaskState } from './tasks';
 
 /** 最多同时缓存多少个会话的存活窗口 */
 export const MAX_CACHED_SESSIONS = 8;
@@ -54,6 +54,8 @@ export interface SessionStream {
   contextUsage: ContextWindowUsage | null;
   /** 最近一次压缩，用于在界面明确告诉用户自动整理确实发生过。 */
   lastCompaction: { before: number; after?: number; trigger: 'manual' | 'auto'; at: number } | null;
+  /** 当前一轮实际启动过的子智能体，按 taskId 合并最新状态。 */
+  agents: AgentActivity[];
   error: string | null;
   /**
    * `blocks[0]` 在事件 `index` 空间里的下标。
@@ -79,6 +81,7 @@ export interface StreamView extends LiveWindow {
   usage: TokenUsage | null;
   contextUsage: ContextWindowUsage | null;
   lastCompaction: SessionStream['lastCompaction'];
+  agents: AgentActivity[];
   error: string | null;
 }
 
@@ -92,6 +95,7 @@ export const EMPTY_STREAM: StreamView = {
   usage: null,
   contextUsage: null,
   lastCompaction: null,
+  agents: [],
   error: null,
 };
 
@@ -103,6 +107,7 @@ export function emptySessionStream(sessionId: string | null): SessionStream {
     usage: null,
     contextUsage: null,
     lastCompaction: null,
+    agents: [],
     error: null,
     firstIndex: 0,
     updatedAt: 0,
@@ -121,6 +126,7 @@ export function toView(entry: SessionStream | null | undefined): StreamView {
     usage: entry.usage,
     contextUsage: entry.contextUsage,
     lastCompaction: entry.lastCompaction,
+    agents: entry.agents,
     error: entry.error,
   };
 }
@@ -234,6 +240,16 @@ export function applyStreamEvent(
         updatedAt: now,
       };
 
+    case 'agent-start':
+    case 'agent-progress':
+    case 'agent-end': {
+      const agents = entry.agents.slice();
+      const index = agents.findIndex((agent) => agent.taskId === ev.activity.taskId);
+      if (index >= 0) agents[index] = ev.activity;
+      else agents.push(ev.activity);
+      return { ...entry, agents, updatedAt: now };
+    }
+
     case 'session-error':
       return { ...entry, error: ev.message, updatedAt: now };
 
@@ -266,8 +282,15 @@ export function panelTasks(
 ): TaskState {
   const liveBlocks = (live?.blocks ?? []).filter(Boolean);
 
-  if (live?.active) return extractTasks(liveBlocks, extractTasks(historyBlocks));
-  if (liveBlocks.length === 0) return extractTasks(historyBlocks);
+  // 新一轮就是新的“当前计划”。旧历史不能再次混进来，否则用户追问修改论文时，
+  // 上一轮已经完成的任务会永久钉在输入框上方。
+  if (live?.active) return extractTasks(liveBlocks);
+  if (liveBlocks.length === 0) {
+    const historical = extractTasks(historyBlocks);
+    return historical.list.length > 0 && historical.list.every((task) => task.status === 'completed')
+      ? EMPTY_TASK_STATE
+      : historical;
+  }
 
   const liveIds = new Set(
     liveBlocks.map((b) => b.toolUseId).filter((id): id is string => !!id),
@@ -275,7 +298,10 @@ export function panelTasks(
   const hist = historyBlocks.filter(
     (b) => !(b.kind === 'tool_use' && b.toolUseId && liveIds.has(b.toolUseId)),
   );
-  return extractTasks([...hist, ...liveBlocks]);
+  const current = extractTasks([...hist, ...liveBlocks]);
+  return current.list.length > 0 && current.list.every((task) => task.status === 'completed')
+    ? EMPTY_TASK_STATE
+    : current;
 }
 
 /**
@@ -347,6 +373,7 @@ export class ChatStreamStore {
       phase: 'running',
       contextUsage: previous.contextUsage,
       lastCompaction: previous.lastCompaction,
+      agents: [],
       updatedAt: now,
     };
     this.put(sessionId, next);

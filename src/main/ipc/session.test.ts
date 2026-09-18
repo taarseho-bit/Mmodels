@@ -66,21 +66,16 @@ afterEach(() => {
 
 const CWD = 'C:\\proj\\demo';
 
-describe('长时任务：不要交还回合去等通知', () => {
-  it('提示词里四个关键点各至少出现一处（删掉这一节就红）', () => {
+describe('长时任务与多智能体协作', () => {
+  it('提示词要求等待真实后台结果并自行汇总', () => {
     const text = buildSystemPrompt(CWD);
-
-    // ① 说清「唤醒不会来」
-    expect(text).toContain('收不到');
-    expect(text).toContain('自动唤醒');
-    // ② 有后台任务在跑时不许结束回合
-    expect(text).toContain('不要结束回合');
-    // ③ 万不得已交还回合时的**唯一合法话术**
-    expect(text).toContain('请你回复一句「继续」');
-    // ④ 明令禁止许空承诺
-    expect(text).toContain('禁止');
-    expect(text).toContain('跑完我会接着做');
-    expect(text).toContain('它跑完会自动通知我');
+    expect(text).toContain('# 长时任务与后台协作');
+    expect(text).toContain('后台命令或子智能体完成后继续当前运行');
+    expect(text).toContain('等全部结果回来后再汇总');
+    expect(text).toContain('不要让用户额外回复“继续”');
+    expect(text).toContain('# 数学建模协作组');
+    expect(text).toContain('一次最多并行 3 个');
+    expect(text).toContain('正式代码、图表和论文文件由主智能体统一写入');
   });
 
   it('先规划模式明确只给方案，不修改文件', () => {
@@ -93,8 +88,8 @@ describe('长时任务：不要交还回合去等通知', () => {
 
   it('新增一节插在末尾（在旧的「提问与继续执行」之后）', () => {
     const text = buildSystemPrompt(CWD);
-    expect(text).toContain('# 长时任务：不要交还回合去等通知');
-    expect(text.indexOf('# 长时任务：不要交还回合去等通知')).toBeGreaterThan(
+    expect(text).toContain('# 长时任务与后台协作');
+    expect(text.indexOf('# 长时任务与后台协作')).toBeGreaterThan(
       text.indexOf('# 提问与继续执行'),
     );
   });
@@ -119,7 +114,7 @@ describe('长时任务：不要交还回合去等通知', () => {
     const text = buildSystemPrompt(CWD);
     expect(text).toContain('【用户附加指令】');
     expect(text.indexOf('这是用户的附加指令 X')).toBeGreaterThan(
-      text.indexOf('# 长时任务：不要交还回合去等通知'),
+      text.indexOf('# 长时任务与后台协作'),
     );
   });
 });

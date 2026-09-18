@@ -320,7 +320,7 @@ describe('chat-stream —— 任务清单随会话隔离（文本集合 + 勾选
     expect(subjects(panelTasks([], toView(store.snapshot('B'))))).toEqual(['B 的任务']);
   });
 
-  it('收尾后把已落库的历史 + 存活窗口合并，同一批任务不会算两遍', () => {
+  it('收尾且整批完成后自动收起，不让旧任务永久停留', () => {
     // 历史里已经有 TaskCreate #1（主进程已落库）
     const history: ContentBlock[] = [
       {
@@ -338,11 +338,10 @@ describe('chat-stream —— 任务清单随会话隔离（文本集合 + 勾选
     store.apply('A', { type: 'session-end', sessionId: 'A' }, 4);
 
     const merged = panelTasks(history, toView(store.snapshot('A')));
-    expect(subjects(merged)).toEqual(['跑数据']); // 不是 ['跑数据','跑数据']
-    expect(checks(merged)).toEqual(['跑数据:completed']);
+    expect(subjects(merged)).toEqual([]);
   });
 
-  it('存活窗口为空时退化成纯历史（重启后的复原路径）', () => {
+  it('存活窗口为空时，历史中的已完成批次也不会重新冒出来', () => {
     const history: ContentBlock[] = [
       {
         kind: 'tool_use',
@@ -359,8 +358,24 @@ describe('chat-stream —— 任务清单随会话隔离（文本集合 + 勾选
         toolResult: 'Updated task #1 status',
       },
     ];
-    expect(checks(panelTasks(history, toView(store.snapshot('nope'))))).toEqual(['A:completed']);
-    expect(checks(panelTasks(history, null))).toEqual(['A:completed']);
+    expect(checks(panelTasks(history, toView(store.snapshot('nope'))))).toEqual([]);
+    expect(checks(panelTasks(history, null))).toEqual([]);
+  });
+
+  it('新一轮一开始旧任务立刻退出，新任务创建后进入当前清单', () => {
+    const history: ContentBlock[] = [
+      {
+        kind: 'tool_use', toolName: 'TaskCreate', toolUseId: 'old-c',
+        toolInput: { subject: '旧论文任务' },
+        toolResult: 'Task #1 created successfully: 旧论文任务',
+      },
+    ];
+    store.beginTurn('A', 1);
+    expect(subjects(panelTasks(history, toView(store.snapshot('A'))))).toEqual([]);
+
+    store.apply('A', toolUse('TaskCreate', 'new-c', { subject: '重新调整摘要' }), 2);
+    store.apply('A', toolResult('new-c', 'Task #2 created successfully: 重新调整摘要'), 3);
+    expect(subjects(panelTasks(history, toView(store.snapshot('A'))))).toEqual(['重新调整摘要']);
   });
 });
 
@@ -449,6 +464,7 @@ describe('chat-stream —— 轮次生命周期与 hydrate 口子', () => {
       usage: null,
       contextUsage: null,
       lastCompaction: null,
+      agents: [],
       error: null,
     });
   });
