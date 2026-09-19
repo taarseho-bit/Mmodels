@@ -89,6 +89,9 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
           const n = position.node;
           const style = { left: position.x, top: position.y, width: position.width, height: position.height, '--flow-color': position.color } as CSSProperties;
           if (position.id === FLOW_ROOT) return <div key={position.id} className="flow-origin" style={style}><Icon name="git-branch" size={19} /><strong>本轮目标</strong><span>{run.status === 'running' ? '正在向下分工' : run.status === 'stopped' ? '已停止' : '执行记录'}</span></div>;
+          if (position.aggregateCount) return <div key={position.id} className="flow-agent-group" style={style} title="这些成员已结束，且没有留下技能或操作记录；可点击上方“展开已结束”分别查看">
+            <Icon name="users" size={16} /><strong>{position.aggregateCount} 位短时成员</strong><span>已结束并收起</span>
+          </div>;
           if (!n) return null;
           const finished = n.status !== 'running', folded = compact && finished;
           const active = [...n.tools].reverse().find(t => t.status === 'running');
@@ -99,7 +102,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
             <span className="flow-agent-port is-in" /><span className="flow-agent-port is-out" />
             <div className="flow-agent-heading"><WorkflowAvatar role={n.agentType} working={n.status === 'running' && run.status === 'running'} returned={n.status === 'returned'} /><strong className="flow-agent-name" title={displayName}>{displayName}</strong>
               <span className="flow-agent-state"><Icon name={n.status === 'returned' ? 'check' : n.status === 'stopped' ? 'square' : n.status === 'unknown' ? 'circle-help' : 'loader-circle'} size={12} />{stateLabels[n.status]}</span></div>
-            {!folded && <><p className="flow-agent-assignment" title={n.assignment}>{n.assignment ? `负责：${n.assignment}` : n.id === 'main' ? '负责：统筹本轮目标与最终结果' : '负责：等待明确分工'}</p>
+            {!folded && <><p className="flow-agent-assignment" title={n.assignment}>{n.assignment ? `负责：${n.assignment}` : n.id === 'main' ? '负责：统筹本轮目标与最终结果' : n.status === 'running' ? '负责：正在接收具体分工' : '本轮没有留下可展示的分工说明'}</p>
               <p className="flow-agent-speech" title={active?.label}>{active ? (active.skill ? `正在使用「${active.label}」` : `正在${active.label}`) : n.status === 'returned' ? '已经交回结果，点我查看' : n.status === 'stopped' ? '已经停下，记录仍保留' : finished ? '记录已保留，等待确认' : '正在处理这部分工作'}</p>
               <div className="flow-agent-skills">{skills.length ? skills.slice(-2).map(skill => <span key={skill}><Icon name="sparkles" size={10} />{skill}</span>) : <span className="is-quiet">{finished ? '本阶段未记录到技能调用' : '等待技能调用'}</span>}{skills.length > 2 && <small>+{skills.length - 2}</small>}</div></>}
             {!folded && <div className="flow-agent-foot"><span>{n.tools.length} 次调用</span><span>{skills.length} 种技能</span>{n.tools.some(t => t.artifact) && <span><Icon name="file" size={10} />有文件</span>}</div>}
@@ -109,6 +112,6 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
       </div>
       <span className="flow-navigation-hint">滚轮缩放 · 拖动空白处移动 · 点击成员查看工作</span>
     </div>
-    <div className="flow-legend"><span><i className="is-solid" />父级派发</span><span><i className="is-dashed" />归属待确认</span><span>流动连线表示正在工作</span><span>已完成成员会自动缩小</span></div>
+    <div className="flow-legend"><span><i className="is-solid" />父级派发</span><span><i className="is-dashed" />归属待确认</span><span>曲线表示实际层级</span><span>空的结束记录会自动合并</span></div>
   </div>;
 }

@@ -353,3 +353,10 @@ FA_RUN_TIMEOUT_MS=1800000 bash .workbuddy/ui-audit/fa-core-run.sh <label> <cfg>
 - `WorkflowNode.assignment` 仅保存派发 description 提取出的简短中文分工，不保存完整 prompt。通用旧名称由 `workflowAgentDisplayName()` 按真实技能/工具保守还原。
 - 自动协作改为先派 1 至 2 位，第三位必须有独立证据链；系统提示强制使用具体中文角色名和一句话任务，禁止编号式“协作研究员”。
 - 定向测试 33/33、TypeScript、生产构建通过；新 Portable 可独立启动。路径 `dist-workflow-tree-20260919/MModels-0.1.0-x64-Portable.exe`，SHA-256 `b8b3a7aef57aead4c0126250044526f45b8a30dee2901e9ece464d60db5cf0e4`。
+
+### 工作流平衡布局补充
+
+- `workflow-layout.ts` 现在按逻辑层分组，每层最多四列，多余成员在同一逻辑层换行；连线改为贝塞尔曲线。
+- compact 模式会按父成员聚合至少两位空的已结束通用成员；只有无技能、无工具、无 assignment、无下级的叶子成员才会被聚合，展开后原始记录不丢失。
+- `WorkflowTrace` 对缺少 toolUseID 的启动事件增加唯一待派发匹配：只有唯一候选才补名和父级，多候选时保持未知，防止把并行成员串线。
+- 最终包：`dist-workflow-balanced-final-20260919/MModels-0.1.0-x64-Portable.exe`，269,626,469 B，SHA-256 `74c4597a1f73e94da4cb8c85645cbea89008f1a6fbef606f49079369689ee527`。

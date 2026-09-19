@@ -8,10 +8,10 @@ describe('动态有向工作流布局', () => {
     const graph = layoutWorkflow(run([n('main'), n('a', 'main'), n('b')]), false);
     expect(graph.edges.map(e => [e.source, e.target, e.kind])).toEqual([[FLOW_ROOT, 'main', 'execution'], ['main', 'a', 'delegation'], ['main', 'b', 'participation']]);
   });
-  it('多层派发严格从上到下展开，并使用直角树枝', () => {
+  it('多层派发严格从上到下展开，并使用柔和曲线', () => {
     const graph = layoutWorkflow(run([n('main'), n('a', 'main'), n('b', 'a')]), false);
     expect(graph.nodes[3].y).toBeGreaterThan(graph.nodes[2].y);
-    expect(graph.edges[2].path).toMatch(/^M .* V .* H .* V /);
+    expect(graph.edges[2].path).toMatch(/^M .* C /);
   });
   it('只有正在工作的目标有流动线，结束与停止立即移除', () => {
     const nodes = [n('main'), n('a', 'main', 'returned'), n('b', 'main', 'stopped')];
@@ -44,13 +44,20 @@ describe('动态有向工作流布局', () => {
       expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
     }
   });
-  it('父成员位于整个子树上方，层级不会退化成无意义网格', () => {
-    const graph = layoutWorkflow(run([n('main'), n('a', 'main'), n('b', 'main'), n('c', 'a'), n('d', 'a')]), false);
+  it('同层成员超过四位会自动换行，画布不会无限横向拉长', () => {
+    const graph = layoutWorkflow(run([n('main'), ...Array.from({ length: 7 }, (_, i) => n(`a${i}`, 'main'))]), false);
     const at = (id: string) => graph.nodes.find(node => node.id === id)!;
-    expect(at('a').y).toBeGreaterThan(at('main').y);
-    expect(at('c').y).toBeGreaterThan(at('a').y);
-    expect(at('d').y).toBe(at('c').y);
-    const childCenter = (at('c').x + at('c').width / 2 + at('d').x + at('d').width / 2) / 2;
-    expect(Math.abs(at('a').x + at('a').width / 2 - childCenter)).toBeLessThan(1);
+    expect(at('a4').y).toBeGreaterThan(at('a0').y);
+    expect(graph.width).toBeLessThan(1300);
+    expect(graph.width / graph.height).toBeGreaterThan(1.25);
+    expect(graph.width / graph.height).toBeLessThan(2.1);
+  });
+  it('多个无操作的已结束通用成员默认合并，展开后仍全部存在', () => {
+    const nodes = [n('main'), n('a', 'main', 'returned'), n('b', 'main', 'returned'), n('c', 'main')];
+    for (const node of nodes.slice(1)) node.name = '协作研究员';
+    const compact = layoutWorkflow(run(nodes), true), expanded = layoutWorkflow(run(nodes), false);
+    expect(compact.nodes.find(node => node.aggregateCount === 2)?.id).toContain('__workflow_group__');
+    expect(compact.nodes.some(node => node.id === 'a' || node.id === 'b')).toBe(false);
+    expect(expanded.nodes.filter(node => ['a', 'b', 'c'].includes(node.id))).toHaveLength(3);
   });
 });

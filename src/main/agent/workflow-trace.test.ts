@@ -66,6 +66,13 @@ describe('真实事件工作流观察器', () => {
     expect(JSON.stringify(trace.run)).not.toContain('PRIVATE');
     trace.finish('completed');
   });
+  it('启动事件缺少调用标识时，只在唯一待关联派发存在时补回具体分工', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('only-dispatch', undefined, 'Agent', { description: '角色名：约束边界核验员；任务：复核容量约束' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'child', agent_type: 'general-purpose' });
+    expect(trace.run.nodes[1]).toMatchObject({ parentId: 'main', name: '约束边界核验员', assignment: '复核容量约束' });
+    trace.finish('completed');
+  });
   it('没有手写角色名时也按真实任务生成具体中文分工，且不保存完整任务正文', async () => {
     const trace = new WorkflowTrace('a', true, () => {});
     await invoke(trace, pre('files', undefined, 'Agent', { description: '检查附件中各工作表字段、缺失值和文件结构', prompt: 'PRIVATE-FILES' }));

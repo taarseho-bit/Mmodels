@@ -7,6 +7,7 @@ export class WorkflowTrace {
   readonly run: WorkflowRun;
   private timer?: ReturnType<typeof setTimeout>;
   private requests = new Map<string, { name: string; owner: string; assignment?: string }>();
+  private linkedRequests = new Set<string>();
   private toolOwners = new Map<string, string>();
   private toolParents = new Map<string, string>();
   private agentAliases = new Map<string, string>();
@@ -16,6 +17,7 @@ export class WorkflowTrace {
     node.parentId = request.owner;
     if (request.name) this.rename(node, request.name);
     node.assignment ??= request.assignment;
+    this.linkedRequests.add(dispatch);
   }
   /** SDK 消息携带真实 parent_tool_use_id；与 hook 的工具标识双向对账，不按启动时间猜。 */
   observeMessage(value: unknown): void {
@@ -77,13 +79,19 @@ export class WorkflowTrace {
       return;
     }
     if (event === 'SubagentStart') {
-      // toolUseID 缺失时不按类型/时间猜测身份，两个同类智能体也保持独立。
-      const request = toolUseID ? this.requests.get(toolUseID) : undefined;
+      // SDK 偶尔不带 toolUseID；只有恰好一条尚未关联的派发时才补回身份，多条并行时仍不猜。
+      let requestId = toolUseID && this.requests.has(toolUseID) ? toolUseID : undefined;
+      if (!requestId) {
+        const pending = [...this.requests.keys()].filter(id => !this.linkedRequests.has(id));
+        if (pending.length === 1) requestId = pending[0];
+      }
+      const request = requestId ? this.requests.get(requestId) : undefined;
       const node = this.node(input.agent_id, input.agent_type);
       if (node && request && request.owner !== node.id) {
         node.parentId = request.owner;
         this.rename(node, request.name);
         node.assignment ??= request.assignment;
+        this.linkedRequests.add(requestId!);
       }
       return;
     }
@@ -159,6 +167,6 @@ export class WorkflowTrace {
       node.endedAt ??= Date.now();
       for (const tool of node.tools) if (tool.status === 'running') { tool.status = status === 'stopped' ? 'stopped' : 'unknown'; tool.endedAt = Date.now(); }
     }
-    this.flush(); this.requests.clear(); this.toolOwners.clear(); this.toolParents.clear(); this.agentAliases.clear();
+    this.flush(); this.requests.clear(); this.linkedRequests.clear(); this.toolOwners.clear(); this.toolParents.clear(); this.agentAliases.clear();
   }
 }

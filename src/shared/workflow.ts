@@ -127,5 +127,5 @@ export function workflowAgentDisplayName(node: WorkflowNode): string {
   if (names.has('Read') || names.has('Glob') || names.has('Grep')) return '资料核验员';
   if (names.has('WebSearch') || names.has('WebFetch')) return '资料检索员';
   if (names.has('Agent') || names.has('Task')) return '协作统筹员';
-  return node.status === 'running' ? '待分工协作者' : '未形成有效分工';
+  return node.status === 'running' ? '协作准备中' : '短时协作者';
 }
