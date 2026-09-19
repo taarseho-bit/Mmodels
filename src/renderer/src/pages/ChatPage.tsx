@@ -1156,6 +1156,7 @@ export function ChatPage(): JSX.Element {
   /** 输入区（空会话居中 / 有消息固定底部，用同一份配置） */
   const composerNode = (inline: boolean): JSX.Element => (
     <DraftComposer
+      key={currentProject.id}
       inline={inline}
       draft={draft}
       onSend={(text, opts) => void doSend(text, opts)}

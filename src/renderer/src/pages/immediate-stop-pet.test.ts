@@ -76,6 +76,16 @@ describe('比赛信息入口', () => {
     expect(composer).toContain('if (templates.length === 0 && !tplLoading) void loadTemplates()');
     expect(composer).toContain("t('重新检查')");
   });
+
+  it('切项目立即重建输入区，并在当前项目配置读完前禁止保存旧值', () => {
+    expect(chat).toContain('key={currentProject.id}');
+    expect(composer).toContain('setPaperConfigProjectId(null)');
+    expect(composer).toContain('setPaperFields({})');
+    expect(composer).toContain('paperConfigProjectId !== targetProjectId');
+    expect(composer).toContain('disabled={paperConfigProjectId !== project?.id}');
+    expect(composer).toContain("window.mathmodel.paper.getConfig(targetProjectId)");
+    expect(composer).toContain("window.mathmodel.paper.saveConfig(patch, targetProjectId)");
+  });
 });
 
 describe('桌面小模', () => {

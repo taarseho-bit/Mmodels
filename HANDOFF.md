@@ -1,5 +1,8 @@
 # MModels 交接报告（HANDOFF）
 
+> **最新：多智能体自动触发与项目比赛信息隔离（2026-09-19）**。基线 `7b6bf03`。`multiAgentTriggerForPrompt` 对完整论文、评阅、竞赛核验、多附件综合解题和明确复杂任务注入本轮强制协作要求，至少实际派发两名不同职责成员；显式“启动多智能体”、写论文模式“重新运行/继续完成”也触发，简单小改不触发。“先规划”仍可使用只读协作成员。所有触发均受 `multiAgentEnabled` 控制，关闭后连显式要求也不会注册或注入协作。
+> Composer 以项目 id 重建；项目切换立即清空旧比赛表单，新配置未读完前禁止模板切换和保存。项目模板读取不再回写全局默认值，弹层显示目标项目名。实机磁盘检查确认五个项目根平级、配置内容各自独立。TypeScript、81项定向测试和最终Portable真实应用44/44通过。最终包与哈希见 DELIVERY.md 顶部。
+
 > **最新：Portable 模板资源隔离修复（2026-09-19）**。基线 `af9e659`。electron-builder 25.1.8 中 `portable.unpackDirName: false` 实际生成构建期固定 KSUID，并非每次启动使用独立目录；已纠正为 `true`，让 NSIS `$PLUGINSDIR` 每次生成不同的临时运行目录。
 > `scripts/test-real-app.cjs` 改走应用“完全退出”通道并等待 Portable 外壳自然退出，不再先杀外壳、后遗留内层 Electron。新单文件连续启动两次，解包目录分别为 `nsq7609.tmp`、`nsr35BA.tmp`，两轮都真实读取14技能、15模板、29算法并通过44/44。最终包与哈希见 DELIVERY.md 顶部；此前所有 Portable 不再交付。
 

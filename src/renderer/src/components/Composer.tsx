@@ -453,6 +453,8 @@ export function Composer({
    * 只存 id + label，值统一在 `paperFields[id]` 里，读写只有一处。
    */
   const [customFields, setCustomFields] = useState<{ id: string; label: string }[]>([]);
+  /** 当前本地比赛信息属于哪个项目；未读完时为 null，禁止把上一项目的值保存过去。 */
+  const [paperConfigProjectId, setPaperConfigProjectId] = useState<string | null>(null);
   /**
    * 项目配置里当前的 `template` 原样（含 `source`/`sourcePath`）。
    * 保存时要与它比对：同 id 就**不要把 source 改回 builtin** ——
@@ -470,7 +472,9 @@ export function Composer({
   const planMode = settings?.planMode === true;
   const multiAgentEnabled = settings?.multiAgentEnabled !== false;
   const perm: PermissionMode = settings?.permissionMode ?? 'full';
-  const templateId = settings?.paperTemplateId ?? null;
+  // 项目里已经保存过模板时，以项目配置为准；全局值只作为“新项目尚未配置”的默认模板。
+  const templateId =
+    srcTpl?.source === 'builtin' && srcTpl.id ? srcTpl.id : settings?.paperTemplateId ?? null;
   const template = templates.find((t) => t.id === templateId) ?? null;
 
   /**
@@ -628,16 +632,20 @@ export function Composer({
   //    否则「设置页刚改完模板源 → 回聊天填比赛信息」用的还是打开项目时的旧快照。
   useEffect(() => {
     let cancelled = false;
+    // 切换项目的同一帧先清空旧值。以前这里要等 IPC 返回才替换，用户若立即打开并保存，
+    // 会把上一项目的比赛字段写进新项目，视觉上也像“所有项目共用一份”。
+    setPaperConfigProjectId(null);
+    setPaperFields({});
+    setPageLimitDraft(EMPTY_PAGE_LIMIT);
+    setCustomFields([]);
+    setSrcTpl(null);
     if (!project) {
-      setPaperFields({});
-      setPageLimitDraft(EMPTY_PAGE_LIMIT);
-      setCustomFields([]);
-      setSrcTpl(null);
       return;
     }
+    const targetProjectId = project.id;
     void (async () => {
       try {
-        const r = await window.mathmodel.paper.getConfig(project?.id);
+        const r = await window.mathmodel.paper.getConfig(targetProjectId);
         if (cancelled) return;
         const list = r.config?.contestFields ?? [];
         const values: Record<string, string> = {};
@@ -665,13 +673,9 @@ export function Composer({
             .map((f) => ({ id: f.id, label: pickLocalizedText(f.label, settings?.locale ?? 'zh-CN') })),
         );
         setSrcTpl(r.config?.template ?? null);
-        // 项目里存的模板优先于全局设置（换项目时跟着走）
-        const tid = r.config?.template?.id;
-        if (tid && r.config?.template?.source !== 'custom' && tid !== templateId) {
-          void patchSettings({ paperTemplateId: tid });
-        }
+        setPaperConfigProjectId(targetProjectId);
       } catch {
-        /* 读不到就用空 */
+        if (!cancelled) setNotice(t('暂时无法读取这个项目的比赛信息，请重试'));
       }
     })();
     return () => {
@@ -704,8 +708,13 @@ export function Composer({
    * 现在三种原因各自对应原版那条文案（`chat.newChatPage.paperConfig*`）。
    */
   const savePaperConfig = useCallback(async (patch: PaperConfigPatch): Promise<void> => {
+    const targetProjectId = project?.id;
+    if (!targetProjectId || paperConfigProjectId !== targetProjectId) {
+      setNotice(t('正在读取当前项目的比赛信息，请稍候再保存'));
+      return;
+    }
     try {
-      const r = await window.mathmodel.paper.saveConfig(patch, project?.id);
+      const r = await window.mathmodel.paper.saveConfig(patch, targetProjectId);
       if (r?.ok) {
         setNotice(null);
         return;
@@ -720,7 +729,7 @@ export function Composer({
     } catch {
       setNotice(tx('chat.newChatPage.paperConfigSaveFailed'));
     }
-  }, [project?.id]);
+  }, [project?.id, paperConfigProjectId]);
 
   /**
    * 把「系统拖入 / 剪贴板粘贴」进来的 File 对象登记为附件。
@@ -1515,7 +1524,9 @@ export function Composer({
         <div className="modal-backdrop" onClick={() => setSetupOpen(false)} role="presentation">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <span className="modal-title">{tx('composer.paperSetupDialog.title')}</span>
+              <span className="modal-title">
+                {tx('composer.paperSetupDialog.title')}{project ? ` · ${project.name}` : ''}
+              </span>
               <button className="btn btn-sm btn-ghost" onClick={() => setSetupOpen(false)}>
                 ✕
               </button>
@@ -1546,19 +1557,21 @@ export function Composer({
                   <button
                     key={t.id}
                     className={`cz-pop-item${t.id === templateId ? ' active' : ''}`}
+                    disabled={paperConfigProjectId !== project?.id}
                     onClick={() => {
+                      const ref: PaperTemplateRef = {
+                        id: t.id,
+                        name: makeLocalizedText(t.name, t.nameEn),
+                        entryFile: t.entryFile,
+                        source: 'builtin',
+                        sourcePath: null,
+                      };
+                      setSrcTpl(ref);
                       void patchSettings({ paperTemplateId: t.id });
                       // 换模板 = 换成内置来源（清掉可能存在的自定义 sourcePath），
                       // 但**已填的比赛字段一并保留** —— 换模板不该让用户重填。
                       void savePaperConfig({
-                        template: {
-                          id: t.id,
-                          // 原版 `Np` 对象；en 取 template.json 的 name.en
-                          name: makeLocalizedText(t.name, t.nameEn),
-                          entryFile: t.entryFile,
-                          source: 'builtin',
-                          sourcePath: null,
-                        },
+                        template: ref,
                         contestFields: contestFieldsForSave().filter(
                           (f) => t.fields.some((tf) => tf.id === f.id) || f.id.startsWith(CUSTOM_FIELD_PREFIX),
                         ),
@@ -1768,6 +1781,7 @@ export function Composer({
               </button>
               <button
                 className="btn btn-sm btn-primary"
+                disabled={paperConfigProjectId !== project?.id}
                 onClick={() => {
                   // 只下发「比赛信息」。模板在输入区下拉 / 设置页里换，那两条路径各自显式下发；
                   // 这里手里的 template 是打开项目时的快照，回写会把期间的自定义模板源打回内置。

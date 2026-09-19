@@ -39,7 +39,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /** 可变小黑板：让 `getSettings()` 的返回值在用例里能被改写（注意 factory 会被提升，必须走 vi.hoisted） */
-const board = vi.hoisted(() => ({ systemPrompt: undefined as string | undefined }));
+const board = vi.hoisted(() => ({
+  systemPrompt: undefined as string | undefined,
+  multiAgentEnabled: undefined as boolean | undefined,
+}));
 
 vi.mock('electron', () => ({
   ipcMain: { handle: () => {}, on: () => {} },
@@ -47,7 +50,10 @@ vi.mock('electron', () => ({
 }));
 vi.mock('../db', () => ({ getDb: () => ({}) }));
 vi.mock('../store/config', () => ({
-  getSettings: () => ({ systemPrompt: board.systemPrompt }),
+  getSettings: () => ({
+    systemPrompt: board.systemPrompt,
+    multiAgentEnabled: board.multiAgentEnabled,
+  }),
   findProvider: () => undefined,
   activeProvider: () => undefined,
 }));
@@ -58,10 +64,11 @@ vi.mock('../agent/bridge-registry', () => ({ bridgeRegistry: {} }));
 vi.mock('./index', () => ({ safeWrap: (fn: unknown) => fn, pushToRenderer: () => {} }));
 vi.mock('./file', () => ({ currentProjectRoot: () => null }));
 
-import { buildSystemPrompt } from './session';
+import { buildSystemPrompt, multiAgentTriggerForPrompt } from './session';
 
 afterEach(() => {
   board.systemPrompt = undefined;
+  board.multiAgentEnabled = undefined;
 });
 
 const CWD = 'C:\\proj\\demo';
@@ -84,6 +91,34 @@ describe('长时任务与多智能体协作', () => {
     expect(text).toContain('不修改文件');
     expect(text).toContain('完成方案后结束本轮');
     expect(buildSystemPrompt(CWD, false)).not.toContain('# 当前工作方式：先规划');
+    expect(text).toContain('# 数学建模协作组');
+  });
+
+  it('完整论文、评阅、多附件综合解题会自动触发协作，简单修改不会滥用', () => {
+    expect(multiAgentTriggerForPrompt('/mma-paper\n参考以下文件：\n- C:\\题目.pdf\n解决问题')).toBe('paper');
+    expect(multiAgentTriggerForPrompt('/mma-review 请完整评阅当前论文')).toBe('review');
+    expect(multiAgentTriggerForPrompt('/competition-audit 检查提交材料')).toBe('audit');
+    expect(multiAgentTriggerForPrompt('请启动多智能体协作，重新检查当前结果')).toBe('complex');
+    expect(multiAgentTriggerForPrompt('/mma-paper\n重新运行')).toBe('paper');
+    expect(multiAgentTriggerForPrompt('把标题改短一点')).toBeNull();
+
+    const required = buildSystemPrompt(
+      CWD,
+      false,
+      false,
+      '/mma-paper\n参考以下文件：\n- C:\\题目.pdf\n解决问题',
+    );
+    expect(required).toContain('# 本轮自动协作（已触发）');
+    expect(required).toContain('必须实际调用 Agent 工具组织协作');
+    expect(required).toContain('至少派发 2 个边界不同的成员');
+    expect(buildSystemPrompt(CWD, false, false, '把标题改短一点')).not.toContain('# 本轮自动协作（已触发）');
+  });
+
+  it('关闭多智能体开关后，即使用户明确要求也不注册本轮协作规则', () => {
+    board.multiAgentEnabled = false;
+    const text = buildSystemPrompt(CWD, false, false, '请启动多智能体协作完成整篇论文');
+    expect(text).not.toContain('# 数学建模协作组');
+    expect(text).not.toContain('# 本轮自动协作（已触发）');
   });
 
   it('停止后继续会明确结束旧成员，并按剩余工作重新组织协作', () => {
