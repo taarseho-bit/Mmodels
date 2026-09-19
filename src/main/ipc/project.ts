@@ -10,7 +10,8 @@
  *   这个目录由 agent 自己按需创建，主进程不强行写。
  */
 import { app, ipcMain, dialog } from 'electron';
-import { join, basename, resolve } from 'node:path';
+import { join, basename, resolve, dirname } from 'node:path';
+import { projectPathRelation } from './project-paths';
 import { homedir } from 'node:os';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -52,10 +53,7 @@ export function getProject(id: string): ProjectMeta | null {
 }
 
 export function findProjectByRoot(root: string): ProjectMeta | null {
-  const row = getDb()
-    .prepare<[string], ProjectRow>('SELECT * FROM projects WHERE root = ?')
-    .get(resolve(root));
-  return row ? rowToMeta(row) : null;
+  return listProjects().find(p => projectPathRelation(p.root, root) === 'same') ?? null;
 }
 
 export function createProject(name: string, root: string): ProjectMeta {
@@ -225,10 +223,18 @@ export function registerProjectHandlers(ctx: IpcContext): void {
       const win = ctx.getMainWindow();
       const result = await dialog.showOpenDialog(win ?? undefined!, {
         title: '选择或新建项目目录',
+        defaultPath: (() => { const id = getSettings().recentProjectId; const p = id ? getProject(id) : null; return p ? dirname(p.root) : defaultWorkspaceBase(); })(),
         properties: ['openDirectory', 'createDirectory'],
         buttonLabel: '使用此目录',
       });
       if (result.canceled || result.filePaths.length === 0) return null;
+      const selected = resolve(result.filePaths[0]);
+      const overlap = listProjects().find(p => projectPathRelation(p.root, selected) === 'inside' || projectPathRelation(selected, p.root) === 'inside');
+      if (!findProjectByRoot(selected) && overlap) {
+        await dialog.showMessageBox(win ?? undefined!, { type: 'info', title: '请选择独立的项目目录',
+          message: `这个位置与“${overlap.name}”有包含关系。`, detail: '每个项目应使用平级、互不包含的文件夹。请返回上一级，新建或选择另一个文件夹；现有文件不会移动。', buttons: ['知道了'] });
+        return null;
+      }
       const meta = createProject(name, result.filePaths[0]);
       updateSettings({ recentProjectId: meta.id });
       return meta;

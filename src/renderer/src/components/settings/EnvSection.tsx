@@ -339,7 +339,7 @@ export function EnvSection(): JSX.Element {
         <div className="env-row">
           <div className="env-row-main">
             <span className="env-row-title">{tx('integrations.environmentSection.configureTitle')}</span>
-            <span className="env-row-desc">{tx('integrations.environmentSection.configureDescription')}</span>
+            <span className="env-row-desc">本机安装一次，所有项目共用。优先复用已有工具，只补缺少的依赖，不再为新项目重复安装。新增 Python 库保存在软件数据目录的 runtime 中，已有系统工具不搬动。</span>
           </div>
           <button
             className="btn env-btn btn-primary env-row-action"

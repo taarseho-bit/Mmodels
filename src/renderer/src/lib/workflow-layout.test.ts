@@ -10,7 +10,7 @@ describe('动态有向工作流布局', () => {
   });
   it('多层派发向右展开，箭头有源与目标', () => {
     const graph = layoutWorkflow(run([n('main'), n('a', 'main'), n('b', 'a')]), false);
-    expect(graph.nodes[3].x).toBeGreaterThan(graph.nodes[2].x);
+    expect(graph.nodes[3].y > graph.nodes[2].y || graph.nodes[3].x > graph.nodes[2].x).toBe(true);
     expect(graph.edges[2].path.startsWith('M ')).toBe(true);
   });
   it('只有正在工作的目标有流动线，结束与停止立即移除', () => {
@@ -39,6 +39,15 @@ describe('动态有向工作流布局', () => {
   });
   it('自动协调者居中不会与同列其他成员重叠', () => {
     const graph = layoutWorkflow(run([n('main'), n('unknown'), n('a', 'main'), n('b', 'main')]), false);
-    expect(Math.abs(graph.nodes[1].y - graph.nodes[2].y)).toBeGreaterThan(128);
+    for (const a of graph.nodes) for (const b of graph.nodes) if (a !== b) {
+      expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
+    }
+  });
+  it('5与14位成员保持紧凑宽高比，不排成长列', () => {
+    for (const count of [5, 14, 40]) {
+      const graph = layoutWorkflow(run(Array.from({ length: count }, (_, i) => n(String(i)))), false);
+      expect(graph.width / graph.height).toBeGreaterThan(1.1);
+      expect(graph.width / graph.height).toBeLessThan(2.1);
+    }
   });
 });

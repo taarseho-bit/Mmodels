@@ -2,8 +2,10 @@ import { expect, it } from 'vitest';
 import { makeProject } from '../../shared/competition-studio';
 import { validateProject } from './validation';
 
-it('接受完整工作台和未填写的截止时间', () => {
-  const p = makeProject('project', '比赛'); expect(validateProject(p)).toEqual(p);
+it('接受完整工作台，日历中的比赛自动补齐日期', () => {
+  const p = { ...makeProject('project', '比赛'), year: 2026 };
+  expect(validateProject(p)).toMatchObject({ id: p.id, calendarId: 'A01-2026', deadline: '2026-09-13T20:00:00+08:00' });
+  const custom = { ...p, competition: '自主练习' }; expect(validateProject(custom)).toEqual(custom);
 });
 it('拒绝错误年份、日期、阶段和缺失字段，避免写坏索引', () => {
   const p = makeProject('project', '比赛');

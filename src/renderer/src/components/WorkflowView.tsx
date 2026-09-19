@@ -45,14 +45,15 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
   const skills = [...new Set(node?.tools.flatMap(t => t.skill ? [t.skill] : []) ?? [])].map(id => {
     const calls = node!.tools.filter(t => t.skill === id);
     const status = calls.some(t => t.status === 'running') ? '进行中' : toolLabel[calls[calls.length - 1].status];
-    return { id, label: calls[0].label, count: calls.length, status };
+    const source = calls[0].skillSource === 'entry' ? '写作流程已加载' : calls[0].skillSource === 'read' ? '已阅读技能说明' : '已调用技能';
+    return { id, label: calls[0].label.replace(/^(载入入口指令|参考技能) · /, ''), count: calls.length, status, source };
   });
   return <section className="workflow-view" aria-label="任务工作流">
     <div className="workflow-heading">
       <div><h2>任务工作流</h2></div>
       <button className="btn btn-ghost" aria-pressed={privateView} onClick={() => setPrivateView(v => !v)}>{privateView ? '演示保护已开' : '开启演示保护'}</button>
     </div>
-    <p className="workflow-note">同一轮任务的实时记录。只呈现真实工作事件，不展示模型的内部思考。</p>
+    <p className="workflow-note">看看谁在做什么，用了哪些方法，交回了什么成果。</p>
     {notice && <p role="status">{notice} <button className="btn btn-ghost" onClick={() => setRetry(v => v + 1)}>重新读取</button></p>}
     {!run ? <div className="workflow-empty"><Icon name="git-branch" size={32} /><h3>{loading ? '正在读取工作记录' : '从下一次任务开始，协作过程会出现在这里'}</h3>
       <p>旧对话没有完整的成员与技能关联记录，不会补造工作流。复杂任务按需协作，简单任务可由主助手独立完成。</p>
@@ -62,20 +63,20 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
           <option value="">跟随最新一轮</option>{runs.map(r => <option key={r.id} value={r.id}>{new Date(r.startedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · {runLabel[r.status]}</option>)}
         </select></label>
         <span className={`workflow-status is-${run.status}`}>{runLabel[run.status]}</span>
-        <span>{run.nodes.length} 位成员</span><span>{skillCount} 种技能</span><span>{fileCount} 个文件变更</span>
+        <span>{run.nodes.length} 位成员</span><span>{skillCount} 项技能与流程</span><span>{fileCount} 份文件成果</span>
       </div>
       {!run.collaborationEnabled && <p className="workflow-note">本轮没有启用内置协作组（可能关闭了协作，或选择了先规划）；仍记录实际发生的工作。</p>}
-      <div className="workflow-layout is-flow-canvas">
+      <div className={`workflow-layout is-flow-canvas${node && detailsOpen ? ' with-details' : ''}`}>
         <WorkflowCanvas key={run.id} run={run} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />
         {node && detailsOpen && <aside className="workflow-detail" aria-label="成员工作详情" onKeyDown={e => { if (e.key === 'Escape') setDetailsOpen(false); }}>
-          <ResizeHandle storageKey="mm-workflow-detail-width" label="调整成员详情宽度" edge="left" initial={295} min={240} max={560} fraction={.85} />
+          <ResizeHandle storageKey="mm-workflow-detail-width-v2" label="调整成员详情宽度" edge="left" initial={280} min={220} max={340} fraction={.34} />
           <button className="flow-detail-close" aria-label="关闭成员详情" onClick={() => setDetailsOpen(false)}><Icon name="x" size={15} /></button>
           <div className="workflow-detail-heading"><span>成员详情</span><h3>{node.name}</h3><p>{nodeLabel[node.status]}</p></div>
           <section className="flow-skill-section" aria-label="这个成员调用的技能">
-            <h4><Icon name="sparkles" size={13} />调用过的技能 <span>{skills.length} 种</span></h4>
-            {skills.length ? <ul>{skills.map(skill => <li key={skill.id}><div><strong>{skill.label}</strong><small>{skill.status}</small></div><code>{skill.id}</code><span>调用 {skill.count} 次</span></li>)}</ul> : <p>还没有记录到技能工具调用。阅读文件、计算等操作会显示在下面，不会冒充技能调用。</p>}
+            <h4><Icon name="sparkles" size={13} />使用的方法 <span>{skills.length} 项</span></h4>
+            {skills.length ? <ul>{skills.map(skill => <li key={skill.id}><div><strong>{skill.label}</strong><small>{skill.status}</small></div><span>{skill.source} · {skill.count} 次</span><details><summary>查看技能名称</summary><code>{skill.id}</code></details></li>)}</ul> : <p>暂未使用专门技能，可以展开下面的工作记录看看进展。</p>}
           </section>
-          <h4 className="flow-records-title">全部工作记录</h4>
+          <details className="flow-records"><summary>展开工作记录</summary>
           {!node.tools.length && <p className="workflow-note">已记录到成员启动，尚无工具调用记录。未调用工具不代表没有处理任务。</p>}
           <ol className="workflow-tool-list">{[...node.tools].reverse().map(tool => {
             const relative = tool.artifact && project ? workflowArtifactPath(tool.artifact, project.root) : null;
@@ -86,10 +87,11 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
               {!privateView && <details><summary>调用标识</summary><code>{tool.skill ?? tool.name}</code>{tool.artifact && <p>{tool.artifact}</p>}</details>}
             </li>;
           })}</ol>
+          </details>
         </aside>}
       </div>
       {run.nodes.length === 1 && <p className="workflow-note">本轮目前由主助手处理，协作成员实际启动后会自动加入画布。</p>}
-      <p className="workflow-note">“已返回”仅表示执行返回，不代表结果已经通过核验。技能统计只包含技能工具调用，入口指令单独记录。{privateView ? '演示保护隐藏操作摘要、路径及底层工具标识，保留技能名称便于讲解；打开文件预览后，请自行确认内容是否适合展示。' : '当前显示工作摘要和调用标识。'} 每个任务保留最近 20 轮记录。</p>
+      <details className="workflow-explainer"><summary>关于这张工作图</summary><p>连线来自实际分工与交流。虚线只表示参与，不代表同时工作；未记录的关系不会补画。技能分为已加载的流程、已阅读的说明和实际调用。“已返回”表示成员交回结果，仍需核验。旧记录可能不完整。演示保护隐藏文件路径与工作摘要。</p></details>
       {run.truncated && <p className="workflow-note">本轮事件较多，展示记录已达到上限（40 位成员、500 次工具调用），实际执行不受影响。</p>}
     </>}
   </section>;

@@ -1,4 +1,5 @@
 /* Competition workspace upgrade: scoped away from the desktop pet. */
+.competition-shell .composer-inner,.competition-shell .chat-inner,.competition-shell .newchat { width:100%; max-width:none; }
 .competition-shell { --studio-ink: var(--fg-primary); --studio-accent: var(--fg-secondary); --studio-paper: var(--bg-hover); --studio-line: var(--border-weak); --sidebar-w: 240px; background: var(--bg-canvas); }
 [data-theme='dark'] .competition-shell { --studio-ink: var(--fg-primary); --studio-accent: var(--fg-secondary); --studio-paper: var(--bg-hover); --studio-line: var(--border-weak); }
 .competition-shell .sidebar { background: var(--bg-canvas); color: var(--fg-primary); border: 0; border-right: 1px solid var(--studio-line); backdrop-filter: none; border-radius: 0; box-shadow: none; padding: 18px 12px 12px; }
@@ -84,3 +85,12 @@
 [data-theme='dark'] .competition-shell { color-scheme: dark; }
 @media (max-width: 1150px) { .studio-savebar { bottom: -24px; } }
 @media (prefers-reduced-motion: reduce) { .competition-shell * { scroll-behavior: auto!important; transition: none!important; animation-duration: .01ms!important; animation-iteration-count: 1!important; } }
+.studio-simple-countdown { min-height:190px; align-items:center; }
+.studio-simple-countdown > div { min-width:0; }
+.studio-simple-countdown select { display:block; width:100%; max-width:560px; margin-top:12px; }
+.studio-simple-countdown .studio-countdown strong { font-size:clamp(22px,2.4vw,34px); white-space:nowrap; }
+.studio-workbench-more > summary { cursor:pointer; padding:16px 0; color:var(--fg-muted); border-top:1px solid var(--border); }
+.studio-workbench-more[open] > summary { margin-bottom:14px; }
+.studio-workbench-more .studio-card > label { display:grid; gap:8px; margin:14px 0; }
+.studio-workbench-more .studio-card > label.studio-checkline { display:flex; }
+@media (max-width:1000px) { .studio-simple-countdown { grid-template-columns:1fr; gap:18px; }.studio-simple-countdown .studio-countdown { border-left:0; padding-left:0; } }

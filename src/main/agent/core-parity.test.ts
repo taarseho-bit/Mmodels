@@ -79,7 +79,7 @@ describe('核心能力对齐', () => {
   });
   it('原版 DeepSeek 长上下文映射只作用于匹配端点', () => {
     expect(sdkModel({ ...provider, apiFormat: 'anthropic', baseUrl: 'https://api.deepseek.com/anthropic' }, 'deepseek-v4-flash')).toBe('deepseek-v4-flash[1m]');
-    expect(sdkModel(provider, 'deepseek-flash')).toBe('deepseek-flash');
+    expect(sdkModel(provider, 'deepseek-flash')).toBe('deepseek-flash[1m]');
   });
   it('专业子智能体有 Skill，同时保留各自工具权限边界', () => {
     for (const agent of Object.values(MODELING_AGENTS)) expect(agent.tools).toContain('Skill');

@@ -11,6 +11,33 @@ const pre = (id: string, owner?: string, name = 'Skill', input: object = { skill
 });
 afterEach(() => vi.useRealTimers());
 describe('真实事件工作流观察器', () => {
+  it('用消息与工具的真实标识补齐父子关系，支持消息先到或后到', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('dispatch', undefined, 'Agent', { description: '角色名：模型核验员' }));
+    trace.observeMessage({ type: 'tool_progress', tool_use_id: 'read', parent_tool_use_id: 'dispatch' });
+    await invoke(trace, pre('read', 'child', 'Read'));
+    expect(trace.run.nodes[1].parentId).toBe('main');
+    expect(trace.run.nodes[1].name).toBe('模型核验员');
+    await invoke(trace, pre('nested', 'child', 'Agent', {}));
+    await invoke(trace, pre('calc', 'grandchild', 'Bash'));
+    trace.observeMessage({ type: 'assistant', parent_tool_use_id: 'nested', message: { content: [{ type: 'tool_use', id: 'calc' }] } });
+    expect(trace.run.nodes[2].parentId).toBe('child');
+    trace.finish('completed');
+  });
+  it('只记录确认发送给已有成员的交流，不保存消息正文', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('read', 'child', 'Read'));
+    await invoke(trace, { ...pre('send', undefined, 'SendMessage', { recipient: 'child', content: 'SECRET' }), hook_event_name: 'PostToolUse', tool_response: {} });
+    expect(trace.run.exchanges).toEqual([{ id: 'send', source: 'main', target: 'child' }]);
+    expect(JSON.stringify(trace.run)).not.toContain('SECRET');
+    trace.finish('completed');
+  });
+  it('成功阅读技能说明与真正调用技能区分显示', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, { ...pre('read', 'child', 'Read', { file_path: 'D:/plugin/skills/paper-search/SKILL.md' }), hook_event_name: 'PostToolUse', tool_response: {} });
+    expect(trace.run.nodes[1].tools[0]).toMatchObject({ skill: 'paper-search', skillSource: 'read' });
+    trace.finish('completed');
+  });
   it('无 agent_id 的工具归主助手，不把主助手的 agent_type 误认为子成员', async () => {
     const trace = new WorkflowTrace('a', true, () => {});
     expect(await invoke(trace, pre('t'))).toEqual({});
@@ -100,7 +127,8 @@ describe('真实事件工作流观察器', () => {
     const trace = new WorkflowTrace('a', false, () => {});
     await invoke(trace, { hook_event_name: 'UserPromptExpansion', expansion_type: 'slash_command', command_name: '/mathmodel:mma-paper', command_args: 'SECRET', prompt: 'SECRET' });
     expect(trace.run.nodes[0].tools[0].label).toBe('载入入口指令 · 论文写作');
-    expect(trace.run.nodes[0].tools[0].skill).toBeUndefined();
+    expect(trace.run.nodes[0].tools[0].skill).toBe('mathmodel:mma-paper');
+    expect(trace.run.nodes[0].tools[0].skillSource).toBe('entry');
     expect(JSON.stringify(trace.run)).not.toContain('SECRET');
     trace.finish('completed');
   });

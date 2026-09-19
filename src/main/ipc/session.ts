@@ -15,6 +15,8 @@
  */
 import { ipcMain } from 'electron';
 import { competitionProjectContext } from './competition-library';
+import { sharedEnvironmentInstructions } from '../runtime/shared-environment';
+import { userTextBlock } from '../../shared/user-message';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -240,12 +242,8 @@ function insertMessage(
 // 运行一轮
 // ─────────────────────────────────────────────────────────────
 
-/** 生成任务开始前，把 SDK 需要的环境准备好 */
-export async function buildRunOptions(sessionId: string, prompt: string, cwd: string) {
-  const { publishWorkflow } = await import('./workflow');
-  const s = getSession(sessionId);
-  if (!s) throw new Error('会话不存在');
-
+/** Cheap preflight before any project snapshot or environment preparation. */
+function resolveSessionModel(s: SessionMeta) {
   const settings = getSettings();
   const provider = (settings.activeProviderId ? findProvider(settings.activeProviderId) : null)
     ?? (s.providerId ? findProvider(s.providerId) : null) ?? activeProvider();
@@ -258,6 +256,15 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
   if (!model) {
     throw new Error('尚未指定模型。请在设置中选择默认模型，或在该供应商下填写模型名。');
   }
+  return { settings, provider, model };
+}
+
+/** 生成任务开始前，把 SDK 需要的环境准备好 */
+export async function buildRunOptions(sessionId: string, prompt: string, cwd: string) {
+  const { publishWorkflow } = await import('./workflow');
+  const s = getSession(sessionId);
+  if (!s) throw new Error('会话不存在');
+  const { settings, provider, model } = resolveSessionModel(s);
 
   const bridgeBaseUrl = await bridgeRegistry.ensureFor(provider, { model, effort: settings.effort ?? undefined, disableThinking: settings.disableThinking });
   getDb().prepare('UPDATE sessions SET provider_id = ?, model = ? WHERE id = ?').run(provider.id, model, sessionId);
@@ -327,6 +334,7 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
  */
 export function buildSystemPrompt(cwd: string, planOnly = false): string {
   const lines = [
+    sharedEnvironmentInstructions(),
     `当前项目根目录：${cwd}`,
     '论文模板与比赛字段配置位于 `.mathmodel/paper/config.json`（早期版本可能写在 `.mmodels/paper/config.json`，两者等价，都读得到）。',
     // 技能已由插件机制注册成斜杠命令（命令描述自带说明），这里只作一句提示，
@@ -387,6 +395,8 @@ export function buildSystemPrompt(cwd: string, planOnly = false): string {
           '- 每次派发的 description 使用中文，并以“角色名：中文短名；任务：具体工作”开头，例如“角色名：灵敏度核验员；任务：独立复算参数变化对目标值的影响”。临时专项角色也必须中文命名；保留有效 subagent_type，不要编造未注册的类型。',
           '- 给协作成员提供必要的题目条件、数据位置、交付标准和可用技能；成员按需调用匹配的 Skill，禁止为了展示而重复调用无关技能。正式交付前，有可独立复核的关键结论时优先派发核验，并说明未验证项。',
           '- 一次最多并行 3 个，只派发边界清楚、能独立返回证据的任务；简单问答和单文件小改动不要调用子智能体。',
+          '- 先梳理依赖再分工：题意与数据检查可并行；求解必须使用前序确认的条件，核验必须等到候选结果，论文整合必须等到关键结果可复核。不要把存在依赖的工作一次性全部并行派发。优先复用已有成员，避免重复启动无工作内容的成员。',
+          '- 需要交叉核验时明确交接对象与结果；运行环境支持时可由求解员安排一次独立核验，不支持时由主助手接力安排。只报告实际发生的协作和技能使用，不描述为已经完成的计划。',
           '- 子智能体只负责分析与核验，正式代码、图表和论文文件由主智能体统一写入，避免并行覆盖。',
           '- 子智能体结论不能直接照抄：主智能体必须检查冲突、复算关键结果，再形成最终结论。',
           '- 多步骤工作先用 TaskCreate/TaskUpdate 或 TodoWrite 建立当前任务清单；新需求到来时建立新一批，新增任务及时加入，取消的任务及时删除。',
@@ -591,27 +601,23 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
 
   ipcMain.handle(
     IPC.SESSION_SEND,
-    safeWrap(async (_e, sessionId: string, text: string) => {
+    safeWrap(async (_e, sessionId: string, text: string, displayText?: string) => {
       const targetSession = getSession(sessionId);
       if (!targetSession) throw new Error('会话不存在');
       const targetProject = getProject(targetSession.projectId);
       if (!targetProject) throw new Error('会话所属项目不存在');
       if (activeTurns.has(sessionId)) throw new Error('这条对话正在运行，请先停止当前任务');
       const cwd = targetProject.root;
-
-      // 0) 先给工作区打快照，把 ref 记在**这条用户消息**上（P0）。
-      //    语义是"回到这条消息发出之前的状态"，所以必须在落库/开跑**之前**打。
-      //    顺序反了就会把 agent 这一轮的改动也拍进快照，回退等于没回。
-      const checkpointRef = await captureCheckpoint(cwd);
+      resolveSessionModel(targetSession);
 
       // 1) 先落库用户消息 —— 即便后面 agent 崩了，用户的话不丢
       const userMsg: ChatMessage = {
         id: randomUUID(),
         role: 'user',
-        blocks: [{ kind: 'text', text }],
+        blocks: [userTextBlock(text, displayText)],
         createdAt: Date.now(),
       };
-      insertMessage(sessionId, userMsg, { checkpointRef });
+      insertMessage(sessionId, userMsg);
 
       // 2) 取 runner，挂事件转发
       const runner = sessionRegistry.get(sessionId);
@@ -703,6 +709,11 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       // 3) 跑（不 await，立即返回让界面进入流式状态）
       let opts: Awaited<ReturnType<typeof buildRunOptions>>;
       try {
+        // Register the cancellable turn and save the user's words BEFORE slow Git work.
+        // Snapshot still precedes all agent/project writes, so rewind semantics stay intact.
+        const checkpointRef = await captureCheckpoint(cwd);
+        if (activeTurn.finalized) return { messageId: userMsg.id };
+        if (checkpointRef) getDb().prepare('UPDATE messages SET checkpoint_ref = ? WHERE id = ?').run(checkpointRef, userMsg.id);
         opts = await buildRunOptions(sessionId, text, cwd);
       } catch (err) {
         if (activeTurn.finalized) return { messageId: userMsg.id };

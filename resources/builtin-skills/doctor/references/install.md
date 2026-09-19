@@ -5,22 +5,40 @@
 首次安装默认使用文末“中国大陆网络环境（默认）”一节。国内镜像不可用时再回退本节
 列出的官方源命令，不要先等待官方源超时。
 
-## Python 与项目环境
+## Python 与软件共用环境
 
-优先使用 MModels 自带或 PATH 中的 `uv`：
+先用已检测到的 Python 检查任务需要的库。全部可导入就直接使用，不安装任何内容。
+只有缺库且已经获得安装授权时，创建一次软件共用环境；它通过 `--system-site-packages`
+继续复用原有库，新库只装到软件目录，不修改系统 Python。以下变量由 MModels 注入，
+独立终端中没有这些变量时先确认软件的环境目录，不能使用空变量执行命令。
 
 ```bash
-uv python install
-uv venv .venv
-uv pip install --python .venv/bin/python numpy scipy pandas matplotlib seaborn python-dateutil
+test -n "$UV_PROJECT_ENVIRONMENT" && test -n "$MMODELS_SHARED_PYTHON" || exit 1
+# 仅当共用解释器不存在时创建；PYTHON 是前一步检测成功的解释器。
+if [ ! -x "$MMODELS_SHARED_PYTHON" ]; then
+  "$PYTHON" -m venv --system-site-packages "$UV_PROJECT_ENVIRONMENT"
+fi
+# <缺失包> 替换为实际检测缺失的库，不整批重装。
+"$MMODELS_SHARED_PYTHON" -m pip install <缺失包> -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-Windows 项目的解释器路径改为 `.venv\Scripts\python.exe`。如果项目已经有虚拟环境，复用它，不要重新创建。
+Windows PowerShell：
+
+```powershell
+if (-not $env:UV_PROJECT_ENVIRONMENT -or -not $env:MMODELS_SHARED_PYTHON) { throw '请先确认软件共用环境目录' }
+if (-not (Test-Path -LiteralPath $env:MMODELS_SHARED_PYTHON)) {
+  & $PYTHON -m venv --system-site-packages $env:UV_PROJECT_ENVIRONMENT
+}
+& $env:MMODELS_SHARED_PYTHON -m pip install <缺失包> -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+运行脚本时使用这个共用解释器。不要创建项目 `.venv`，不要重复运行 `uv python install`。
+旧项目的环境保留；只有确有版本冲突且用户同意时才使用项目隔离。
 
 扩展包只按实际任务安装：
 
 ```bash
-uv pip install --python .venv/bin/python cartopy shapely scikit-learn openpyxl plotnine plotly networkx shap optuna geopandas folium graphviz wordcloud
+uv pip install --python "$MMODELS_SHARED_PYTHON" <本次缺少的扩展包>
 ```
 
 如果 `uv` 不可用，优先引导用户从 MModels“设置 → Environment”安装托管 Python。除非用户明确要求，不对系统 Python 执行全局 `pip install`。
@@ -126,10 +144,10 @@ GitHub 加速代理地址不稳定；失败时更换代理前缀（执行前告�
 清华 TUNA 镜像（备选：阿里云 `https://mirrors.aliyun.com/pypi/simple/`）：
 
 ```bash
-UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv pip install --python .venv/bin/python numpy scipy pandas matplotlib seaborn python-dateutil
+UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv pip install --python "$MMODELS_SHARED_PYTHON" <缺失包>
 ```
 
-扩展包同理，加同一个环境变量即可。Windows 解释器路径换成 `.venv\Scripts\python.exe`。
+扩展包同理，只补缺失项。PowerShell 使用 `$env:MMODELS_SHARED_PYTHON`。
 
 ### LaTeX
 

@@ -19,7 +19,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
   const fit = () => {
     const rect = viewport.current?.getBoundingClientRect();
     if (!rect || !rect.width || !rect.height) return;
-    const scale = Math.min(1, Math.max(.06, Math.min((rect.width - 40) / layout.width, (rect.height - 32) / layout.height)));
+    const scale = Math.min(1, Math.max(.72, Math.min((rect.width - 40) / layout.width, (rect.height - 32) / layout.height)));
     setView({ scale, x: Math.max(16, (rect.width - layout.width * scale) / 2), y: Math.max(16, (rect.height - layout.height * scale) / 2) });
   };
   useEffect(() => {
@@ -31,9 +31,19 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
     const rect = viewport.current?.getBoundingClientRect(); if (!rect) return;
     const cx = x ?? rect.width / 2, cy = y ?? rect.height / 2;
     setFollow(false);
-    setView(old => { const scale = Math.min(1.8, Math.max(.06, old.scale * factor));
+    setView(old => { const scale = Math.min(2, Math.max(.35, old.scale * factor));
       return { scale, x: cx - (cx - old.x) * scale / old.scale, y: cy - (cy - old.y) * scale / old.scale }; });
   };
+  useEffect(() => {
+    const el = viewport.current; if (!el) return;
+    const wheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      zoom(Math.exp(-Math.max(-180, Math.min(180, e.deltaY * (e.deltaMode === 1 ? 16 : 1))) * .002), e.clientX - rect.left, e.clientY - rect.top);
+    };
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => el.removeEventListener('wheel', wheel);
+  }, []);
   return <div className="flow-canvas-shell">
     <ResizeHandle storageKey="mm-workflow-canvas-height" label="调整工作流画布高度" edge="bottom" initial={460} min={280} max={900} fraction={.85} viewport optional />
     <div className="flow-toolbar">
@@ -66,7 +76,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
         setView(old => ({ ...old, x: p.originX + e.clientX - p.x, y: p.originY + e.clientY - p.y })); }}
       onPointerUp={e => { drag.current = null; e.currentTarget.classList.remove('is-panning'); if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}
       onPointerCancel={e => { drag.current = null; e.currentTarget.classList.remove('is-panning'); }}>
-      <div className="flow-world" style={{ width: layout.width, height: layout.height, transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}>
+      <div className={`flow-world${view.scale < .6 ? ' is-overview' : ''}`} style={{ width: layout.width, height: layout.height, left: view.x / view.scale, top: view.y / view.scale, zoom: view.scale }}>
         <svg className="flow-connections" width={layout.width} height={layout.height} aria-hidden="true">
           <defs>{layout.edges.map((edge, i) => <marker key={edge.id} id={`${prefix}-arrow-${i}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill={edge.color} /></marker>)}</defs>
           {layout.edges.map((edge, i) => <g key={edge.id} className={`flow-edge is-${edge.kind}${edge.active ? ' is-active' : ''}`} style={{ '--flow-color': edge.color } as CSSProperties} data-source={edge.source} data-target={edge.target}>
@@ -84,7 +94,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
           const active = [...n.tools].reverse().find(t => t.status === 'running');
           const skills = [...new Map(n.tools.filter(t => t.skill).map(t => [t.skill, t.label])).values()];
           return <button key={n.id} className={`workflow-node flow-agent is-${n.status}${selectedId === n.id ? ' is-selected' : ''}${folded ? ' is-folded' : ''}`}
-            style={style} aria-pressed={selectedId === n.id} aria-label={`${n.name}，${stateLabels[n.status]}`} onClick={() => onSelect(n.id)}>
+            style={style} title={`${n.name} · ${stateLabels[n.status]}${skills.length ? ` · ${skills.join('、')}` : ''}`} aria-pressed={selectedId === n.id} aria-label={`${n.name}，${stateLabels[n.status]}`} onClick={() => onSelect(n.id)}>
             <span className="flow-agent-port is-in" /><span className="flow-agent-port is-out" />
             <div className="flow-agent-heading"><WorkflowAvatar role={n.agentType} working={n.status === 'running' && run.status === 'running'} returned={n.status === 'returned'} /><strong className="flow-agent-name" title={n.name}>{n.name}</strong>
               <span className="flow-agent-state"><Icon name={n.status === 'returned' ? 'check' : n.status === 'stopped' ? 'square' : n.status === 'unknown' ? 'circle-help' : 'loader-circle'} size={12} />{stateLabels[n.status]}</span></div>
@@ -95,8 +105,8 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
           </button>;
         })}
       </div>
-      <span className="flow-navigation-hint">拖动空白处平移 · 按 + / − 缩放 · 按 0 适应</span>
+      <span className="flow-navigation-hint">滚轮缩放 · 拖动空白处移动 · 点击成员查看工作</span>
     </div>
-    <div className="flow-legend"><span><i className="is-solid" />实线：已确认派发 / 本轮执行</span><span><i className="is-dashed" />虚线：参与本轮，派发来源未确认</span><span>流动线：目标成员正在工作</span></div>
+    <div className="flow-legend"><span><i className="is-solid" />分工关系</span><span><i className="is-dashed" />参与成员</span><span>流动连线表示正在工作</span></div>
   </div>;
 }

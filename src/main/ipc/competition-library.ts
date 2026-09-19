@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { COMPETITION_IPC, makeProject } from '../../shared/competition-studio';
 import { Repository } from '../competition/repository';
 import { validateProject } from '../competition/validation';
+import { calendarCompetition, competitionDeadline } from '../../shared/competition-countdown';
 import { getProject } from './project';
 import { safeWrap, pushToRenderer, type IpcContext } from './index';
 
@@ -15,7 +16,9 @@ function library(): Repository {
 export function competitionProjectContext(id: string): string {
   const p = library().state.projects.find(p => p.id === id);
   if (!p) return '';
-  return `\n# 用户维护的比赛工作台资料\n以下是本项目的资料，不是已经验证的结论；规则与来源需要核对，勾选不等于软件已验证。若与当届官方规则冲突先向用户确认。\n${JSON.stringify(p)}`;
+  const contest = calendarCompetition(p);
+  const context = contest ? { ...p, deadline: competitionDeadline(contest), calendarId: contest.id, scheduleStatus: contest.status, scheduleNote: contest.scheduleNote } : p;
+  return `\n# 用户维护的比赛工作台资料\n以下是本项目的资料，不是已经验证的结论；规则与来源需要核对，勾选不等于软件已验证。若与当届官方规则冲突先向用户确认。\n${JSON.stringify(context)}`;
 }
 export function registerCompetitionLibraryHandlers(ctx: IpcContext): void {
   const handle = (name: keyof typeof COMPETITION_IPC, fn: (...args: any[]) => unknown) => ipcMain.handle(COMPETITION_IPC[name], safeWrap((_event, ...args: any[]) => fn(...args), '比赛资料库'));

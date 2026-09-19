@@ -405,6 +405,18 @@ describe('数学建模多智能体 —— SDK 原生 agents 与真实进度事�
 });
 
 describe('上下文窗口 —— 真实占用与 90% 自动压缩', () => {
+  it.each([1_000_000, 300_000, 200_000, 128_000])('配置 %i 容量会传递 90%% 阈值并在用量中显示', async (capacity) => {
+    const sdk = installFakeQuery([
+      { type: 'system', subtype: 'init', session_id: 'sdk-capacity', model: 'test-model' },
+      assistant('ok'), result(),
+    ]);
+    const { events, done } = runOnce('x', { provider: { ...PROVIDER, contextWindows: { 'test-model': capacity } } });
+    await done;
+    await Promise.resolve();
+    expect(sdk.options?.settings).toMatchObject({ autoCompactWindow: Math.floor(capacity * .9) });
+    expect(sdk.appliedSettings).toContainEqual(expect.objectContaining({ autoCompactWindow: Math.floor(capacity * .9) }));
+    expect(events).toContainEqual({ type: 'context-usage', usage: expect.objectContaining({ total: capacity, capacitySource: 'configured' }) });
+  });
   it('初始化后按原始窗口的 90% 配置，并推送真实占用', async () => {
     const sdk = installFakeQuery([
       { type: 'system', subtype: 'init', session_id: 'sdk-1', model: 'test-model' },

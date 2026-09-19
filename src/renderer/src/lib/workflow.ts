@@ -3,7 +3,10 @@ import type { WorkflowRun } from '@shared/workflow';
 /** 订阅先于读取历史；按轮次及版本合并，迟到的历史快照不能覆盖实时状态。 */
 export function mergeWorkflowRuns(current: WorkflowRun[], incoming: WorkflowRun[], sessionId: string): WorkflowRun[] {
   const runs = new Map<string, WorkflowRun>();
-  for (const run of [...current, ...incoming]) {
+  for (const original of [...current, ...incoming]) {
+    // 旧版本已经明确记录的入口加载可展示，不能把它冒充 Skill 工具调用。
+    const run = { ...original, nodes: original.nodes.map(n => ({ ...n, tools: n.tools.map(t =>
+      !t.skill && t.label.startsWith('载入入口指令 · ') ? { ...t, skill: t.name, skillSource: 'entry' as const } : t) })) };
     if (run.sessionId !== sessionId) continue;
     const previous = runs.get(run.id);
     if (!previous || run.revision > previous.revision) runs.set(run.id, run);

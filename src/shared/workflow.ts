@@ -5,6 +5,7 @@ export interface WorkflowTool {
   name: string;
   label: string;
   skill?: string;
+  skillSource?: 'call' | 'entry' | 'read';
   status: 'running' | 'completed' | 'unsuccessful' | 'stopped' | 'unknown';
   startedAt: number;
   endedAt?: number;
@@ -32,6 +33,7 @@ export interface WorkflowRun {
   collaborationEnabled: boolean;
   nodes: WorkflowNode[];
   truncated: boolean;
+  exchanges?: { id: string; source: string; target: string }[];
 }
 export const WORKFLOW_IPC = { list: 'workflow:list', changed: 'workflow:changed' } as const;
 export interface WorkflowApi {

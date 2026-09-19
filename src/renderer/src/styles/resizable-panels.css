@@ -40,7 +40,7 @@
 .competition-shell .settings-side { position:relative; width:var(--pane-width,240px); flex-shrink:0; }
 .composer-input-region { position:relative; height:var(--pane-height,auto); min-height:52px; }
 .composer-input-region[style*="--pane-height"] .composer-input { height:100%!important; max-height:none; }
-.workflow-layout.is-flow-canvas .workflow-detail { width:min(var(--pane-width,295px),calc(100% - 20px)); }
+.workflow-layout.is-flow-canvas .workflow-detail { width:var(--pane-width,280px); }
 .flow-canvas-shell { position:relative; }
 .flow-canvas-shell[style*="--pane-height"] { height:var(--pane-height); display:flex; flex-direction:column; }
 .flow-canvas-shell[style*="--pane-height"] .flow-viewport { height:auto; flex:1; min-height:140px; }
@@ -49,4 +49,5 @@
 .fp-tree-region[style*="--pane-height"] { flex:0 0 var(--pane-height); }
 .fp-tree-region.tree-only { flex:1; }
 .fp-tree-region > .fp-tree { flex:1; min-height:0; max-height:none; }
+.competition-shell .newchat,.competition-shell .composer-inner,.competition-shell .chat-inner { width:100%; max-width:none; }
 @media (prefers-reduced-motion:reduce) { .pane-resizer::after { transition:none; } }

@@ -9,6 +9,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import type { ProviderConfig, ProxySettings } from '@shared/types';
+import { sharedRuntimeEnv } from '../runtime/shared-environment';
 
 /**
  * ESM 里没有 `require`。项目是 `"type": "module"`，
@@ -246,7 +247,10 @@ export function buildChildEnv(overrides: EnvOverrides): NodeJS.ProcessEnv {
   // 宿主继承来的代理一律清掉，由下面的 runtime 缓存重新决定
   for (const k of PROXY_ENV_KEYS) delete env[k];
 
-  return { ...env, ...buildProxyEnv(), ...overrides };
+  // Ignore a shell's activated project venv; projects share the app's runtime by default.
+  delete env.VIRTUAL_ENV;
+  delete env.PYTHONHOME;
+  return { ...env, ...sharedRuntimeEnv(), ...buildProxyEnv(), ...overrides };
 }
 
 // ─────────────────────────────────────────────────────────────

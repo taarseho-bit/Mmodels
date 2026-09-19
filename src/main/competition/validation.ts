@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import type { Project } from '../../shared/competition-studio';
+import { calendarCompetition, competitionDeadline } from '../../shared/competition-countdown';
 
 const short = z.string().max(2000);
 const id = z.string().min(1).max(200);
 const projectSchema = z.object({
   id, name: z.string().trim().min(1).max(300),
   competition: z.string().trim().min(1).max(200),
+  calendarId: z.string().max(200).optional(),
   year: z.number().int().min(1950).max(2100), problem: short,
   deadline: z.string().max(40).refine(v => !v || Number.isFinite(new Date(v).getTime())),
   pageLimit: short, phase: z.enum(['读题', '求解', '写作', '核验', '提交']),
@@ -20,5 +22,7 @@ export function validateProject(value: unknown): Project {
   if (!parsed.success || JSON.stringify(parsed.data).length > 200000) {
     throw new Error('请检查比赛名称、年份、截止时间和填写内容；记录过多时请分开整理');
   }
-  return parsed.data;
+  const contest = calendarCompetition(parsed.data);
+  if (parsed.data.calendarId && !contest) throw new Error('该竞赛不在日历中，请重新选择');
+  return contest ? { ...parsed.data, calendarId: contest.id, competition: contest.name, year: contest.year, deadline: competitionDeadline(contest) } : parsed.data;
 }

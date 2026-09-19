@@ -7,6 +7,29 @@ export class WorkflowTrace {
   readonly run: WorkflowRun;
   private timer?: ReturnType<typeof setTimeout>;
   private requests = new Map<string, { role: string; owner: string }>();
+  private toolOwners = new Map<string, string>();
+  private toolParents = new Map<string, string>();
+  private agentAliases = new Map<string, string>();
+  private connect(owner: string, dispatch: string): void {
+    const request = this.requests.get(dispatch), node = this.run.nodes.find(n => n.id === owner);
+    if (!request || !node || owner === 'main' || owner === request.owner) return;
+    node.parentId = request.owner;
+    if (request.role) node.name = chineseAgentName(node.agentType, request.role);
+  }
+  /** SDK 消息携带真实 parent_tool_use_id；与 hook 的工具标识双向对账，不按启动时间猜。 */
+  observeMessage(value: unknown): void {
+    if (this.run.status !== 'running' || !value || typeof value !== 'object') return;
+    const m = value as Record<string, any>;
+    if (typeof m.parent_tool_use_id !== 'string') return;
+    const ids: string[] = m.type === 'tool_progress' ? [m.tool_use_id]
+      : m.type === 'assistant' && Array.isArray(m.message?.content) ? m.message.content.filter((b: any) => b.type === 'tool_use').map((b: any) => b.id) : [];
+    for (const id of ids) {
+      if (typeof id !== 'string' || this.toolParents.size >= 500) continue;
+      this.toolParents.set(id, m.parent_tool_use_id);
+      const owner = this.toolOwners.get(id); if (owner) this.connect(owner, m.parent_tool_use_id);
+    }
+    if (ids.length) this.changed();
+  }
   constructor(sessionId: string, enabled: boolean, private publish: (run: WorkflowRun) => void) {
     const now = Date.now();
     this.run = { id: randomUUID(), sessionId, startedAt: now, updatedAt: now, revision: 0,
@@ -47,6 +70,7 @@ export class WorkflowTrace {
       if (this.run.nodes.reduce((n, entry) => n + entry.tools.length, 0) >= 500) { this.run.truncated = true; return; }
       const command = input.command_name.replace(/^\//, '').slice(0, 100);
       node.tools.push({ id: randomUUID(), name: command, label: `载入入口指令 · ${workflowToolLabel('Skill', command)}`,
+        skill: command, skillSource: 'entry',
         status: 'completed', startedAt: Date.now(), endedAt: Date.now() });
       return;
     }
@@ -67,6 +91,9 @@ export class WorkflowTrace {
     const owner = input.agent_id || 'main';
     const node = this.node(owner, owner === 'main' ? 'main' : input.agent_type ?? '');
     if (!node) return;
+    if (this.toolOwners.size < 500) this.toolOwners.set(input.tool_use_id, owner);
+    const dispatch = this.toolParents.get(input.tool_use_id);
+    if (dispatch) this.connect(owner, dispatch);
     const data = input.tool_input && typeof input.tool_input === 'object' ? input.tool_input as Record<string, unknown> : {};
     if (event === 'PreToolUse' && /^(Agent|Task)$/.test(input.tool_name) && this.requests.size < 80) {
       // 仅保留短中文角色名，不保存派发任务正文。
@@ -86,6 +113,27 @@ export class WorkflowTrace {
     }
     if (event === 'PostToolUse') {
       tool.status = 'completed'; tool.endedAt = Date.now();
+      if (/^(Agent|Task)$/.test(input.tool_name) && input.tool_response && typeof input.tool_response === 'object') {
+        const response = input.tool_response as Record<string, unknown>;
+        const childId = response.agentId ?? response.agent_id;
+        if (typeof childId === 'string' && childId.length < 150) {
+          this.node(childId, typeof data.subagent_type === 'string' ? data.subagent_type : 'general-purpose');
+          this.connect(childId, input.tool_use_id);
+          if (typeof data.name === 'string') this.agentAliases.set(data.name, childId);
+        }
+      }
+      if (input.tool_name === 'SendMessage') {
+        const recipient = data.recipient ?? data.target_agent_id;
+        const target = typeof recipient === 'string' ? this.agentAliases.get(recipient) ?? recipient : '';
+        if (target !== owner && this.run.nodes.some(n => n.id === target)) {
+          const links = this.run.exchanges ??= [];
+          if (links.length < 80 && !links.some(l => l.id === tool!.id)) links.push({ id: tool.id, source: owner, target });
+        }
+      }
+      if (input.tool_name === 'Read' && typeof data.file_path === 'string') {
+        const match = data.file_path.replace(/\\/g, '/').match(/\/skills\/([^/]+)\/SKILL\.md$/i);
+        if (match) { tool.skill = match[1]; tool.skillSource = 'read'; tool.label = `参考技能 · ${workflowToolLabel('Skill', match[1])}`; }
+      }
       if (/^(Write|Edit|NotebookEdit)$/.test(input.tool_name)) {
         const file = data.file_path ?? data.notebook_path;
         if (typeof file === 'string') tool.artifact = file.slice(0, 1024);
@@ -101,6 +149,6 @@ export class WorkflowTrace {
       node.endedAt ??= Date.now();
       for (const tool of node.tools) if (tool.status === 'running') { tool.status = status === 'stopped' ? 'stopped' : 'unknown'; tool.endedAt = Date.now(); }
     }
-    this.flush(); this.requests.clear();
+    this.flush(); this.requests.clear(); this.toolOwners.clear(); this.toolParents.clear(); this.agentAliases.clear();
   }
 }

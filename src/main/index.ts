@@ -28,6 +28,7 @@ import { bootstrapDefaultProject } from './ipc/project';
 import { warmupSkillsPlugin } from './agent/skills-plugin';
 import { getSettings, syncProxyRuntime, updateSettings } from './store/config';
 import { isRenderingScreenshots, markQuitting } from './runtime/guards';
+import { configureSharedEnvironment } from './runtime/shared-environment';
 import { registerMediaProtocol, registerMediaScheme } from './media/protocol';
 import {
   configureDesktopPetWindow,
@@ -217,6 +218,7 @@ function quitApplicationCompletely(): void {
 // ─────────────────────────────────────────────────────────────
 
 async function bootstrap(): Promise<void> {
+  configureSharedEnvironment(app.getPath('userData'));
   log('bootstrapping...');
 
   // ── 1. 数据库 ──

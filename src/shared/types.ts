@@ -34,6 +34,8 @@ export interface ProviderConfig {
   anthropicAuthMode?: AnthropicAuthMode;
   /** 可选模型列表（用户可手填） */
   models?: string[];
+  /** 按模型配置的容量（Token），最大1M；未填写时自动识别。 */
+  contextWindows?: Record<string, number>;
   /** 声明支持 SDK 快速模式的模型 id；未声明的模型不会显示快速模式入口 */
   fastModeModels?: string[];
   /** 是否启用 */
@@ -70,6 +72,8 @@ export interface ContentBlock {
   kind: BlockKind;
   /** text / thinking 正文 */
   text?: string;
+  /** 用户消息的后台完整指令；界面、复制与编辑只使用 text。 */
+  modelText?: string;
   /** tool_use */
   toolName?: string;
   toolUseId?: string;
@@ -165,6 +169,8 @@ export interface ProjectMeta {
 
 /** SDK 返回的真实上下文窗口占用，不是历史消息 token 的累计值。 */
 export interface ContextWindowUsage {
+  capacitySource?: 'configured' | 'known' | 'reference';
+  estimated?: boolean;
   used: number;
   total: number;
   percentage: number;

@@ -1,6 +1,7 @@
 export const COMPETITIONS = ['全国大学生数学建模竞赛', '美国大学生数学建模竞赛 MCM/ICM', '中国研究生数学建模竞赛', '其他竞赛 / 自主练习'];
 export type Phase = '读题' | '求解' | '写作' | '核验' | '提交';
 export interface Project {
+  calendarId?: string;
   id: string; name: string; competition: string; year: number; problem: string; deadline: string;
   pageLimit: string; phase: Phase; rules: string; checklist: { id: string; text: string; done: boolean }[];
   alternatives: { id: string; name: string; score: string; risks: string }[];

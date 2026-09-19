@@ -14,13 +14,14 @@
  */
 import { ipcMain } from 'electron';
 import { spawn, execFile } from 'node:child_process';
-import { createWriteStream, mkdirSync, readFileSync, statSync, rmSync } from 'node:fs';
+import { createWriteStream, mkdirSync, readFileSync, statSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { get as httpsGet } from 'node:https';
 import { IPC } from '@shared/types';
 import { findPython } from '../scan/environment';
 import { resolveResource } from '../resources';
+import { sharedEnvironmentRoot, sharedPythonPath, sharedRuntimeEnv } from '../runtime/shared-environment';
 import { pushToRenderer, safeWrap, type IpcContext } from './index';
 
 type IpcCtx = IpcContext;
@@ -179,18 +180,39 @@ export function registerAlgorithmHandlers(_ctx: IpcCtx): void {
     IPC.ALG_INSTALL,
     safeWrap(async (_e, packageName: string) => {
       if (installing) throw new Error('已有安装任务在进行，请等待完成');
+      if (!loadCatalog().algorithms.some((a) => a.packageName === packageName)) throw new Error('请选择算法目录中的依赖');
       const runtime = await pythonRuntime();
       if (runtime.state !== 'ready' || !runtime.pipOk) {
         throw new Error(runtime.state === 'no-python' ? '未检测到 Python，请先一键安装 Python' : 'Python/pip 不可用，请先修复运行时');
       }
-      const py = (await findPython())!;
+      let py = (await findPython())!;
+      if (await probePackage(py, packageName)) {
+        logProgress(`${packageName} 已可用，所有项目可以直接使用，无需重复安装。`);
+        probeCache.set(packageName, { at: Date.now(), data: 'installed' });
+        return { ok: true, code: 0 };
+      }
+      if (installing) throw new Error('已有安装任务在进行，请等待完成');
       installing = true;
+      // A single app-owned overlay reuses system packages without changing the system interpreter.
+      try {
+        const shared = sharedPythonPath();
+        const root = sharedEnvironmentRoot();
+        if (!shared || !root) throw new Error('共用环境目录尚未就绪，请重新打开软件');
+        if (py.cmd !== shared) {
+          if (existsSync(join(root, 'python'))) throw new Error('已有共用环境暂时不可用，请先检查；不会覆盖其中的文件');
+          logProgress('正在准备软件共用环境，已有的库会继续复用。');
+          const prepared = await execFileP(py.cmd, [...py.prefixArgs, '-m', 'venv', '--system-site-packages', join(root, 'python')], 120000);
+          if (prepared.code !== 0) throw new Error('共用环境暂未准备好，请在运行环境中检查 Python');
+          py = { cmd: shared, prefixArgs: [] };
+        }
+      } catch (err) { installing = false; throw err; }
       logProgress(`> ${py.cmd} -m pip install ${packageName}（使用清华 PyPI 镜像）`);
 
       return new Promise((resolve) => {
         // 清华镜像在本机可达性远好于官方源（项目记忆：官方源 HTTP 000）
         const child = spawn(py.cmd, [...py.prefixArgs, '-m', 'pip', 'install', packageName, '-i', 'https://pypi.tuna.tsinghua.edu.cn/simple', '--disable-pip-version-check'], {
           windowsHide: true,
+          env: { ...process.env, ...sharedRuntimeEnv() },
         });
         const feed = (chunk: Buffer): void => {
           for (const line of chunk.toString().split(/\r?\n/)) {
@@ -225,6 +247,15 @@ export function registerAlgorithmHandlers(_ctx: IpcCtx): void {
     IPC.ALG_INSTALL_PYTHON,
     safeWrap(async () => {
       if (installing) throw new Error('已有安装任务在进行，请等待完成');
+      const existing = await pythonRuntime();
+      if (existing.state === 'ready') {
+        logProgress(`已有 Python ${existing.version}，将直接复用，不重复下载安装。`);
+        return { ok: true, version: existing.version };
+      }
+      if (process.platform !== 'win32') throw new Error('请在运行环境中配置本机 Python');
+      if (installing) throw new Error('已有安装任务在进行，请等待完成');
+      const root = sharedEnvironmentRoot();
+      if (!root) throw new Error('共用环境目录尚未就绪，请重新打开软件');
       installing = true;
       const ver = '3.12.10';
       const url = `https://registry.npmmirror.com/-/binary/python/${ver}/python-${ver}-amd64.exe`;
@@ -243,9 +274,9 @@ export function registerAlgorithmHandlers(_ctx: IpcCtx): void {
         logProgress(`✓ 下载完成（${Math.round(size / 1024 / 1024)} MB）`);
 
         // ── 静默安装（当前用户，PrependPath 写入 PATH）──
-        logProgress('> 静默安装中（InstallAllUsers=0 PrependPath=1）…');
+        logProgress('正在安装到软件共用目录，之后所有项目都可使用。');
         const code = await new Promise<number>((resolve) => {
-          const child = spawn(dest, ['/quiet', 'InstallAllUsers=0', 'PrependPath=1', 'Include_test=0'], {
+          const child = spawn(dest, ['/quiet', 'InstallAllUsers=0', 'PrependPath=0', 'Include_test=0', `TargetDir=${join(root, 'python-base')}`], {
             windowsHide: true,
           });
           child.on('exit', (c) => resolve(c ?? -1));

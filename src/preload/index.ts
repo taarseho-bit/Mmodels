@@ -250,8 +250,8 @@ const api = {
     rename: (id: string, title: string): Promise<SessionMeta | null> =>
       ipcRenderer.invoke(IPC.SESSION_RENAME, id, title),
     /** 注意：返回后要立刻挂 onStream 才开始收事件 */
-    send: (id: string, prompt: string): Promise<{ messageId: string }> =>
-      ipcRenderer.invoke(IPC.SESSION_SEND, id, prompt),
+    send: (id: string, prompt: string, displayText?: string): Promise<{ messageId: string }> =>
+      ipcRenderer.invoke(IPC.SESSION_SEND, id, prompt, displayText),
     abort: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC.SESSION_ABORT, id),
     onStream: (cb: (sessionId: string, ev: StreamEvent) => void): (() => void) =>
       subscribe<{ sessionId: string; event: StreamEvent }>(IPC.SESSION_STREAM, (p) =>

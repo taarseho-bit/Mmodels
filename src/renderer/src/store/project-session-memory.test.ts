@@ -91,6 +91,23 @@ beforeEach(() => {
 });
 
 describe('项目记忆 —— 切走项目再切回来，回到原来那个会话', () => {
+  it('新任务使用创建结果直接更新界面，不等待刷新完整列表', async () => {
+    useApp.setState({ currentProject: proj('p1') });
+    const meta = await useApp.getState().createSession('即时任务');
+    expect(useApp.getState().activeSessionId).toBe(meta?.id);
+    expect(useApp.getState().sessions[0]?.id).toBe(meta?.id);
+    expect(sessionList).not.toHaveBeenCalled();
+  });
+  it('创建未返回时已切换任务，旧响应不抢回界面', async () => {
+    let release!: (meta: SessionMeta) => void;
+    sessionCreate.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+    useApp.setState({ currentProject: proj('p1') });
+    const pending = useApp.getState().createSession();
+    useApp.getState().selectSession('A');
+    release(sess('slow-new', 'p1'));
+    expect(await pending).toBeNull();
+    expect(useApp.getState().activeSessionId).toBe('A');
+  });
   it('快速点击两个项目时，较慢的旧响应不能把新项目覆盖回去', async () => {
     let releaseFirst!: (value: ProjectMeta) => void;
     projectOpen.mockImplementationOnce(() => new Promise<ProjectMeta>((resolve) => {

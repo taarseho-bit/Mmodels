@@ -236,6 +236,9 @@ export function listProviders(): ProviderConfig[] {
 
 /** 落库前加密 */
 export function upsertProvider(input: ProviderConfig): ProviderConfig[] {
+  if (input.contextWindows && Object.values(input.contextWindows).some(n => !Number.isInteger(n) || n < 128_000 || n > 1_000_000)) {
+    throw new Error('模型上下文容量请设置在 128K 到 1M 之间，或选择自动识别');
+  }
   const all = store.get('providers');
   const stored: ProviderConfig = { ...input, apiKey: encryptSecret(input.apiKey) };
   const idx = all.findIndex((p) => p.id === input.id);

@@ -1,32 +1,89 @@
 import { useEffect, useState } from 'react';
-import { COMPETITIONS, type Project, type Phase } from '../../../shared/competition-studio';
+import type { Project, Phase } from '../../../shared/competition-studio';
+import { COMPETITIONS } from '../../../shared/competitions-data';
+import { calendarCompetition, competitionDeadline, countdownFor } from '../../../shared/competition-countdown';
 import { useApp } from '../store/app';
 import { openRoute } from '../lib/settings-nav';
 
-const phases: Phase[] = ['读题', '求解', '写作', '核验', '提交'];
-// Keep unsaved work across route/project changes without writing on each keystroke.
-// This is deliberately session-only; the Save action remains the disk boundary.
 const drafts = new Map<string, Project>();
+const contests = [...COMPETITIONS].sort((a, b) => b.year - a.year || a.name.localeCompare(b.name, 'zh-CN'));
 export function WorkbenchPage(): JSX.Element {
   const project = useApp(s => s.currentProject);
-  const [draft, setDraft] = useState<Project | null>(null), [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [draft, setDraft] = useState<Project | null>(null);
+  const [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, []);
-  useEffect(() => { let live = true; setDraft(project ? drafts.get(project.id) ?? null : null); setMessage(''); if (project) void window.mathmodel.competition.ensureProject(project.id).then(s => { if (live) setDraft(drafts.get(project.id) ?? s.projects.find(p => p.id === project.id) ?? null); }).catch(e => live && setMessage(String(e))); return () => { live = false; }; }, [project?.id]);
+  useEffect(() => {
+    let live = true; setDraft(project ? drafts.get(project.id) ?? null : null); setMessage('');
+    if (project) void window.mathmodel.competition.ensureProject(project.id).then(s => {
+      if (live) setDraft(drafts.get(project.id) ?? s.projects.find(p => p.id === project.id) ?? null);
+    }).catch(e => live && setMessage(String(e)));
+    return () => { live = false; };
+  }, [project?.id]);
   if (!draft) return <div className="studio-page"><p>{message || '正在打开比赛工作台…'}</p></div>;
-  const patch = (v: Partial<Project>) => { const next = { ...draft, ...v }; drafts.set(draft.id, next); setDraft(next); setMessage('有未保存的修改；切换页面会保留草稿，退出软件前请保存。'); };
-  const save = async () => { setBusy(true); try { await window.mathmodel.competition.saveProject(draft); if (drafts.get(draft.id) === draft) drafts.delete(draft.id); if (useApp.getState().currentProject?.id === draft.id) setMessage(drafts.has(draft.id) ? '前一份修改已保存，还有新的修改待保存。' : '已保存；下一轮对话会读取这些比赛资料。'); return true; } catch (e) { if (useApp.getState().currentProject?.id === draft.id) setMessage(String(e)); return false; } finally { setBusy(false); } };
-  const ask = async (prompt: string) => { if (!await save() || useApp.getState().currentProject?.id !== draft.id) return; useApp.getState().beginNewChat(); useApp.getState().fillPrompt(prompt); openRoute('chat'); };
-  const deadline = draft.deadline ? new Date(draft.deadline).getTime() : NaN, remaining = deadline - now;
-  const time = Number.isNaN(deadline) ? '待设置' : remaining <= 0 ? '已到期' : `${Math.floor(remaining / 86400000)} 天 ${Math.floor(remaining % 86400000 / 3600000)} 时`;
-  const checked = draft.checklist.filter(c => c.done).length;
+  const contest = calendarCompetition(draft), countdown = countdownFor(contest, now);
+  const patch = (value: Partial<Project>) => {
+    const next = { ...draft, ...value }; drafts.set(draft.id, next); setDraft(next); setMessage('有修改待保存'); return next;
+  };
+  const save = async (value = draft) => {
+    setBusy(true);
+    const selected = calendarCompetition(value);
+    const next = selected ? { ...value, calendarId: selected.id, competition: selected.name, year: selected.year, deadline: competitionDeadline(selected) } : value;
+    try {
+      await window.mathmodel.competition.saveProject(next);
+      if (drafts.get(value.id) === value) drafts.delete(value.id);
+      if (useApp.getState().currentProject?.id === value.id) setMessage(drafts.has(value.id) ? '还有修改待保存' : '已保存');
+      return true;
+    } catch (e) { if (useApp.getState().currentProject?.id === value.id) setMessage(String(e)); return false; }
+    finally { setBusy(false); }
+  };
+  const ask = async (prompt: string, mode: 'paper' | 'chat' = 'paper') => {
+    if (!await save() || useApp.getState().currentProject?.id !== draft.id) return;
+    await useApp.getState().patchSettings({ composerMode: mode });
+    if (useApp.getState().currentProject?.id !== draft.id) return;
+    useApp.getState().beginNewChat(); useApp.getState().fillPrompt(prompt); openRoute('chat');
+  };
   return <div className="studio-page studio-workbench">
-    <header className="studio-page-heading"><div><span className="studio-eyebrow">当前项目</span><h1>比赛工作台</h1><p>{project?.name} · 比赛资料、方案与提交检查</p></div><button className="btn btn-primary" disabled={busy} onClick={() => void ask('/mma-paper 请先读取项目题目、数据与比赛资料，核对条件后制定建模与论文计划。缺少资料先列出，不编造题目。')}>开始建模写作</button></header>
-    <section className="studio-mission"><div><span className="studio-eyebrow">当前比赛</span><h2>{draft.competition}</h2><p>{draft.year} · {draft.problem ? `${draft.problem} 题` : '题号待补充'} · {draft.pageLimit ? `正文要求：${draft.pageLimit}` : '页数要求待确认'}</p><div className="studio-phase">{phases.map((p, i) => <button key={p} className={draft.phase === p ? 'active' : ''} onClick={() => patch({ phase: p })}><small>0{i + 1}</small>{p}</button>)}</div><small>阶段由你选择，保存后生效；不是自动判断的完成状态。</small></div><div className="studio-countdown"><span>距离提交 · 以你填写的时间为准</span><strong>{time}</strong><small>预留核对、打包与上传时间</small></div></section>
-    <div className="studio-two-column"><section className="studio-card"><header><div><span className="studio-eyebrow">比赛约定</span><h2>规则与截止时间</h2></div></header><div className="studio-form-row"><label>竞赛<input className="input" list="workbench-competitions" value={draft.competition} onChange={e => patch({ competition: e.target.value })} /></label><label>年份<input className="input" type="number" value={draft.year} onChange={e => patch({ year: Number(e.target.value) })} /></label><label>题号<input className="input" value={draft.problem} onChange={e => patch({ problem: e.target.value })} /></label></div><datalist id="workbench-competitions">{COMPETITIONS.map(c => <option key={c}>{c}</option>)}</datalist><div className="studio-form-row"><label>本地时区截止时间<input className="input" type="datetime-local" value={draft.deadline} onChange={e => patch({ deadline: e.target.value })} /></label><label>页数及计页口径<input className="input" placeholder="例如正文不超过…；以当届规则为准" value={draft.pageLimit} onChange={e => patch({ pageLimit: e.target.value })} /></label></div><label>规则来源与特殊要求<textarea className="input" rows={3} placeholder="官方通知链接、匿名要求、AI 使用规定、数据限制…" value={draft.rules} onChange={e => patch({ rules: e.target.value })} /></label></section>
-    <section className="studio-card"><header><div><span className="studio-eyebrow">提交前自查</span><h2>{checked} / {draft.checklist.length} 项已确认</h2></div><span className="studio-stamp">人工核对</span></header><progress value={checked} max={Math.max(1, draft.checklist.length)} />{draft.checklist.map(c => <label className="studio-checkline" key={c.id}><input type="checkbox" checked={c.done} onChange={e => patch({ checklist: draft.checklist.map(v => v.id === c.id ? { ...v, done: e.target.checked } : v) })} /><span>{c.text}</span></label>)}<button className="btn" disabled={busy} onClick={() => void ask('/competition-audit 请对当前项目做提交前核对，逐项列出有证据支持的已通过项、未通过项与待人工确认项。不要把工作台上的勾选视为软件验证通过。')}>检查提交材料</button></section></div>
-    <section className="studio-card"><header><div><span className="studio-eyebrow">方案实验台</span><h2>候选方案对比</h2></div><button className="btn" onClick={() => patch({ alternatives: [...draft.alternatives, { id: crypto.randomUUID(), name: '', score: '', risks: '' }] })}>＋ 添加候选方案</button></header><p className="muted">记录模型、同一评价口径下的结果和风险。这里的数值由你填写，不会自动宣称最优。</p>{!draft.alternatives.length && <p className="studio-inline-empty">先保留一个可解释的基线，再与改进方案公平比较。</p>}{draft.alternatives.map((a, i) => <div className="studio-form-row studio-record" key={a.id}><span className="studio-index">{i + 1}</span><label>模型 / 方法<input className="input" value={a.name} onChange={e => patch({ alternatives: draft.alternatives.map(v => v.id === a.id ? { ...v, name: e.target.value } : v) })} /></label><label>指标、条件与结果<input className="input" value={a.score} onChange={e => patch({ alternatives: draft.alternatives.map(v => v.id === a.id ? { ...v, score: e.target.value } : v) })} /></label><label>适用边界 / 风险<input className="input" value={a.risks} onChange={e => patch({ alternatives: draft.alternatives.map(v => v.id === a.id ? { ...v, risks: e.target.value } : v) })} /></label><button className="btn btn-ghost" onClick={() => patch({ alternatives: draft.alternatives.filter(v => v.id !== a.id) })}>移除</button></div>)}<button className="btn" disabled={busy} onClick={() => void ask('请读取比赛工作台的候选方案，检查指标口径、数据划分和约束是否一致；实际复算可以复算的结果，指出证据不足的优劣判断。')}>交给智能体比较</button></section>
-    <section className="studio-card"><header><div><span className="studio-eyebrow">结论证据簿</span><h2>结论与证据</h2></div><button className="btn" onClick={() => patch({ evidence: [...draft.evidence, { id: crypto.randomUUID(), claim: '', source: '', checked: false }] })}>＋ 记录一条证据</button></header>{!draft.evidence.length && <p className="studio-inline-empty">关联数据文件、计算脚本、图表或文献，避免论文里的数字与最终结果不一致。</p>}{draft.evidence.map(e => <div className="studio-form-row studio-record" key={e.id}><label>待写入论文的结论<input className="input" value={e.claim} onChange={v => patch({ evidence: draft.evidence.map(x => x.id === e.id ? { ...x, claim: v.target.value } : x) })} /></label><label>证据路径 / 来源<input className="input" value={e.source} onChange={v => patch({ evidence: draft.evidence.map(x => x.id === e.id ? { ...x, source: v.target.value } : x) })} /></label><label className="studio-checkbox"><input type="checkbox" checked={e.checked} onChange={v => patch({ evidence: draft.evidence.map(x => x.id === e.id ? { ...x, checked: v.target.checked } : x) })} />人工核对</label><button className="btn btn-ghost" onClick={() => patch({ evidence: draft.evidence.filter(x => x.id !== e.id) })}>移除</button></div>)}</section>
-    <footer className="studio-savebar"><span role="status">{message || (drafts.has(draft.id) ? '草稿尚未保存；退出软件前请保存。' : '保存后，后续对话可读取比赛资料。')}</span><button className="btn" onClick={() => void window.mathmodel.competition.revealProject(draft.id).catch(e => setMessage(String(e)))}>项目文件</button><button className="btn btn-primary" disabled={busy} onClick={() => void save()}>{busy ? '保存中…' : '保存比赛工作台'}</button></footer>
+    <header className="studio-page-heading"><div><h1>比赛工作台</h1><p>{project?.name}</p></div>
+      <button className="btn btn-primary" disabled={busy} onClick={() => void ask('请读取当前项目题目、数据与比赛资料，核对条件后开始建模写作。')}>开始建模</button></header>
+    <section className="studio-mission studio-simple-countdown">
+      <div><label htmlFor="workbench-contest">选择竞赛</label>
+        <select id="workbench-contest" className="input" aria-label="选择竞赛" value={contest?.id ?? ''} disabled={busy}
+          onChange={e => {
+            const c = contests.find(item => item.id === e.target.value); if (!c) return;
+            const next = patch({ calendarId: c.id, competition: c.name, year: c.year, deadline: competitionDeadline(c) });
+            void save(next);
+          }}>
+          <option value="" disabled>从竞赛日历选择</option>
+          {[...new Set(contests.map(c => c.year))].map(year => <optgroup label={`${year} 年`} key={year}>
+            {contests.filter(c => c.year === year).map(c => <option key={c.id} value={c.id}>{c.shortName || c.name}{c.status === 'estimated' ? ' · 预计赛程' : c.status === 'tba' ? ' · 待公布' : ''}</option>)}
+          </optgroup>)}
+        </select>
+        <p className="muted">时间来自竞赛日历，选择后自动保存。</p>
+        <button className="btn btn-ghost" onClick={() => openRoute('competitions')}>查看赛程</button>
+      </div>
+      <div className="studio-countdown" aria-live="polite"><span>{countdown.label}</span><strong>{countdown.text}</strong><small>预留核对与上传时间</small></div>
+    </section>
+    {message && <p className="studio-notice" role="status">{message}</p>}
+    <details className="studio-workbench-more"><summary>更多比赛资料与提交检查</summary>
+      <div className="studio-two-column">
+        <section className="studio-card"><h2>比赛资料</h2><div className="studio-form-row">
+          <label>题号<input className="input" value={draft.problem} onChange={e => patch({ problem: e.target.value })} /></label>
+          <label>当前阶段<select className="input" value={draft.phase} onChange={e => patch({ phase: e.target.value as Phase })}>{['读题', '求解', '写作', '核验', '提交'].map(p => <option key={p}>{p}</option>)}</select></label>
+        </div><label>页数要求<input className="input" value={draft.pageLimit} onChange={e => patch({ pageLimit: e.target.value })} /></label>
+          <label>比赛要求<textarea className="input" rows={3} placeholder="规则链接、匿名要求或其他注意事项" value={draft.rules} onChange={e => patch({ rules: e.target.value })} /></label>
+          <button className="btn" disabled={busy} onClick={() => void save()}>保存资料</button>
+        </section>
+        <section className="studio-card"><h2>提交前检查</h2>{draft.checklist.map(c => <label className="studio-checkline" key={c.id}><input type="checkbox" checked={c.done} onChange={e => patch({ checklist: draft.checklist.map(v => v.id === c.id ? { ...v, done: e.target.checked } : v) })} /><span>{c.text}</span></label>)}
+          <button className="btn" disabled={busy} onClick={() => void ask('请调用比赛交付核对技能，检查当前项目提交材料。逐项说明已核对、未通过和需人工确认的内容，不将我的勾选视为验证结果。', 'chat')}>让助手检查</button></section>
+      </div>
+      <section className="studio-card"><header><h2>方案对比</h2><button className="btn" onClick={() => patch({ alternatives: [...draft.alternatives, { id: crypto.randomUUID(), name: '', score: '', risks: '' }] })}>添加方案</button></header>
+        {draft.alternatives.map(a => <div className="studio-form-row" key={a.id}>{(['name', 'score', 'risks'] as const).map((field, i) => <label key={field}>{['方案', '结果', '注意事项'][i]}<input className="input" value={a[field]} onChange={e => patch({ alternatives: draft.alternatives.map(v => v.id === a.id ? { ...v, [field]: e.target.value } : v) })} /></label>)}<button className="btn btn-ghost" onClick={() => patch({ alternatives: draft.alternatives.filter(v => v.id !== a.id) })}>移除</button></div>)}
+      </section>
+      <section className="studio-card"><header><h2>结论依据</h2><button className="btn" onClick={() => patch({ evidence: [...draft.evidence, { id: crypto.randomUUID(), claim: '', source: '', checked: false }] })}>添加依据</button></header>
+        {draft.evidence.map(a => <div className="studio-form-row" key={a.id}><label>结论<input className="input" value={a.claim} onChange={e => patch({ evidence: draft.evidence.map(v => v.id === a.id ? { ...v, claim: e.target.value } : v) })} /></label><label>依据<input className="input" value={a.source} onChange={e => patch({ evidence: draft.evidence.map(v => v.id === a.id ? { ...v, source: e.target.value } : v) })} /></label><label><input type="checkbox" checked={a.checked} onChange={e => patch({ evidence: draft.evidence.map(v => v.id === a.id ? { ...v, checked: e.target.checked } : v) })} />已人工核对</label><button className="btn btn-ghost" onClick={() => patch({ evidence: draft.evidence.filter(v => v.id !== a.id) })}>移除</button></div>)}
+      </section>
+      <button className="btn btn-primary" disabled={busy} onClick={() => void save()}>保存修改</button>
+      <button className="btn btn-ghost" onClick={() => void window.mathmodel.competition.revealProject(draft.id).catch(e => setMessage(String(e)))}>打开项目文件夹</button>
+    </details>
   </div>;
 }

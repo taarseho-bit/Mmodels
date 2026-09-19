@@ -77,7 +77,7 @@ const PRESETS: ProviderPreset[] = [
     apiFormat: 'anthropic',
     baseUrl: 'https://api.deepseek.com/anthropic',
     anthropicAuthMode: 'apiKey',
-    defaultModels: ['deepseek-v4-pro', 'deepseek-v4-flash'],
+    defaultModels: ['deepseek-flash', 'deepseek-v4-pro'],
     recommended: true,
     consoleUrl: 'https://platform.deepseek.com/api_keys',
   },
@@ -525,6 +525,15 @@ export function ProvidersSection(): JSX.Element {
                   }}
                   placeholder={tx('settings.modelListEditor.placeholder')}
                 />
+                <select className="input" style={{ width:150 }} aria-label={`${m} 上下文容量`}
+                  value={editing.contextWindows?.[m.trim()] ?? 0}
+                  onChange={e => {
+                    const windows = { ...editing.contextWindows }; const amount = Number(e.target.value);
+                    if (amount) windows[m.trim()] = amount; else delete windows[m.trim()];
+                    setEditing({ ...editing, contextWindows: windows });
+                  }}>
+                  <option value={0}>自动 · 上限1M</option><option value={128000}>128K</option><option value={200000}>200K</option><option value={300000}>300K</option><option value={1000000}>1M</option>
+                </select>
                 <button
                   className="btn btn-sm btn-ghost"
                   title={tx('settings.modelListEditor.removeModel', { name: m })}
@@ -556,6 +565,8 @@ export function ProvidersSection(): JSX.Element {
               </button>
             </div>
             <div className="field-hint">
+              容量是模型一次能参考的内容，不是消费额度。最大1M；请按接口实际能力选择，修改数字不会扩容模型。未知型号以运行器参考值显示。旧名称 deepseek-chat 建议在确认后改用官方当前名称 deepseek-flash。
+              <br />
               {t('列表里的第一个会成为该供应商的默认模型。点击闪电可声明该模型支持快速模式。')}
             </div>
           </div>

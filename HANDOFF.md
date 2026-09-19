@@ -1,5 +1,15 @@
 # MModels 交接报告（HANDOFF）
 
+> **最新：比赛操作简化、即时聊天及共享环境（2026-09-19）**。基线 `fce4be6`，分支 `codex/competition-studio`，用户确认只做本地 Git 提交，不推送远程。
+> 交付目录 `dist-clarity-20260919/`，包路径和哈希以 DELIVERY.md 顶部为准。71 项实际窗口检查通过；两批定向单测223/82项（有重叠），前后端类型检查通过。未跑全量、未调用用户付费 API。
+> Workbench 通过 calendarId 对应现有竞赛日历，自动保存比赛和截止时间，默认只显示倒计时；其他资料折叠。日历是现有内置数据，非实时网络更新，预计/待公布不可说成已确认。
+> Composer 模板入口移至比赛信息。新增 shared/user-message 将 ContentBlock.text（可见）与 modelText（实际提示）分离；preload/session.send 新增可选 displayText，主进程仍用完整 text 调 buildRunOptions。排队与中断后追问也携带两份内容。旧历史不改写。
+> composer-draft 局部订阅、历史 BlockList memo、流式帧合并；发送先乐观回显，createSession 不等待全量列表，异步结果防抢焦点。主进程先注册可取消回合再抓 Git 快照，模型开跑仍在快照之后。
+> shared-environment 在启动时指向 userData/runtime，检测/算法安装/子进程统一复用；创建项目不安装环境，已有系统解释器和工具保留原处。旧项目 .venv 不自动迁移或删除；并未在本轮安装依赖。
+> DeepSeek Flash 已在用户实际 config.json 中切换，地址和密钥保持，原配置备份 config.before-deepseek-flash-20260919.json；这些不进入仓库。contextWindows 按模型支持128K至1M，90%触发，未知容量回退SDK并标明来源/估算。
+> 工作流根据 parent_tool_use_id / 实际 Agent 返回标识 / SendMessage 记录关系；不根据时间推测父子。旧轮次没记录的调用不补造。入口指令纳入“技能与流程”，但来源与实际 Skill 调用可区分。可视化测试是隔离样例，不是多智能体成功率或解题质量证明。
+> 本机三个项目原目录均平级，仅修侧栏语义与新建目录防嵌套；审计脚本 scripts/audit-workspace-layout.cjs 只读输出结构与工具统计，不输出密钥。
+
 > **最新：可收起侧栏与分隔区域拖动（2026-09-19）**。基线 `d97526a`。
 > 新增 `ResizeHandle` 与 `panel-size`，左右宽度/上下高度统一采用局部 CSS 变量，松手保存，双击或 Home/Enter 重置。
 > 覆盖主侧栏、右工具栏、文件树/预览分隔、编辑器两列、设置导航、项目列表、输入区与工作流画布/成员详情。

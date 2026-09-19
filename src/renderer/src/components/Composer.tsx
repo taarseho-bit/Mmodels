@@ -274,6 +274,7 @@ interface Attachment {
 
 /** 发送选项 —— 目前只有「本次取反」（Ctrl/Cmd+Enter 触发） */
 export interface ComposerSendOptions {
+  displayText?: string;
   /**
    * **对设置里选的行为取反**（不是恒定打断）。
    * 原版设置页描述：「Ctrl/Cmd+Enter 可为单条消息临时使用相反行为」——
@@ -305,6 +306,8 @@ export interface ComposerProps {
   inline?: boolean;
   /** SDK 实测的当前上下文窗口，不使用历史消息累计值冒充。 */
   contextUsage?: {
+    capacitySource?: 'configured' | 'known' | 'reference';
+    estimated?: boolean;
     used: number;
     total: number;
     percentage: number;
@@ -348,8 +351,8 @@ export function FollowUpQueueBadge({
       {queue.map((q, i) => (
         <span key={q.id} className={`cz-queue-item${q.error ? ' is-failed' : ''}`}>
           <span className="cz-queue-idx">{i + 1}</span>
-          <span className="truncate" title={q.text}>
-            {q.text}
+          <span className="truncate" title={q.displayText ?? q.text}>
+            {q.displayText ?? q.text}
           </span>
           {q.error ? (
             <>
@@ -916,7 +919,9 @@ export function Composer({
     //    不要把 serializePasted(...) 塞进 parts —— 那会让尾巴与「参考以下文件：…」
     //    这类段落平级，正文为空时还会多出一个前导换行。
     // 最终文本交给父级（父级负责清空输入框）
-    onSend(appendPasted(parts.join('\n\n'), pastedTexts), invert ? { invertFollowUp: true } : undefined);
+    const displayText = [body, ...pastedTexts.map(p => p.text),
+      ...(attachments.length ? [`附件：${attachments.map(a => a.name).join('、')}`] : [])].filter(Boolean).join('\n\n');
+    onSend(appendPasted(parts.join('\n\n'), pastedTexts), { displayText, ...(invert ? { invertFollowUp: true } : {}) });
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -1129,63 +1134,6 @@ export function Composer({
           </Popover>
         </div>
 
-        {/* 比赛模板（只在「写论文」模式下有意义，原版也仅在相关模式显示） */}
-        {(mode === 'paper' || mode === 'review') && (
-          <div className="cz-slot">
-            <button
-              className="cz-btn"
-              title={tx('composer.composerContextBar.templateTooltip')}
-              onClick={() => setOpenMenu(openMenu === 'template' ? null : 'template')}
-            >
-              <Icon name="book-open" size={13} />
-              <span className="truncate">
-                {tplLoading
-                  ? tx('composer.composerContextBar.templateLoading')
-                  : (tplName(template) || tx('composer.composerContextBar.noTemplates'))}
-              </span>
-              <Icon name="chevron-down" size={11} />
-            </button>
-            <Popover open={openMenu === 'template'} onClose={close}>
-              <div className="cz-pop-label">{tx('composer.composerContextBar.builtinTemplatesGroup')}</div>
-              {templates.length === 0 ? (
-                <div className="cz-pop-note">{tx('composer.composerContextBar.noTemplates')}</div>
-              ) : (
-                templates.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`cz-pop-item${t.id === templateId ? ' active' : ''}`}
-                    onClick={() => {
-                      void patchSettings({ paperTemplateId: t.id });
-                      // 换模板 = 换成内置来源（清掉可能存在的自定义 sourcePath），
-                      // 但**已填的比赛字段一并保留** —— 换模板不该让用户重填。
-                      void savePaperConfig({
-                        template: {
-                          id: t.id,
-                          // 原版 `Np` 对象；en 取 template.json 的 name.en
-                          name: makeLocalizedText(t.name, t.nameEn),
-                          entryFile: t.entryFile,
-                          source: 'builtin',
-                          sourcePath: null,
-                        },
-                        contestFields: contestFieldsForSave().filter(
-                          (f) => t.fields.some((tf) => tf.id === f.id) || f.id.startsWith(CUSTOM_FIELD_PREFIX),
-                        ),
-                      });
-                      close();
-                    }}
-                  >
-                    <div className="col" style={{ minWidth: 0 }}>
-                      <span>{tplName(t)}</span>
-                      <span className="muted" style={{ fontSize: 10 }}>
-                        {tplDesc(t) || t.language}
-                      </span>
-                    </div>
-                  </button>
-                ))
-              )}
-            </Popover>
-          </div>
-        )}
 
         <div className="grow" />
 
@@ -1412,7 +1360,7 @@ export function Composer({
                 })
               : t('上下文用量将在对话开始后显示');
             return (
-              <span className={`cz-context-ring${tone}`} title={title} aria-label={title}>
+              <span className={`cz-context-ring${tone}`} tabIndex={0} title={`${title}\n这是本轮可参考的临时记忆，不是累计消费额度。\n${contextUsage?.capacitySource === 'reference' ? '容量尚未确认，当前为运行器参考值。' : contextUsage?.capacitySource === 'configured' ? '容量来自你的模型设置，上限1M。' : '容量按已识别的模型设置，上限1M。'}${contextUsage?.estimated ? '当前用量含估算。' : ''}\n${contextUsage?.autoCompactEnabled ? '接近容量上限时会自动整理旧内容，保留要点继续工作。' : '等待运行器确认自动整理状态。'}`} aria-label={title}>
                 <svg viewBox="0 0 24 24" aria-hidden>
                   <circle className="cz-context-ring-bg" cx="12" cy="12" r="9" pathLength="100" />
                   <circle
@@ -1559,6 +1507,64 @@ export function Composer({
               </button>
             </div>
             <div className="modal-body col" style={{ gap: 12 }}>
+              <label className="field-label">论文模板</label>
+        {/* 比赛模板（只在「写论文」模式下有意义，原版也仅在相关模式显示） */}
+        {(mode === 'paper' || mode === 'review') && (
+          <div className="cz-slot">
+            <button
+              className="cz-btn"
+              title={tx('composer.composerContextBar.templateTooltip')}
+              onClick={() => setOpenMenu(openMenu === 'template' ? null : 'template')}
+            >
+              <Icon name="book-open" size={13} />
+              <span className="truncate">
+                {tplLoading
+                  ? tx('composer.composerContextBar.templateLoading')
+                  : (tplName(template) || tx('composer.composerContextBar.noTemplates'))}
+              </span>
+              <Icon name="chevron-down" size={11} />
+            </button>
+            <Popover open={openMenu === 'template'} onClose={close}>
+              <div className="cz-pop-label">{tx('composer.composerContextBar.builtinTemplatesGroup')}</div>
+              {templates.length === 0 ? (
+                <div className="cz-pop-note">{tx('composer.composerContextBar.noTemplates')}</div>
+              ) : (
+                templates.map((t) => (
+                  <button
+                    key={t.id}
+                    className={`cz-pop-item${t.id === templateId ? ' active' : ''}`}
+                    onClick={() => {
+                      void patchSettings({ paperTemplateId: t.id });
+                      // 换模板 = 换成内置来源（清掉可能存在的自定义 sourcePath），
+                      // 但**已填的比赛字段一并保留** —— 换模板不该让用户重填。
+                      void savePaperConfig({
+                        template: {
+                          id: t.id,
+                          // 原版 `Np` 对象；en 取 template.json 的 name.en
+                          name: makeLocalizedText(t.name, t.nameEn),
+                          entryFile: t.entryFile,
+                          source: 'builtin',
+                          sourcePath: null,
+                        },
+                        contestFields: contestFieldsForSave().filter(
+                          (f) => t.fields.some((tf) => tf.id === f.id) || f.id.startsWith(CUSTOM_FIELD_PREFIX),
+                        ),
+                      });
+                      close();
+                    }}
+                  >
+                    <div className="col" style={{ minWidth: 0 }}>
+                      <span>{tplName(t)}</span>
+                      <span className="muted" style={{ fontSize: 10 }}>
+                        {tplDesc(t) || t.language}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </Popover>
+          </div>
+        )}
               <div className="muted" style={{ fontSize: 12, lineHeight: 1.7 }}>
                 {effectiveTpl.name}
                 {effectiveTpl.description ? ` · ${effectiveTpl.description}` : ''}

@@ -615,7 +615,7 @@ describe('item 契约（界面按 id 分组，改 id 会让分组错位）', () 
 });
 
 describe('findPython：逐个候选试到第一个可用', () => {
-  it('项目里有 `.venv` → 返回 venv 里的解释器（不是 PATH 上的 python）', async () => {
+  it('项目里有 `.venv` 仍复用本机 Python，不自动切换项目环境', async () => {
     const root = mkdtempSync(join(tmpdir(), 'mm-env-proj-'));
     // 两个平台的分支都造出来，断言只看"是否落在项目内"，避免平台差异
     mkdirSync(join(root, '.venv', 'Scripts'), { recursive: true });
@@ -627,10 +627,12 @@ describe('findPython：逐个候选试到第一个可用', () => {
     //    这里故意让两个平台的路径都"可用"（用例本身只关心选出来的是哪一个）。
     present(join(root, '.venv', 'Scripts', 'python.exe'), 'Python 3.11.9');
     present(join(root, '.venv', 'bin', 'python'), 'Python 3.11.9');
+    present('python', 'Python 3.12.10');
 
     const py = await findPython(root);
     // 反向对照：若丢了 venv 分支，返回值会是 `python`（相对命令名）→ 红。
-    expect(py?.cmd.startsWith(root)).toBe(true);
+    expect(py?.cmd).toBe('python');
+    expect(shell.calls.some((c) => c.cmd.startsWith(root))).toBe(false);
     expect(py?.prefixArgs).toEqual([]);
   });
 

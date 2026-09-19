@@ -451,6 +451,7 @@ export function decideFollowUpAction(opts: {
 export interface QueuedFollowUp {
   id: string;
   text: string;
+  displayText?: string;
   /**
    * 这条是**为哪个会话**排的队 —— 必填，不是可选。
    *
@@ -636,7 +637,7 @@ interface AppState {
   notifyTourFinished: () => void;
 
   /** 追问入队（归属记为**当下的** activeSessionId），返回新条目 id */
-  enqueueFollowUp: (text: string) => string;
+  enqueueFollowUp: (text: string, displayText?: string) => string;
   /**
    * 取走**属于当前会话**的队首并从队列移除（原子操作）。
    * 当前会话没有排队的条目 → 返回 null（什么都不做，队列原样）；
@@ -671,7 +672,7 @@ interface AppState {
   refreshProjects: () => Promise<void>;
 
   refreshSessions: () => Promise<void>;
-  createSession: (title?: string) => Promise<SessionMeta | null>;
+  createSession: (title?: string, shouldActivate?: () => boolean) => Promise<SessionMeta | null>;
   /** 进入当前项目的空白新任务；首条消息发送时才真正创建会话记录。 */
   beginNewChat: () => void;
   selectSession: (id: string | null) => void;
@@ -831,7 +832,7 @@ export const useApp = create<AppState>((set, get) => ({
   // 追问队列
   // ─────────────────────────────────────────────────────────
 
-  enqueueFollowUp: (text) => {
+  enqueueFollowUp: (text, displayText) => {
     // crypto.randomUUID 在 Electron 渲染层可用；退化路径保证 id 仍唯一
     const id =
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -840,7 +841,7 @@ export const useApp = create<AppState>((set, get) => ({
     // ⚠️ 归属在这里**定死**（入队那一刻的会话），之后切会话也不会改 ——
     //    否则"给 A 排的那句"会被发到 B 去。
     const sessionId = sessionKeyOf(get().activeSessionId);
-    set({ followUpQueue: [...get().followUpQueue, { id, text, sessionId }] });
+    set({ followUpQueue: [...get().followUpQueue, { id, text, sessionId, ...(displayText !== undefined ? { displayText } : {}) }] });
     return id;
   },
 
@@ -898,15 +899,16 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   createProject: async (name) => {
+    const requestVersion = ++projectOpenVersion;
     const meta = await api().project.create(name);
-    if (!meta) return null;
+    if (!meta || requestVersion !== projectOpenVersion) return null;
     await get().refreshProjects();
     /**
      * 与 `openProject` 同一条规则：**换了项目就先离开旧会话**。
      * 这里原来漏了这一句，于是新建项目后 `activeSessionId` 还指着**上一个项目**的会话，
      * 而 `sessions` 已经换成新项目的（空）—— 对话页顶着新项目的标题显示旧项目的聊天记录。
      */
-    set({ currentProject: meta, activeSessionId: null });
+    set({ currentProject: meta, activeSessionId: null, activeArtifact: null, pendingPrompt: null });
     await get().refreshSessions();
     await get().refreshSettings();
     return meta;
@@ -986,15 +988,16 @@ export const useApp = create<AppState>((set, get) => ({
     set({ sessions });
   },
 
-  createSession: async (title) => {
+  createSession: async (title, shouldActivate) => {
     const proj = get().currentProject;
     if (!proj) return null;
+    const request = get().newChatRequest;
+    const previous = get().activeSessionId;
     const meta = await api().session.create(proj.id, title);
-    if (get().currentProject?.id !== proj.id) return null;
-    await get().refreshSessions();
-    if (get().currentProject?.id !== proj.id) return null;
+    if (shouldActivate?.() === false || get().currentProject?.id !== proj.id || get().newChatRequest !== request || get().activeSessionId !== previous) return null;
     // 新建后自动选中它 —— 这也算"用户主动选中的入口"，一样要记进项目记忆
     set((s) => ({
+      sessions: [meta, ...s.sessions.filter(item => item.id !== meta.id)],
       activeSessionId: meta.id,
       lastSessionByProject: rememberSession(s.lastSessionByProject, proj.id, meta.id),
     }));

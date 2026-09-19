@@ -69,7 +69,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
   const removeSession = useApp((s) => s.removeSession);
   const refreshSessions = useApp((s) => s.refreshSessions);
 
-  const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false);
+  const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(true);
   /** 正在内联重命名的项目 id（对齐原版：项目行 hover 出「重命名 / 删除」两个图标） */
   const [renameFor, setRenameFor] = useState<string | null>(null);
   const [renameText, setRenameText] = useState('');
@@ -571,7 +571,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
             <button
               className={`rail-item${projectSwitcherOpen ? ' open' : ''}`}
               onClick={() => setProjectSwitcherOpen((v) => !v)}
-              title={current?.root}
+              title={projectSwitcherOpen ? '收起项目列表' : '展开项目列表'}
               onContextMenu={(e) => {
                 if (!current) return;
                 e.preventDefault();
@@ -579,13 +579,13 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
               }}
             >
               <Icon name="folder-open" size={14} />
-              <span className="rail-label truncate">{current?.name ?? tx('shell.sidebar.projects')}</span>
+              <span className="rail-label truncate">全部项目 · {projects.length}</span>
               <Icon name={projectSwitcherOpen ? 'chevron-down' : 'chevron-right'} size={12} style={{ opacity: 0.5 }} />
             </button>
           )}
 
           {projectSwitcherOpen && (
-            <div className="rail-sub">
+            <div className="rail-project-list" aria-label="平级工作项目">
               {projects.map((p) => (
                 <div key={p.id} className="rail-sub-row">
                   {renameFor === p.id ? (
@@ -607,7 +607,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
                       className={`rail-item sm${p.id === current?.id ? ' active' : ''}`}
                       onClick={() => {
                         void openProject(p.id);
-                        setProjectSwitcherOpen(false);
+                        setProjectSwitcherOpen(true);
                         if (route !== 'chat') setRoute('chat');
                       }}
                       title={p.root}

@@ -16,6 +16,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
+import { sharedPythonPath, managedPythonPath } from '../runtime/shared-environment';
 
 export type CheckLevel = 'required' | 'recommended';
 export type CheckStatus = 'ok' | 'missing' | 'unknown';
@@ -172,7 +173,7 @@ async function which(cmd: string): Promise<string | null> {
 /**
  * 找到**第一个真正可用**的 Python 3 解释器。
  *
- * 顺序：项目虚拟环境 → PATH 上的 `python` → `python3` → `py`（Windows 启动器）。
+ * 顺序：软件共用环境 → 本机 Python。旧项目环境不自动接管检测。
  *
  * ⚠️ **必须逐个试到第一个可用**，不能"组好候选表就取 `[0]`"。
  *   旧实现是 `for (const name of ['python','python3','py']) candidates.push(...)`
@@ -196,7 +197,7 @@ async function which(cmd: string): Promise<string | null> {
  *   该分支由 `environment.test.ts` 的打桩用例覆盖（真实版覆盖不到，如实标注）。
  */
 export async function findPython(
-  projectRoot?: string,
+  _projectRoot?: string,
   /**
    * 诊断收集：每个候选**实际探到的首行**（探测失败时是空串）。
    *
@@ -212,11 +213,8 @@ export async function findPython(
 ): Promise<{ cmd: string; prefixArgs: string[] } | null> {
   const candidates: Array<{ cmd: string; prefixArgs: string[] }> = [];
 
-  if (projectRoot) {
-    const win = join(projectRoot, '.venv', 'Scripts', 'python.exe');
-    const posix = join(projectRoot, '.venv', 'bin', 'python');
-    if (existsSync(win)) candidates.push({ cmd: win, prefixArgs: [] });
-    if (existsSync(posix)) candidates.push({ cmd: posix, prefixArgs: [] });
+  for (const cmd of [sharedPythonPath(), managedPythonPath()]) {
+    if (cmd && existsSync(cmd)) candidates.push({ cmd, prefixArgs: [] });
   }
 
   // Windows 上 python3 常是 Microsoft Store 的别名，先试 python

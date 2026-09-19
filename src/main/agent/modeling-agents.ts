@@ -1,5 +1,7 @@
 import type { AgentDefinition } from '@anthropic-ai/claude-agent-sdk';
 
+const SKILL_GUIDANCE = '先检查本轮可用技能：涉及检索、求解、审阅等专门流程时，优先调用匹配的 Skill 并执行其步骤；没有匹配项就直接完成任务，不为数量而调用。返回时说明实际采用的方法、证据，以及下一位成员需要什么输入。';
+
 /**
  * 数学建模协作组。子智能体只做独立分析和核验，项目文件统一由主智能体写入，
  * 避免并行编辑同一份论文或脚本时相互覆盖。
@@ -9,7 +11,7 @@ export const MODELING_AGENTS = {
     description: '梳理题意、变量、目标、约束和容易误读的条件，适合复杂题目的第一轮独立分析。',
     prompt:
       '你是题意分析子智能体。用简体中文工作。独立核对题目条件、符号、目标、约束、数据口径和潜在歧义。' +
-      '只向主智能体返回结构化结论、证据和风险，不修改任何项目文件，也不要把未经验证的猜测写成事实。',
+      '只向主智能体返回结构化结论、证据和风险，不修改任何项目文件，也不要把未经验证的猜测写成事实。' + SKILL_GUIDANCE,
     tools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Skill'],
     maxTurns: 12,
     background: true,
@@ -18,7 +20,7 @@ export const MODELING_AGENTS = {
     description: '检查数据质量、字段口径、缺失异常、统计规律和可复现的数据处理方案。',
     prompt:
       '你是数据分析子智能体。用简体中文工作。检查数据来源、字段、单位、缺失值、异常值、分布和可用性，' +
-      '必要时运行只读分析命令。只返回结论、关键数值、复现步骤和风险；不直接改论文与正式代码文件。',
+      '必要时运行只读分析命令。只返回结论、关键数值、复现步骤和风险；不直接改论文与正式代码文件。' + SKILL_GUIDANCE,
     tools: ['Read', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch', 'Skill'],
     disallowedTools: ['Write', 'Edit', 'NotebookEdit'],
     maxTurns: 16,
@@ -29,8 +31,9 @@ export const MODELING_AGENTS = {
     prompt:
       '你是建模求解子智能体。用简体中文工作。独立建立变量、假设、目标和约束，给出求解路线，' +
       '并核对单位、边界、残差、目标值和最优性证据。可以运行验证命令，但不覆盖项目正式文件。' +
-      '向主智能体返回可复核的推导、数值证据、失败尝试和推荐方案。',
-    tools: ['Read', 'Glob', 'Grep', 'Bash', 'Skill'],
+      '向主智能体返回可复核的推导、数值证据、失败尝试和推荐方案。' + SKILL_GUIDANCE +
+      '若运行环境允许 Agent 工具，且确有独立核验需求，可委派一次边界清楚的核验任务；不要递归委派求解员或重复创建相同成员。不可用时把核验请求交回主助手。',
+    tools: ['Read', 'Glob', 'Grep', 'Bash', 'Skill', 'Agent'],
     disallowedTools: ['Write', 'Edit', 'NotebookEdit'],
     maxTurns: 20,
     background: true,
@@ -40,7 +43,7 @@ export const MODELING_AGENTS = {
     prompt:
       '你是结果与论文核验子智能体。用简体中文工作。站在数学建模比赛评审视角，核对题目要求、' +
       '模型假设、计算结果、图表、结论和页数约束是否一致。只返回按严重程度排列的具体问题、证据和修改建议，' +
-      '不直接修改项目文件。',
+      '不直接修改项目文件。' + SKILL_GUIDANCE,
     tools: ['Read', 'Glob', 'Grep', 'Skill'],
     maxTurns: 14,
     background: true,

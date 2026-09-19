@@ -29,7 +29,7 @@ import type {
 import { MODELING_AGENTS } from './modeling-agents';
 import { WorkflowTrace } from './workflow-trace';
 import type { WorkflowRun } from '@shared/workflow';
-import { sdkModel, userMcpOptions, knownContextWindow } from './runtime-options';
+import { sdkModel, userMcpOptions, knownContextWindow, boundedContextWindow } from './runtime-options';
 import { recordCapabilities } from './capabilities';
 import { buildChildEnv, buildProviderEnv, resolveClaudeExecutable } from './env';
 import {
@@ -241,6 +241,7 @@ export class AgentSession extends EventEmitter {
   /** 自动压缩发生后允许窗口读数下降一次。 */
   private compactedContextTokens: number | null = null;
   private modelContextCapacity: number | undefined;
+  private contextCapacitySource: ContextWindowUsage['capacitySource'] = 'reference';
   /** SDK task id 对应的子智能体活动，用于把后续 progress/update 帧补全。 */
   private subagentTasks = new Map<string, AgentActivity>();
   private workflow?: WorkflowTrace;
@@ -313,7 +314,7 @@ export class AgentSession extends EventEmitter {
       // 解除 busy，后续探测会递增版本号，迟到的旧结果因此不会覆盖新读数。
       const usage = await query.getContextUsage();
       if (this.contextProbeVersion !== probeVersion) return;
-      const total = Math.max(1, this.modelContextCapacity ?? Number(usage.rawMaxTokens || usage.maxTokens || 0));
+      const total = boundedContextWindow(this.modelContextCapacity ?? Number(usage.rawMaxTokens || usage.maxTokens || 0));
       const sdkUsed = Math.max(0, Number(usage.totalTokens || 0));
       let used = sdkUsed;
 
@@ -330,10 +331,12 @@ export class AgentSession extends EventEmitter {
       }
 
       const normalized: ContextWindowUsage = {
+        capacitySource: this.contextCapacitySource,
+        estimated: used !== sdkUsed,
         used,
         total,
         percentage: Math.min(100, Math.max(0, (used / total) * 100)),
-        autoCompactThreshold: usage.autoCompactThreshold,
+        autoCompactThreshold: this.modelContextCapacity ? Math.floor(total * .9) : usage.autoCompactThreshold,
         autoCompactEnabled: usage.isAutoCompactEnabled,
         model: usage.model,
       };
@@ -356,7 +359,7 @@ export class AgentSession extends EventEmitter {
   private async configureContextWindow(query: QueryHandle): Promise<void> {
     try {
       const initial = await withContextProbeTimeout(query.getContextUsage());
-      const rawMax = this.modelContextCapacity ?? Number(initial.rawMaxTokens || initial.maxTokens || 0);
+      const rawMax = boundedContextWindow(this.modelContextCapacity ?? Number(initial.rawMaxTokens || initial.maxTokens || 0));
       const target = Math.floor(rawMax * 0.9);
       await query.applyFlagSettings({
         autoCompactEnabled: true,
@@ -623,6 +626,7 @@ export class AgentSession extends EventEmitter {
       const providerEnv = buildProviderEnv(opts.provider, opts.model, opts.bridgeBaseUrl);
       const childEnv = buildChildEnv(providerEnv);
       this.modelContextCapacity = knownContextWindow(opts.provider, opts.model);
+      this.contextCapacitySource = opts.provider.contextWindows?.[opts.model] ? 'configured' : this.modelContextCapacity ? 'known' : 'reference';
 
       if (opts.debug) {
         console.log('[agent] provider =', opts.provider.name, opts.provider.apiFormat);
@@ -879,6 +883,7 @@ export class AgentSession extends EventEmitter {
    */
   private handleSdkMessage(msg: unknown): void {
     if (!msg || typeof msg !== 'object') return;
+    try { this.workflow?.observeMessage(msg); } catch { /* Visualization must never interrupt a task. */ }
     const m = msg as Record<string, any>;
 
     switch (m.type) {

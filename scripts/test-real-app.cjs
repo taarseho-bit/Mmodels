@@ -462,10 +462,13 @@ async function main() {
       ok(await cdp.eval('document.querySelectorAll(".rail-nav [data-route]").length === 3'), '主导航仅保留工作台、对话、论文库');
       await cdp.eval('document.documentElement.setAttribute("data-theme","light")');
       await shot('workbench');
-      log('工作台布局：' + JSON.stringify(await cdp.eval(`(()=>{const h=document.querySelector('.studio-page-heading');const p=document.querySelector('.studio-page');const b=document.querySelector('.studio-savebar .btn-primary');const i=document.querySelector('.studio-card .input');return {heading:h.getBoundingClientRect().toJSON(),scroll:p.scrollTop,buttonBg:getComputedStyle(b).backgroundColor,buttonColor:getComputedStyle(b).color,inputBorder:getComputedStyle(i).borderColor,theme:document.documentElement.dataset.theme};})()`)));
+      ok(await cdp.eval('!document.querySelector("input[type=datetime-local]") && !document.querySelector(".studio-workbench-more").open && !!document.querySelector(".studio-countdown")'), '工作台只突出竞赛选择和倒计时，其他功能折叠，无手填日期');
+      await cdp.eval('(()=>{const s=document.querySelector("#workbench-contest");s.value="A02-2026";s.dispatchEvent(new Event("change",{bubbles:true}))})()');
+      await sleep(180);
+      ok(await cdp.eval('(async()=>{const p=await window.mathmodel.project.current();const s=await window.mathmodel.competition.state();return s.projects.find(v=>v.id===p.id).calendarId==="A02-2026"})()'), '选择竞赛自动保存并关联日历，无需填写时间');
       const workbench = await cdp.eval(`(async()=>{ const p=await window.mathmodel.project.current();const s=await window.mathmodel.competition.ensureProject(p.id);const d=s.projects.find(v=>v.id===p.id);d.rules='仅用于隔离测试的规则';await window.mathmodel.competition.saveProject(d);return (await window.mathmodel.competition.state()).projects.find(v=>v.id===p.id).rules;})()`);
         ok(workbench === '仅用于隔离测试的规则', '工作台使用真实主进程保存到当前项目记录');
-        await cdp.eval('document.querySelector(".studio-workbench textarea").focus()');
+        await cdp.eval('document.querySelector(".studio-workbench-more").open=true; document.querySelector(".studio-workbench textarea").focus()');
         await cdp.send('Input.insertText', { text: '页面切换保留草稿' });
         await route('papers');
         await route('workbench');
@@ -485,6 +488,14 @@ async function main() {
       }
       await shot('settings');
         await route('chat');
+        ok(await cdp.eval('!document.querySelector(".cz-head [title*=模板]")'), '论文模板不再占据主输入栏');
+        await cdp.eval('[...document.querySelectorAll(".cz-btn")].find(b=>b.textContent.includes("比赛信息")).click()');
+        ok(await cdp.eval('document.querySelector(".modal").innerText.includes("论文模板")'), '比赛信息中可以选择论文模板');
+        await cdp.eval('document.querySelector(".modal .cz-slot .cz-btn").click()');
+        const selectedTemplate = await cdp.eval('(()=>{const buttons=[...document.querySelectorAll(".cz-pop .cz-pop-item")];const next=buttons.find(b=>!b.classList.contains("active"));if(!next)return null;const r=next.getBoundingClientRect();if(!next.contains(document.elementFromPoint(r.x+12,r.y+r.height/2)))return null;const name=next.querySelector("span").textContent;next.click();return name;})()');
+        await sleep(200);
+        ok(selectedTemplate && await cdp.eval('document.querySelector(".modal .cz-slot .cz-btn").textContent.includes(' + JSON.stringify(selectedTemplate) + ')'), '比赛信息中的模板菜单可实际切换模板');
+        await cdp.eval('document.querySelector(".modal-head button").click()');
         ok(await cdp.eval('document.querySelectorAll(".starter").length === 3 && !document.body.innerText.includes("2023 华数杯")'), '真题样例移除，保留三个通用任务起点');
         ok(await cdp.eval('document.querySelectorAll(".topbar-actions button").length === 4 && !document.querySelector(".topbar-new-chat")'), '顶栏保留视图切换、文件与更多，没有重复新任务');
         await shot('chat');
@@ -529,7 +540,7 @@ async function main() {
         await sleep(400);
         await cdp.eval('document.querySelectorAll(".workflow-switch button")[1].click()'); await sleep(400);
         ok(await cdp.eval('document.querySelectorAll(".workflow-node").length === 4'), '工作流从真实数据库读取四个测试成员（样例，不是模型执行）');
-        ok(await cdp.eval('document.querySelector(".workflow-view").innerText.includes("3 种技能")'), '按实际记录区分技能种类与工具次数');
+        ok(await cdp.eval('document.querySelector(".workflow-view").innerText.includes("3 项技能与流程")'), '按实际记录区分技能种类与工具次数');
         ok(await cdp.eval('document.querySelectorAll(".flow-edge").length === 4 && document.querySelectorAll(".flow-connections marker").length === 4'), '画布存在有向箭头与真实关系分类');
         ok(await cdp.eval('document.querySelectorAll(".flow-edge-motion").length === 2'), '只有正在工作的两个目标具有流动箭头（界面样例）');
         ok(await cdp.eval('new Set([...document.querySelectorAll(".flow-agent")].map(e=>e.style.getPropertyValue("--flow-color"))).size === 4'), '四个智能体使用不同主题颜色');
@@ -537,7 +548,9 @@ async function main() {
         await cdp.eval('document.documentElement.setAttribute("data-theme","light")'); await shot('workflow-sample-light');
         await cdp.eval('document.querySelectorAll(".workflow-node")[3].click()');
         ok(await cdp.eval('document.querySelector(".workflow-detail").innerText.includes("灵敏度核验员") && document.querySelector(".workflow-detail").innerText.includes("比赛交付核对")'), '点击中文成员查看所属技能，不混入其他成员记录');
-        ok(await cdp.eval('document.querySelector(".flow-skill-section code").textContent === "mathmodel:competition-audit" && document.querySelector(".flow-skill-section").innerText.includes("调用 1 次")'), '点击成员后优先展示准确 Skill 标识、中文名及调用次数');
+        await cdp.eval('document.querySelector(".flow-skill-section details").open = true');
+        ok(await cdp.eval('document.querySelector(".flow-skill-section code").textContent === "mathmodel:competition-audit" && document.querySelector(".flow-skill-section").innerText.includes("1 次")'), '点击成员后展示准确 Skill 标识、中文名及调用次数');
+        ok(await cdp.eval('(()=>{const a=document.querySelector(".workflow-detail").getBoundingClientRect(),b=document.querySelector(".flow-canvas-shell").getBoundingClientRect();return a.left>=b.right-1 || a.top>=b.bottom-1})()'), '成员详情与画布分开布局，不遮住其他成员');
         await shot('workflow-skill-detail');
         await cdp.eval('document.querySelector("[aria-label=关闭成员详情]").click()');
         await cdp.eval('document.documentElement.setAttribute("data-theme","dark")'); await shot('workflow-sample-dark');
@@ -545,14 +558,18 @@ async function main() {
         await cdp.eval('document.querySelector("[aria-label=放大画布]").click()');
         await sleep(100);
         ok(await cdp.eval('parseInt(document.querySelector(".flow-zoom-level").innerText)') > oldZoom, '画布支持缩放，手动缩放后关闭自动跟随');
-        const pan = await cdp.eval('(()=>{const r=document.querySelector(".flow-viewport").getBoundingClientRect();return {x:r.x+25,y:r.y+25,tx:new DOMMatrix(getComputedStyle(document.querySelector(".flow-world")).transform).m41}})()');
+        const pan = await cdp.eval('(()=>{const r=document.querySelector(".flow-viewport").getBoundingClientRect();return {x:r.x+25,y:r.y+25,tx:document.querySelector(".flow-world").getBoundingClientRect().x}})()');
         await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: pan.x, y: pan.y, button: 'left', buttons: 1, clickCount: 1 });
         await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pan.x + 60, y: pan.y + 25, button: 'left', buttons: 1 });
         await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pan.x + 60, y: pan.y + 25, button: 'left', buttons: 0, clickCount: 1 });
         await sleep(100);
-        const moved = await cdp.eval('new DOMMatrix(getComputedStyle(document.querySelector(".flow-world")).transform).m41');
+        const moved = await cdp.eval('document.querySelector(".flow-world").getBoundingClientRect().x');
         log('画布拖动：' + JSON.stringify({ before: pan.tx, after: moved, expectedDelta: 60 }));
         ok(Math.abs(moved - pan.tx - 60) < 2, '拖动空白处向右移动，画布同方向平移且无坐标累积漂移');
+        const wheelBefore = await cdp.eval('parseInt(document.querySelector(".flow-zoom-level").innerText)');
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: pan.x + 100, y: pan.y + 100, deltaX: 0, deltaY: -100 });
+        await sleep(120);
+        ok(await cdp.eval('parseInt(document.querySelector(".flow-zoom-level").innerText)') > wheelBefore, '鼠标滚轮实际放大画布');
         await cdp.eval('[...document.querySelectorAll(".flow-toolbar button")].find(b=>b.textContent==="收起已结束").click()');
         ok(await cdp.eval('document.querySelectorAll(".flow-agent.is-folded").length === 2 && document.querySelectorAll(".flow-agent").length === 4'), '已结束成员可收起但不删除，工作中的成员仍展开');
         await cdp.eval('[...document.querySelectorAll(".flow-toolbar button")].find(b=>b.textContent==="展开已结束").click()');
@@ -563,6 +580,15 @@ async function main() {
         await cdp.send('Emulation.setDeviceMetricsOverride', { width: 980, height: 700, deviceScaleFactor: 1, mobile: false });
         await sleep(200); await shot('workflow-sample-compact');
         ok(await cdp.eval('document.documentElement.scrollWidth <= innerWidth && document.querySelector(".workflow-view").scrollWidth <= document.querySelector(".workflow-view").clientWidth + 1'), '工作流窄窗口无横向溢出');
+        const narrowComposer = await cdp.eval('document.querySelector(".composer-inner:not([hidden])").getBoundingClientRect().width');
+        await cdp.eval('document.querySelectorAll(".workflow-node")[3].click()');
+        ok(await cdp.eval('(()=>{const a=document.querySelector(".workflow-detail").getBoundingClientRect(),b=document.querySelector(".flow-canvas-shell").getBoundingClientRect();return a.top>=b.bottom-1})()'), '窄窗口成员详情自动放到画布下方');
+        await cdp.eval('document.querySelector("[aria-label=关闭成员详情]").click()');
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false });
+        await sleep(150);
+        const wideComposer = await cdp.eval('document.querySelector(".composer-inner:not([hidden])").getBoundingClientRect().width');
+        log('输入框宽度：' + JSON.stringify({ narrowComposer, wideComposer }));
+        ok(wideComposer > narrowComposer + 400, '输入框跟随窗口横向变宽，不再被固定最大宽度限制');
         await cdp.send('Emulation.clearDeviceMetricsOverride');
         const history = await cdp.eval('(()=>{const s=document.querySelector("[aria-label=工作流运行轮次]");s.value=s.options[2].value;s.dispatchEvent(new Event("change",{bubbles:true}));return true})()');
         await sleep(200);
@@ -570,12 +596,42 @@ async function main() {
         ok(await cdp.eval('document.querySelectorAll(".flow-edge-motion, .flow-agent-working").length === 0'), '停止轮次没有流动箭头或工作动画');
         await cdp.eval('document.querySelectorAll(".workflow-switch button")[0].click()');
         await cdp.eval('document.querySelector(".composer-input").focus()');
+        if (process.env.MATHMODEL_TEST_INPUT_PERF === '1') {
+          await cdp.eval('window.__inputPaintTimes=[]; document.querySelector(".composer-input").addEventListener("input",()=>{const start=performance.now();requestAnimationFrame(()=>{window.__inputPaintTimes.push(performance.now()-start)})}); true');
+          for (const char of '中文输入应该立即出现') await cdp.send('Input.insertText', { text: char });
+          await sleep(80);
+          const latency = await cdp.eval('window.__inputPaintTimes');
+          log('60 条富文本历史下输入到下一帧（毫秒）：' + JSON.stringify(latency.map(n=>Math.round(n))));
+          ok(latency.length === 10 && Math.max(...latency) < 200, '长对话中逐字中文输入在 200ms 内进入下一帧，没有秒级等待');
+          await cdp.eval('document.querySelector(".composer-input").select()');
+        }
         await cdp.send('Input.insertText', { text: '切换视图后仍保留的草稿' });
         await cdp.eval('document.querySelectorAll(".workflow-switch button")[1].click()');
         ok(await cdp.eval('document.querySelector(".composer-input").value === "切换视图后仍保留的草稿"'), '有历史的工作流保留输入区与草稿');
         await cdp.eval(`window.mathmodel.session.remove(${JSON.stringify(fixtureId)})`);
         const deleted = await cdp.eval(`window.mathmodel.workflow.list(${JSON.stringify(fixtureId)})`);
         ok(deleted.length === 0, '删除测试任务时工作流记录级联删除');
+        if (process.env.MATHMODEL_TEST_INPUT_PERF === '1') {
+          const providerCount = await cdp.eval('(async()=> (await window.mathmodel.llm.listProviders()).length)()');
+          if (providerCount !== 0) throw new Error('即时发送验证只允许没有供应商的隔离测试库，禁止调用付费模型');
+          await cdp.eval('document.querySelector("[aria-label=新任务]").click()');
+          await sleep(100);
+          await cdp.eval('document.querySelectorAll(".workflow-switch button")[0].click(); document.querySelector(".composer-input").focus()');
+          await sleep(80);
+          await cdp.eval('document.querySelector(".composer-input").focus()');
+          await cdp.send('Input.insertText', { text: '界面即时发送测试，不调用模型' });
+          await cdp.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+          log('发送前界面：' + JSON.stringify(await cdp.eval('({input:document.querySelector(".composer-input").value,disabled:document.querySelector(".cz-send").disabled,button:document.querySelector(".cz-send").className})')));
+          await cdp.eval('window.__sendEchoMs=null; const start=performance.now(); const observer=new MutationObserver(()=>{if([...document.querySelectorAll(".msg-user")].some(e=>e.textContent.includes("界面即时发送测试"))){window.__sendEchoMs=performance.now()-start;observer.disconnect()}});observer.observe(document.querySelector(".chat-scroll"),{childList:true,subtree:true});document.querySelector(".cz-send").click();true');
+          await sleep(300);
+          const echoMs = await cdp.eval('window.__sendEchoMs');
+          log('新任务发送到消息出现（毫秒）：' + echoMs);
+          log('发送后界面：' + JSON.stringify(await cdp.eval('({input:document.querySelector(".composer-input").value,users:document.querySelectorAll(".msg-user").length,button:document.querySelector(".cz-send").className,notice:document.querySelector(".chat-ops-notice")?.textContent})')));
+          await shot('send-immediate-check');
+          ok(echoMs !== null && echoMs < 200, '新任务发送后先回显消息，不等待创建任务与完整列表刷新');
+          ok(await cdp.eval('document.querySelector(".composer-input").value === "界面即时发送测试，不调用模型" && !document.querySelector(".cz-send.stop")'), '未配置模型时只恢复用户原文，不露出模式指令');
+          ok(await cdp.eval('[...document.querySelectorAll(".msg-user")].some(e=>e.innerText.includes("界面即时发送测试")&&!e.innerText.includes("/mma-paper"))'), '消息气泡只展示用户输入，不显示模式预设指令');
+        }
       }
     }
     const core = await cdp.eval(`(async function(){

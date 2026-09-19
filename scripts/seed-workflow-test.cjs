@@ -32,5 +32,13 @@ const prior = { ...run, id: randomUUID(), startedAt: now - 10000, status: 'stopp
 prior.nodes[0].status = 'stopped';
 db.prepare('INSERT INTO workflow_runs (id, session_id, started_at, snapshot) VALUES (?, ?, ?, ?)').run(prior.id, sessionId, prior.startedAt, JSON.stringify(prior));
 db.prepare('INSERT INTO messages (id, session_id, role, blocks, created_at) VALUES (?, ?, ?, ?, ?)').run(randomUUID(), sessionId, 'assistant', JSON.stringify([{ kind: 'text', text: '工作流界面验证样例，不是模型解题结果。' }]), now);
+if (process.env.MATHMODEL_TEST_INPUT_PERF === '1') {
+  const insert = db.prepare('INSERT INTO messages (id, session_id, role, blocks, created_at) VALUES (?, ?, ?, ?, ?)');
+  db.transaction(() => {
+    for (let i = 0; i < 60; i++) insert.run(randomUUID(), sessionId, 'assistant', JSON.stringify([{ kind: 'text', text:
+      `### 历史排版样例 ${i + 1}（非模型结果）\n\n` + '这是一段用于输入响应测试的建模说明。包含 **假设**、数据检查与结果对比。\n\n'.repeat(8)
+      + '| 方案 | 检查结果 |\n| --- | --- |\n| 样例 A | 待验证 |\n| 样例 B | 待验证 |' }]), now + i + 1);
+  })();
+}
 db.close();
 console.log('已写入隔离测试样例');

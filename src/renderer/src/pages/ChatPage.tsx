@@ -21,7 +21,7 @@
  *   流式期间我们渲染的是「临时拼出来的消息」，它的 id 是 'streaming'。
  *   主进程落库后 id 会变。如果不重新拉，用户滚动到上方再切回来会看到重复消息。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ContentBlock, InflightTurn } from '@shared/types';
 import { decideFollowUpAction, followUpHeadFor, readFollowUpBehavior, useApp } from '../store/app';
 import { latestTaskBlocks } from '../store/tasks';
@@ -32,7 +32,9 @@ import {
   toView,
   type StreamView,
 } from '../store/chat-stream';
-import { Composer } from '../components/Composer';
+import { DraftComposer } from '../components/DraftComposer';
+import { createComposerDraft } from '../store/composer-draft';
+import { withPendingMessage } from '../lib/optimistic-message';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
 import { AgentCollaboration } from '../components/AgentCollaboration';
@@ -286,7 +288,7 @@ function InlineRetryNotice({ message }: { message: string }): JSX.Element {
   );
 }
 
-function BlockList({
+const BlockList = memo(function BlockList({
   blocks,
   streaming,
 }: {
@@ -339,7 +341,7 @@ function BlockList({
       })}
     </>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────
 // 引导卡片 —— 逐字对齐原版内置的三个真实赛题例题
@@ -422,7 +424,6 @@ export function ChatPage(): JSX.Element {
   const refreshSessions = useApp((s) => s.refreshSessions);
   const selectSession = useApp((s) => s.selectSession);
   const consumePendingPrompt = useApp((s) => s.consumePendingPrompt);
-  const sendMessage = useSendMessage();
 
   // ── 追问行为（设置 → 对话）───────────────────────────────
   /**
@@ -445,7 +446,7 @@ export function ChatPage(): JSX.Element {
    * finally 之前 `running` 仍为 true，直接发会撞上「该会话已有正在执行的任务」。
    * 所以先记在这里，等**回合真的结束**由下面的 effect 补发。
    */
-  const pendingSteerRef = useRef<string | null>(null);
+  const pendingSteerRef = useRef<{ text: string; displayText?: string } | null>(null);
   /**
    * 「哪一轮还没收尾」—— 记的是**会话 id**，不是"当前会话收到过 session-end 没有"。
    *
@@ -468,10 +469,14 @@ export function ChatPage(): JSX.Element {
    * 初值 null：应用空闲时队列本来就该能正常消化。
    */
   const pendingTurnRef = useRef<string | null>(null);
+  const pendingUserRef = useRef<{ sid: string | null; message: ChatMessage } | null>(null);
+  const preparingRef = useRef<{ cancelled: boolean } | null>(null);
+  const [preparing, setPreparing] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [stream, setStream] = useState<StreamView>(EMPTY_STREAM);
-  const [input, setInput] = useState('');
+  const [draft] = useState(createComposerDraft);
+  const setInput = draft.set;
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [findOpen, setFindOpen] = useState(false);
@@ -506,6 +511,10 @@ export function ChatPage(): JSX.Element {
   const [opsBusy, setOpsBusy] = useState(false);
   /** 操作结果提示（原版是 toast；这里用一条可关闭的条，避免引 UI 库） */
   const [opsNotice, setOpsNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const reportSendFailure = useCallback((message: string) => {
+    setOpsNotice({ kind: 'error', text: `这条消息暂未发出，内容已保留。${message}` });
+  }, []);
+  const sendMessage = useSendMessage(reportSendFailure);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -528,9 +537,9 @@ export function ChatPage(): JSX.Element {
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
   // 用户点过停止后，存活窗口会立刻进入 done。会话列表里的 running 是异步快照，
   // 不能让它把停止按钮又顶回来；真正的后台收尾仍由 pendingTurnRef 把关。
-  const isRunning = stream.phase === 'done'
+  const isRunning = preparing || (stream.phase === 'done'
     ? false
-    : stream.active || activeSession?.status === 'running';
+    : stream.active || activeSession?.status === 'running');
 
   const findMatches = useMemo(() => {
     const needle = findQuery.trim().toLowerCase();
@@ -590,8 +599,8 @@ export function ChatPage(): JSX.Element {
       if (messages[i].role !== 'user') continue;
       return messages[i].blocks.map((block) => block.text ?? '').join(' ');
     }
-    return input;
-  }, [messages, input]);
+    return draft.getSnapshot();
+  }, [messages, draft]);
 
   // ── 载入历史 ──────────────────────────────────────────────
   const loadHistory = useCallback(async (sid: string) => {
@@ -605,7 +614,10 @@ export function ChatPage(): JSX.Element {
        * 这跟"切走再切回来"是同一族问题，只是发生在响应返回的那一瞬间。
        */
       if (activeSessionIdRef.current !== sid) return;
-      setMessages(res.messages);
+      const pending = pendingUserRef.current;
+      const history = withPendingMessage(res.messages, pending?.sid === sid ? pending.message : null);
+      if (pending?.sid === sid && history === res.messages) pendingUserRef.current = null;
+      setMessages(history);
       /**
        * 进行中那一轮的快照 → 灌进本会话的槽位（phase = running）。
        * 取舍规则见 `chatStreamStore.adoptInflight`：**库里的那份优先**，
@@ -682,6 +694,7 @@ export function ChatPage(): JSX.Element {
 
   // ── 订阅流式事件 ──────────────────────────────────────────
   useEffect(() => {
+    let renderFrame = 0;
     const off = window.mathmodel.session.onStream((sid, ev) => {
       /**
        * ① **不再丢弃**非当前会话的事件（旧代码在这里 `return`）。
@@ -696,7 +709,17 @@ export function ChatPage(): JSX.Element {
       );
 
       // ② 只有"当前会话"才同步进 React state 触发重渲染（后台会话照写不误）
-      if (isCurrent) setStream(toView(entry));
+      if (isCurrent) {
+        if (ev.type === 'session-end' || ev.type === 'session-error') {
+          cancelAnimationFrame(renderFrame); renderFrame = 0;
+          setStream(toView(entry));
+        } else if (!renderFrame) {
+          renderFrame = requestAnimationFrame(() => {
+            renderFrame = 0;
+            if (activeSessionIdRef.current === sid) setStream(toView(chatStreamStore.snapshot(sid)));
+          });
+        }
+      }
 
       if (ev.type === 'session-end') {
         /**
@@ -724,7 +747,7 @@ export function ChatPage(): JSX.Element {
         void refreshSessions();
       }
     });
-    return off;
+    return () => { cancelAnimationFrame(renderFrame); off(); };
   }, [loadHistory, refreshSessions]);
 
   // ── 系统通知（任务完成 / 待审批 / Agent 提问）───────────────
@@ -845,26 +868,37 @@ export function ChatPage(): JSX.Element {
    * （返回 false 时给队列那条打失败标记，不静默丢）。
    */
   const dispatch = useCallback(
-    async (content: string): Promise<boolean> => {
+    async (content: string, displayText = content): Promise<boolean> => {
+      if (preparingRef.current) return false;
+      const pending = { cancelled: false };
+      const projectId = useApp.getState().currentProject?.id;
+      const message: ChatMessage = { id: `local-${crypto.randomUUID()}`, role: 'user',
+        blocks: [{ kind: 'text', text: displayText }], createdAt: Date.now() };
       let sid = activeSessionId;
-      if (!sid) {
-        const meta = await createSession(sessionTitleFromPrompt(content));
-        if (!meta) return false;
-        sid = meta.id;
-      }
-
+      pendingUserRef.current = { sid, message };
       setInput('');
-      // 乐观插入用户消息，不等主进程回包
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `local-${Date.now()}`,
-          role: 'user',
-          blocks: [{ kind: 'text', text: content }],
-          createdAt: Date.now(),
-        },
-      ]);
+      setMessages(prev => [...prev, message]);
       stickRef.current = true;
+      if (!sid) {
+        preparingRef.current = pending;
+        setPreparing(true);
+        let meta;
+        try { meta = await createSession(sessionTitleFromPrompt(displayText), () => !pending.cancelled); }
+        catch {
+          if (!pending.cancelled && useApp.getState().activeSessionId === activeSessionId) setOpsNotice({ kind: 'error', text: '这条消息暂未发出，内容已保留，可以重试。' });
+        }
+        if (preparingRef.current === pending) { preparingRef.current = null; setPreparing(false); }
+        if (!meta || pending.cancelled || useApp.getState().currentProject?.id !== projectId) {
+          if (pendingUserRef.current?.message.id === message.id) pendingUserRef.current = null;
+          if (!pending.cancelled && useApp.getState().currentProject?.id === projectId && useApp.getState().activeSessionId === activeSessionId) {
+            setMessages(prev => prev.filter(m => m.id !== message.id));
+            if (!draft.getSnapshot()) setInput(displayText);
+          }
+          return false;
+        }
+        sid = meta.id;
+        pendingUserRef.current = { sid, message };
+      }
       // 新一轮开始 → 该会话的槽位清空重开（对应旧代码那句 `{...EMPTY_STREAM, active:true}`）
       setStream(toView(chatStreamStore.beginTurn(sid)));
       // 这一轮还没收尾：在收到**这个会话**的 session-end 之前，队列 / 补发都不许开火
@@ -874,15 +908,16 @@ export function ChatPage(): JSX.Element {
       //    这里只需判返回值。失败时**必须**把号销掉 ——
       //    主进程连 run() 都没进去（如未配供应商），永远不会来 session-end，
       //    不销号队列就永久卡死。
-      const ok = await sendMessage(sid, content);
+      const ok = await sendMessage(sid, content, displayText);
       if (!ok) {
+        if (activeSessionIdRef.current === sid && !draft.getSnapshot()) setInput(displayText);
         if (pendingTurnRef.current === sid) pendingTurnRef.current = null;
         // 同样要落进 store：否则切回来这个槽位还是 running，界面会一直转圈
         setStream(toView(chatStreamStore.interrupt(sid)));
       }
       return ok;
     },
-    [activeSessionId, createSession, sendMessage],
+    [activeSessionId, createSession, sendMessage, draft, setInput],
   );
 
   // ─────────────────────────────────────────────────────────────
@@ -986,7 +1021,7 @@ export function ChatPage(): JSX.Element {
    *   设置是「排队」时打断，设置是「调整当前任务」时排队。
    */
   const doSend = useCallback(
-    async (text: string, opts?: { invertFollowUp?: boolean }) => {
+    async (text: string, opts?: { invertFollowUp?: boolean; displayText?: string }) => {
       const content = text.trim();
       if (!content) return;
 
@@ -994,7 +1029,7 @@ export function ChatPage(): JSX.Element {
       // 清理。此时的新消息先入队，收到真正的 session-end 后自动发送，避免撞上
       // “该会话已有正在执行的任务”。
       if (activeSessionId && pendingTurnRef.current === activeSessionId && !isRunning) {
-        enqueueFollowUp(content);
+        enqueueFollowUp(content, opts?.displayText);
         setInput('');
         return;
       }
@@ -1007,7 +1042,7 @@ export function ChatPage(): JSX.Element {
       });
 
       if (action === 'queue') {
-        enqueueFollowUp(content);
+        enqueueFollowUp(content, opts?.displayText);
         // 已经进队列了，清空输入框让用户接着排下一条
         setInput('');
         return;
@@ -1022,7 +1057,7 @@ export function ChatPage(): JSX.Element {
         //    主进程那句「该会话已有正在执行的任务」，消息被静默丢弃。
         //    E2E 实测就是这个原因让 C2/C3 全挂（库层证据见 sessions.error）。
         //    回合结束的真相只有一个来源：主进程发来的 session-end。
-        pendingSteerRef.current = content;
+        pendingSteerRef.current = { text: content, displayText: opts?.displayText };
         setInput('');
         if (activeSessionId) {
           await window.mathmodel.session.abort(activeSessionId).catch(() => undefined);
@@ -1031,7 +1066,7 @@ export function ChatPage(): JSX.Element {
         return;
       }
 
-      await dispatch(content);
+      await dispatch(content, opts?.displayText);
     },
     [activeSessionId, dispatch, enqueueFollowUp, isRunning, refreshSessions],
   );
@@ -1054,7 +1089,7 @@ export function ChatPage(): JSX.Element {
     if (steerText) {
       pendingSteerRef.current = null;
       flushingRef.current = true;
-      void dispatch(steerText).finally(() => {
+      void dispatch(steerText.text, steerText.displayText).finally(() => {
         flushingRef.current = false;
       });
       return;
@@ -1068,7 +1103,7 @@ export function ChatPage(): JSX.Element {
     const taken = takeFollowUp();
     if (!taken) return;
     flushingRef.current = true;
-    void dispatch(taken.text)
+    void dispatch(taken.text, taken.displayText)
       .then((ok) => {
         // 传整条而不是 id：takeFollowUp 已经把它在队列里摘掉了，
         // store 需要靠 text 才能把它补回队首（见 markFollowUpError 注释）
@@ -1081,6 +1116,18 @@ export function ChatPage(): JSX.Element {
 
 
   const onAbort = (): void => {
+    if (preparingRef.current) {
+      preparingRef.current.cancelled = true;
+      preparingRef.current = null;
+      setPreparing(false);
+      const pending = pendingUserRef.current;
+      if (pending) {
+        setMessages(prev => prev.filter(m => m.id !== pending.message.id));
+        if (!draft.getSnapshot()) setInput(pending.message.blocks.map(b => b.text ?? '').join(''));
+        pendingUserRef.current = null;
+      }
+      return;
+    }
     if (!activeSessionId) return;
     const sid = activeSessionId;
     // 当前帧立刻退出运行态，同时完整保留已经显示的文字、工具结果和任务。
@@ -1108,10 +1155,9 @@ export function ChatPage(): JSX.Element {
 
   /** 输入区（空会话居中 / 有消息固定底部，用同一份配置） */
   const composerNode = (inline: boolean): JSX.Element => (
-    <Composer
+    <DraftComposer
       inline={inline}
-      value={input}
-      onChange={setInput}
+      draft={draft}
       onSend={(text, opts) => void doSend(text, opts)}
       onAbort={() => void onAbort()}
       isRunning={isRunning}
@@ -1468,25 +1514,17 @@ export function ChatPage(): JSX.Element {
  * 发送一条消息。
  * @returns 是否成功送出 —— 队列消化用它决定要不要给这条打失败标记
  */
-function useSendMessage(): (sid: string, text: string) => Promise<boolean> {
-  const setToast = useToast();
+function useSendMessage(onFailure: (message: string) => void): (sid: string, text: string, displayText?: string) => Promise<boolean> {
   return useCallback(
-    async (sid: string, text: string) => {
+    async (sid: string, text: string, displayText?: string) => {
       try {
-        await window.mathmodel.session.send(sid, text);
+        await window.mathmodel.session.send(sid, text, displayText);
         return true;
       } catch (e) {
-        setToast(e instanceof Error ? e.message : String(e));
+        onFailure(e instanceof Error ? e.message : String(e));
         return false;
       }
     },
-    [setToast],
+    [onFailure],
   );
-}
-
-/** 极简 toast：错误用系统 alert 就够，不引 UI 库 */
-function useToast(): (msg: string) => void {
-  return useCallback((msg: string) => {
-    window.alert(t('发送失败：{{msg}}', { msg }));
-  }, []);
 }

@@ -51,15 +51,13 @@ allowed-tools: Bash(*), Read, AskUserQuestion
 
 ## 工作流
 
-### 1. 确定当前项目使用的 Python
+### 1. 确定本机共用的 Python
 
-优先检查当前项目虚拟环境，不要默认使用或修改系统 Python：
+所有项目默认共用软件环境，不因切换项目重复安装。优先使用软件共用解释器，尚未创建时复用本机 Python。已有系统工具留在原处，不复制或迁移。
 
 ```bash
-if [ -x .venv/bin/python ]; then
-  PYTHON=.venv/bin/python
-elif [ -x .venv/Scripts/python.exe ]; then
-  PYTHON=.venv/Scripts/python.exe
+if [ -n "$MMODELS_SHARED_PYTHON" ] && [ -x "$MMODELS_SHARED_PYTHON" ]; then
+  PYTHON="$MMODELS_SHARED_PYTHON"
 elif command -v python3 >/dev/null 2>&1; then
   PYTHON=python3
 elif command -v python >/dev/null 2>&1; then
@@ -73,7 +71,7 @@ Windows 上 shell 为 PowerShell 时用等价探测（后续命令中 `"$PYTHON"
 PowerShell 变量写法）：
 
 ```powershell
-if (Test-Path .venv\Scripts\python.exe) { $PYTHON = ".venv\Scripts\python.exe" }
+if ($env:MMODELS_SHARED_PYTHON -and (Test-Path -LiteralPath $env:MMODELS_SHARED_PYTHON)) { $PYTHON = $env:MMODELS_SHARED_PYTHON }
 elseif (Get-Command python -ErrorAction SilentlyContinue) { $PYTHON = "python" }
 elseif (Get-Command python3 -ErrorAction SilentlyContinue) { $PYTHON = "python3" }
 else { Write-Output "MISS python" }
@@ -156,7 +154,11 @@ Doctor 检查完成（macOS arm64）
 
 ### 7. 安装与复检
 
-- 优先用 `uv` 创建/维护项目 `.venv`，不要对系统 Python 执行全局 `pip install`。
+- 已安装且可用的解释器、库和工具直接复用；只补本次任务缺失项。
+- 仅在缺库且安装已授权时，按 `references/install.md` 建立一次软件共用环境，复用系统包；不默认创建项目 `.venv`，不对系统 Python 执行全局 `pip install`。
+- 各子智能体沿用同一解释器；新增依赖交给主助手串行安装，不并发修改环境。
+- 不用 `uv sync` 清理共用环境，不自动升级/降级现有依赖。版本冲突时先解释，再由用户选择隔离环境。
+- 保留旧项目环境，不自动删除或搬动；后续不再按项目重装。软件共用目录取 `MMODELS_RUNTIME_ROOT`，不使用免安装包的临时解压目录。
 - 系统包安装可能请求管理员权限；执行前明确说明。
 - 每类安装完成后复检。可恢复失败先按镜像顺序重试；所有可信来源都失败后才用通俗中文
   说明未完成项，原始错误只保留为可选详情。

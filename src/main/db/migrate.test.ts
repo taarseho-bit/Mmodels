@@ -150,10 +150,17 @@ describe('结构级判据 —— 写入侧真的把新列写进去了', () => {
     }
   });
 
-  it('发消息时先打快照再落库（captureCheckpoint 出现在 insertMessage 用户消息之前）', () => {
+  it('先保存用户消息和可取消回合，再拍快照；仍在模型/项目写入前记录快照引用', () => {
     const snapshotAt = SESSION_SRC.indexOf('await captureCheckpoint(');
     const insertAt = SESSION_SRC.indexOf('insertMessage(sessionId, userMsg');
-    expect(snapshotAt).toBeGreaterThan(-1);
-    expect(insertAt).toBeGreaterThan(snapshotAt);
+    const turnAt = SESSION_SRC.indexOf('activeTurns.set(sessionId, activeTurn)');
+    const checkpointAt = SESSION_SRC.indexOf('UPDATE messages SET checkpoint_ref');
+    const prepareAt = SESSION_SRC.indexOf('opts = await buildRunOptions');
+    expect(insertAt).toBeGreaterThan(-1);
+    expect(turnAt).toBeGreaterThan(insertAt);
+    expect(snapshotAt).toBeGreaterThan(turnAt);
+    expect(checkpointAt).toBeGreaterThan(snapshotAt);
+    expect(prepareAt).toBeGreaterThan(checkpointAt);
+    expect(SESSION_SRC.slice(snapshotAt, prepareAt)).toContain('activeTurn.finalized');
   });
 });
