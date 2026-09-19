@@ -11,6 +11,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { IPC } from '@shared/types';
 import { COMPETITION_IPC, type CompetitionLibraryApi } from '../shared/competition-studio';
+import { WORKFLOW_IPC, type WorkflowApi } from '../shared/workflow';
 import type {
   AppSettings,
   AskUserRequest,
@@ -103,6 +104,10 @@ const competition: CompetitionLibraryApi = {
   onState: cb => subscribe(COMPETITION_IPC.changed, cb),
 };
 const api = {
+  workflow: {
+    list: sessionId => ipcRenderer.invoke(WORKFLOW_IPC.list, sessionId),
+    onChanged: cb => subscribe(WORKFLOW_IPC.changed, cb),
+  } satisfies WorkflowApi,
   competition,
   // ── 本地服务凭据 ──────────────────────────────────────────
   /** 随机端口（0 表示服务未起来） */

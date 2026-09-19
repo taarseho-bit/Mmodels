@@ -36,6 +36,7 @@ import { Composer } from '../components/Composer';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
 import { AgentCollaboration } from '../components/AgentCollaboration';
+import { WorkflowView } from '../components/WorkflowView';
 import { sessionTitleFromPrompt } from '../lib/session-title';
 import { t, tx } from '../i18n';
 import {
@@ -409,6 +410,9 @@ function BrandMark({ size = 40 }: { size?: number }): JSX.Element {
 }
 
 export function ChatPage(): JSX.Element {
+  const taskView = useApp(s => s.taskView);
+  const setTaskView = useApp(s => s.setTaskView);
+  const returnToChat = useCallback(() => setTaskView('chat'), [setTaskView]);
   const currentProject = useApp((s) => s.currentProject);
   const sessions = useApp((s) => s.sessions);
   const activeSessionId = useApp((s) => s.activeSessionId);
@@ -1119,7 +1123,8 @@ export function ChatPage(): JSX.Element {
 
   return (
     <div className="chat-page">
-      <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
+      {taskView === 'workflow' && <WorkflowView key={activeSessionId ?? 'new'} sessionId={activeSessionId} onReturn={returnToChat} />}
+      <div className="chat-scroll" style={taskView === 'workflow' ? { display: 'none' } : undefined} ref={scrollRef} onScroll={onScroll}>
         <div className={`chat-inner${isEmpty ? ' is-empty' : ''}`}>
           {findOpen ? (
             <div className="transcript-find" role="search">
@@ -1440,7 +1445,7 @@ export function ChatPage(): JSX.Element {
       {!isEmpty && (
         <div className="composer">
           {/* 任务进度面板：紧贴输入卡片上方 —— 用户要的「在对话框上面」 */}
-          <div className="composer-inner">
+          <div className="composer-inner" hidden={taskView === 'workflow'}>
             <AgentCollaboration activities={stream.agents} active={isRunning} />
             <TaskProgressPanel state={taskState} />
           </div>

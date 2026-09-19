@@ -67,6 +67,14 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_id, updated_at DESC);
 
+CREATE TABLE IF NOT EXISTS workflow_runs (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  started_at INTEGER NOT NULL,
+  snapshot TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_session ON workflow_runs(session_id, started_at DESC);
+
 -- 消息
 CREATE TABLE IF NOT EXISTS messages (
   id          TEXT PRIMARY KEY,

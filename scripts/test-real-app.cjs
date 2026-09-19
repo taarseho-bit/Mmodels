@@ -388,8 +388,18 @@ async function main() {
       await shot('settings');
         await route('chat');
         ok(await cdp.eval('document.querySelectorAll(".starter").length === 3 && !document.body.innerText.includes("2023 华数杯")'), '真题样例移除，保留三个通用任务起点');
-        ok(await cdp.eval('document.querySelectorAll(".topbar-actions button").length === 2 && !document.querySelector(".topbar-new-chat")'), '顶栏仅保留文件与更多，移除重复新任务');
+        ok(await cdp.eval('document.querySelectorAll(".topbar-actions button").length === 4 && !document.querySelector(".topbar-new-chat")'), '顶栏保留视图切换、文件与更多，没有重复新任务');
         await shot('chat');
+        await cdp.eval('document.querySelectorAll(".workflow-switch button")[1].click()');
+        await sleep(300);
+        ok(await cdp.eval('!!document.querySelector(".workflow-view") && getComputedStyle(document.querySelector(".chat-scroll")).display === "none"'), '工作流切换不卸载原对话');
+        ok(await cdp.eval('document.querySelector(".workflow-view").innerText.includes("不会补造工作流")'), '没有真实记录时明确显示空状态');
+        await shot('workflow-empty');
+        await cdp.eval('document.querySelectorAll(".workflow-switch button")[0].click()');
+        await cdp.eval('window.__workflowDraftNode = document.querySelector(".composer-input"); true');
+        await cdp.eval('document.querySelectorAll(".workflow-switch button")[1].click()');
+        await cdp.eval('document.querySelectorAll(".workflow-switch button")[0].click()');
+        ok(await cdp.eval('window.__workflowDraftNode && document.querySelector(".composer-input") === window.__workflowDraftNode'), '切换视图保留原输入组件');
         await cdp.eval('document.querySelector("[aria-label=更多任务操作]").click()');
         ok(await cdp.eval('document.querySelectorAll(".studio-task-menu [role^=menuitem]").length === 8'), '低频功能完整收纳到更多菜单');
         await shot('task-menu');
@@ -409,6 +419,66 @@ async function main() {
         ok(await cdp.eval('document.querySelector(".settings-nav-item.active")?.textContent.includes("运行环境")'), '运行环境入口直达设置的正确分区');
         await cdp.eval('document.documentElement.setAttribute("data-theme","dark")');
       await route('workbench'); await shot('workbench-dark');
+      if (process.env.MATHMODEL_TEST_WORKFLOW_UI === '1') {
+        const fixtureId = await cdp.eval(`(async()=>{const p=await window.mathmodel.project.current();await window.mathmodel.file.write('workflow-ui-sample.md','工作流界面测试文件，不是模型结果。');return (await window.mathmodel.session.create(p.id,'工作流界面验证样例（非真实解题）')).id})()`);
+        const seed = require('node:child_process').spawnSync(path.join(ROOT, 'node_modules/electron/dist/electron.exe'),
+          [path.join(ROOT, 'scripts/seed-workflow-test.cjs'), path.join(USER_DATA, 'mmodels.db'), fixtureId],
+          { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', NODE_OPTIONS: '' }, encoding: 'utf8', windowsHide: true });
+        if (seed.status !== 0) throw new Error(seed.stderr || '工作流测试样例初始化失败');
+        await cdp.send('Page.reload'); await sleep(1800);
+        await route('chat');
+        await cdp.eval('[...document.querySelectorAll("[title]")].find(e=>e.title==="工作流界面验证样例（非真实解题）").click()');
+        await sleep(400);
+        await cdp.eval('document.querySelectorAll(".workflow-switch button")[1].click()'); await sleep(400);
+        ok(await cdp.eval('document.querySelectorAll(".workflow-node").length === 4'), '工作流从真实数据库读取四个测试成员（样例，不是模型执行）');
+        ok(await cdp.eval('document.querySelector(".workflow-view").innerText.includes("3 种技能")'), '按实际记录区分技能种类与工具次数');
+        ok(await cdp.eval('document.querySelectorAll(".flow-edge").length === 4 && document.querySelectorAll(".flow-connections marker").length === 4'), '画布存在有向箭头与真实关系分类');
+        ok(await cdp.eval('document.querySelectorAll(".flow-edge-motion").length === 2'), '只有正在工作的两个目标具有流动箭头（界面样例）');
+        ok(await cdp.eval('new Set([...document.querySelectorAll(".flow-agent")].map(e=>e.style.getPropertyValue("--flow-color"))).size === 4'), '四个智能体使用不同主题颜色');
+        ok(await cdp.eval('document.querySelectorAll(".flow-person").length === 4 && document.querySelectorAll(".flow-person.is-working").length === 2'), '成员有拟人头像，仅正在工作的成员有专注动作');
+        await cdp.eval('document.documentElement.setAttribute("data-theme","light")'); await shot('workflow-sample-light');
+        await cdp.eval('document.querySelectorAll(".workflow-node")[3].click()');
+        ok(await cdp.eval('document.querySelector(".workflow-detail").innerText.includes("灵敏度核验员") && document.querySelector(".workflow-detail").innerText.includes("比赛交付核对")'), '点击中文成员查看所属技能，不混入其他成员记录');
+        ok(await cdp.eval('document.querySelector(".flow-skill-section code").textContent === "mathmodel:competition-audit" && document.querySelector(".flow-skill-section").innerText.includes("调用 1 次")'), '点击成员后优先展示准确 Skill 标识、中文名及调用次数');
+        await shot('workflow-skill-detail');
+        await cdp.eval('document.querySelector("[aria-label=关闭成员详情]").click()');
+        await cdp.eval('document.documentElement.setAttribute("data-theme","dark")'); await shot('workflow-sample-dark');
+        const oldZoom = await cdp.eval('parseInt(document.querySelector(".flow-zoom-level").innerText)');
+        await cdp.eval('document.querySelector("[aria-label=放大画布]").click()');
+        await sleep(100);
+        ok(await cdp.eval('parseInt(document.querySelector(".flow-zoom-level").innerText)') > oldZoom, '画布支持缩放，手动缩放后关闭自动跟随');
+        const pan = await cdp.eval('(()=>{const r=document.querySelector(".flow-viewport").getBoundingClientRect();return {x:r.x+25,y:r.y+25,tx:new DOMMatrix(getComputedStyle(document.querySelector(".flow-world")).transform).m41}})()');
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: pan.x, y: pan.y, button: 'left', buttons: 1, clickCount: 1 });
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pan.x + 60, y: pan.y + 25, button: 'left', buttons: 1 });
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pan.x + 60, y: pan.y + 25, button: 'left', buttons: 0, clickCount: 1 });
+        await sleep(100);
+        const moved = await cdp.eval('new DOMMatrix(getComputedStyle(document.querySelector(".flow-world")).transform).m41');
+        log('画布拖动：' + JSON.stringify({ before: pan.tx, after: moved, expectedDelta: 60 }));
+        ok(Math.abs(moved - pan.tx - 60) < 2, '拖动空白处向右移动，画布同方向平移且无坐标累积漂移');
+        await cdp.eval('[...document.querySelectorAll(".flow-toolbar button")].find(b=>b.textContent==="收起已结束").click()');
+        ok(await cdp.eval('document.querySelectorAll(".flow-agent.is-folded").length === 2 && document.querySelectorAll(".flow-agent").length === 4'), '已结束成员可收起但不删除，工作中的成员仍展开');
+        await cdp.eval('[...document.querySelectorAll(".flow-toolbar button")].find(b=>b.textContent==="展开已结束").click()');
+        await cdp.eval('document.querySelector("[aria-label=适应画布]").click()');
+        await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+        ok(await cdp.eval('getComputedStyle(document.querySelector(".flow-edge-motion")).animationName === "none"'), '减少动态效果设置会关闭流动动画');
+        await cdp.send('Emulation.setEmulatedMedia', { features: [] });
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 980, height: 700, deviceScaleFactor: 1, mobile: false });
+        await sleep(200); await shot('workflow-sample-compact');
+        ok(await cdp.eval('document.documentElement.scrollWidth <= innerWidth && document.querySelector(".workflow-view").scrollWidth <= document.querySelector(".workflow-view").clientWidth + 1'), '工作流窄窗口无横向溢出');
+        await cdp.send('Emulation.clearDeviceMetricsOverride');
+        const history = await cdp.eval('(()=>{const s=document.querySelector("[aria-label=工作流运行轮次]");s.value=s.options[2].value;s.dispatchEvent(new Event("change",{bubbles:true}));return true})()');
+        await sleep(200);
+        ok(history && await cdp.eval('document.querySelectorAll(".workflow-node").length === 1 && document.querySelector(".workflow-status").innerText === "已停止"'), '历史轮次可切换，停止记录不会继续转圈');
+        ok(await cdp.eval('document.querySelectorAll(".flow-edge-motion, .flow-agent-working").length === 0'), '停止轮次没有流动箭头或工作动画');
+        await cdp.eval('document.querySelectorAll(".workflow-switch button")[0].click()');
+        await cdp.eval('document.querySelector(".composer-input").focus()');
+        await cdp.send('Input.insertText', { text: '切换视图后仍保留的草稿' });
+        await cdp.eval('document.querySelectorAll(".workflow-switch button")[1].click()');
+        ok(await cdp.eval('document.querySelector(".composer-input").value === "切换视图后仍保留的草稿"'), '有历史的工作流保留输入区与草稿');
+        await cdp.eval(`window.mathmodel.session.remove(${JSON.stringify(fixtureId)})`);
+        const deleted = await cdp.eval(`window.mathmodel.workflow.list(${JSON.stringify(fixtureId)})`);
+        ok(deleted.length === 0, '删除测试任务时工作流记录级联删除');
+      }
     }
     const core = await cdp.eval(`(async function(){
       return {

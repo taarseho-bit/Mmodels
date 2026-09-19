@@ -1,6 +1,7 @@
 import type { AgentActivity } from '@shared/types';
 import { Icon } from './Icon';
-import { AGENT_LABELS, visibleAgentText } from '../lib/modeling-activity';
+import { visibleAgentText } from '../lib/modeling-activity';
+import { chineseAgentName } from '@shared/workflow';
 
 function statusIcon(status: AgentActivity['status']): string {
   if (status === 'completed') return 'check';
@@ -27,7 +28,7 @@ export function AgentCollaboration({
         <span>{running > 0 ? `${running} 位正在分头核对` : '正在汇总结果'}</span>
       </div>
       <div className="agent-collab-list">
-        {activities.map((activity) => (
+        {activities.map((activity, index) => (
           <div key={activity.taskId} className={`agent-collab-item is-${activity.status}`}>
             <span className="agent-collab-icon">
               <Icon
@@ -37,7 +38,7 @@ export function AgentCollaboration({
               />
             </span>
             <span className="agent-collab-copy">
-              <strong>{AGENT_LABELS[activity.agentType] ?? '协作分析'}</strong>
+              <strong>{chineseAgentName(activity.agentType, activity.description)} · {index + 1}</strong>
               <span>{visibleAgentText(activity)}</span>
             </span>
             {activity.durationMs && activity.durationMs > 0 ? (

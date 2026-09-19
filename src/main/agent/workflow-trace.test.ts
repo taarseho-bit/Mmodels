@@ -1,0 +1,127 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { HookInput } from '@anthropic-ai/claude-agent-sdk';
+import { WorkflowTrace } from './workflow-trace';
+import type { WorkflowRun } from '@shared/workflow';
+
+const base = { session_id: 'sdk', transcript_path: 'private', cwd: 'D:/private' };
+const invoke = (trace: WorkflowTrace, input: object, id?: string) => trace.hook({ ...base, ...input } as HookInput, id, { signal: new AbortController().signal });
+const pre = (id: string, owner?: string, name = 'Skill', input: object = { skill: 'mathmodel:paper-search' }) => ({
+  hook_event_name: 'PreToolUse', tool_use_id: id, tool_name: name, tool_input: input,
+  ...(owner ? { agent_id: owner, agent_type: 'general-purpose' } : { agent_type: 'general-purpose' }),
+});
+afterEach(() => vi.useRealTimers());
+describe('真实事件工作流观察器', () => {
+  it('无 agent_id 的工具归主助手，不把主助手的 agent_type 误认为子成员', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    expect(await invoke(trace, pre('t'))).toEqual({});
+    expect(trace.run.nodes).toHaveLength(1);
+    expect(trace.run.nodes[0].tools[0].skill).toBe('mathmodel:paper-search');
+    trace.finish('completed');
+  });
+  it('同类并行成员不同名、工具不串线，主成员不重复统计', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('t1', 'agent-a'));
+    await invoke(trace, pre('t2', 'agent-b'));
+    expect(trace.run.nodes.map(n => n.name)).toEqual(['建模主助手', '综合研究员', '综合研究员 · 2']);
+    expect(trace.run.nodes.map(n => n.tools.length)).toEqual([0, 1, 1]);
+    trace.finish('completed');
+  });
+  it('仅凭真实调用标识关联中文临时角色名，没有标识不猜归属', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('dispatch', undefined, 'Agent', { description: '角色名：灵敏度核验员；任务：复算结果', prompt: 'PRIVATE' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'child', agent_type: 'general-purpose' }, 'dispatch');
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'other', agent_type: 'mystery' });
+    expect(trace.run.nodes[1].name).toBe('灵敏度核验员');
+    expect(trace.run.nodes[1].parentId).toBe('main');
+    expect(trace.run.nodes[2].name).toBe('专项研究员');
+    expect(trace.run.nodes[2].parentId).toBeUndefined();
+    expect(JSON.stringify(trace.run)).not.toContain('PRIVATE');
+    trace.finish('completed');
+  });
+  it('前后事件按工具 id 去重，重复前置事件不使完成状态倒退', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('t'));
+    await invoke(trace, { ...pre('t'), hook_event_name: 'PostToolUse', tool_response: 'secret response' });
+    await invoke(trace, pre('t'));
+    expect(trace.run.nodes[0].tools).toHaveLength(1);
+    expect(trace.run.nodes[0].tools[0].status).toBe('completed');
+    expect(JSON.stringify(trace.run)).not.toContain('secret response');
+    trace.finish('completed');
+  });
+  it('子成员继续派发时记录真正的上级，新增成员与已交回成员同时保留', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('dispatch-child', 'parent', 'Agent', { description: '角色名：约束核验员；任务：核对约束' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'child', agent_type: 'general-purpose' }, 'dispatch-child');
+    await invoke(trace, { hook_event_name: 'SubagentStop', agent_id: 'child', agent_type: 'general-purpose' });
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'next', agent_type: 'model-solver' });
+    expect(trace.run.nodes.find(n => n.id === 'child')).toMatchObject({ parentId: 'parent', status: 'returned', name: '约束核验员' });
+    expect(trace.run.nodes.find(n => n.id === 'next')?.status).toBe('running');
+    trace.finish('completed');
+  });
+  it('观察回调不可干预执行，发布失败不抛到模型', async () => {
+    const trace = new WorkflowTrace('a', true, () => { throw new Error('storage'); });
+    expect(await invoke(trace, pre('t'))).toEqual({});
+    expect(() => trace.finish('completed')).not.toThrow();
+  });
+  it('停止立即发布、取消节流、保留已完成记录，迟到事件不能复活', async () => {
+    vi.useFakeTimers();
+    const snapshots: WorkflowRun[] = [];
+    const trace = new WorkflowTrace('a', true, r => snapshots.push(r));
+    await invoke(trace, pre('t', 'child'));
+    trace.finish('stopped');
+    expect(snapshots.at(-1)?.nodes[1].tools[0].status).toBe('stopped');
+    await invoke(trace, pre('late', 'new-child'));
+    trace.finish('completed');
+    vi.runAllTimers();
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots.at(-1)?.status).toBe('stopped');
+    expect(snapshots[0].nodes).toHaveLength(1);
+  });
+  it('子成员返回不冒充核验通过，丢失结束事件也不永远转圈', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('t', 'child'));
+    await invoke(trace, { hook_event_name: 'SubagentStop', agent_id: 'child', agent_type: 'general-purpose' });
+    expect(trace.run.nodes[1].status).toBe('returned');
+    expect(trace.run.nodes[1].tools[0].status).toBe('unknown');
+    await invoke(trace, pre('pending', 'other'));
+    trace.finish('completed');
+    expect(trace.run.nodes[2].status).toBe('unknown');
+  });
+  it('只从真实写入返回记录产物，不从命令猜测文件', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, { ...pre('write', undefined, 'Write', { file_path: 'D:/p/result.md', content: 'private' }), hook_event_name: 'PostToolUse', tool_response: {} });
+    await invoke(trace, { ...pre('bash', undefined, 'Bash', { command: 'echo secret > a.pdf' }), hook_event_name: 'PostToolUse', tool_response: {} });
+    expect(trace.run.nodes[0].tools[0].artifact).toBe('D:/p/result.md');
+    expect(trace.run.nodes[0].tools[1].artifact).toBeUndefined();
+    expect(JSON.stringify(trace.run)).not.toContain('echo secret');
+    trace.finish('completed');
+  });
+  it('入口指令展开独立记录，不冒充 Skill 工具调用或保存全文', async () => {
+    const trace = new WorkflowTrace('a', false, () => {});
+    await invoke(trace, { hook_event_name: 'UserPromptExpansion', expansion_type: 'slash_command', command_name: '/mathmodel:mma-paper', command_args: 'SECRET', prompt: 'SECRET' });
+    expect(trace.run.nodes[0].tools[0].label).toBe('载入入口指令 · 论文写作');
+    expect(trace.run.nodes[0].tools[0].skill).toBeUndefined();
+    expect(JSON.stringify(trace.run)).not.toContain('SECRET');
+    trace.finish('completed');
+  });
+  it('发布节流，不跟随 token 刷新，每轮记录有界', async () => {
+    vi.useFakeTimers();
+    const publish = vi.fn();
+    const trace = new WorkflowTrace('a', true, publish);
+    for (let i = 0; i < 510; i++) await invoke(trace, pre(`t${i}`));
+    expect(publish).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(250);
+    expect(publish).toHaveBeenCalledTimes(2);
+    expect(trace.run.nodes[0].tools).toHaveLength(500);
+    expect(trace.run.truncated).toBe(true);
+    trace.finish('completed');
+  });
+  it('失败与中断工具显示如实状态，不保存错误原文', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, { ...pre('a'), hook_event_name: 'PostToolUseFailure', error: 'SECRET' });
+    await invoke(trace, { ...pre('b'), hook_event_name: 'PostToolUseFailure', error: 'SECRET', is_interrupt: true });
+    expect(trace.run.nodes[0].tools.map(t => t.status)).toEqual(['unsuccessful', 'stopped']);
+    expect(JSON.stringify(trace.run)).not.toContain('SECRET');
+    trace.finish('interrupted');
+  });
+});

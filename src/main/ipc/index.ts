@@ -33,6 +33,7 @@ import { registerCollabHandlers } from './collab';
 import { registerNetworkHandlers } from './network';
 import { registerPetHandlers } from './pet';
 import { registerCompetitionLibraryHandlers } from './competition-library';
+import { registerWorkflowHandlers } from './workflow';
 import { closeAgentBrowsers } from '../agent/browser-tools';
 import { bridgeRegistry } from '../agent/bridge-registry';
 
@@ -94,6 +95,7 @@ export function registerIpcHandlers(ctx: IpcContext): void {
   registerNetworkHandlers(ctx);
   registerPetHandlers(ctx);
   registerCompetitionLibraryHandlers(ctx);
+  registerWorkflowHandlers();
 }
 
 /** 彻底退出应用前，先结束由 MModels 自己启动的长驻任务与终端子进程。 */

@@ -31,6 +31,8 @@ export function TopBar({
   const activeSessionId = useApp(s => s.activeSessionId);
   const settings = useApp(s => s.settings);
   const patchSettings = useApp(s => s.patchSettings);
+  const taskView = useApp(s => s.taskView);
+  const setTaskView = useApp(s => s.setTaskView);
   const activeSession = sessions.find(s => s.id === activeSessionId) ?? null;
   const [sessionRunning, setSessionRunning] = useState(activeSession?.status === 'running');
   useEffect(() => { setSessionRunning(activeSession?.status === 'running'); }, [activeSessionId, activeSession?.status]);
@@ -75,6 +77,10 @@ export function TopBar({
     </div> : <div className="studio-top-context"><span>{project?.name ?? 'MModels'}</span></div>}
     <div className="grow" />
     {showActions && <div className="topbar-actions topbar-no-drag">
+      <div className="workflow-switch" role="group" aria-label="任务视图">
+        <button aria-pressed={taskView === 'chat'} onClick={() => setTaskView('chat')}>对话</button>
+        <button aria-pressed={taskView === 'workflow'} onClick={() => setTaskView('workflow')}>工作流</button>
+      </div>
       <button className="topbar-action studio-panel-toggle" title="打开或收起文件面板" aria-label="打开或收起文件面板" onClick={onTogglePanel}>
         <Icon name="panel-right-close" size={16} /><span>文件</span>
       </button>

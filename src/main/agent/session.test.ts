@@ -19,6 +19,7 @@ import type { ContentBlock, ProviderConfig, StreamEvent } from '@shared/types';
 import { AgentSession, SessionRegistry } from './session';
 import { SessionInputQueue } from './session-loop';
 import { applyStreamEvent } from '../ipc/stream-blocks';
+import type { WorkflowRun } from '@shared/workflow';
 
 const h = vi.hoisted(() => ({
   /** 每个用例装一个假的 `query()` 实现 */
@@ -332,6 +333,34 @@ describe('快速模式 —— 只通过 SDK settings 层注入', () => {
       autoCompactEnabled: true,
       precomputeCompactionEnabled: true,
     });
+  });
+});
+
+describe('工作流观察接线', () => {
+  it('异常结果不显示成本轮正常完成', async () => {
+    installFakeQuery([{ ...result(), subtype: 'error_max_turns' }]);
+    const snapshots: WorkflowRun[] = [];
+    await runOnce('验证', { onWorkflow: r => snapshots.push(r) }).done;
+    expect(snapshots.at(-1)?.status).toBe('interrupted');
+  });
+  it('真实 run 选项挂观察钩子，完成后发布快照但不混入对话正文', async () => {
+    const sdk = installFakeQuery([assistant('完成'), result()]);
+    const snapshots: WorkflowRun[] = [];
+    const { done, events } = runOnce('验证', { multiAgentEnabled: true, onWorkflow: r => snapshots.push(r) });
+    await done;
+    expect(Object.keys(sdk.options?.hooks ?? {})).toEqual(['PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'SubagentStart', 'SubagentStop', 'UserPromptExpansion']);
+    expect(sdk.options?.forwardSubagentText).toBe(false);
+    expect(snapshots.at(-1)?.status).toBe('completed');
+    expect(textDeltas(events)).toEqual(['完成']);
+  });
+  it('停止同步发布停止状态，无需等待 SDK 完全收尾', async () => {
+    installFakeQuery([]);
+    const snapshots: WorkflowRun[] = [];
+    const { session, done } = runOnce('验证停止', { onWorkflow: r => snapshots.push(r) });
+    session.abort();
+    expect(snapshots.at(-1)?.status).toBe('stopped');
+    await done;
+    expect(snapshots.at(-1)?.status).toBe('stopped');
   });
 });
 

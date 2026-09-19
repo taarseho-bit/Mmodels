@@ -224,6 +224,7 @@ async function executeAutomation(a: AutomationRecord): Promise<void> {
     if (!project) throw new Error('定时任务所属项目不存在');
     const { extraPlugins, workspaceInstructions } = await import('../agent/project-plugins');
     const { buildSystemPrompt } = await import('./session');
+    const { publishWorkflow } = await import('./workflow');
     const { competitionProjectContext } = await import('./competition-library');
 
     await runner.run({
@@ -235,6 +236,8 @@ async function executeAutomation(a: AutomationRecord): Promise<void> {
       extraPluginPaths: extraPlugins(project.root, getSettings()),
       workspaceInstructions: [workspaceInstructions(project.root), competitionProjectContext(project.id)].filter(Boolean).join('\n'),
       systemPrompt: buildSystemPrompt(project.root),
+      multiAgentEnabled: getSettings().multiAgentEnabled !== false,
+      onWorkflow: publishWorkflow,
       // 技能插件由 session.ts 自动物化挂载（<userData>/skills-plugin），这里不用管
       builtinMcpEnabled: getSettings().builtinMcpEnabled,
       effort: getSettings().effort ?? undefined,

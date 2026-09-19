@@ -242,6 +242,7 @@ function insertMessage(
 
 /** 生成任务开始前，把 SDK 需要的环境准备好 */
 export async function buildRunOptions(sessionId: string, prompt: string, cwd: string) {
+  const { publishWorkflow } = await import('./workflow');
   const s = getSession(sessionId);
   if (!s) throw new Error('会话不存在');
 
@@ -286,6 +287,7 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
     workspaceInstructions: workspaceInstructions(cwd) + competitionProjectContext(s.projectId),
     extraPluginPaths: extraPlugins(cwd, settings),
     multiAgentEnabled: settings.multiAgentEnabled !== false && settings.planMode !== true,
+    onWorkflow: publishWorkflow,
     /**
      * 权限模式（复刻口径 `'full' | 'approval'`）—— **原样透传，不在这里改名**。
      * 换算成原版口径 / SDK 口径的那一步只在 `agent/permissions.ts` 里做一次。
@@ -380,7 +382,10 @@ export function buildSystemPrompt(cwd: string, planOnly = false): string {
       ? [
           '',
           '# 数学建模协作组',
-          '- 面对含两个以上可独立核对部分的复杂任务，可以调用 Agent 工具，让题意分析、数据分析、建模求解、论文核验子智能体并行工作。',
+          '- 复杂解题、完整论文写作和系统核验开始时，先评估哪些部分可独立研究。若存在两个以上边界清楚、能返回证据的部分，优先用 Agent 工具实际派发协作；不要仅在文字中声称已组建团队。',
+          '- 可用专业角色：problem-analyst（题意分析员）、data-analyst（数据分析员）、model-solver（建模求解员）、paper-reviewer（论文核验员）。按实际任务选择，不要求凑齐所有角色。',
+          '- 每次派发的 description 使用中文，并以“角色名：中文短名；任务：具体工作”开头，例如“角色名：灵敏度核验员；任务：独立复算参数变化对目标值的影响”。临时专项角色也必须中文命名；保留有效 subagent_type，不要编造未注册的类型。',
+          '- 给协作成员提供必要的题目条件、数据位置、交付标准和可用技能；成员按需调用匹配的 Skill，禁止为了展示而重复调用无关技能。正式交付前，有可独立复核的关键结论时优先派发核验，并说明未验证项。',
           '- 一次最多并行 3 个，只派发边界清楚、能独立返回证据的任务；简单问答和单文件小改动不要调用子智能体。',
           '- 子智能体只负责分析与核验，正式代码、图表和论文文件由主智能体统一写入，避免并行覆盖。',
           '- 子智能体结论不能直接照抄：主智能体必须检查冲突、复算关键结果，再形成最终结论。',

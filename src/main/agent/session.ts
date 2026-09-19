@@ -27,6 +27,8 @@ import type {
   TokenUsage,
 } from '@shared/types';
 import { MODELING_AGENTS } from './modeling-agents';
+import { WorkflowTrace } from './workflow-trace';
+import type { WorkflowRun } from '@shared/workflow';
 import { sdkModel, userMcpOptions, knownContextWindow } from './runtime-options';
 import { recordCapabilities } from './capabilities';
 import { buildChildEnv, buildProviderEnv, resolveClaudeExecutable } from './env';
@@ -156,6 +158,7 @@ export interface RunOptions {
   interactionMode?: InteractionMode;
   /** 允许主智能体按任务需要调用数学建模协作组。 */
   multiAgentEnabled?: boolean;
+  onWorkflow?: (run: WorkflowRun) => void;
 }
 
 /**
@@ -240,6 +243,8 @@ export class AgentSession extends EventEmitter {
   private modelContextCapacity: number | undefined;
   /** SDK task id 对应的子智能体活动，用于把后续 progress/update 帧补全。 */
   private subagentTasks = new Map<string, AgentActivity>();
+  private workflow?: WorkflowTrace;
+  private workflowHadError = false;
   /**
    * 正在等待用户作答的提问：requestId → resolve。
    *
@@ -290,6 +295,8 @@ export class AgentSession extends EventEmitter {
   }
 
   private emitEvent(ev: StreamEvent): void {
+    if (ev.type === 'session-error') this.workflowHadError = true;
+    if (ev.type === 'session-end') this.workflow?.finish(ev.reason || this.workflowHadError ? 'interrupted' : 'completed');
     this.emit('event', ev);
   }
 
@@ -364,6 +371,7 @@ export class AgentSession extends EventEmitter {
 
   /** 中断当前运行。不杀进程，只是通知 SDK 停 */
   abort(): void {
+    this.workflow?.finish('stopped');
     // 先把挂着的提问放掉，否则 canUseTool 的 promise 永远不 resolve，
     // SDK 侧那一次 tool 调用会卡到进程退出。
     this.settleAllQuestions(null);
@@ -604,6 +612,8 @@ export class AgentSession extends EventEmitter {
     this.blocks = [];
     this.streamIndex = -1;
     this.subagentTasks.clear();
+    this.workflowHadError = false;
+    this.workflow = opts.onWorkflow ? new WorkflowTrace(this.sessionId, opts.multiAgentEnabled === true, opts.onWorkflow) : undefined;
 
     this.emitEvent({ type: 'session-start', sessionId: this.sessionId });
 
@@ -701,6 +711,11 @@ export class AgentSession extends EventEmitter {
         append: [opts.workspaceInstructions, opts.systemPrompt].filter(Boolean).join('\n\n'),
       };
       if (opts.resumeSessionId) options.resume = opts.resumeSessionId;
+      if (this.workflow) {
+        const observer = { hooks: [this.workflow.hook] };
+        options.hooks = { PreToolUse: [observer], PostToolUse: [observer], PostToolUseFailure: [observer],
+          SubagentStart: [observer], SubagentStop: [observer], UserPromptExpansion: [observer] };
+      }
       if (opts.multiAgentEnabled) {
         options.agents = MODELING_AGENTS;
         options.agentProgressSummaries = true;

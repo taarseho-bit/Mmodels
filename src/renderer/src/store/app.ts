@@ -579,6 +579,8 @@ interface AppState {
    * 持久化到 localStorage —— 原版这是模式而非一次性动作。
    */
   editorView: boolean;
+  taskView: 'chat' | 'workflow';
+  setTaskView: (view: 'chat' | 'workflow') => void;
   /**
    * 待填入输入框的提示词。
    * 科研绘图模板页点「使用此模板」时写入，App 切回对话页，
@@ -705,6 +707,8 @@ export const useApp = create<AppState>((set, get) => ({
   sidePanel: null,
   sidePanelTabs: loadSidePanelTabs(),
   editorView: loadEditorView(),
+  taskView: 'chat',
+  setTaskView: taskView => set({ taskView }),
   pendingPrompt: null,
   tourRequest: 0,
   requestedTour: null,
