@@ -322,3 +322,14 @@ FA_RUN_TIMEOUT_MS=1800000 bash .workbuddy/ui-audit/fa-core-run.sh <label> <cfg>
 - 比赛规则会随年份变化，模板中不要写死页数。没有当届规则时必须询问，不能猜。
 - 最新验证：41 文件 / 820 单测、45 项脚本护栏、最终 release 应用 36/36 真实验收。
 - 最新交付：`MModels-0.1.0-x64-Portable.exe` SHA-256 `f3d22bde35ebbc48a610e300ed6ac83a12d01cf037e55a05b5a78000dcd23a9d`；Setup SHA-256 `1436bfc7fe62384f370774fd474f92f7a389e87edce3f5122d569de581c17b0a`。
+
+---
+
+## 11. 2026-09-19 最新交接：比赛信息与停止后多智能体
+
+- `Composer.tsx` 的“比赛信息”现在是项目级常驻入口，不再用 `effectiveTpl` 作为显示条件；模板扫描失败可在弹层内重试。
+- 模板不可用时只允许保存页数要求，不回写空的 `contestFields`，防止暂时性资源问题覆盖用户已有配置。
+- 比赛字段会随所有任务提供给模型，`paper-page-fit` 页数要求只在 `paper/review` 模式注入。
+- `ipc/session.ts` 用 `sessionsResumingAfterStop` 记录用户主动停止；下一轮在隐藏系统提示中说明旧成员已结束，并按剩余复杂度重新调用 Agent。标记在运行参数完整构建成功后才消费，任务删除时清理。
+- 最新验证：`npm run typecheck`；两份定向测试共 13/13；`npm run build`；Portable 独立沙箱真实应用 44/44。
+- 最新包：`dist-competition-resume-20260919/MModels-0.1.0-x64-Portable.exe`，269,622,091 B，SHA-256 `0628d2d323cff8eb99389aa55fd2aceb0a1cbd455fad4f131fbfc4865066a4f4`。

@@ -86,6 +86,15 @@ describe('长时任务与多智能体协作', () => {
     expect(buildSystemPrompt(CWD, false)).not.toContain('# 当前工作方式：先规划');
   });
 
+  it('停止后继续会明确结束旧成员，并按剩余工作重新组织协作', () => {
+    const text = buildSystemPrompt(CWD, false, true);
+    expect(text).toContain('# 停止后的继续执行');
+    expect(text).toContain('旧的协作成员已经结束');
+    expect(text).toContain('立即重新调用 Agent 组建协作组');
+    expect(text).toContain('不要重复已经确认完成的工作');
+    expect(buildSystemPrompt(CWD, false, false)).not.toContain('# 停止后的继续执行');
+  });
+
   it('新增一节插在末尾（在旧的「提问与继续执行」之后）', () => {
     const text = buildSystemPrompt(CWD);
     expect(text).toContain('# 长时任务与后台协作');

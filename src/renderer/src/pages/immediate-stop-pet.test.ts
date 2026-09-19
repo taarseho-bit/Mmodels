@@ -20,6 +20,10 @@ const petIpc = readFileSync(
   fileURLToPath(new URL('../../../main/ipc/pet.ts', import.meta.url)),
   'utf8',
 );
+const composer = readFileSync(
+  fileURLToPath(new URL('../components/Composer.tsx', import.meta.url)),
+  'utf8',
+);
 
 describe('立即停止', () => {
   it('点击后立刻把当前窗口置为 done，并在后台请求取消', () => {
@@ -56,6 +60,21 @@ describe('立即停止', () => {
     expect(registerAt).toBeLessThan(prepareAt);
     expect(guardAt).toBeGreaterThan(prepareAt);
     expect(guardAt).toBeLessThan(runAt);
+  });
+
+  it('停止后的下一条消息会重新评估并组织多智能体', () => {
+    expect(sessionIpc).toContain('sessionsResumingAfterStop.add(turn.sessionId)');
+    expect(sessionIpc).toContain('sessionsResumingAfterStop.has(sessionId)');
+    expect(sessionIpc).toContain("# 停止后的继续执行");
+  });
+});
+
+describe('比赛信息入口', () => {
+  it('模板暂时没有读到时仍保留入口，并允许用户重新检查', () => {
+    expect(composer).toContain('<span>{tx(\'composer.composerContextBar.paperSetup\')}</span>');
+    expect(composer).not.toContain("{effectiveTpl && (mode === 'paper' || mode === 'review') && (");
+    expect(composer).toContain('if (templates.length === 0 && !tplLoading) void loadTemplates()');
+    expect(composer).toContain("t('重新检查')");
   });
 });
 

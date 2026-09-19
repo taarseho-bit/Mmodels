@@ -444,6 +444,7 @@ export function Composer({
   // ── 模板 ──
   const [templates, setTemplates] = useState<PaperTemplate[]>([]);
   const [tplLoading, setTplLoading] = useState(false);
+  const [tplLoadFailed, setTplLoadFailed] = useState(false);
   const [paperFields, setPaperFields] = useState<Record<string, string>>({});
   const [pageLimitDraft, setPageLimitDraft] = useState<PaperPageLimitDraft>(EMPTY_PAGE_LIMIT);
   const [setupOpen, setSetupOpen] = useState(false);
@@ -561,24 +562,36 @@ export function Composer({
     });
   }, []);
 
-  // 拉模板列表（只拉一次）
+  /**
+   * 读取模板列表。
+   *
+   * 这里不能只在组件挂载时读一次：便携版刚启动、资源仍在解包，或旧进程的临时目录
+   * 曾被清理时，第一次读取可能暂时为空。以前 catch 后就永久保留 []，并且「比赛信息」
+   * 又依赖 effectiveTpl 才渲染，于是用户只能重启软件。现在弹层入口始终保留，点击即可重试。
+   */
+  const loadTemplates = useCallback(async (): Promise<void> => {
+    setTplLoading(true);
+    try {
+      const r = await window.mathmodel.paper.templates();
+      const next = r.templates ?? [];
+      setTemplates(next);
+      setTplLoadFailed(next.length === 0);
+    } catch {
+      setTplLoadFailed(true);
+    } finally {
+      setTplLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    setTplLoading(true);
-    void (async () => {
-      try {
-        const r = await window.mathmodel.paper.templates();
-        if (!cancelled) setTemplates(r.templates ?? []);
-      } catch {
-        if (!cancelled) setTemplates([]);
-      } finally {
-        if (!cancelled) setTplLoading(false);
-      }
-    })();
+    void loadTemplates().catch(() => {
+      if (!cancelled) setTplLoadFailed(true);
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadTemplates]);
 
   /**
    * 没人选过比赛时，自动认领一个。
@@ -880,7 +893,7 @@ export function Composer({
     if (attachments.length) {
       parts.push(`参考以下文件：\n${attachments.map((a) => `- ${a.path ?? a.name}`).join('\n')}`);
     }
-    if (mode === 'paper' && effectiveTpl) {
+    if (effectiveTpl) {
       // 用 contestFieldsForSave() 而不是直接遍历 paperFields：顺序稳定（模板字段在前、
       // 自定义字段在后），并且带上 label —— 用户自定义的字段名（"组别"）才是模型要看的。
       // ⚠️ `label` 是原版 `Np` 对象，拼进正文前必须按语言解析，否则会写出 `[object Object]`。
@@ -894,7 +907,7 @@ export function Composer({
         );
       }
       const pageLimit = pageLimitFromDraft(pageLimitDraft);
-      if (pageLimit) {
+      if (pageLimit && (mode === 'paper' || mode === 'review')) {
         const range =
           pageLimit.scope === 'total'
             ? '整份 PDF'
@@ -1138,18 +1151,19 @@ export function Composer({
         <div className="grow" />
 
         {/* 比赛信息 */}
-        {effectiveTpl && (mode === 'paper' || mode === 'review') && (
-          <button
-            className="cz-btn ghost"
-            title={positivePage(pageLimitDraft.maxPages)
-              ? t('比赛信息，正文最多 {{pages}} 页', { pages: pageLimitDraft.maxPages })
-              : t('填写比赛信息和页数要求')}
-            onClick={() => setSetupOpen(true)}
-          >
-            <Icon name="clipboard-list" size={13} />
-            <span>{tx('composer.composerContextBar.paperSetup')}</span>
-          </button>
-        )}
+        <button
+          className="cz-btn ghost"
+          title={positivePage(pageLimitDraft.maxPages)
+            ? t('比赛信息，正文最多 {{pages}} 页', { pages: pageLimitDraft.maxPages })
+            : t('填写比赛信息和页数要求')}
+          onClick={() => {
+            setSetupOpen(true);
+            if (templates.length === 0 && !tplLoading) void loadTemplates();
+          }}
+        >
+          <Icon name="clipboard-list" size={13} />
+          <span>{tx('composer.composerContextBar.paperSetup')}</span>
+        </button>
       </div>
 
       {/* ── ② 附件 chips + 粘贴 chip + 文本框 ── */}
@@ -1497,7 +1511,7 @@ export function Composer({
           复刻早期多出来的这一行已删除（00-main P1-3 / 11-chat P1-1）。 */}
 
       {/* ── 比赛信息弹层 ── */}
-      {setupOpen && effectiveTpl && (
+      {setupOpen && (
         <div className="modal-backdrop" onClick={() => setSetupOpen(false)} role="presentation">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
@@ -1508,8 +1522,7 @@ export function Composer({
             </div>
             <div className="modal-body col" style={{ gap: 12 }}>
               <label className="field-label">论文模板</label>
-        {/* 比赛模板（只在「写论文」模式下有意义，原版也仅在相关模式显示） */}
-        {(mode === 'paper' || mode === 'review') && (
+        {/* 模板与比赛属于项目设置，不随当前对话模式消失。 */}
           <div className="cz-slot">
             <button
               className="cz-btn"
@@ -1564,15 +1577,29 @@ export function Composer({
               )}
             </Popover>
           </div>
-        )}
-              <div className="muted" style={{ fontSize: 12, lineHeight: 1.7 }}>
-                {effectiveTpl.name}
-                {effectiveTpl.description ? ` · ${effectiveTpl.description}` : ''}
-                {effectiveTpl.source === 'custom' ? ` · ${t('自定义模板源')}` : ''}
-              </div>
-              {effectiveTpl.fields.length === 0 ? (
+              {effectiveTpl ? (
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.7 }}>
+                  {effectiveTpl.name}
+                  {effectiveTpl.description ? ` · ${effectiveTpl.description}` : ''}
+                  {effectiveTpl.source === 'custom' ? ` · ${t('自定义模板源')}` : ''}
+                </div>
+              ) : (
+                <div className="studio-notice" role="status">
+                  <span>
+                    {tplLoading
+                      ? t('正在读取比赛模板…')
+                      : t('暂时没有读到内置模板，比赛信息入口仍可使用。')}
+                  </span>
+                  {!tplLoading ? (
+                    <button className="btn btn-sm" onClick={() => void loadTemplates()}>
+                      {tplLoadFailed ? t('重新检查') : t('读取模板')}
+                    </button>
+                  ) : null}
+                </div>
+              )}
+              {!effectiveTpl || effectiveTpl.fields.length === 0 ? (
                 <div className="muted" style={{ fontSize: 12 }}>
-                  {tx('composer.paperSetupDialog.noContestFields')}
+                  {effectiveTpl ? tx('composer.paperSetupDialog.noContestFields') : t('模板恢复后会显示对应的比赛字段。')}
                 </div>
               ) : (
                 effectiveTpl.fields.map((f) => (
@@ -1744,10 +1771,14 @@ export function Composer({
                 onClick={() => {
                   // 只下发「比赛信息」。模板在输入区下拉 / 设置页里换，那两条路径各自显式下发；
                   // 这里手里的 template 是打开项目时的快照，回写会把期间的自定义模板源打回内置。
-                  void savePaperConfig({
-                    contestFields: contestFieldsForSave(),
-                    pageLimit: pageLimitFromDraft(pageLimitDraft),
-                  });
+                  void savePaperConfig(
+                    effectiveTpl
+                      ? {
+                          contestFields: contestFieldsForSave(),
+                          pageLimit: pageLimitFromDraft(pageLimitDraft),
+                        }
+                      : { pageLimit: pageLimitFromDraft(pageLimitDraft) },
+                  );
                   setSetupOpen(false);
                 }}
               >
