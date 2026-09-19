@@ -64,7 +64,7 @@ vi.mock('../agent/bridge-registry', () => ({ bridgeRegistry: {} }));
 vi.mock('./index', () => ({ safeWrap: (fn: unknown) => fn, pushToRenderer: () => {} }));
 vi.mock('./file', () => ({ currentProjectRoot: () => null }));
 
-import { buildSystemPrompt, multiAgentTriggerForPrompt } from './session';
+import { buildSystemPrompt, multiAgentTriggerForPrompt, staleTaskReminder } from './session';
 
 afterEach(() => {
   board.systemPrompt = undefined;
@@ -162,5 +162,63 @@ describe('长时任务与多智能体协作', () => {
     expect(text.indexOf('这是用户的附加指令 X')).toBeGreaterThan(
       text.indexOf('# 长时任务与后台协作'),
     );
+  });
+});
+
+describe('工作流协作优化（2026-09-19）', () => {
+  it('常驻协作组：显式并行派发、抽查式复算、任务同步契约与执行型角色', () => {
+    const text = buildSystemPrompt(CWD);
+    // 方向 5：无依赖成员一把并行派出
+    expect(text).toContain('同一条消息里一次性并行派发');
+    // 方向 4：抽查制替代全量复算，旧的双重计算措辞必须消失
+    expect(text).toContain('抽查式复算');
+    expect(text).not.toContain('主智能体必须检查冲突、复算关键结果');
+    // A1：任务同步契约
+    expect(text).toContain('每完成一项立即');
+    expect(text).toContain('禁止做完几件事后批量补记');
+    // 方向 2：执行型角色进入角色清单
+    expect(text).toContain('paper-writer（论文写作员）');
+    expect(text).toContain('figure-maker（图表制作员）');
+    // 「开始时」限定词已去掉（阶段无关）
+    expect(text).not.toContain('系统核验开始时，先评估');
+  });
+
+  it('阶段感知：本轮不命中但会话有记忆时，注入长任务协作要求而非强触发', () => {
+    const text = buildSystemPrompt(CWD, false, false, '继续下一步', 'paper');
+    expect(text).toContain('# 阶段感知协作（长任务进行中）');
+    expect(text).toContain('协作要求在整个任务期间持续生效');
+    expect(text).toContain('剩余可独立推进的部分');
+    expect(text).not.toContain('# 本轮自动协作（已触发）');
+  });
+
+  it('无触发且无会话记忆时不注入任何协作变体（简单问答不滥用）', () => {
+    const text = buildSystemPrompt(CWD, false, false, '把标题改短一点');
+    expect(text).not.toContain('# 阶段感知协作');
+    expect(text).not.toContain('# 本轮自动协作（已触发）');
+  });
+
+  it('A3 对账：创建了却从未 TaskUpdate 的任务会触发提醒，正常维护不提醒', () => {
+    const db = (blocks: unknown[]) => ({
+      prepare: () => ({ get: () => ({ blocks: JSON.stringify(blocks) }) }),
+    }) as unknown as never;
+    const created = (id: number, subject: string) => ({
+      kind: 'tool_use', toolName: 'TaskCreate', toolUseId: `tu${id}`,
+      toolInput: { subject }, toolResult: `Task #${id} created successfully: ${subject}`,
+    });
+    const updated = (id: number, status: string) => ({
+      kind: 'tool_use', toolName: 'TaskUpdate', toolUseId: `up${id}${status}`,
+      toolInput: { taskId: String(id), status },
+      toolResult: `Updated task #${id} status`,
+    });
+    // 10 个任务创建了，模型只更新过 1、2 —— 3 之后全部滞后
+    const hint = staleTaskReminder(db([created(1, 'a'), created(2, 'b'), created(3, 'c'),
+      updated(1, 'completed'), updated(2, 'in_progress')]), 's1');
+    expect(hint).toContain('# 任务状态同步提醒（自动检测）');
+    expect(hint).toContain('#3');
+    // 全部任务都有更新记录 → 不提醒
+    expect(staleTaskReminder(db([created(1, 'a'), updated(1, 'completed')]), 's1')).toBeNull();
+    // 没有 assistant 消息 → 不提醒
+    const empty = { prepare: () => ({ get: () => undefined }) };
+    expect(staleTaskReminder(empty as unknown as never, 's1')).toBeNull();
   });
 });

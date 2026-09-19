@@ -3,8 +3,9 @@ import type { AgentDefinition } from '@anthropic-ai/claude-agent-sdk';
 const SKILL_GUIDANCE = '先检查本轮可用技能：涉及检索、求解、审阅等专门流程时，优先调用匹配的 Skill 并执行其步骤；没有匹配项就直接完成任务，不为数量而调用。返回时说明实际采用的方法、证据，以及下一位成员需要什么输入。';
 
 /**
- * 数学建模协作组。子智能体只做独立分析和核验，项目文件统一由主智能体写入，
- * 避免并行编辑同一份论文或脚本时相互覆盖。
+ * 数学建模协作组。分析/核验类成员只读，正式论文与数据文件由主智能体统一写入；
+ * 写作、绘图与求解三类**执行型**成员可写文件，但各自只有明确的可写范围
+ * （论文文件 / 图表产物 / scratch 验证脚本），互不交叉，避免并行覆盖。
  */
 export const MODELING_AGENTS = {
   'problem-analyst': {
@@ -30,12 +31,37 @@ export const MODELING_AGENTS = {
     description: '独立提出模型、推导求解方法，并检查可行性、目标值和最优性证据。',
     prompt:
       '你是建模求解子智能体。用简体中文工作。独立建立变量、假设、目标和约束，给出求解路线，' +
-      '并核对单位、边界、残差、目标值和最优性证据。可以运行验证命令，但不覆盖项目正式文件。' +
-      '向主智能体返回可复核的推导、数值证据、失败尝试和推荐方案。' + SKILL_GUIDANCE +
-      '若运行环境允许 Agent 工具，且确有独立核验需求，可委派一次边界清楚的核验任务；不要递归委派求解员或重复创建相同成员。不可用时把核验请求交回主助手。',
-    tools: ['Read', 'Glob', 'Grep', 'Bash', 'Skill', 'Agent'],
-    disallowedTools: ['Write', 'Edit', 'NotebookEdit'],
-    maxTurns: 20,
+      '并核对单位、边界、残差、目标值和最优性证据。' +
+      // 受控写权限（2026-09-19）：只允许写 scratch 验证脚本，正式求解脚本与论文仍归主智能体。
+      '复杂的多行验证 Python 写成项目内 scratch-*.py 临时脚本再运行，不覆盖正式求解脚本、数据和论文文件；' +
+      '向主智能体返回可复核的推导、数值证据、失败尝试和推荐方案。' + SKILL_GUIDANCE,
+    tools: ['Read', 'Glob', 'Grep', 'Bash', 'Write', 'Skill'],
+    disallowedTools: ['Edit', 'NotebookEdit'],
+    maxTurns: 28,
+    background: true,
+  },
+  'paper-writer': {
+    description: '按比赛模板分章撰写或修改论文正文、公式与参考文献，适合大体量写作执行。',
+    prompt:
+      '你是论文写作子智能体。用简体中文工作。按项目 `.mathmodel/paper/config.json` 指定的比赛模板，' +
+      '撰写或修改指定章节的 LaTeX 正文、公式、图表引用与参考文献条目。' +
+      '只写论文相关文件（.tex/.md/.bib 与模板要求的文件），不改数据、求解脚本和其他成员负责的文件；' +
+      '每完成一部分汇报文件路径与内容摘要，编译报错先自行修复再继续。' + SKILL_GUIDANCE,
+    tools: ['Read', 'Glob', 'Grep', 'Bash', 'Write', 'Edit', 'Skill'],
+    disallowedTools: ['NotebookEdit'],
+    maxTurns: 24,
+    background: true,
+  },
+  'figure-maker': {
+    description: '批量生成或修改图表脚本与图片产物（figures/、draw.io），适合成批绘图执行。',
+    prompt:
+      '你是图表制作子智能体。用简体中文工作。按主智能体给定的统一风格要求，生成或修改绘图脚本并运行验证，' +
+      '图片输出到项目 figures/ 目录（draw.io 图保存 .drawio 源文件与导出的 PNG）。' +
+      '只写图表脚本与图片产物，不改论文正文、数据和其他成员负责的文件；' +
+      '汇报每张图的路径与它支撑的正文结论。' + SKILL_GUIDANCE,
+    tools: ['Read', 'Glob', 'Grep', 'Bash', 'Write', 'Edit', 'Skill'],
+    disallowedTools: ['NotebookEdit'],
+    maxTurns: 22,
     background: true,
   },
   'paper-reviewer': {

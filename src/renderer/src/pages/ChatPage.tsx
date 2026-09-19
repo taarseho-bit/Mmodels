@@ -22,7 +22,7 @@
  *   主进程落库后 id 会变。如果不重新拉，用户滚动到上方再切回来会看到重复消息。
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChatMessage, ContentBlock, InflightTurn } from '@shared/types';
+import type { ChatMessage, ContentBlock, InflightTurn, StreamEvent } from '@shared/types';
 import { decideFollowUpAction, followUpHeadFor, readFollowUpBehavior, useApp } from '../store/app';
 import { latestTaskBlocks } from '../store/tasks';
 import {
@@ -56,7 +56,7 @@ import {
   type NotifyShowPayload,
   type TaskNotifyContext,
 } from '../notifications/taskNotify';
-import { Markdown } from '../components/Markdown';
+import { Markdown, MarkdownStreaming } from '../components/Markdown';
 import { Icon } from '../components/Icon';
 import { buildDisplay, toolRowLabel, type ToolGroup } from '../lib/tool-row';
 import {
@@ -328,12 +328,15 @@ const BlockList = memo(function BlockList({
         }
         if (b.kind === 'text') {
           const isLast = streaming && b === lastTextBlock;
-          const source = streaming || hasToolActivity
+          const active = streaming || hasToolActivity;
+          const source = active
             ? localizeProcessNarration(b.text ?? '')
             : b.text ?? '';
+          // B1：流式/工具活动期间走稳定前缀拆分渲染（tail 才重解析），
+          // 结束后切回整篇渲染。切换只发生在流结束那一刻，代价远小于每 token 全量 parse。
           return (
             <div key={`x-${i}`} className={isLast ? 'caret' : undefined}>
-              <Markdown source={source} />
+              {active ? <MarkdownStreaming source={source} /> : <Markdown source={source} />}
             </div>
           );
         }
@@ -695,6 +698,55 @@ export function ChatPage(): JSX.Element {
   // ── 订阅流式事件 ──────────────────────────────────────────
   useEffect(() => {
     let renderFrame = 0;
+
+    /**
+     * B3 帧内攒批（2026-09-19 卡顿优化）：
+     * `text-delta` / `thinking-delta` / `usage` / `agent-progress` 是**纯增量**的
+     * 高频事件，每个都同步跑一遍 `receive()`（不可变更新）纯属浪费 —— 攒进 batch，
+     * rAF 到点一次性 apply，当前会话只取**终态** setStream 一次。
+     * 结构事件（块边界 / 工具 / 收尾）保持立即处理，且到达时先冲攒批 —— 全程保序。
+     */
+    const batch: Array<{ sid: string; ev: StreamEvent }> = [];
+    let batchDirty = false; // 本批里有没有「当前会话」的事件
+
+    const applyOne = (sid: string, ev: StreamEvent): boolean =>
+      chatStreamStore.receive(sid, ev, activeSessionIdRef.current).isCurrent;
+
+    const handleEnd = (sid: string, isCurrent: boolean): void => {
+      /**
+       * 这一轮**真的**收尾了 —— 队列消化 / 打断补发都要等这个标记。
+       * ⚠️ 按 **sessionId** 归属（旧写法只有一个布尔，且只有"当前会话"会置位：
+       *    切走期间收尾的会话回来后永远不算收尾，追问队列就卡死了）。
+       */
+      if (pendingTurnRef.current === sid) pendingTurnRef.current = null;
+      /**
+       * 收尾即清掉内联错误面板 —— 与改动前一致（原版收尾语义无证据支持"粘住红条"，
+       * 这一处按"与原版一模一样"的硬要求回退）。
+       * 块照留：那才是本 bug 的正题（主进程 catch 分支不落块时它是唯一可见的过程）。
+       */
+      const cleaned = chatStreamStore.clearError(sid);
+      if (isCurrent) setStream(toView(cleaned));
+      if (!isCurrent) return;
+      // 流结束 → 拉一次历史做对账（主进程此时才落库）
+      void (async () => {
+        await loadHistory(sid);
+        await refreshSessions();
+      })();
+    };
+
+    /** rAF 到点：本批增量一次性写进 store；当前会话有变化才取终态 set 一次 */
+    const flushBatch = (): void => {
+      renderFrame = 0;
+      const pending = batch.splice(0);
+      batchDirty = false;
+      for (const { sid, ev } of pending) {
+        if (applyOne(sid, ev)) batchDirty = true;
+      }
+      if (batchDirty) {
+        setStream(toView(chatStreamStore.snapshot(activeSessionIdRef.current)));
+      }
+    };
+
     const off = window.mathmodel.session.onStream((sid, ev) => {
       /**
        * ① **不再丢弃**非当前会话的事件（旧代码在这里 `return`）。
@@ -702,47 +754,36 @@ export function ChatPage(): JSX.Element {
        *    A 这一轮的块与任务都在。
        *    这一步的判断抽在 store 的 `receive()` 里，有单测盯着（见文件头注释）。
        */
+      if (
+        ev.type === 'text-delta' ||
+        ev.type === 'thinking-delta' ||
+        ev.type === 'usage' ||
+        ev.type === 'agent-progress'
+      ) {
+        batch.push({ sid, ev });
+        if (!renderFrame) renderFrame = requestAnimationFrame(flushBatch);
+        return;
+      }
+
+      // ② 结构事件保序：先冲攒批，再立即处理
+      if (renderFrame) {
+        cancelAnimationFrame(renderFrame);
+        renderFrame = 0;
+      }
+      flushBatch();
+
       const { entry, isCurrent } = chatStreamStore.receive(
         sid,
         ev,
         activeSessionIdRef.current,
       );
 
-      // ② 只有"当前会话"才同步进 React state 触发重渲染（后台会话照写不误）
-      if (isCurrent) {
-        if (ev.type === 'session-end' || ev.type === 'session-error') {
-          cancelAnimationFrame(renderFrame); renderFrame = 0;
-          setStream(toView(entry));
-        } else if (!renderFrame) {
-          renderFrame = requestAnimationFrame(() => {
-            renderFrame = 0;
-            if (activeSessionIdRef.current === sid) setStream(toView(chatStreamStore.snapshot(sid)));
-          });
-        }
+      // ③ 只有"当前会话"才同步进 React state 触发重渲染（后台会话照写不误）
+      if (isCurrent && (ev.type === 'session-end' || ev.type === 'session-error')) {
+        setStream(toView(entry));
       }
 
-      if (ev.type === 'session-end') {
-        /**
-         * 这一轮**真的**收尾了 —— 队列消化 / 打断补发都要等这个标记。
-         * ⚠️ 按 **sessionId** 归属（旧写法只有一个布尔，且只有"当前会话"会置位：
-         *    切走期间收尾的会话回来后永远不算收尾，追问队列就卡死了）。
-         */
-        if (pendingTurnRef.current === sid) pendingTurnRef.current = null;
-        /**
-         * 收尾即清掉内联错误面板 —— 与改动前一致（原版收尾语义无证据支持"粘住红条"，
-         * 这一处按"与原版一模一样"的硬要求回退）。
-         * 块照留：那才是本 bug 的正题（主进程 catch 分支不落块时它是唯一可见的过程）。
-         */
-        const cleaned = chatStreamStore.clearError(sid);
-        if (isCurrent) setStream(toView(cleaned));
-        if (!isCurrent) return;
-        // 流结束 → 拉一次历史做对账（主进程此时才落库）
-        void (async () => {
-          await loadHistory(sid);
-          await refreshSessions();
-        })();
-        return;
-      }
+      if (ev.type === 'session-end') handleEnd(sid, isCurrent);
       if (ev.type === 'session-error') {
         void refreshSessions();
       }
@@ -1494,7 +1535,7 @@ export function ChatPage(): JSX.Element {
           {/* 任务进度面板：紧贴输入卡片上方 —— 用户要的「在对话框上面」 */}
           <div className="composer-inner" hidden={taskView === 'workflow'}>
             <AgentCollaboration activities={stream.agents} active={isRunning} />
-            <TaskProgressPanel state={taskState} />
+            <TaskProgressPanel state={taskState} agents={stream.agents} lastActivityAt={stream.lastTaskActivityAt} />
           </div>
           <div className="composer-inner">{composerNode(false)}</div>
         </div>

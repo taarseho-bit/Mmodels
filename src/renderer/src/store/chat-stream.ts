@@ -58,6 +58,11 @@ export interface SessionStream {
   lastCompaction: { before: number; after?: number; trigger: 'manual' | 'auto'; at: number } | null;
   /** 当前一轮实际启动过的子智能体，按 taskId 合并最新状态。 */
   agents: AgentActivity[];
+  /**
+   * 最近一次任务工具活动（TaskCreate/TaskUpdate/TodoWrite 的调用或回执）时刻。
+   * 面板用它显示「任务状态最后更新于 X 前」—— 滞后可被用户直接看见（A4）。
+   */
+  lastTaskActivityAt?: number;
   error: string | null;
   /**
    * `blocks[0]` 在事件 `index` 空间里的下标。
@@ -85,6 +90,7 @@ export interface StreamView extends LiveWindow {
   contextUsage: ContextWindowUsage | null;
   lastCompaction: SessionStream['lastCompaction'];
   agents: AgentActivity[];
+  lastTaskActivityAt?: number;
   error: string | null;
 }
 
@@ -133,8 +139,16 @@ export function toView(entry: SessionStream | null | undefined): StreamView {
     contextUsage: entry.contextUsage,
     lastCompaction: entry.lastCompaction,
     agents: entry.agents,
+    lastTaskActivityAt: entry.lastTaskActivityAt,
     error: entry.error,
   };
+}
+
+/** 任务面板相关的工具名（`mcp__server__TaskCreate` → `TaskCreate`） */
+function isTaskTool(name: string | undefined): boolean {
+  if (!name) return false;
+  const short = name.split('__').pop() ?? name;
+  return short === 'TaskCreate' || short === 'TaskUpdate' || short === 'TodoWrite';
 }
 
 /**
@@ -145,8 +159,13 @@ function isHoley(blocks: ContentBlock[]): boolean {
   return blocks.some((b) => !b);
 }
 
-/** 挂上新块序列（含容量裁剪 + 偏移量维护 + 更新时刻） */
-function withBlocks(entry: SessionStream, blocks: ContentBlock[], now: number): SessionStream {
+/** 挂上新块序列（含容量裁剪 + 偏移量维护 + 更新时刻）；`extra` 允许同一事件顺带更新派生字段 */
+function withBlocks(
+  entry: SessionStream,
+  blocks: ContentBlock[],
+  now: number,
+  extra?: Partial<Pick<SessionStream, 'lastTaskActivityAt'>>,
+): SessionStream {
   let next = blocks;
   let firstIndex = entry.firstIndex;
   if (next.length > MAX_BLOCKS_PER_SESSION && !isHoley(next)) {
@@ -154,7 +173,7 @@ function withBlocks(entry: SessionStream, blocks: ContentBlock[], now: number): 
     next = next.slice(drop);
     firstIndex += drop;
   }
-  return { ...entry, blocks: next, firstIndex, updatedAt: now };
+  return { ...entry, blocks: next, firstIndex, updatedAt: now, ...extra };
 }
 
 /**
@@ -214,7 +233,8 @@ export function applyStreamEvent(
       return withBlocks(entry, blocks, now);
     }
 
-    case 'tool-use':
+    case 'tool-use': {
+      const isTask = isTaskTool(ev.toolName);
       return withBlocks(
         entry,
         [
@@ -227,15 +247,21 @@ export function applyStreamEvent(
           },
         ],
         now,
+        isTask ? { lastTaskActivityAt: now } : undefined,
       );
+    }
 
     case 'tool-result': {
+      // TaskCreate 的回执（"Task #N created successfully"）也是任务活动（A4 时间戳）。
+      const target = entry.blocks.find((b) => b && b.kind === 'tool_use' && b.toolUseId === ev.toolUseId);
+      const isTask = isTaskTool(target?.toolName);
       const blocks = entry.blocks.map((b) =>
         b && b.kind === 'tool_use' && b.toolUseId === ev.toolUseId
           ? { ...b, toolResult: ev.result, isError: ev.isError }
           : b,
       );
-      return { ...entry, blocks, updatedAt: now };
+      const next = { ...entry, blocks, updatedAt: now };
+      return isTask ? { ...next, lastTaskActivityAt: now } : next;
     }
 
     case 'usage':

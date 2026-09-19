@@ -377,7 +377,7 @@ describe('数学建模多智能体 —— SDK 原生 agents 与真实进度事�
     await done;
 
     expect(Object.keys(sdk.options?.agents as Record<string, unknown>)).toEqual([
-      'problem-analyst', 'data-analyst', 'model-solver', 'paper-reviewer',
+      'problem-analyst', 'data-analyst', 'model-solver', 'paper-writer', 'figure-maker', 'paper-reviewer',
     ]);
     expect(sdk.options?.agentProgressSummaries).toBe(true);
     expect(sdk.options?.forwardSubagentText).toBe(false);

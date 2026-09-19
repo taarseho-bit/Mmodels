@@ -6522,6 +6522,61 @@ audio.ap-media {
   padding-top: 2px;
   color: var(--fg-muted);
 }
+/* 头部「N 位成员协作中」徽标（A2）：accent 色调 + 转圈，贴在摘要之后 */
+.task-panel-agents {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+/* 展开区协作成员块：与面板同轴的微弱 accent 背景，不和任务条抢视线 */
+.task-panel-collab {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 2px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: var(--fg-secondary);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.task-collab-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--fg-secondary);
+}
+.task-collab-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-collab-row > small {
+  overflow: hidden;
+  max-width: 40ch;
+  color: var(--fg-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 滞后提示（A4）：warning 色调，只提醒不拦截 —— 清单更新落后于实际进度时可见 */
+.task-panel-stale {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--warning);
+  background: var(--warning-weak);
+  font-size: var(--fs-xs);
+}
 
 /* 数学建模协作组：只显示 SDK 真实启动的子智能体。 */
 .agent-collab {

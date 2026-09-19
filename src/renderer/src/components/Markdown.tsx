@@ -17,13 +17,14 @@
  *    mermaid 打包后 1 MB 出头，而绝大多数消息里没有图表。
  *    放进主 bundle 会让启动多背 1 MB 且拖慢首屏 —— 只有真的出现 mermaid 代码块时才加载。
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Icon } from './Icon';
 import { marked } from 'marked';
 import markedKatex from 'marked-katex-extension';
 import 'katex/dist/katex.min.css';
 import { useApp } from '../store/app';
 import { t } from '../i18n';
+import { findStableSplit } from '../lib/markdown-split';
 
 /** 危险片段消毒 */
 function sanitize(html: string): string {
@@ -78,22 +79,61 @@ function countMermaid(html: string): number {
   return (html.match(/<code[^>]*class="[^"]*language-mermaid[^"]*"/gi) ?? []).length;
 }
 
+/**
+ * marked.parse + 消毒 + 失败降级，纯函数。
+ * B1 性能优化的基石：稳定前缀与活跃尾部可以分别调用它，
+ * 结果与整篇解析在块边界处等价（marked 的块级解析按空行分块独立进行）。
+ */
+function renderMarkdown(source: string): string {
+  if (!source) return '';
+  try {
+    const raw = marked.parse(source, { async: false }) as string;
+    return sanitize(raw);
+  } catch (e) {
+    // 渲染失败绝不能白屏 —— 退化成纯文本
+    const msg = e instanceof Error ? e.message : String(e);
+    return `<pre>${escapeHtml(source)}\n\n（${t('Markdown 渲染失败')}：${escapeHtml(msg)}）</pre>`;
+  }
+}
+
+/** mermaid 渐进渲染（B1 前后共用）：把 host 内未处理的 mermaid 代码块替换成图 */
+async function renderMermaidInHost(host: HTMLElement, theme: string, salt: number): Promise<void> {
+  const mermaid = (await import('mermaid')).default;
+  mermaid.initialize({
+    startOnLoad: false,
+    // 跟随应用主题，否则暗色下图表会是刺眼的白底
+    theme: theme === 'dark' ? 'dark' : 'default',
+    securityLevel: 'strict',
+    fontFamily: 'inherit',
+  });
+  const blocks = host.querySelectorAll<HTMLElement>('code.language-mermaid:not([data-mm-done])');
+  let i = 0;
+  for (const code of blocks) {
+    const src = code.textContent ?? '';
+    code.setAttribute('data-mm-done', '1');
+    try {
+      const { svg } = await mermaid.render(`mm-${salt}-${i++}`, src);
+      // 用渲染结果替换整个 <pre>，避免残留代码块边框
+      const pre = code.closest('pre') ?? code;
+      const box = document.createElement('div');
+      box.className = 'md-mermaid';
+      box.innerHTML = sanitize(svg);
+      pre.replaceWith(box);
+    } catch (e) {
+      // 单个图渲染失败不影响其它内容
+      const msg = e instanceof Error ? e.message : String(e);
+      code.setAttribute('data-mm-error', '1');
+      code.title = `${t('Mermaid 渲染失败')}：${msg}`;
+    }
+  }
+}
+
 export function Markdown({ source, className }: Props): JSX.Element {
   const theme = useApp((s) => s.theme);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
-  const html = useMemo(() => {
-    if (!source) return '';
-    try {
-      const raw = marked.parse(source, { async: false }) as string;
-      return sanitize(raw);
-    } catch (e) {
-      // 渲染失败绝不能白屏 —— 退化成纯文本
-      const msg = e instanceof Error ? e.message : String(e);
-      return `<pre>${escapeHtml(source)}\n\n（${t('Markdown 渲染失败')}：${escapeHtml(msg)}）</pre>`;
-    }
-  }, [source]);
+  const html = useMemo(() => renderMarkdown(source), [source]);
 
   const mermaidCount = useMemo(() => countMermaid(html), [html]);
 
@@ -108,52 +148,13 @@ export function Markdown({ source, className }: Props): JSX.Element {
     const host = hostRef.current;
     if (!host) return;
 
-    let cancelled = false;
     void (async () => {
       try {
-        const mermaid = (await import('mermaid')).default;
-        if (cancelled) return;
-
-        mermaid.initialize({
-          startOnLoad: false,
-          // 跟随应用主题，否则暗色下图表会是刺眼的白底
-          theme: theme === 'dark' ? 'dark' : 'default',
-          securityLevel: 'strict',
-          fontFamily: 'inherit',
-        });
-
-        const blocks = host.querySelectorAll<HTMLElement>(
-          'code.language-mermaid:not([data-mm-done])',
-        );
-        let i = 0;
-        for (const code of blocks) {
-          if (cancelled) return;
-          const src = code.textContent ?? '';
-          code.setAttribute('data-mm-done', '1');
-          try {
-            const { svg } = await mermaid.render(`mm-${Date.now()}-${i++}`, src);
-            if (cancelled) return;
-            // 用渲染结果替换整个 <pre>，避免残留代码块边框
-            const pre = code.closest('pre') ?? code;
-            const box = document.createElement('div');
-            box.className = 'md-mermaid';
-            box.innerHTML = sanitize(svg);
-            pre.replaceWith(box);
-          } catch (e) {
-            // 单个图渲染失败不影响其它内容
-            const msg = e instanceof Error ? e.message : String(e);
-            code.setAttribute('data-mm-error', '1');
-            code.title = `${t('Mermaid 渲染失败')}：${msg}`;
-          }
-        }
+        await renderMermaidInHost(host, theme, Date.now());
       } catch {
         /* mermaid 加载失败就保持代码块原样，至少内容没丢 */
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [html, mermaidCount, theme]);
 
   return (
@@ -168,6 +169,85 @@ export function Markdown({ source, className }: Props): JSX.Element {
         }}
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {lightbox ? (
+        <div className="image-lightbox" role="dialog" aria-modal="true" aria-label={lightbox.alt} onClick={() => setLightbox(null)}>
+          <div className="image-lightbox-toolbar" onClick={(e) => e.stopPropagation()}>
+            <a className="btn btn-sm btn-ghost" href={lightbox.src} download>
+              <Icon name="download" size={13} /> {t('下载')}
+            </a>
+            <button type="button" className="btn btn-sm btn-ghost" aria-label={t('关闭')} onClick={() => setLightbox(null)}><Icon name="x" size={13} /></button>
+          </div>
+          <img src={lightbox.src} alt={lightbox.alt} onClick={(e) => e.stopPropagation()} />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * B1 流式版 Markdown：稳定前缀 + 活跃尾部双段渲染。
+ *
+ * - stable 段：字符串不变时 useMemo 直接命中，DOM 子树不重建
+ *   （图片不闪、mermaid 不重渲、选区不丢）；
+ * - tail 段：每 token 只解析这一小段。
+ *
+ * 拼接边界的间距由 `.md > *:first-child/:last-child` 的 margin 清零规则兜住
+ * （theme.css），视觉上与单 div 等价。非流式场景继续用上面的 `Markdown`。
+ */
+export function MarkdownStreaming({ source, className }: Props): JSX.Element {
+  const theme = useApp((s) => s.theme);
+  const stableRef = useRef<HTMLDivElement | null>(null);
+  const tailRef = useRef<HTMLDivElement | null>(null);
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
+
+  const split = useMemo(() => findStableSplit(source), [source]);
+  const stable = split > 0 ? source.slice(0, split) : '';
+  const tail = split > 0 ? source.slice(split) : source;
+
+  const stableHtml = useMemo(() => renderMarkdown(stable), [stable]);
+  const tailHtml = useMemo(() => renderMarkdown(tail), [tail]);
+
+  const mermaidCount = useMemo(() => countMermaid(stableHtml) + countMermaid(tailHtml), [stableHtml, tailHtml]);
+
+  useEffect(() => {
+    if (mermaidCount === 0) return;
+    void (async () => {
+      const salt = Date.now();
+      for (const host of [stableRef.current, tailRef.current]) {
+        if (!host) continue;
+        try {
+          await renderMermaidInHost(host, theme, salt);
+        } catch {
+          /* 同上：加载失败保持代码块原样 */
+        }
+      }
+    })();
+  }, [stableHtml, tailHtml, mermaidCount, theme]);
+
+  const onImgClick = (event: MouseEvent<HTMLDivElement>): void => {
+    const target = event.target;
+    if (!(target instanceof HTMLImageElement) || !target.src) return;
+    setLightbox({ src: target.src, alt: target.alt || t('图片预览') });
+  };
+
+  return (
+    <>
+      {stable ? (
+        <div
+          ref={stableRef}
+          className={`md md-stable${className ? ` ${className}` : ''}`}
+          onClick={onImgClick}
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: stableHtml }}
+        />
+      ) : null}
+      <div
+        ref={tailRef}
+        className={`md md-tail${className ? ` ${className}` : ''}`}
+        onClick={onImgClick}
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: tailHtml }}
       />
       {lightbox ? (
         <div className="image-lightbox" role="dialog" aria-modal="true" aria-label={lightbox.alt} onClick={() => setLightbox(null)}>
