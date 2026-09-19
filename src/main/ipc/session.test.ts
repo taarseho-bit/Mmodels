@@ -173,9 +173,10 @@ describe('工作流协作优化（2026-09-19）', () => {
     // 方向 4：抽查制替代全量复算，旧的双重计算措辞必须消失
     expect(text).toContain('抽查式复算');
     expect(text).not.toContain('主智能体必须检查冲突、复算关键结果');
-    // A1：任务同步契约
-    expect(text).toContain('每完成一项立即');
-    expect(text).toContain('禁止做完几件事后批量补记');
+    // A1 → 任务清单纪律小节（生命周期契约）
+    expect(text).toContain('# 任务清单纪律');
+    expect(text).toContain('每完成一项立即标 completed');
+    expect(text).toContain('禁止用 TodoWrite 整表重写未完成清单');
     // 方向 2：执行型角色进入角色清单
     expect(text).toContain('paper-writer（论文写作员）');
     expect(text).toContain('figure-maker（图表制作员）');
@@ -197,28 +198,71 @@ describe('工作流协作优化（2026-09-19）', () => {
     expect(text).not.toContain('# 本轮自动协作（已触发）');
   });
 
-  it('A3 对账：创建了却从未 TaskUpdate 的任务会触发提醒，正常维护不提醒', () => {
-    const db = (blocks: unknown[]) => ({
-      prepare: () => ({ get: () => ({ blocks: JSON.stringify(blocks) }) }),
-    }) as unknown as never;
-    const created = (id: number, subject: string) => ({
-      kind: 'tool_use', toolName: 'TaskCreate', toolUseId: `tu${id}`,
-      toolInput: { subject }, toolResult: `Task #${id} created successfully: ${subject}`,
-    });
-    const updated = (id: number, status: string) => ({
-      kind: 'tool_use', toolName: 'TaskUpdate', toolUseId: `up${id}${status}`,
-      toolInput: { taskId: String(id), status },
-      toolResult: `Updated task #${id} status`,
-    });
-    // 10 个任务创建了，模型只更新过 1、2 —— 3 之后全部滞后
-    const hint = staleTaskReminder(db([created(1, 'a'), created(2, 'b'), created(3, 'c'),
-      updated(1, 'completed'), updated(2, 'in_progress')]), 's1');
-    expect(hint).toContain('# 任务状态同步提醒（自动检测）');
+  /**
+   * A3（二轮断点对账版）的 fake db：`prepare().all()` 返回**新→旧**的 assistant 消息行。
+   * msgs[0] 是最新一条 —— 与真实 SQL 的 ORDER BY rowid DESC 一致。
+   */
+  const db = (msgs: unknown[][]) => ({
+    prepare: () => ({ all: () => msgs.map((blocks) => ({ blocks: JSON.stringify(blocks) })) }),
+  }) as unknown as never;
+  const created = (id: number, subject: string) => ({
+    kind: 'tool_use', toolName: 'TaskCreate', toolUseId: `tu${id}`,
+    toolInput: { subject }, toolResult: `Task #${id} created successfully: ${subject}`,
+  });
+  const updated = (id: number, status: string) => ({
+    kind: 'tool_use', toolName: 'TaskUpdate', toolUseId: `up${id}${status}`,
+    toolInput: { taskId: String(id), status },
+    toolResult: `Updated task #${id} status`,
+  });
+  const plain = (text: string) => ({ kind: 'text', text });
+
+  it('A3 断点对账：清单有未完成项时注入断点提醒，已完成项不在列表里', () => {
+    // 时间正序：建 3 个 → 完成 1、2、进行中 3 → （中断）→ 最新一条纯文本回复
+    const hint = staleTaskReminder(
+      db([[plain('我先回答到这里')], [updated(1, 'completed'), updated(2, 'completed'), updated(3, 'in_progress')],
+        [created(1, '读题'), created(2, '求解'), created(3, '写论文')]]),
+      's1',
+    );
+    expect(hint).toContain('# 任务断点提醒（自动检测）');
     expect(hint).toContain('#3');
-    // 全部任务都有更新记录 → 不提醒
-    expect(staleTaskReminder(db([created(1, 'a'), updated(1, 'completed')]), 's1')).toBeNull();
-    // 没有 assistant 消息 → 不提醒
-    const empty = { prepare: () => ({ get: () => undefined }) };
-    expect(staleTaskReminder(empty as unknown as never, 's1')).toBeNull();
+    expect(hint).not.toContain('#1');
+    expect(hint).not.toContain('#2');
+    expect(hint).toContain('不要重开清单');
+  });
+
+  it('A3 断点对账：全部完成不提醒；无任务工具消息不提醒', () => {
+    expect(staleTaskReminder(db([[created(1, 'a'), updated(1, 'completed')]]), 's1')).toBeNull();
+    expect(staleTaskReminder(db([[plain('普通回答')]]), 's1')).toBeNull();
+  });
+
+  it('A3 断点对账：上一批全部完成后再建的批是「新一批」，旧任务不复活', () => {
+    const hint = staleTaskReminder(
+      db([[created(3, '新需求甲'), created(4, '新需求乙')], [created(1, '旧任务一'), created(2, '旧任务二'),
+        updated(1, 'completed'), updated(2, 'completed')]]),
+      's1',
+    );
+    expect(hint).toContain('#3');
+    expect(hint).toContain('#4');
+    expect(hint).not.toContain('#1');
+    expect(hint).not.toContain('#2');
+  });
+
+  it('A3 断点对账：TodoWrite 整表替换后按新表判断；TaskUpdate 匹配不上就忽略', () => {
+    const todo = (content: string, status: string) => ({
+      kind: 'tool_use', toolName: 'TodoWrite', toolUseId: `tw-${content}`,
+      toolInput: { todos: [{ content, status }] }, toolResult: 'Todos have been modified',
+    });
+    const hint = staleTaskReminder(
+      db([[todo('待办甲', 'pending'), updated(99, 'completed')]]),
+      's1',
+    );
+    expect(hint).toContain('待办甲');
+  });
+
+  it('A3 断点对账：单条消息损坏不整体失败，无任何任务证据返回 null', () => {
+    const broken = {
+      prepare: () => ({ all: () => [{ blocks: '{not-json' }] }),
+    } as unknown as never;
+    expect(staleTaskReminder(broken, 's1')).toBeNull();
   });
 });

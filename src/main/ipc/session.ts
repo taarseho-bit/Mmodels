@@ -283,53 +283,129 @@ function resolveSessionModel(s: SessionMeta) {
 }
 
 /**
- * A3 任务面板对账提醒（工作流优化 2026-09-19）。
+ * A3 任务面板对账提醒（工作流优化 2026-09-19；二轮扩展为断点对账）。
  *
  * 数据事实：任务面板（渲染层 `store/tasks.ts`）是**纯被动 fold** —— 只在模型真的
  * 调用 TaskUpdate 时才更新状态。模型开题 TaskCreate 一批任务后埋头干活、从不回写
  * 状态，面板就一直停在「刚创建的样子」—— 用户看到的「任务滞后」。
  *
- * 这里做宿主侧兜底：解析会话**最后一条 assistant 消息**的工具块，找出
- * 「创建了却从未被任何 TaskUpdate 引用过」的任务号；存在时返回一段提醒，
- * 注入到本轮 systemPrompt 开头，让模型先同步状态再继续干活。
- * 只在确有证据时提醒（不猜状态、不替模型标完成），纯查询无副作用。
+ * 二轮扩展（任务清单生命周期）：不只查「创建了却从未更新」，而是把**最近 50 条
+ * assistant 消息**里的任务工具块按时间正序折叠出当前清单（口径对齐渲染端
+ * `extractTasks`：全完成后再建 → 新一批、deleted 移除、TodoWrite 整表替换），
+ * 清单里**还有未完成项**时注入「断点提醒」——覆盖用户中途停止后追问的场景：
+ * 已完成的不重做、未完成从断点继续、新需求追加而不是重开清单。
+ * 清单全完成或无清单 → 不打扰。纯查询无副作用，失败不影响正常运行。
  */
 export function staleTaskReminder(db: ReturnType<typeof getDb>, sessionId: string): string | null {
   try {
-    const row = db
+    const rows = db
       .prepare(
-        "SELECT blocks FROM messages WHERE session_id = ? AND role = 'assistant' ORDER BY rowid DESC LIMIT 1",
+        "SELECT blocks FROM messages WHERE session_id = ? AND role = 'assistant' ORDER BY rowid DESC LIMIT 50",
       )
-      .get(sessionId) as { blocks?: string } | undefined;
-    if (!row?.blocks) return null;
-    const blocks = JSON.parse(row.blocks) as ContentBlock[];
-    const created = new Set<string>();
-    const updated = new Set<string>();
-    for (const b of Array.isArray(blocks) ? blocks : []) {
-      if (!b || b.kind !== 'tool_use' || !b.toolName) continue;
-      const name = b.toolName.split('__').pop() ?? b.toolName;
-      if (name === 'TaskCreate') {
-        const result = typeof b.toolResult === 'string' ? b.toolResult : '';
-        const m = /Task\s*#(\d+)/i.exec(result);
-        if (m) created.add(m[1]);
-      } else if (name === 'TaskUpdate') {
-        const input = (b.toolInput ?? {}) as Record<string, unknown>;
-        const id =
-          typeof input.taskId === 'string' ? input.taskId : typeof input.id === 'string' ? input.id : null;
-        if (id) updated.add(id);
+      .all(sessionId) as Array<{ blocks?: string } | undefined>;
+    // rows 是新→旧；parsed[i] 同序。先解析（单条损坏只丢那条，不整体失败）
+    const parsed = rows.map((r) => {
+      try {
+        const v = JSON.parse(r?.blocks ?? 'null') as ContentBlock[];
+        return Array.isArray(v) ? v : [];
+      } catch {
+        return [] as ContentBlock[];
       }
-    }
-    const neglected = [...created].filter((id) => !updated.has(id));
-    if (neglected.length === 0) return null;
+    });
+    if (!parsed.some((blocks) => blocks.some(isTaskToolBlock))) return null;
+    // 时间正序全量折叠 —— 创建消息和更新消息可能相隔多轮（中断/追问场景），
+    // 不能按「最后一条含任务工具的消息」切段，否则 TaskUpdate 会匹配不上创建。
+    // 旧批次的清理交给 stale 规则（全完成后再建 → 新一批），与渲染端一致。
+    const ordered: ContentBlock[] = [];
+    for (let i = parsed.length - 1; i >= 0; i--) ordered.push(...parsed[i]);
+    const list = foldTaskList(ordered);
+    const pending = list.filter((t) => t.status !== 'completed');
+    if (pending.length === 0) return null;
     return [
-      '# 任务状态同步提醒（自动检测）',
-      `- 上一轮创建的任务 ${neglected.map((id) => `#${id}`).join('、')} 至今没有更新过状态。`,
-      '- 现在先同步任务清单：已经完成的标 completed，正在进行的标 in_progress；',
-      '- 此后每完成一项立即更新对应任务，不要攒到收尾一起补记。',
+      '# 任务断点提醒（自动检测）',
+      `- 当前任务清单还有 ${pending.length} 项未完成：${pending.map((t) => `#${t.id ?? '?'} ${t.subject}`).join('；')}。`,
+      '- 先按清单现状对账再动手：已完成的不要重做，未完成的从断点继续（相关结果可能已部分产出）。',
+      '- 用户本轮若只是在提问或澄清，先直接回答，不要强行续做；确需动手且用户补充了新需求时，用 TaskCreate 在原清单上追加，不要重开清单。',
+      '- 此后每完成一项立即更新对应任务状态，不要攒到收尾一起补记。',
     ].join('\n');
   } catch {
     return null; // 对账失败不影响正常运行
   }
+}
+
+/** 是否任务清单工具块（识别 mcp__ 前缀短名，口径同渲染端 shortToolName） */
+function isTaskToolBlock(b: ContentBlock | null | undefined): boolean {
+  if (!b || b.kind !== 'tool_use' || !b.toolName) return false;
+  const name = b.toolName.split('__').pop() ?? b.toolName;
+  return name === 'TaskCreate' || name === 'TaskUpdate' || name === 'TodoWrite';
+}
+
+interface FoldTask {
+  /** Tool 侧任务号（TaskCreate 结果里的 `Task #N`）；TodoWrite 拆出来的没有 id */
+  id: string | null;
+  subject: string;
+  status: 'pending' | 'in_progress' | 'completed';
+}
+
+/**
+ * 主进程侧轻量任务折叠 —— 与渲染端 `store/tasks.ts` 的 extractTasks 同规则：
+ *   TaskCreate 追加（上一批全部完成后再建 → 新一批）；
+ *   TaskUpdate 改状态 / deleted 移除（匹配不上就忽略，不猜）；
+ *   TodoWrite 整表替换。
+ * 只为断点提醒服务，不落库、不进面板。
+ */
+function foldTaskList(blocks: ContentBlock[]): FoldTask[] {
+  let list: FoldTask[] = [];
+  for (const b of blocks) {
+    if (!b || b.kind !== 'tool_use' || !b.toolName) continue;
+    const name = b.toolName.split('__').pop() ?? b.toolName;
+    const input = (b.toolInput ?? {}) as Record<string, unknown>;
+    if (name === 'TodoWrite') {
+      const arr = Array.isArray(input.todos) ? input.todos : [];
+      list = arr.map((td) => {
+        const o = (td ?? {}) as Record<string, unknown>;
+        const subject =
+          typeof o.content === 'string' && o.content.trim()
+            ? o.content
+            : typeof o.activeForm === 'string' && o.activeForm.trim()
+              ? o.activeForm
+              : '未命名任务';
+        const status = o.status === 'completed' ? 'completed' : o.status === 'in_progress' ? 'in_progress' : 'pending';
+        return { id: null, subject, status };
+      });
+    } else if (name === 'TaskCreate') {
+      const stale = list.length > 0 && list.every((t) => t.status === 'completed');
+      if (stale) list = [];
+      const result = typeof b.toolResult === 'string' ? b.toolResult : '';
+      const m = /Task\s*#(\d+)/i.exec(result);
+      const subject =
+        typeof input.subject === 'string' && input.subject.trim()
+          ? input.subject
+          : typeof input.content === 'string' && input.content.trim()
+            ? input.content
+            : '未命名任务';
+      list.push({ id: m ? m[1] : null, subject, status: 'pending' });
+    } else if (name === 'TaskUpdate') {
+      const id =
+        typeof input.taskId === 'string' ? input.taskId : typeof input.id === 'string' ? input.id : null;
+      const raw = typeof input.status === 'string' ? input.status : null;
+      if (!id || !raw) continue;
+      let idx = list.findIndex((t) => t.id === id);
+      if (idx < 0 && /^\d+$/.test(id)) {
+        // 渲染端同款兜底：创建结果还没回来（条目无 id）时按创建序号对号入座
+        const n = Number(id) - 1;
+        if (list[n] && !list[n].id) idx = n;
+      }
+      if (idx < 0) continue;
+      if (raw === 'deleted') {
+        list.splice(idx, 1);
+        continue;
+      }
+      const status = raw === 'completed' ? 'completed' : raw === 'in_progress' ? 'in_progress' : 'pending';
+      list[idx] = { ...list[idx], status };
+    }
+  }
+  return list;
 }
 
 /** 生成任务开始前，把 SDK 需要的环境准备好 */
@@ -356,8 +432,8 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
   const rememberedTrigger = turnTrigger ?? sessionCollabTriggers.get(sessionId) ?? null;
 
   // ── A3 任务面板对账提醒 ─────────────────────────────────────
-  // 上一条 assistant 消息里存在「创建了却从未 TaskUpdate 过」的任务时，
-  // 在本轮提示词开头提醒模型先同步任务状态——治「任务面板滞后」的宿主侧兜底。
+  // 会话任务清单（跨消息折叠）里还有未完成项时，在本轮提示词开头注入断点提醒——
+  // 治「任务面板滞后」与「中断后不从断点续做」的宿主侧兜底。
   const taskSyncReminder = staleTaskReminder(getDb(), sessionId);
 
   const options = {
@@ -580,9 +656,16 @@ export function buildSystemPrompt(
           // 方向 4：双重计算改抽查制——原来要求"必须复算关键结果"，实测同一批计算被跑两到三遍。
           '- 子智能体只负责分析与核验，正式代码、图表和论文文件由主智能体统一写入，避免并行覆盖。',
           '- 子智能体结论不能直接照抄：核对成员之间的冲突后，对**影响最终结论的 2-3 个关键数值**做抽查式复算即可，不必把全部计算重跑一遍；数值一致性由核验成员按阶段复核。',
-          // A1：任务清单同步契约——治"任务面板滞后"的提示词侧根因。
-          '- 多步骤工作先用 TaskCreate/TaskUpdate 或 TodoWrite 建立当前任务清单。**每完成一项立即把该项标 completed，并把下一项置 in_progress——禁止做完几件事后批量补记**；派发协作成员前把对应任务标 in_progress，成员结果合并后立即标 completed；新需求到来时建立新一批，取消的任务及时删除。',
           ...multiAgentTurnInstructions(turnPrompt, sessionCollab),
+
+          // 任务清单生命周期（2026-09-19 二轮）：清单是跨回合演进的，每条新消息都重新判定，
+          // 不是只在开局建一次。协作组段落 501 行「见下方任务清单纪律」指向的就是这一节。
+          '',
+          '# 任务清单纪律',
+          '- 复杂新问题且清单为空或已全部完成：先用一句话给出任务摘要，再用 TaskCreate 拆成有序子任务逐项推进；简单问答与单步小改动不建清单。',
+          '- 清单还有未完成项、用户补充新需求：在原清单上 TaskCreate 追加并沿用已有编号；**禁止用 TodoWrite 整表重写未完成清单**，禁止重复创建已完成任务。',
+          '- 用户中途停止后追问：纯澄清或提问就直接回答，清单保持原样，不要借机改动任务状态；需要动手时先按清单现状对账——已完成的不重做，从断点继续，新需求按上一条追加。',
+          '- 每完成一项立即标 completed 并把下一项置 in_progress，不要攒到收尾批量补记；派发协作成员前把对应任务标 in_progress，成员结果合并后立即标 completed；取消的任务及时删除。',
         ]
       : []),
 
