@@ -110,7 +110,9 @@ describe('长时任务与多智能体协作', () => {
     );
     expect(required).toContain('# 本轮自动协作（已触发）');
     expect(required).toContain('必须实际调用 Agent 工具组织协作');
-    expect(required).toContain('至少派发 2 个边界不同的成员');
+    expect(required).toContain('先派发 1 至 2 个最有价值');
+    expect(required).toContain('绝不为展示效果凑人数');
+    expect(required).toContain('不要使用“协作研究员”');
     expect(buildSystemPrompt(CWD, false, false, '把标题改短一点')).not.toContain('# 本轮自动协作（已触发）');
   });
 

@@ -18,6 +18,8 @@ export interface WorkflowNode {
   parentId?: string;
   agentType: string;
   name: string;
+  /** 只保存派发时的简短任务说明，不保存完整提示词或思考内容。 */
+  assignment?: string;
   status: 'running' | 'returned' | 'stopped' | 'unknown';
   tools: WorkflowTool[];
   startedAt: number;
@@ -78,6 +80,19 @@ export function taskAgentName(description = ''): string | undefined {
   return undefined;
 }
 
+/** 从公开的派发说明中提取适合老板演示的一句话分工，不保留完整提示词。 */
+export function taskAgentAssignment(description = ''): string | undefined {
+  let compact = description.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!compact || !/[\u3400-\u9fff]/.test(compact)) return undefined;
+  compact = compact.replace(/^角色名[：:]\s*[\u3400-\u9fff]{2,12}\s*[；;，,]?\s*/, '');
+  const explicit = compact.match(/(?:任务|负责内容|研究内容)[：:]\s*(.+)/)?.[1];
+  const first = (explicit ?? compact).split(/[。；;]/)[0]
+    .replace(/^(?:请|负责|独立|深入|完成|开展|进行|研究|分析|核对|处理|协助|重点)+/, '')
+    .replace(/[，,]\s*(?:并|同时|最后).*/, '').trim();
+  if (first.length < 2) return undefined;
+  return first.length > 34 ? `${first.slice(0, 33)}…` : first;
+}
+
 export function chineseAgentName(type: string, description = ''): string {
   return taskAgentName(description) ?? AGENT_NAMES[type]
     ?? (/^[\u3400-\u9fff]{2,12}$/.test(type) ? type : '协作研究员');
@@ -102,7 +117,7 @@ export function workflowToolLabel(name: string, skill?: string): string {
 
 /** 给旧工作流记录补一个有事实依据的展示名，不改动原始记录。 */
 export function workflowAgentDisplayName(node: WorkflowNode): string {
-  if (!/^(?:专项研究员|协作研究员)(?:\s*[·#]?\s*\d+)?$/.test(node.name)) return node.name;
+  if (!/^(?:专项研究员|协作研究员|综合研究员)(?:\s*[·#]?\s*\d+)?$/.test(node.name)) return node.name;
   const skills = node.tools.map(tool => `${tool.skill ?? ''} ${tool.label}`).join(' ');
   const skillName = taskAgentName(skills);
   if (skillName) return skillName;
@@ -110,5 +125,7 @@ export function workflowAgentDisplayName(node: WorkflowNode): string {
   if (names.has('Bash') || names.has('NotebookEdit')) return '计算实验员';
   if (names.has('Write') || names.has('Edit')) return '成果整理员';
   if (names.has('Read') || names.has('Glob') || names.has('Grep')) return '资料核验员';
-  return '协作研究员';
+  if (names.has('WebSearch') || names.has('WebFetch')) return '资料检索员';
+  if (names.has('Agent') || names.has('Task')) return '协作统筹员';
+  return node.status === 'running' ? '待分工协作者' : '未形成有效分工';
 }

@@ -1,12 +1,12 @@
 import type { HookCallback, HookInput } from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'node:crypto';
-import { chineseAgentName, taskAgentName, workflowToolLabel, type WorkflowNode, type WorkflowRun, type WorkflowStatus } from '@shared/workflow';
+import { chineseAgentName, taskAgentAssignment, taskAgentName, workflowToolLabel, type WorkflowNode, type WorkflowRun, type WorkflowStatus } from '@shared/workflow';
 
 /** 纯观察器：空 hook 返回值不改变审批、工具参数或模型结果。 */
 export class WorkflowTrace {
   readonly run: WorkflowRun;
   private timer?: ReturnType<typeof setTimeout>;
-  private requests = new Map<string, { name: string; owner: string }>();
+  private requests = new Map<string, { name: string; owner: string; assignment?: string }>();
   private toolOwners = new Map<string, string>();
   private toolParents = new Map<string, string>();
   private agentAliases = new Map<string, string>();
@@ -15,6 +15,7 @@ export class WorkflowTrace {
     if (!request || !node || owner === 'main' || owner === request.owner) return;
     node.parentId = request.owner;
     if (request.name) this.rename(node, request.name);
+    node.assignment ??= request.assignment;
   }
   /** SDK 消息携带真实 parent_tool_use_id；与 hook 的工具标识双向对账，不按启动时间猜。 */
   observeMessage(value: unknown): void {
@@ -41,16 +42,13 @@ export class WorkflowTrace {
     const previous = this.run.nodes.find(n => n.id === id);
     if (previous) return previous;
     if (this.run.nodes.length >= 40) { this.run.truncated = true; return; }
-    const base = chineseAgentName(type, description);
-    const count = this.run.nodes.filter(n => n.name === base || n.name.startsWith(`${base} · `)).length;
-    const name = count ? `${base} · ${count + 1}` : base;
+    const name = chineseAgentName(type, description);
     const node: WorkflowNode = { id, agentType: type, name, status: 'running', tools: [], startedAt: Date.now() };
     this.run.nodes.push(node);
     return node;
   }
   private rename(node: WorkflowNode, base: string): void {
-    const count = this.run.nodes.filter(entry => entry !== node && (entry.name === base || entry.name.startsWith(`${base} · `))).length;
-    node.name = count ? `${base} · ${count + 1}` : base;
+    node.name = base;
   }
   private flush(): void {
     clearTimeout(this.timer); this.timer = undefined;
@@ -85,6 +83,7 @@ export class WorkflowTrace {
       if (node && request && request.owner !== node.id) {
         node.parentId = request.owner;
         this.rename(node, request.name);
+        node.assignment ??= request.assignment;
       }
       return;
     }
@@ -108,7 +107,7 @@ export class WorkflowTrace {
       const prompt = typeof data.prompt === 'string' ? data.prompt : '';
       const name = taskAgentName(description) ?? taskAgentName(prompt)
         ?? chineseAgentName(typeof data.subagent_type === 'string' ? data.subagent_type : 'general-purpose');
-      this.requests.set(input.tool_use_id, { name, owner });
+      this.requests.set(input.tool_use_id, { name, owner, assignment: taskAgentAssignment(description) });
     }
     let tool = node.tools.find(t => t.id === input.tool_use_id);
     if (!tool) {
@@ -118,6 +117,7 @@ export class WorkflowTrace {
         skill, status: 'running', startedAt: Date.now() };
       if (typeof data.description === 'string' && /[\u3400-\u9fff]/.test(data.description)) {
         tool.action = data.description.replace(/[\r\n]+/g, ' ').slice(0, 100);
+        if (node.id !== 'main') node.assignment ??= taskAgentAssignment(data.description);
       }
       node.tools.push(tool);
     }

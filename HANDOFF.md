@@ -343,3 +343,13 @@ FA_RUN_TIMEOUT_MS=1800000 bash .workbuddy/ui-audit/fa-core-run.sh <label> <cfg>
 - `paper.getConfig/saveConfig` 可接收明确的 `projectId`；Composer 每次读写都传当前项目 ID，避免 `recentProjectId` 切换延迟导致写错目录或返回 `no-project`。
 - 不存在的项目 ID直接返回失败，不回落到其他当前项目，防止静默写错。
 - 正确交付包：`dist-project-contest-20260919/MModels-0.1.0-x64-Portable.exe`，SHA-256 `beffa4da4487ce28cf9fdeaaeb62e757231b044a0ceb512984100d41203a173b`；实机 44/44。
+
+---
+
+## 12. 2026-09-19 最新交接：工作流树与成员精简
+
+- `workflow-layout.ts` 已从黄金比例网格改为真实父子树：顶层目标、主助手、子成员和嵌套成员逐级向下。无法确认上级的旧记录只以虚线挂在主助手下。
+- `WorkflowCanvas` 默认收起已结束成员；收起状态同时缩小宽高、降低饱和度和透明度，详情入口仍保留。
+- `WorkflowNode.assignment` 仅保存派发 description 提取出的简短中文分工，不保存完整 prompt。通用旧名称由 `workflowAgentDisplayName()` 按真实技能/工具保守还原。
+- 自动协作改为先派 1 至 2 位，第三位必须有独立证据链；系统提示强制使用具体中文角色名和一句话任务，禁止编号式“协作研究员”。
+- 定向测试 33/33、TypeScript、生产构建通过；新 Portable 可独立启动。路径 `dist-workflow-tree-20260919/MModels-0.1.0-x64-Portable.exe`，SHA-256 `b8b3a7aef57aead4c0126250044526f45b8a30dee2901e9ece464d60db5cf0e4`。

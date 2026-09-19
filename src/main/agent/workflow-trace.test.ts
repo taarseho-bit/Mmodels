@@ -45,11 +45,11 @@ describe('真实事件工作流观察器', () => {
     expect(trace.run.nodes[0].tools[0].skill).toBe('mathmodel:paper-search');
     trace.finish('completed');
   });
-  it('同类并行成员不同名、工具不串线，主成员不重复统计', async () => {
+  it('同类并行成员不再用编号凑名称，工具仍不串线', async () => {
     const trace = new WorkflowTrace('a', true, () => {});
     await invoke(trace, pre('t1', 'agent-a'));
     await invoke(trace, pre('t2', 'agent-b'));
-    expect(trace.run.nodes.map(n => n.name)).toEqual(['建模主助手', '综合研究员', '综合研究员 · 2']);
+    expect(trace.run.nodes.map(n => n.name)).toEqual(['建模主助手', '综合研究员', '综合研究员']);
     expect(trace.run.nodes.map(n => n.tools.length)).toEqual([0, 1, 1]);
     trace.finish('completed');
   });
@@ -60,6 +60,7 @@ describe('真实事件工作流观察器', () => {
     await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'other', agent_type: 'mystery' });
     expect(trace.run.nodes[1].name).toBe('灵敏度核验员');
     expect(trace.run.nodes[1].parentId).toBe('main');
+    expect(trace.run.nodes[1].assignment).toBe('复算结果');
     expect(trace.run.nodes[2].name).toBe('协作研究员');
     expect(trace.run.nodes[2].parentId).toBeUndefined();
     expect(JSON.stringify(trace.run)).not.toContain('PRIVATE');
