@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resourceRoots, resolveResource, resolveResourcesRoot } from './resources';
 
@@ -9,6 +9,12 @@ function fixture(): string {
 }
 
 describe('随包资源定位', () => {
+  it('Portable 每次启动使用独立的 NSIS 插件目录，不能复用构建期固定目录', () => {
+    const config = readFileSync(resolve(process.cwd(), 'electron-builder.yml'), 'utf8');
+    expect(config).toContain('unpackDirName: true');
+    expect(config).not.toContain('unpackDirName: false');
+  });
+
   it('打包版 app.asar 会回到同级 resources，而不是拼成 app.asar/resources', () => {
     const root = fixture();
     const resources = join(root, 'resources');

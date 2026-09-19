@@ -128,6 +128,7 @@ const api = {
       arch: string;
       packaged: boolean;
     }> => ipcRenderer.invoke(IPC.APP_VERSION),
+    quitCompletely: (): Promise<boolean> => ipcRenderer.invoke(IPC.APP_QUIT_COMPLETELY),
     openPath: (p: string): Promise<boolean> => ipcRenderer.invoke(IPC.APP_OPEN_PATH, p),
     showItemInFolder: (p: string): Promise<boolean> =>
       ipcRenderer.invoke(IPC.APP_SHOW_IN_FOLDER, p),

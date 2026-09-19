@@ -116,9 +116,11 @@ nsis:
 # 单文件免安装版：双击即可运行，配置与项目仍保存在用户目录，不会写回 exe 所在文件夹。
 portable:
   artifactName: ${productName}-${version}-${arch}-Portable.${ext}
-  # 每次启动使用独立临时目录。固定目录在上一次进程退出不干净时可能只剩
-  # app.asar，下一次会误复用半清理目录，表现为“没有找到内置论文模板”。
-  unpackDirName: false
+  # electron-builder 25.1.8 的实际实现与类型注释相反：false 会在构建时生成一个
+  # 固定 KSUID，并让同一 exe 的每次启动复用它；true 才不定义 UNPACK_DIR_NAME，
+  # 由 NSIS 的 $PLUGINSDIR 为每次启动生成独立目录。固定目录遇到上次进程仍存活时，
+  # 外壳会清掉 builtin-skills 等资源却留下被锁定的 app.asar，模板就会突然变成 0 套。
+  unpackDirName: true
 
 # ── 不重编原生模块（理由见文件头）────────────────────────────
 npmRebuild: false

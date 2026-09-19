@@ -638,6 +638,7 @@ export const IPC = {
   PLUGIN_ADD: 'plugin:add',
   // 应用
   APP_VERSION: 'app:version',
+  APP_QUIT_COMPLETELY: 'app:quit-completely',
   APP_OPEN_PATH: 'app:open-path',
   APP_SHOW_IN_FOLDER: 'app:show-item-in-folder',
   APP_SET_THEME: 'app:set-native-theme',

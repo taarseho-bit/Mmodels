@@ -24,6 +24,15 @@ export function registerAppHandlers(_ctx: IpcContext): void {
   );
 
   ipcMain.handle(
+    IPC.APP_QUIT_COMPLETELY,
+    safeWrap(() => {
+      // 先把 IPC 结果送回渲染层，再进入 before-quit 的统一清理流程。
+      setImmediate(() => app.quit());
+      return true;
+    }, '完全退出应用'),
+  );
+
+  ipcMain.handle(
     IPC.APP_OPEN_PATH,
     safeWrap(async (_e, targetPath: string) => {
       await shell.openPath(targetPath);

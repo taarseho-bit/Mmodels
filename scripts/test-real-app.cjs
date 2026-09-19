@@ -53,6 +53,21 @@ const ok = (cond, label) => {
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+function waitForChildExit(child, timeoutMs = 12000) {
+  if (child.exitCode !== null) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    child.once('exit', () => finish(true));
+  });
+}
+
 /** 从 stderr 或 Chromium 的 DevToolsActivePort 文件等 browser 级 ws 地址。 */
 function waitForBrowserWs(ref, timeoutMs = 40000) {
   const MARK = 'DevTools listening on ';
@@ -1134,20 +1149,23 @@ async function main() {
       await sleep(150);
     }
     ok(mainReturned, '点击桌面小模可以重新打开主窗口');
-    // 先关宠物、再关刚唤回的主窗口，确保 Portable 解压出来的子进程一并退出。
-    await cdp.send('Target.closeTarget', { targetId: remainingPetTarget.targetId }, null);
-    if (returnedMainTarget) {
-      await cdp.send('Target.closeTarget', { targetId: returnedMainTarget.targetId }, null);
-    }
+    // 走真实的“完全退出”通道。直接杀 Portable 外壳会让外壳清理解包目录时，
+    // 内层 Electron 仍然存活，最终只剩被锁定的 app.asar，模板和技能会消失。
+    await cdp.send('Runtime.evaluate', {
+      expression: 'window.mathmodel.app.quitCompletely()',
+      awaitPromise: true,
+      returnByValue: true,
+    }, remainingPetAttachment.sessionId);
     await sleep(400);
     log('');
+  } else {
+    try { await cdp.eval('window.mathmodel.app.quitCompletely()'); } catch { /* 页面可能已经退出 */ }
   }
 
   cdp.close();
-  try {
-    child.kill();
-  } catch {
-    /* 忽略 */
+  const exitedCleanly = await waitForChildExit(child);
+  if (!exitedCleanly) {
+    try { child.kill(); } catch { /* 忽略 */ }
   }
   await sleep(600);
 
