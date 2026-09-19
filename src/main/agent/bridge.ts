@@ -38,7 +38,7 @@ export interface AnthropicToolUseBlock {
 export interface AnthropicToolResultBlock {
   type: 'tool_result';
   tool_use_id: string;
-  content?: string | Array<AnthropicTextBlock | AnthropicImageBlock>;
+  content?: string | Array<AnthropicTextBlock | AnthropicImageBlock | AnthropicDocumentBlock>;
   is_error?: boolean;
 }
 
@@ -46,12 +46,22 @@ export interface AnthropicImageBlock {
   type: 'image';
   source: { type: 'base64'; media_type: string; data: string } | { type: 'url'; url: string };
 }
+/** Claude Code 读取 PDF 时可能产生的内容块；兼容接口需要降级成文字。 */
+export interface AnthropicDocumentBlock {
+  type: 'document';
+  title?: string;
+  source:
+    | { type: 'text'; media_type?: string; data: string }
+    | { type: 'content'; content: string | Array<{ type: string; text?: string }> }
+    | { type: 'base64'; media_type?: string; data: string }
+    | { type: 'url'; url: string };
+}
 export interface AnthropicThinkingBlock { type: 'thinking'; thinking: string; signature?: string }
 
 export type AnthropicContentBlock =
   | AnthropicTextBlock
   | AnthropicToolUseBlock
-  | AnthropicToolResultBlock | AnthropicImageBlock | AnthropicThinkingBlock;
+  | AnthropicToolResultBlock | AnthropicImageBlock | AnthropicDocumentBlock | AnthropicThinkingBlock;
 
 export interface AnthropicMessage {
   role: 'user' | 'assistant';
@@ -112,11 +122,26 @@ export interface OpenAIRequest {
   reasoning_effort?: string;
 }
 
-function multimodal(blocks: Array<AnthropicTextBlock | AnthropicImageBlock>): OpenAIMessage['content'] {
+function documentAsText(block: AnthropicDocumentBlock): string {
+  const label = block.title?.trim() ? `“${block.title.trim()}”` : 'PDF/文档';
+  if (block.source.type === 'text') return block.source.data;
+  if (block.source.type === 'content') {
+    if (typeof block.source.content === 'string') return block.source.content;
+    const text = block.source.content
+      .filter((item): item is { type: string; text: string } => item.type === 'text' && typeof item.text === 'string')
+      .map(item => item.text)
+      .join('\n');
+    if (text.trim()) return text;
+  }
+  return `[兼容处理：${label}没有直接嵌入当前模型接口。请继续本轮任务，改用用户消息中的原始文件路径在本地读取：PDF 优先使用 pdftotext，Excel 优先使用 Python 的 pandas/openpyxl。不要再次把该文件作为 document 内容发送。]`;
+}
+
+function multimodal(blocks: Array<AnthropicTextBlock | AnthropicImageBlock | AnthropicDocumentBlock>): OpenAIMessage['content'] {
   const parts = blocks.map(b => {
     if (b.type === 'text') return { type: 'text', text: b.text };
     if (b.type === 'image') return { type: 'image_url', image_url: { url: b.source.type === 'url'
       ? b.source.url : `data:${b.source.media_type};base64,${b.source.data}` } };
+    if (b.type === 'document') return { type: 'text', text: documentAsText(b) };
     throw new Error('当前接口不能传递这种附件，请换用支持该格式的接口');
   });
   return parts.some(p => p.type === 'image_url') ? parts : parts.map(p => p.text).join('\n');
@@ -146,6 +171,8 @@ function convertAssistantMessage(msg: AnthropicMessage): OpenAIMessage[] {
   for (const block of msg.content) {
     if (block.type === 'text') {
       texts.push(block.text);
+    } else if (block.type === 'document') {
+      texts.push(documentAsText(block));
     } else if (block.type === 'thinking') {
       thoughts.push(block.thinking);
     } else if (block.type === 'tool_use') {
@@ -190,11 +217,11 @@ function convertUserMessage(msg: AnthropicMessage): OpenAIMessage[] {
     return [{ role: 'user', content: msg.content }];
   }
 
-  const parts: Array<AnthropicTextBlock | AnthropicImageBlock> = [];
+  const parts: Array<AnthropicTextBlock | AnthropicImageBlock | AnthropicDocumentBlock> = [];
   const toolResults: OpenAIMessage[] = [];
 
   for (const block of msg.content) {
-    if (block.type === 'text' || block.type === 'image') {
+    if (block.type === 'text' || block.type === 'image' || block.type === 'document') {
       parts.push(block);
     } else if (block.type === 'tool_result') {
       const content =

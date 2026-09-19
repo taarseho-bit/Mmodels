@@ -19,6 +19,7 @@ export function AgentCollaboration({
 }): JSX.Element | null {
   if (!active || activities.length === 0) return null;
   const running = activities.filter((activity) => activity.status === 'running' || activity.status === 'pending').length;
+  const names = activities.map(activity => chineseAgentName(activity.agentType, activity.description));
 
   return (
     <section className="agent-collab" aria-label="数学建模协作组">
@@ -38,7 +39,7 @@ export function AgentCollaboration({
               />
             </span>
             <span className="agent-collab-copy">
-              <strong>{chineseAgentName(activity.agentType, activity.description)} · {index + 1}</strong>
+              <strong>{names[index]}{names.slice(0, index).includes(names[index]) ? ` · ${names.slice(0, index + 1).filter(name => name === names[index]).length}` : ''}</strong>
               <span>{visibleAgentText(activity)}</span>
             </span>
             {activity.durationMs && activity.durationMs > 0 ? (

@@ -60,10 +60,28 @@ describe('真实事件工作流观察器', () => {
     await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'other', agent_type: 'mystery' });
     expect(trace.run.nodes[1].name).toBe('灵敏度核验员');
     expect(trace.run.nodes[1].parentId).toBe('main');
-    expect(trace.run.nodes[2].name).toBe('专项研究员');
+    expect(trace.run.nodes[2].name).toBe('协作研究员');
     expect(trace.run.nodes[2].parentId).toBeUndefined();
     expect(JSON.stringify(trace.run)).not.toContain('PRIVATE');
     trace.finish('completed');
+  });
+  it('没有手写角色名时也按真实任务生成具体中文分工，且不保存完整任务正文', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    await invoke(trace, pre('files', undefined, 'Agent', { description: '检查附件中各工作表字段、缺失值和文件结构', prompt: 'PRIVATE-FILES' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'file-child', agent_type: 'general-purpose' }, 'files');
+    await invoke(trace, pre('forecast', undefined, 'Agent', { description: '', prompt: '负责建立时间序列需求预测模型 PRIVATE-FORECAST' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'forecast-child', agent_type: 'general-purpose' }, 'forecast');
+    expect(trace.run.nodes.find(n => n.id === 'file-child')?.name).toBe('附件结构核验员');
+    expect(trace.run.nodes.find(n => n.id === 'forecast-child')?.name).toBe('预测模型研究员');
+    expect(JSON.stringify(trace.run)).not.toContain('PRIVATE');
+    trace.finish('completed');
+  });
+  it('旧的通用编号名称可以按已经发生的技能与操作保守还原', async () => {
+    const { workflowAgentDisplayName } = await import('@shared/workflow');
+    expect(workflowAgentDisplayName({ id: 'old', agentType: 'mystery', name: '专项研究员 0', status: 'returned', startedAt: 1,
+      tools: [{ id: 's', name: 'Skill', label: '调用技能 · 文献检索', skill: 'paper-search', status: 'completed', startedAt: 1 }] })).toBe('文献检索员');
+    expect(workflowAgentDisplayName({ id: 'old2', agentType: 'mystery', name: '专项研究员 · 2', status: 'returned', startedAt: 1,
+      tools: [{ id: 'b', name: 'Bash', label: '运行计算或命令', status: 'completed', startedAt: 1 }] })).toBe('计算实验员');
   });
   it('前后事件按工具 id 去重，重复前置事件不使完成状态倒退', async () => {
     const trace = new WorkflowTrace('a', true, () => {});

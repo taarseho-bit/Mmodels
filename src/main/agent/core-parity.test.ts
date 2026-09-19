@@ -38,6 +38,19 @@ describe('核心能力对齐', () => {
     expect(JSON.stringify(out.messages)).toContain('data:image/png;base64,AAAA');
     expect(out.messages.every(m => Array.isArray(m.content))).toBe(true);
   });
+  it('PDF document 内容自动降级并提示改用本地路径，不再让整轮 400', () => {
+    const embedded = { type: 'document' as const, title: '题目.pdf', source: { type: 'base64' as const, media_type: 'application/pdf', data: 'JVBERi0=' } };
+    const text = { type: 'document' as const, source: { type: 'text' as const, media_type: 'text/plain', data: '已提取的题目正文' } };
+    const out = anthropicToOpenAIRequest(request({ messages: [
+      { role: 'user', content: [embedded] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'read_pdf', content: [embedded, text] }] },
+    ] }));
+    const serialized = JSON.stringify(out.messages);
+    expect(serialized).toContain('改用用户消息中的原始文件路径');
+    expect(serialized).toContain('pdftotext');
+    expect(serialized).toContain('已提取的题目正文');
+    expect(serialized).not.toContain('JVBERi0=');
+  });
   it('保留 Skill 工具定义、调用、工具结果和推理内容', () => {
     const out = anthropicToOpenAIRequest(request({ messages: [
       { role: 'assistant', content: [{ type: 'thinking', thinking: 'fixture-reasoning' }, { type: 'tool_use', id: 't', name: 'Skill', input: { skill: 'nature-figure' } }] },

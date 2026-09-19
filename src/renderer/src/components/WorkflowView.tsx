@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import type { WorkflowRun, WorkflowTool } from '@shared/workflow';
+import { workflowAgentDisplayName, type WorkflowRun, type WorkflowTool } from '@shared/workflow';
 import { mergeWorkflowRuns, workflowArtifactPath } from '../lib/workflow';
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
@@ -71,7 +71,7 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
         {node && detailsOpen && <aside className="workflow-detail" aria-label="成员工作详情" onKeyDown={e => { if (e.key === 'Escape') setDetailsOpen(false); }}>
           <ResizeHandle storageKey="mm-workflow-detail-width-v2" label="调整成员详情宽度" edge="left" initial={280} min={220} max={340} fraction={.34} />
           <button className="flow-detail-close" aria-label="关闭成员详情" onClick={() => setDetailsOpen(false)}><Icon name="x" size={15} /></button>
-          <div className="workflow-detail-heading"><span>成员详情</span><h3>{node.name}</h3><p>{nodeLabel[node.status]}</p></div>
+          <div className="workflow-detail-heading"><span>成员详情</span><h3>{workflowAgentDisplayName(node)}</h3><p>{nodeLabel[node.status]}</p></div>
           <section className="flow-skill-section" aria-label="这个成员调用的技能">
             <h4><Icon name="sparkles" size={13} />使用的方法 <span>{skills.length} 项</span></h4>
             {skills.length ? <ul>{skills.map(skill => <li key={skill.id}><div><strong>{skill.label}</strong><small>{skill.status}</small></div><span>{skill.source} · {skill.count} 次</span><details><summary>查看技能名称</summary><code>{skill.id}</code></details></li>)}</ul> : <p>暂未使用专门技能，可以展开下面的工作记录看看进展。</p>}

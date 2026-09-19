@@ -1,12 +1,12 @@
 import type { HookCallback, HookInput } from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'node:crypto';
-import { chineseAgentName, workflowToolLabel, type WorkflowNode, type WorkflowRun, type WorkflowStatus } from '@shared/workflow';
+import { chineseAgentName, taskAgentName, workflowToolLabel, type WorkflowNode, type WorkflowRun, type WorkflowStatus } from '@shared/workflow';
 
 /** 纯观察器：空 hook 返回值不改变审批、工具参数或模型结果。 */
 export class WorkflowTrace {
   readonly run: WorkflowRun;
   private timer?: ReturnType<typeof setTimeout>;
-  private requests = new Map<string, { role: string; owner: string }>();
+  private requests = new Map<string, { name: string; owner: string }>();
   private toolOwners = new Map<string, string>();
   private toolParents = new Map<string, string>();
   private agentAliases = new Map<string, string>();
@@ -14,7 +14,7 @@ export class WorkflowTrace {
     const request = this.requests.get(dispatch), node = this.run.nodes.find(n => n.id === owner);
     if (!request || !node || owner === 'main' || owner === request.owner) return;
     node.parentId = request.owner;
-    if (request.role) node.name = chineseAgentName(node.agentType, request.role);
+    if (request.name) this.rename(node, request.name);
   }
   /** SDK 消息携带真实 parent_tool_use_id；与 hook 的工具标识双向对账，不按启动时间猜。 */
   observeMessage(value: unknown): void {
@@ -48,6 +48,10 @@ export class WorkflowTrace {
     this.run.nodes.push(node);
     return node;
   }
+  private rename(node: WorkflowNode, base: string): void {
+    const count = this.run.nodes.filter(entry => entry !== node && (entry.name === base || entry.name.startsWith(`${base} · `))).length;
+    node.name = count ? `${base} · ${count + 1}` : base;
+  }
   private flush(): void {
     clearTimeout(this.timer); this.timer = undefined;
     this.run.updatedAt = Date.now(); this.run.revision++;
@@ -77,8 +81,11 @@ export class WorkflowTrace {
     if (event === 'SubagentStart') {
       // toolUseID 缺失时不按类型/时间猜测身份，两个同类智能体也保持独立。
       const request = toolUseID ? this.requests.get(toolUseID) : undefined;
-      const node = this.node(input.agent_id, input.agent_type, request?.role);
-      if (node && request && request.owner !== node.id) node.parentId = request.owner;
+      const node = this.node(input.agent_id, input.agent_type);
+      if (node && request && request.owner !== node.id) {
+        node.parentId = request.owner;
+        this.rename(node, request.name);
+      }
       return;
     }
     if (event === 'SubagentStop') {
@@ -96,9 +103,12 @@ export class WorkflowTrace {
     if (dispatch) this.connect(owner, dispatch);
     const data = input.tool_input && typeof input.tool_input === 'object' ? input.tool_input as Record<string, unknown> : {};
     if (event === 'PreToolUse' && /^(Agent|Task)$/.test(input.tool_name) && this.requests.size < 80) {
-      // 仅保留短中文角色名，不保存派发任务正文。
+      // 从真实派发任务生成短中文名称；只存名称，不保存派发正文或内部提示词。
       const description = typeof data.description === 'string' ? data.description : '';
-      this.requests.set(input.tool_use_id, { role: description.match(/角色名[：:]\s*[\u3400-\u9fff]{2,12}/)?.[0] ?? '', owner });
+      const prompt = typeof data.prompt === 'string' ? data.prompt : '';
+      const name = taskAgentName(description) ?? taskAgentName(prompt)
+        ?? chineseAgentName(typeof data.subagent_type === 'string' ? data.subagent_type : 'general-purpose');
+      this.requests.set(input.tool_use_id, { name, owner });
     }
     let tool = node.tools.find(t => t.id === input.tool_use_id);
     if (!tool) {

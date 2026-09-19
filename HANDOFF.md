@@ -1,5 +1,12 @@
 # MModels 交接报告（HANDOFF）
 
+> **最新：附件自动恢复与语义化工作流命名（2026-09-19）**。基线 `5196f70`，分支 `codex/competition-studio`。
+> Claude Agent SDK 的内部 PDF Read 会返回 `document` 内容块；旧 OpenAI 兼容桥在发请求前抛 400。`main/agent/bridge.ts` 现将文字文档转文字，二进制 PDF 转为继续走原始本地路径的兼容指令，不传 base64；系统提示明确使用 pdftotext、pandas/openpyxl，并在单个方法失败时切换方案。
+> 原版基线的非图片附件也是路径优先，另在通用 bridge 外预处理 PDF document；其 PDF 会尝试 OpenAI file part。当前 DeepSeek 链路改走本地文字提取，因为兼容端未必支持 file/document，不能照抄上游格式。
+> shared-environment 启动时探测真实 Python 3，跳过 WindowsApps 商店占位程序；本机 bare `python` 因此前置占位程序无输出的问题已规避。共享环境仍位于应用数据目录，不随项目重复创建。
+> `taskAgentName` 从真实 Agent/Task 的 description 或 prompt 只提取短中文分工，不保存原文；WorkflowTrace 通过真实工具 id 关联后命名。旧“专项研究员 + 编号”由已记录技能/工具保守映射，不补造无证据任务。
+> 定向单测40项、node/web类型检查、目录版和Portable真实核心启动各19/19通过；未跑全量、未发送付费模型请求。最终包与哈希见 DELIVERY.md 顶部。
+
 > **最新：比赛操作简化、即时聊天及共享环境（2026-09-19）**。基线 `fce4be6`，分支 `codex/competition-studio`，用户确认只做本地 Git 提交，不推送远程。
 > 交付目录 `dist-clarity-20260919/`，包路径和哈希以 DELIVERY.md 顶部为准。71 项实际窗口检查通过；两批定向单测223/82项（有重叠），前后端类型检查通过。未跑全量、未调用用户付费 API。
 > Workbench 通过 calendarId 对应现有竞赛日历，自动保存比赛和截止时间，默认只显示倒计时；其他资料折叠。日历是现有内置数据，非实时网络更新，预计/待公布不可说成已确认。

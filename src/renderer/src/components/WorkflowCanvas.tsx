@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { WorkflowRun } from '@shared/workflow';
+import { workflowAgentDisplayName, type WorkflowRun } from '@shared/workflow';
 import { layoutWorkflow, FLOW_ROOT } from '../lib/workflow-layout';
 import { Icon } from './Icon';
 import { WorkflowAvatar } from './WorkflowAvatar';
@@ -93,10 +93,11 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
           const finished = n.status !== 'running', folded = compact && finished;
           const active = [...n.tools].reverse().find(t => t.status === 'running');
           const skills = [...new Map(n.tools.filter(t => t.skill).map(t => [t.skill, t.label])).values()];
+          const displayName = workflowAgentDisplayName(n);
           return <button key={n.id} className={`workflow-node flow-agent is-${n.status}${selectedId === n.id ? ' is-selected' : ''}${folded ? ' is-folded' : ''}`}
-            style={style} title={`${n.name} · ${stateLabels[n.status]}${skills.length ? ` · ${skills.join('、')}` : ''}`} aria-pressed={selectedId === n.id} aria-label={`${n.name}，${stateLabels[n.status]}`} onClick={() => onSelect(n.id)}>
+            style={style} title={`${displayName} · ${stateLabels[n.status]}${skills.length ? ` · ${skills.join('、')}` : ''}`} aria-pressed={selectedId === n.id} aria-label={`${displayName}，${stateLabels[n.status]}`} onClick={() => onSelect(n.id)}>
             <span className="flow-agent-port is-in" /><span className="flow-agent-port is-out" />
-            <div className="flow-agent-heading"><WorkflowAvatar role={n.agentType} working={n.status === 'running' && run.status === 'running'} returned={n.status === 'returned'} /><strong className="flow-agent-name" title={n.name}>{n.name}</strong>
+            <div className="flow-agent-heading"><WorkflowAvatar role={n.agentType} working={n.status === 'running' && run.status === 'running'} returned={n.status === 'returned'} /><strong className="flow-agent-name" title={displayName}>{displayName}</strong>
               <span className="flow-agent-state"><Icon name={n.status === 'returned' ? 'check' : n.status === 'stopped' ? 'square' : n.status === 'unknown' ? 'circle-help' : 'loader-circle'} size={12} />{stateLabels[n.status]}</span></div>
             {!folded && <><p className="flow-agent-speech" title={active?.label}>{active ? (active.skill ? `我在使用「${active.label}」` : `正在${active.label}`) : n.status === 'returned' ? '这部分已交回，点我看看' : n.status === 'stopped' ? '已经停下，记录还在' : finished ? '记录已保留，等待确认' : '我还在处理这一部分'}</p>
               <div className="flow-agent-skills">{skills.length ? skills.slice(-2).map(skill => <span key={skill}><Icon name="sparkles" size={10} />{skill}</span>) : <span className="is-quiet">{finished ? '本阶段未记录到技能调用' : '等待技能调用'}</span>}{skills.length > 2 && <small>+{skills.length - 2}</small>}</div></>}

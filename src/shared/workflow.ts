@@ -45,9 +45,42 @@ export const AGENT_NAMES: Record<string, string> = {
   'model-solver': '建模求解员', 'paper-reviewer': '论文核验员',
   'general-purpose': '综合研究员', Explore: '资料探索员', Plan: '方案规划员',
 };
-export function chineseAgentName(type: string, description = ''): string {
+
+const TASK_AGENT_NAMES: Array<[RegExp, string]> = [
+  [/附件|工作表|表格字段|文件结构|读取文件|读取资料/, '附件结构核验员'],
+  [/缺失值|异常值|数据清洗|预处理|标准化|归一化/, '数据清洗研究员'],
+  [/题意|题目条件|约束条件|边界条件|问题理解/, '题意约束分析员'],
+  [/时间序列|趋势预测|需求预测|销量预测|预测模型/, '预测模型研究员'],
+  [/优化|规划|调度|分配方案|路径方案|决策方案/, '优化方案研究员'],
+  [/灵敏度|稳健性|敏感性|鲁棒性/, '稳健性核验员'],
+  [/复算|复核|验证结果|结果核验|交叉验证|误差检验/, '结果复算员'],
+  [/可视化|绘图|图表|流程图|示意图/, '图表表达研究员'],
+  [/文献|论文检索|资料检索|搜索资料/, '文献检索员'],
+  [/摘要|论文结构|论文写作|撰写论文|润色|排版/, '论文结构研究员'],
+  [/统计特征|描述统计|相关性|数据分析|特征工程/, '数据特征分析员'],
+  [/算法|建模|求解模型|模型求解|模型设计/, '模型求解研究员'],
+];
+
+/** 从派发任务中生成可展示的短名称；只返回名称，不保留任务正文。 */
+export function taskAgentName(description = ''): string | undefined {
   const named = description.match(/角色名[：:]\s*([\u3400-\u9fff]{2,12})/);
-  return named?.[1] ?? AGENT_NAMES[type] ?? (/^[\u3400-\u9fff]{2,12}$/.test(type) ? type : '专项研究员');
+  if (named) return named[1];
+  const compact = description.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!compact) return undefined;
+  for (const [pattern, name] of TASK_AGENT_NAMES) if (pattern.test(compact)) return name;
+  const problem = compact.match(/问题\s*([一二三四五六七八九十\d]{1,3})/);
+  if (problem) return `问题${problem[1]}研究员`;
+  const task = compact.match(/(?:任务|负责内容|研究内容)[：:]\s*([\u3400-\u9fff]{2,8})/);
+  if (task) {
+    const topic = task[1].replace(/^(?:请|负责|独立|深入|完成|开展|进行|研究|分析|核对|处理)+/, '').slice(0, 6);
+    if (topic.length >= 2) return `${topic}研究员`.slice(0, 12);
+  }
+  return undefined;
+}
+
+export function chineseAgentName(type: string, description = ''): string {
+  return taskAgentName(description) ?? AGENT_NAMES[type]
+    ?? (/^[\u3400-\u9fff]{2,12}$/.test(type) ? type : '协作研究员');
 }
 const SKILLS: Record<string, string> = {
   'mma-paper': '论文写作', 'mma-review': '论文审阅', 'mma-model': '建模求解',
@@ -65,4 +98,17 @@ export function workflowToolLabel(name: string, skill?: string): string {
     WebSearch: '检索资料', WebFetch: '读取网页', TaskCreate: '安排任务', TaskUpdate: '更新任务进度',
     TodoWrite: '整理任务清单', AskUserQuestion: '等待你的补充', TaskOutput: '接收任务结果',
   } as Record<string, string>)[name] ?? (name.startsWith('mcp__') ? '使用扩展工具' : '执行辅助操作');
+}
+
+/** 给旧工作流记录补一个有事实依据的展示名，不改动原始记录。 */
+export function workflowAgentDisplayName(node: WorkflowNode): string {
+  if (!/^(?:专项研究员|协作研究员)(?:\s*[·#]?\s*\d+)?$/.test(node.name)) return node.name;
+  const skills = node.tools.map(tool => `${tool.skill ?? ''} ${tool.label}`).join(' ');
+  const skillName = taskAgentName(skills);
+  if (skillName) return skillName;
+  const names = new Set(node.tools.map(tool => tool.name));
+  if (names.has('Bash') || names.has('NotebookEdit')) return '计算实验员';
+  if (names.has('Write') || names.has('Edit')) return '成果整理员';
+  if (names.has('Read') || names.has('Glob') || names.has('Grep')) return '资料核验员';
+  return '协作研究员';
 }

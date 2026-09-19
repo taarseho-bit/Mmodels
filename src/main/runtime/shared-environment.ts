@@ -1,10 +1,36 @@
 /** Application-owned, project-independent runtime locations. No installation on project creation. */
 import { join, delimiter, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 let runtimeRoot: string | undefined;
+let detectedPythonDir: string | undefined;
+
+function usablePython(executable: string): boolean {
+  if (!existsSync(executable)) return false;
+  const result = spawnSync(executable, ['--version'], { encoding: 'utf8', timeout: 3000, windowsHide: true });
+  return result.status === 0 && /python\s+3/i.test(`${result.stdout ?? ''}\n${result.stderr ?? ''}`);
+}
+
+/** 找出 PATH 中真实可运行的 Python，跳过 Windows 商店占位程序。 */
+export function usablePythonDirectory(
+  pathValue = process.env.PATH ?? '',
+  platform = process.platform,
+  probe: (executable: string) => boolean = usablePython,
+): string | undefined {
+  const filename = platform === 'win32' ? 'python.exe' : 'python3';
+  for (const raw of pathValue.split(delimiter)) {
+    const dir = raw.trim().replace(/^"|"$/g, '');
+    if (!dir || (platform === 'win32' && /microsoft\\windowsapps/i.test(dir))) continue;
+    const executable = join(dir, filename);
+    if (probe(executable)) return dir;
+  }
+  return undefined;
+}
+
 export function configureSharedEnvironment(userData: string): void {
   runtimeRoot = join(userData, 'runtime');
+  detectedPythonDir = usablePythonDirectory();
 }
 export function sharedEnvironmentRoot(): string | undefined { return runtimeRoot; }
 export function sharedPythonPath(): string | undefined {
@@ -18,6 +44,7 @@ export function sharedRuntimeEnv(): NodeJS.ProcessEnv {
   const py = sharedPythonPath()!;
   const base = managedPythonPath()!;
   const dirs = [py, base].filter(existsSync).map(dirname);
+  if (detectedPythonDir && !dirs.includes(detectedPythonDir)) dirs.push(detectedPythonDir);
   return {
     ...(dirs.length ? { PATH: [...dirs, process.env.PATH ?? ''].join(delimiter) } : {}),
     MMODELS_RUNTIME_ROOT: runtimeRoot,
