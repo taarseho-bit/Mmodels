@@ -637,7 +637,7 @@ export function Composer({
     }
     void (async () => {
       try {
-        const r = await window.mathmodel.paper.getConfig();
+        const r = await window.mathmodel.paper.getConfig(project?.id);
         if (cancelled) return;
         const list = r.config?.contestFields ?? [];
         const values: Record<string, string> = {};
@@ -705,7 +705,7 @@ export function Composer({
    */
   const savePaperConfig = useCallback(async (patch: PaperConfigPatch): Promise<void> => {
     try {
-      const r = await window.mathmodel.paper.saveConfig(patch);
+      const r = await window.mathmodel.paper.saveConfig(patch, project?.id);
       if (r?.ok) {
         setNotice(null);
         return;
@@ -720,7 +720,7 @@ export function Composer({
     } catch {
       setNotice(tx('chat.newChatPage.paperConfigSaveFailed'));
     }
-  }, []);
+  }, [project?.id]);
 
   /**
    * 把「系统拖入 / 剪贴板粘贴」进来的 File 对象登记为附件。

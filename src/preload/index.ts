@@ -413,9 +413,10 @@ const api = {
   // ── 论文模板与比赛信息 ────────────────────────────────────
   paper: {
     templates: (): Promise<PaperTemplatesResult> => ipcRenderer.invoke(IPC.PAPER_TEMPLATES),
-    getConfig: (): Promise<PaperGetConfigResult> => ipcRenderer.invoke(IPC.PAPER_GET_CONFIG),
-    saveConfig: (config: PaperConfigPatch): Promise<PaperSaveResult> =>
-      ipcRenderer.invoke(IPC.PAPER_SAVE_CONFIG, config),
+    getConfig: (projectId?: string): Promise<PaperGetConfigResult> =>
+      ipcRenderer.invoke(IPC.PAPER_GET_CONFIG, projectId),
+    saveConfig: (config: PaperConfigPatch, projectId?: string): Promise<PaperSaveResult> =>
+      ipcRenderer.invoke(IPC.PAPER_SAVE_CONFIG, config, projectId),
     /**
      * 受管模板库的**合并**列表（内置 + 「我的模板」）—— 扩展页「论文模板」用。
      * 输入区的比赛模板选择器读的是 `templates()`（只有内置），别混用。

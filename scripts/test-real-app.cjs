@@ -935,7 +935,8 @@ async function main() {
       if (!save) return null;
       save.click();
       for (var i = 0; i < 40; i++) {
-        var result = await window.mathmodel.paper.getConfig();
+        var project = await window.mathmodel.project.current();
+        var result = await window.mathmodel.paper.getConfig(project && project.id);
         if (result.config && result.config.pageLimit) return result.config.pageLimit;
         await new Promise(function(r){ setTimeout(r, 50); });
       }

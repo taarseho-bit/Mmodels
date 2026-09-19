@@ -29,6 +29,7 @@ import {
 import { safeWrap, type IpcContext } from './index';
 import { resolveResourcesRoot } from '../resources';
 import { currentProjectRoot } from './file';
+import { getDb } from '../db';
 import { getSettings } from '../store/config';
 import {
   LEGACY_MM_DIR,
@@ -67,6 +68,22 @@ function resourcesDir(): string {
  */
 function customTemplatesRoot(): string {
   return customTemplatesRootIn(app.getPath('userData'));
+}
+
+/**
+ * 输入区明确传项目 id，避免项目切换时全局 recentProjectId 尚未同步造成保存失败。
+ * 设置页的旧调用不传 id，继续使用当前项目。
+ */
+function projectRootForPaper(projectId?: string): string | null {
+  if (projectId) {
+    const row = getDb().prepare<[string], { root: string }>('SELECT root FROM projects WHERE id = ?').get(projectId);
+    return row?.root ?? null;
+  }
+  try {
+    return currentProjectRoot();
+  } catch {
+    return null;
+  }
 }
 
 export function registerPaperHandlers(_ctx: IpcContext): void {
@@ -146,8 +163,8 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
 
   ipcMain.handle(
     IPC.PAPER_GET_CONFIG,
-    safeWrap(async () => {
-      const root = currentProjectRoot();
+    safeWrap(async (_e, projectId?: string) => {
+      const root = projectRootForPaper(projectId);
       if (!root) return { config: null, path: null };
       // 传模板列表：老配置文件只有 templateId 时，靠它补出 name / entryFile
       return {
@@ -161,8 +178,8 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
 
   ipcMain.handle(
     IPC.PAPER_SAVE_CONFIG,
-    safeWrap(async (_e, patch: PaperConfigPatch) => {
-      const root = currentProjectRoot();
+    safeWrap(async (_e, patch: PaperConfigPatch, projectId?: string) => {
+      const root = projectRootForPaper(projectId);
       if (!root) return { ok: false, reason: 'no-project' };
 
       // 原版 project_config_unsafe_path：`.mathmodel` 不能是软链/目录联接

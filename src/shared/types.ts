@@ -1000,7 +1000,7 @@ export interface PaperPageLimit {
 }
 
 /**
- * 比赛信息（存 `<项目>/.mathmodel/paper/config.json`，与原版同路径）。
+ * 比赛信息（存 `<项目>/.mathmodel/paper/config.json`，同一项目内的所有对话共享）。
  *
  * **逐字对齐原版 schema** —— 那段 zod 的**逐字原文**已搬到
  * `.workbuddy/ui-audit/verify/original-code-dumps.md §3.2`

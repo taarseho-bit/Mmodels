@@ -333,3 +333,10 @@ FA_RUN_TIMEOUT_MS=1800000 bash .workbuddy/ui-audit/fa-core-run.sh <label> <cfg>
 - `ipc/session.ts` 用 `sessionsResumingAfterStop` 记录用户主动停止；下一轮在隐藏系统提示中说明旧成员已结束，并按剩余复杂度重新调用 Agent。标记在运行参数完整构建成功后才消费，任务删除时清理。
 - 最新验证：`npm run typecheck`；两份定向测试共 13/13；`npm run build`；Portable 独立沙箱真实应用 44/44。
 - 最新包：`dist-competition-resume-20260919/MModels-0.1.0-x64-Portable.exe`，269,622,091 B，SHA-256 `0628d2d323cff8eb99389aa55fd2aceb0a1cbd455fad4f131fbfc4865066a4f4`。
+
+### 2026-09-19 补充：比赛信息按项目共享
+
+- 最终口径不是“每个对话一份”，而是“每个项目一份”。仍使用 `.mathmodel/paper/config.json`，项目内所有任务共享。
+- `paper.getConfig/saveConfig` 可接收明确的 `projectId`；Composer 每次读写都传当前项目 ID，避免 `recentProjectId` 切换延迟导致写错目录或返回 `no-project`。
+- 不存在的项目 ID直接返回失败，不回落到其他当前项目，防止静默写错。
+- 正确交付包：`dist-project-contest-20260919/MModels-0.1.0-x64-Portable.exe`，SHA-256 `beffa4da4487ce28cf9fdeaaeb62e757231b044a0ceb512984100d41203a173b`；实机 44/44。
