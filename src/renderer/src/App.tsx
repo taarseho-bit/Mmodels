@@ -20,6 +20,7 @@ import { useApp, type SidePanelTab } from './store/app';
 import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
 import { SidePanel } from './components/SidePanel';
+import { ResizeHandle } from './components/ResizeHandle';
 import { ChatPage } from './pages/ChatPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -472,7 +473,8 @@ export function App(): JSX.Element {
                   {/* 第二栏：文件树 / 更改 / 项目版本（复用既有面板，不另起一套） */}
                   {editorView && editorCol !== null && (
                     <div key="col" className="editorview-col">
-                      {editorCol === 'files' && <FilesPanel />}
+                      <ResizeHandle storageKey="mm-editor-files-width" label="调整编辑器文件栏宽度" min={160} max={420} fraction={.28} />
+                      {editorCol === 'files' && <FilesPanel treeOnly />}
                       {editorCol === 'changes' && <DiffPanel />}
                       {editorCol === 'versions' && <VersionHistoryPanel />}
                     </div>
@@ -537,6 +539,8 @@ export function App(): JSX.Element {
                         </button>
                       </div>
                     )}
+
+                    {editorView && <ResizeHandle storageKey="mm-editor-chat-width" label="调整编辑器对话宽度" edge="left" initial={360} min={280} max={680} fraction={.45} />}
 
                     {editorView && editorHistoryOpen && (
                       <div className="editorview-chatlist">

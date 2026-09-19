@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../store/app';
 import { tx, t } from '../i18n';
 import { Icon } from '../components/Icon';
+import { ResizeHandle } from '../components/ResizeHandle';
 import { onOpenSettings } from '../lib/settings-nav';
 import { ProfileSection } from '../components/settings/ProfileSection';
 import { PaperSection } from '../components/settings/PaperSection';
@@ -135,6 +136,7 @@ export function SettingsPage({
     <div className="settings-shell">
       {/* ── 左侧导航（复刻原版）── */}
       <aside className="settings-side">
+        <ResizeHandle storageKey="mm-settings-nav-width" label="调整设置导航宽度" min={200} max={340} fraction={.32} />
         <button className="settings-back" onClick={onBack}>
           ← {tx('settings.settingsPage.backToApp')}
         </button>

@@ -3,6 +3,7 @@ import type { WorkflowRun } from '@shared/workflow';
 import { layoutWorkflow, FLOW_ROOT } from '../lib/workflow-layout';
 import { Icon } from './Icon';
 import { WorkflowAvatar } from './WorkflowAvatar';
+import { ResizeHandle } from './ResizeHandle';
 
 const stateLabels = { running: '工作中', returned: '已交回', stopped: '已停止', unknown: '待确认' };
 export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun; selectedId: string | null; onSelect: (id: string) => void }): JSX.Element {
@@ -34,6 +35,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
       return { scale, x: cx - (cx - old.x) * scale / old.scale, y: cy - (cy - old.y) * scale / old.scale }; });
   };
   return <div className="flow-canvas-shell">
+    <ResizeHandle storageKey="mm-workflow-canvas-height" label="调整工作流画布高度" edge="bottom" initial={460} min={280} max={900} fraction={.85} viewport optional />
     <div className="flow-toolbar">
       <div className="flow-live"><span className={running && run.status === 'running' ? 'is-live' : ''} />{running && run.status === 'running' ? `${running} 位正在工作` : '工作记录'}<small>{returned} 位已交回</small></div>
       <div className="flow-toolbar-actions">

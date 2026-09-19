@@ -10,7 +10,8 @@
  *     打开文件不切标签，点查看器的 × 回到文件树）
  *   · 技能 —— 独立的能力入口，见侧栏「扩展」页
  */
-import { useCallback, useRef, useState } from 'react';
+import { useState } from 'react';
+import { ResizeHandle } from './ResizeHandle';
 import { useApp, SIDE_PANEL_TABS, type SidePanelTab } from '../store/app';
 import { FilesPanel } from './FilesPanel';
 import { TerminalPanel } from './TerminalPanel';
@@ -28,17 +29,6 @@ const THUMBS = import.meta.glob('../assets/gallery/*.webp', {
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
-
-/** 面板宽度范围与持久化键（对应原版面板拖拽调整尺寸） */
-const PANEL_MIN = 260;
-const PANEL_MAX = 720;
-const PANEL_WIDTH_KEY = 'mm-sidepanel-width';
-
-function initialPanelWidth(): number {
-  const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY));
-  if (Number.isFinite(saved) && saved >= PANEL_MIN && saved <= PANEL_MAX) return Math.round(saved);
-  return 340;
-}
 
 /**
  * 科研绘图标签 —— 紧凑版模板列表。
@@ -83,43 +73,12 @@ export function SidePanel(): JSX.Element {
   const closeSidePanelTab = useApp((s) => s.closeSidePanelTab);
   const tabs = useApp((s) => s.sidePanelTabs);
   const active: SidePanelTab = panel ?? 'files';
-  const [width, setWidth] = useState(initialPanelWidth);
   const [menuOpen, setMenuOpen] = useState(false);
-  const dragging = useRef(false);
-
-  /** 左缘拖拽调宽：按住手柄移动鼠标，实时改宽并持久化 */
-  const onResizeStart = useCallback((e: React.MouseEvent): void => {
-    e.preventDefault();
-    dragging.current = true;
-    const startX = e.clientX;
-    const startW = width;
-    const move = (ev: MouseEvent): void => {
-      if (!dragging.current) return;
-      // 手柄在面板左缘，向右拖 = 变宽
-      const next = Math.min(PANEL_MAX, Math.max(PANEL_MIN, startW + (ev.clientX - startX)));
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      setWidth(next);
-    };
-    const up = (): void => {
-      dragging.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-      setWidth((w) => {
-        localStorage.setItem(PANEL_WIDTH_KEY, String(w));
-        return w;
-      });
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  }, [width]);
 
   return (
-    <aside className="sidepanel" style={{ width }}>
+    <aside className="sidepanel">
       {/* 左缘拖拽手柄（原版 browser.setPanelBounds 的渲染层等价实现） */}
-      <div className="sidepanel-resizer" onMouseDown={onResizeStart} role="separator" aria-orientation="vertical" />
+      <ResizeHandle storageKey="mm-sidepanel-width" label="调整右侧面板宽度" edge="left" initial={340} min={260} max={720} fraction={.42} />
 
       {/* 标签条：已打开的标签 + 末尾「+」添加标签页（原版 addTab / closeTab） */}
       <div className="sidepanel-tabs">

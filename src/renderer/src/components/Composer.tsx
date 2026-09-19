@@ -24,6 +24,7 @@ import {
 } from '@shared/types';
 import { followUpItemsFor, readFollowUpBehavior, useApp, type QueuedFollowUp } from '../store/app';
 import { Icon } from './Icon';
+import { ResizeHandle } from './ResizeHandle';
 import { PastedTextChip } from './PastedTextChip';
 import { Popover } from './Popover';
 import {
@@ -1246,6 +1247,8 @@ export function Composer({
         onClear={clearFollowUps}
       />
 
+      <div className="composer-input-region">
+      <ResizeHandle storageKey="mm-composer-height" label="调整输入区高度" edge="top" initial={96} min={64} max={360} fraction={.35} viewport optional />
       <textarea
         id="tour-composer"
         ref={ref}
@@ -1288,6 +1291,7 @@ export function Composer({
         }}
         onKeyDown={onKeyDown}
       />
+      </div>
 
       {/* ── ③ 底部栏 ── */}
       <div className="cz-foot">

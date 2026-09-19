@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
+import { ResizeHandle } from './ResizeHandle';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import type { ProjectMeta, SessionMeta } from '@shared/types';
 import type { Route } from '../App';
@@ -44,6 +45,8 @@ function RailItem({ icon, label, active, title, onClick, id, route }: RailItemPr
       className={`rail-item${active ? ' active' : ''}`}
       onClick={onClick}
       title={title ?? label}
+      aria-label={label}
+      aria-current={active ? 'page' : undefined}
     >
       <Icon name={icon} size={15} />
       <span className="rail-label truncate">{label}</span>
@@ -451,12 +454,17 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
   }, [sessions, q]);
 
   return (
-    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`} aria-label="主导航">
+      {!collapsed && <ResizeHandle storageKey="mm-sidebar-width" label="调整左侧栏宽度" min={220} max={380} fraction={.32} />}
+      <div className="rail-header">
       <div className="studio-brand"><span>模</span><div><strong>MModels</strong><small>数学建模 · 写作与求解</small></div></div>
       {/* ── 顶部图标行（原版：收起侧栏 + 搜索，两个图标在导航项上方）── */}
-      <div className="rail-top">
         <button
           className="rail-icon-btn"
+          aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
+          aria-expanded={!collapsed}
+          aria-controls="sidebar-content"
+          data-sidebar-toggle
           // ⚠️ 原版实机取证（install asar @63027810）：
           //    title = o(r ? "shell.titleBarControls.expandSidebar" : "shell.titleBarControls.collapseSidebar")
           //    这里没有 `shell.sidebar.*` 这套键 —— 早期写成 `shell.sidebar.collapseSidebar`
@@ -467,14 +475,19 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
           )}
           onClick={() => setCollapsed((v) => !v)}
         >
-          <Icon name="panel-left" size={15} />
+          <Icon name={collapsed ? 'chevron-right' : 'panel-left'} size={18} />
         </button>
+      </div>
+      <div className="rail-scroll" id="sidebar-content">
+      <div className="rail-top">
         <button
-          className="rail-icon-btn"
+          className="rail-search-trigger"
+          aria-label="搜索项目任务"
           title={tx('shell.searchPalette.searchLabel')}
-          onClick={() => setSearchOpen((v) => !v)}
+          onClick={() => { setCollapsed(false); setSearchOpen(collapsed || !searchOpen); }}
         >
           <Icon name="search" size={15} />
+          <span>搜索任务</span>
         </button>
       </div>
 
@@ -482,6 +495,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
         <button
           id="tour-new-thread"
           type="button"
+          aria-label="新任务"
           disabled={!current}
           onClick={handleNewChat}
           title={current ? `在“${current.name}”中开始新任务` : '请先选择一个项目'}
@@ -509,6 +523,11 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
           ),
         )}
       </nav>
+      <div className="rail-compact-projects">
+        <RailItem icon="folder-open" label="工作项目" title={current ? `工作项目 · ${current.name}` : '工作项目'} onClick={() => { setCollapsed(false); setProjectSwitcherOpen(true); }} />
+        <RailItem icon="plus" label="新建或打开项目" onClick={() => void handleNewProject()} />
+        <RailItem icon="list-checks" label="项目任务" onClick={() => { setCollapsed(false); setProjectSwitcherOpen(false); requestAnimationFrame(() => document.getElementById('sidebar-tasks')?.scrollIntoView({ block: 'nearest' })); }} />
+      </div>
 
       {/* ── 搜索框（点「搜索」展开）── */}
       {searchOpen && (
@@ -531,7 +550,8 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
       )}
 
       {/* ── 项目 ── */}
-      <div className="rail-sec">
+      <div className={`rail-sec rail-expanded-section rail-project-section${projectSwitcherOpen ? ' is-open' : ''}`}>
+        {!collapsed && projectSwitcherOpen && <ResizeHandle storageKey="mm-project-list-height" label="调整项目列表高度" edge="bottom" initial={180} min={100} max={400} fraction={.45} />}
         <div className="rail-sec-head">
           <span>工作项目</span>
           <button
@@ -640,7 +660,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
       </div>
 
       {/* ── 会话 ── */}
-      <div className="rail-sec grow">
+      <div className="rail-sec grow rail-expanded-section" id="sidebar-tasks">
         <div className="rail-sec-head">
           <span>项目任务</span>
           <span className="muted" style={{ fontSize: 10 }}>
@@ -694,6 +714,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
           )}
         </div>
       </div>
+      </div>
 
       {/* ── 底部：账号区（原版：头像 + 名称 + 徽章行）+ 设置齿轮 ── */}
       <div className="rail-foot rail-account">
@@ -716,6 +737,7 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
         <button
           className="rail-icon-btn"
           title={tx('shell.sidebar.settings')}
+          aria-label="设置"
           onClick={() => setRoute('settings')}
         >
           <Icon name="settings" size={15} />

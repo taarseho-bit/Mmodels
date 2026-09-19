@@ -4,6 +4,7 @@ import { mergeWorkflowRuns, workflowArtifactPath } from '../lib/workflow';
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
 import { WorkflowCanvas } from './WorkflowCanvas';
+import { ResizeHandle } from './ResizeHandle';
 import '../styles/workflow.css';
 
 const runLabel = { running: '正在工作', completed: '本轮已结束', stopped: '已停止', interrupted: '本轮未完整结束' };
@@ -67,6 +68,7 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
       <div className="workflow-layout is-flow-canvas">
         <WorkflowCanvas key={run.id} run={run} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />
         {node && detailsOpen && <aside className="workflow-detail" aria-label="成员工作详情" onKeyDown={e => { if (e.key === 'Escape') setDetailsOpen(false); }}>
+          <ResizeHandle storageKey="mm-workflow-detail-width" label="调整成员详情宽度" edge="left" initial={295} min={240} max={560} fraction={.85} />
           <button className="flow-detail-close" aria-label="关闭成员详情" onClick={() => setDetailsOpen(false)}><Icon name="x" size={15} /></button>
           <div className="workflow-detail-heading"><span>成员详情</span><h3>{node.name}</h3><p>{nodeLabel[node.status]}</p></div>
           <section className="flow-skill-section" aria-label="这个成员调用的技能">

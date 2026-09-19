@@ -24,6 +24,7 @@ import { EmptyState } from './PageShell';
 import { ArtifactPanes } from './ArtifactPanes';
 import { Markdown } from './Markdown';
 import { Icon } from './Icon';
+import { ResizeHandle } from './ResizeHandle';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -546,6 +547,8 @@ export function FilesPanel({
 
       {/* ── 文件树 ── */}
       {(treeVisible || treeOnly) && (
+        <div className={`fp-tree-region${treeOnly ? ' tree-only' : ''}`}>
+        {!treeOnly && <ResizeHandle storageKey="mm-file-tree-height" label="调整文件列表高度" edge="bottom" initial={200} min={72} max={600} fraction={.65} optional />}
         <div className="fp-tree">
           {error && <div className="fp-note danger">{error}</div>}
           {notice && <div className="fp-note success">{notice}</div>}
@@ -578,6 +581,7 @@ export function FilesPanel({
               onContext={onContext}
             />
           ))}
+        </div>
         </div>
       )}
 

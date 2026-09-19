@@ -1,0 +1,52 @@
+.pane-resizer { position:absolute; z-index:25; touch-action:none; -webkit-app-region:no-drag; outline:none; }
+.pane-resizer.at-left,.pane-resizer.at-right { top:0; bottom:0; width:7px; cursor:col-resize; }
+.pane-resizer.at-left { left:0; }.pane-resizer.at-right { right:0; }
+.pane-resizer.at-top,.pane-resizer.at-bottom { left:0; right:0; height:7px; cursor:row-resize; }
+.pane-resizer.at-top { top:0; }.pane-resizer.at-bottom { bottom:0; }
+.sidepanel > .pane-resizer,.sidebar > .pane-resizer,.editorview-col > .pane-resizer,.editorview-chatcol > .pane-resizer { z-index:30; }
+.pane-resizer::after { content:''; position:absolute; inset:2px; border-radius:3px; background:transparent; transition:background-color 120ms; }
+.pane-resizer:hover::after,.pane-resizer:focus-visible::after { background:var(--accent); }
+.pane-drag-shield { position:fixed; inset:0; z-index:99999; user-select:none; }
+.pane-drag-shield.horizontal { cursor:col-resize; }.pane-drag-shield.vertical { cursor:row-resize; }
+.competition-shell .sidebar { position:relative; width:var(--pane-width,240px); min-height:0; padding:10px 8px 8px; }
+.competition-shell .sidebar.collapsed { width:64px; padding:10px 8px 8px; }
+.rail-header { display:flex; align-items:center; flex-shrink:0; gap:6px; padding:0 2px 8px; }
+.competition-shell .rail-header .studio-brand { flex:1; min-width:0; padding:0 6px; gap:8px; }
+.competition-shell .rail-header .rail-icon-btn { width:32px; height:34px; flex-shrink:0; }
+.competition-shell .sidebar.collapsed .studio-brand { display:none; }
+.competition-shell .sidebar.collapsed .rail-header { justify-content:center; }
+.rail-scroll { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; }
+.competition-shell .rail-top { justify-content:flex-start; padding:0 6px; margin:0 0 5px; }
+.rail-search-trigger { display:flex; align-items:center; gap:8px; width:100%; height:36px; padding:8px 10px; border:0; border-radius:7px; background:transparent; color:var(--fg-secondary); text-align:left; }
+.rail-search-trigger:hover { background:var(--bg-hover); }
+.competition-shell .rail-nav { padding:4px 6px 9px; }
+.competition-shell .rail-sec-head { margin-top:5px; }
+.competition-shell .rail-foot { flex-shrink:0; padding:8px 4px 0; margin-top:4px; }
+.rail-compact-projects { display:none; }
+.competition-shell .sidebar.collapsed .rail-top,.competition-shell .sidebar.collapsed .rail-nav,.competition-shell .sidebar.collapsed .rail-create-strip { padding-inline:4px; }
+.competition-shell .sidebar.collapsed .rail-search-trigger { justify-content:center; padding:0; }
+.competition-shell .sidebar.collapsed .rail-search-trigger span,.competition-shell .sidebar.collapsed .rail-expanded-section,.competition-shell .sidebar.collapsed .rail-account-chip { display:none; }
+.competition-shell .sidebar.collapsed .rail-compact-projects { display:flex; flex-direction:column; padding:8px 4px; gap:5px; }
+.competition-shell .sidebar.collapsed .rail-item,.competition-shell .sidebar.collapsed .rail-create-strip button { width:40px; height:40px; min-height:40px; padding:0; flex-shrink:0; }
+.competition-shell .sidebar.collapsed .rail-foot { align-items:center; padding-inline:0; }
+.competition-shell .sidebar .rail-foot > .rail-icon-btn { width:36px; height:36px; }
+.rail-project-section { position:relative; flex-shrink:0; }
+.rail-project-section.is-open { height:var(--pane-height,180px); min-height:100px; padding-bottom:8px; }
+.rail-project-section.is-open #tour-projects { overflow:auto; min-height:0; }
+.rail-expanded-section .rail-list { flex:none; overflow:visible; }
+.competition-shell .sidepanel { position:relative; width:var(--pane-width,340px); max-width:none; }
+.editorview-col { position:relative; width:var(--pane-width,240px); }
+.editorview-chatcol:not(.is-main) { position:relative; width:var(--pane-width,360px); }
+.competition-shell .settings-side { position:relative; width:var(--pane-width,240px); flex-shrink:0; }
+.composer-input-region { position:relative; height:var(--pane-height,auto); min-height:52px; }
+.composer-input-region[style*="--pane-height"] .composer-input { height:100%!important; max-height:none; }
+.workflow-layout.is-flow-canvas .workflow-detail { width:min(var(--pane-width,295px),calc(100% - 20px)); }
+.flow-canvas-shell { position:relative; }
+.flow-canvas-shell[style*="--pane-height"] { height:var(--pane-height); display:flex; flex-direction:column; }
+.flow-canvas-shell[style*="--pane-height"] .flow-viewport { height:auto; flex:1; min-height:140px; }
+.flow-canvas-shell > .pane-resizer { z-index:5; }
+.fp-tree-region { position:relative; display:flex; flex-direction:column; flex:1 1 42%; min-height:72px; padding-bottom:7px; }
+.fp-tree-region[style*="--pane-height"] { flex:0 0 var(--pane-height); }
+.fp-tree-region.tree-only { flex:1; }
+.fp-tree-region > .fp-tree { flex:1; min-height:0; max-height:none; }
+@media (prefers-reduced-motion:reduce) { .pane-resizer::after { transition:none; } }

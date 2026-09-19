@@ -351,6 +351,104 @@ async function main() {
 
   // ── 3. 真实数据库（better-sqlite3 在打包后能用吗） ──
   if (process.env.MATHMODEL_TEST_CORE_ONLY === '1') {
+    if (process.env.MATHMODEL_TEST_SIDEBAR_UI === '1') {
+      const click = async selector => { await cdp.eval(`document.querySelector(${JSON.stringify(selector)}).click()`); await sleep(180); };
+      const size = async (selector, axis = 'width') => cdp.eval(`document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().${axis}`);
+      const dragPane = async (label, dx, dy) => {
+        const box = await cdp.eval(`document.querySelector('[role="separator"][aria-label="${label}"]').getBoundingClientRect().toJSON()`);
+        const x = box.x + box.width / 2, y = box.y + box.height / 2;
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
+        for (let i = 1; i <= 5; i++) { await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x + dx * i / 5, y: y + dy * i / 5, button: 'left', buttons: 1 }); await sleep(40); }
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: x + dx, y: y + dy, button: 'left', clickCount: 1 });
+        await sleep(150);
+        log(label + ': ' + JSON.stringify(await cdp.eval(`(()=>{const h=document.querySelector('[role="separator"][aria-label="${label}"]'); return {size:h.parentElement.getBoundingClientRect().toJSON(),value:h.getAttribute('aria-valuenow'),style:h.parentElement.getAttribute('style')};})()`)));
+      };
+      await cdp.eval(`window.dispatchEvent(new CustomEvent('mm:open-route',{detail:{route:'chat'}}))`); await sleep(350);
+      await cdp.eval('window.__sidebarDraftNode=document.querySelector(".composer-input"); true');
+      await cdp.eval('document.querySelector(".composer-input").focus()');
+      await cdp.send('Input.insertText', { text: '布局调整保留草稿' });
+      await dragPane('调整左侧栏宽度', 55, 0);
+      const wide = await size('.sidebar');
+      ok(wide > 260, '左侧栏向右拖动变宽');
+      await click('[data-sidebar-toggle]');
+      ok(await size('.sidebar') === 64, '收起后使用64像素独立图标栏');
+      ok(await cdp.eval('document.querySelector(".composer-input")===window.__sidebarDraftNode && window.__sidebarDraftNode.value.includes("布局调整保留草稿")'), '拖动和折叠不卸载输入框，不丢草稿');
+      ok(await cdp.eval(`(()=>{const side=document.querySelector('.sidebar').getBoundingClientRect();return [...document.querySelectorAll('.sidebar button')].filter(b=>b.getBoundingClientRect().width>0).every(b=>{const r=b.getBoundingClientRect();return b.title && r.left>=side.left && r.right<=side.right && r.width>=30;});})()`), '窄栏所有可见按钮都有悬停说明，图标不被裁切');
+      ok(await cdp.eval('!document.querySelector(".sidebar [data-missing-icon]")'), '所有侧栏图标均有实际图形');
+      await click('.rail-nav [data-route="papers"]');
+      ok(await cdp.eval('!!document.querySelector(".studio-papers") || document.body.innerText.includes("尚未添加论文")'), '收起状态可直接进入论文库');
+      await click('.rail-nav [data-route="chat"]');
+      await click('.rail-search-trigger');
+      ok(await cdp.eval('!document.querySelector(".sidebar.collapsed") && document.querySelector(".rail-search input")===document.activeElement'), '收起状态点击搜索可展开并聚焦');
+      await click('[data-sidebar-toggle]');
+      await click('.rail-compact-projects [aria-label="工作项目"]');
+      ok(await cdp.eval('!!document.querySelector(".rail-project-section.is-open") && !document.querySelector(".sidebar.collapsed")'), '收起状态可展开项目列表');
+      const projectBefore = await size('.rail-project-section', 'height');
+      await dragPane('调整项目列表高度', 0, 35);
+      ok(await size('.rail-project-section', 'height') > projectBefore, '项目列表可上下调整高度');
+      await click('[data-sidebar-toggle]'); await click('[data-sidebar-toggle]');
+      ok(Math.abs(await size('.sidebar') - wide) < 2, '重新展开恢复用户宽度');
+      await click('.studio-panel-toggle');
+      if (await cdp.eval('!document.querySelector(".sidepanel")')) await click('.studio-panel-toggle');
+      const rightBefore = await size('.sidepanel');
+      await dragPane('调整右侧面板宽度', -45, 0);
+      ok(await size('.sidepanel') > rightBefore, '右侧面板向左拖动变宽，方向不再反转');
+      const treeBefore = await size('.sidepanel .fp-tree-region', 'height');
+      await dragPane('调整文件列表高度', 0, 40);
+      ok(await size('.sidepanel .fp-tree-region', 'height') > treeBefore, '文件列表与下方预览之间可以上下拖动');
+      await click('.studio-panel-toggle');
+      const inputBefore = await size('.composer-input-region', 'height');
+      await dragPane('调整输入区高度', 0, -55);
+      ok(await size('.composer-input-region', 'height') > inputBefore, '输入区上缘向上拖动增高');
+      await cdp.eval('document.querySelector(".composer-input").focus()');
+      await cdp.send('Input.insertText', { text: '继续输入' });
+      ok(await cdp.eval('document.querySelector(".composer-input").value.includes("继续输入") && !document.querySelector(".pane-drag-shield")'), '拖动结束恢复正常输入，没有遗留透明遮罩');
+      await cdp.eval('document.querySelector("[aria-label=调整输入区高度]").dispatchEvent(new MouseEvent("dblclick",{bubbles:true}))');
+      ok(await cdp.eval('!document.querySelector(".composer-input-region").style.getPropertyValue("--pane-height")'), '双击恢复输入区自动高度');
+      await click('[aria-label="更多任务操作"]');
+      await cdp.eval('[...document.querySelectorAll(".studio-task-menu button")].find(b=>b.textContent.includes("编辑器视图")).click()'); await sleep(250);
+      const filesBefore = await size('.editorview-col');
+      await dragPane('调整编辑器文件栏宽度', 35, 0);
+      ok(await size('.editorview-col') > filesBefore, '编辑器文件栏可以左右调整');
+      const chatBefore = await size('.editorview-chatcol');
+      await dragPane('调整编辑器对话宽度', -35, 0);
+      ok(await size('.editorview-chatcol') > chatBefore, '编辑器对话栏可以左右调整');
+      await click('[aria-label="更多任务操作"]');
+      await cdp.eval('[...document.querySelectorAll(".studio-task-menu button")].find(b=>b.textContent.includes("编辑器视图")).click()'); await sleep(200);
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width: 980, height: 560, deviceScaleFactor: 1, mobile: false });
+      await click('[data-sidebar-toggle]');
+      ok(await cdp.eval(`(()=>{const b=document.querySelector('.rail-foot [aria-label="设置"]');const r=b.getBoundingClientRect();return r.bottom<=innerHeight && document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')===b && document.documentElement.scrollWidth<=innerWidth;})()`), '矮窗口设置仍可点击，无横向溢出');
+      const img = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      fs.writeFileSync(path.join(ROOT, 'out', 'sidebar-compact.png'), Buffer.from(img.data, 'base64'));
+      await cdp.send('Emulation.clearDeviceMetricsOverride');
+      await cdp.send('Page.reload'); await sleep(1400);
+      ok(await cdp.eval('!!document.querySelector(".sidebar.collapsed")'), '重载后记住侧栏收起状态');
+      await click('[data-sidebar-toggle]');
+      ok(Math.abs(await size('.sidebar') - wide) < 2, '重载后记住展开宽度');
+      const resizeFixture = await cdp.eval(`(async()=>{const p=await window.mathmodel.project.current();return (await window.mathmodel.session.create(p.id,'工作流界面验证样例（非真实解题）')).id})()`);
+      const seededResize = require('node:child_process').spawnSync(path.join(ROOT, 'node_modules/electron/dist/electron.exe'),
+        [path.join(ROOT, 'scripts/seed-workflow-test.cjs'), path.join(USER_DATA, 'mmodels.db'), resizeFixture],
+        { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', NODE_OPTIONS: '' }, encoding: 'utf8', windowsHide: true });
+      if (seededResize.status !== 0) throw new Error(seededResize.stderr || '布局测试记录准备失败');
+      await cdp.send('Page.reload'); await sleep(1400);
+      await click('[title="工作流界面验证样例（非真实解题）"]');
+      await click('.workflow-switch button:last-child');
+      await sleep(250);
+      await click('.flow-agent');
+      const detailBefore = await size('.workflow-detail');
+      await dragPane('调整成员详情宽度', -30, 0);
+      ok(await size('.workflow-detail') > detailBefore, '成员详情可拖宽，技能列表仍可读');
+      await click('[aria-label="关闭成员详情"]');
+      await cdp.eval('document.querySelector("[aria-label=调整工作流画布高度]").scrollIntoView({block:"center"})');
+      const canvasBefore = await size('.flow-canvas-shell', 'height');
+      await dragPane('调整工作流画布高度', 0, -40);
+      ok(await size('.flow-canvas-shell', 'height') < canvasBefore - 20, '工作流画布可上下调节，和画布内部平移不冲突');
+      await cdp.eval(`window.mathmodel.session.remove(${JSON.stringify(resizeFixture)})`);
+      await click('.rail-foot [aria-label="设置"]');
+      const settingsBefore = await size('.settings-side');
+      await dragPane('调整设置导航宽度', 30, 0);
+      ok(await size('.settings-side') > settingsBefore, '设置页分隔栏也可拖动');
+    }
     if (process.env.MATHMODEL_TEST_STUDIO_UI === '1') {
       const route = async name => { await cdp.eval(`window.dispatchEvent(new CustomEvent('mm:open-route',{detail:{route:${JSON.stringify(name)}}}))`); await sleep(450); };
       const shot = async name => {
