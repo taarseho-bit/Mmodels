@@ -116,6 +116,9 @@ nsis:
 # 单文件免安装版：双击即可运行，配置与项目仍保存在用户目录，不会写回 exe 所在文件夹。
 portable:
   artifactName: ${productName}-${version}-${arch}-Portable.${ext}
+  # 每次启动使用独立临时目录。固定目录在上一次进程退出不干净时可能只剩
+  # app.asar，下一次会误复用半清理目录，表现为“没有找到内置论文模板”。
+  unpackDirName: false
 
 # ── 不重编原生模块（理由见文件头）────────────────────────────
 npmRebuild: false

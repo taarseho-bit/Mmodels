@@ -186,7 +186,13 @@ async function main() {
       '--disable-gpu',
       '--no-sandbox',
     ],
-    { env, stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      // 不允许打包应用从仓库 cwd 借用 resources/。这样 Portable 漏资源会
+      // 在验收中直接失败，而不是被开发目录里的模板、技能和算法假装通过。
+      cwd: SANDBOX,
+    },
   );
 
   const stderrRef = { text: '' };

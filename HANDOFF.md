@@ -1,5 +1,8 @@
 # MModels 交接报告（HANDOFF）
 
+> **最新：Portable 模板资源隔离修复（2026-09-19）**。基线 `06e6c82`。`portable.unpackDirName: false` 使每次启动使用 NSIS `$PLUGINSDIR` 独立目录，避免固定临时目录在退出清理不完整后只剩 app.asar、后续误复用而报“没有找到内置论文模板”。
+> `scripts/test-real-app.cjs` 的打包应用 cwd 改为独立沙箱，禁止从仓库 resources 借资源。新 Portable 已在该条件下真实读取14技能、15模板、29算法和15项环境检查，核心19/19。最终包与哈希见 DELIVERY.md 顶部；`dist-document-workflow-20260919` 不再交付。
+
 > **最新：附件自动恢复与语义化工作流命名（2026-09-19）**。基线 `5196f70`，分支 `codex/competition-studio`。
 > Claude Agent SDK 的内部 PDF Read 会返回 `document` 内容块；旧 OpenAI 兼容桥在发请求前抛 400。`main/agent/bridge.ts` 现将文字文档转文字，二进制 PDF 转为继续走原始本地路径的兼容指令，不传 base64；系统提示明确使用 pdftotext、pandas/openpyxl，并在单个方法失败时切换方案。
 > 原版基线的非图片附件也是路径优先，另在通用 bridge 外预处理 PDF document；其 PDF 会尝试 OpenAI file part。当前 DeepSeek 链路改走本地文字提取，因为兼容端未必支持 file/document，不能照抄上游格式。
