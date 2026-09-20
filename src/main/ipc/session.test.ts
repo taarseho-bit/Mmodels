@@ -110,10 +110,24 @@ describe('长时任务与多智能体协作', () => {
     );
     expect(required).toContain('# 本轮自动协作（已触发）');
     expect(required).toContain('必须实际调用 Agent 工具组织协作');
-    expect(required).toContain('先派发 1 至 2 个最有价值');
+    expect(required).toContain('先并行派发 2 至 3 个最有价值');
     expect(required).toContain('绝不为展示效果凑人数');
     expect(required).toContain('不要使用“协作研究员”');
     expect(buildSystemPrompt(CWD, false, false, '把标题改短一点')).not.toContain('# 本轮自动协作（已触发）');
+  });
+
+  it('协作组提示词绑定角色-技能映射，并要求注册角色优先', () => {
+    const text = buildSystemPrompt(CWD);
+    // 角色-技能映射：六个角色各自列出专属技能（与 modeling-agents.ts 的 ROLE_SKILL_HINTS 同源口径）
+    expect(text).toContain('可用专业角色及其专属技能');
+    expect(text).toContain('model-solver（建模求解员：modeling-algorithms、method-selector');
+    expect(text).toContain('figure-maker（图表制作员：figure-table-planner、scipilot-figure-skill');
+    expect(text).toContain('paper-reviewer（论文核验员：paper-review、proof-audit');
+    // 注册角色优先：抑制临时/通用智能体滥用
+    expect(text).toContain('只派这六个注册角色');
+    expect(text).toContain('禁止把注册角色能承担的工作交给通用临时成员');
+    // 主智能体自己也必须用技能，不能全推给成员
+    expect(text).toContain('主智能体同样要用技能');
   });
 
   it('关闭多智能体开关后，即使用户明确要求也不注册本轮协作规则', () => {
@@ -177,9 +191,9 @@ describe('工作流协作优化（2026-09-19）', () => {
     expect(text).toContain('# 任务清单纪律');
     expect(text).toContain('每完成一项立即标 completed');
     expect(text).toContain('禁止用 TodoWrite 整表重写未完成清单');
-    // 方向 2：执行型角色进入角色清单
-    expect(text).toContain('paper-writer（论文写作员）');
-    expect(text).toContain('figure-maker（图表制作员）');
+    // 方向 2：执行型角色进入角色清单（2026-09-20 起带专属技能映射）
+    expect(text).toContain('paper-writer（论文写作员：');
+    expect(text).toContain('figure-maker（图表制作员：');
     // 「开始时」限定词已去掉（阶段无关）
     expect(text).not.toContain('系统核验开始时，先评估');
   });

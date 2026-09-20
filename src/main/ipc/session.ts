@@ -551,7 +551,8 @@ function multiAgentTurnInstructions(prompt: string, sessionCollab: MultiAgentTri
       '',
       '# 本轮自动协作（已触发）',
       `- 应用已将本轮识别为“${reason}”。在开始主体求解或给出正式结论前，必须实际调用 Agent 工具组织协作，不能只在文字里说“将进行协作”。`,
-      '- 先派发 1 至 2 个最有价值、边界清楚的成员；只有确实存在第三条独立证据链时才增加到 3 个。已有成员能承担的工作不要重复派人，绝不为展示效果凑人数。',
+      '- 先并行派发 2 至 3 个最有价值、边界清楚的注册角色成员；已有成员能承担的工作不要重复派人，绝不为展示效果凑人数。',
+      '- 派发时按下方「可用专业角色及其专属技能」选 subagent_type，并把成员该用的技能名写进任务说明；成员返回后检查它是否真的调用了匹配技能，没有时要追问或亲自复核。',
       '- 彼此没有依赖的成员在**同一条消息里一次性并行派发**（一个工具调用一个成员），不要逐个派完再等；确实存在依赖的按依赖顺序派。',
       '- 每次派发都写成“角色名：具体中文名称；任务：一句话说明要解决的具体问题”，名称要体现研究对象，例如“附件字段核验员”“需求预测复算员”，不要使用“协作研究员”“专项研究员 1”这类泛称。',
       '- 成员的 description 必须是能给老板看懂的具体中文短名，并写清正在研究的问题；等待成员返回后，由主助手核对冲突、汇总结论并继续完成文件。',
@@ -647,9 +648,17 @@ export function buildSystemPrompt(
           '# 数学建模协作组',
           // 「开始时」的措辞已去掉（2026-09-19）：协作是全任务周期的能力，不是开局动作。
           '- 复杂解题、完整论文写作和系统核验时，先评估哪些部分可独立研究。若存在两个以上边界清楚、能返回证据的部分，优先用 Agent 工具实际派发协作；不要仅在文字中声称已组建团队。',
-          '- 可用专业角色：problem-analyst（题意分析员）、data-analyst（数据分析员）、model-solver（建模求解员）、paper-writer（论文写作员）、figure-maker（图表制作员）、paper-reviewer（论文核验员）。按实际任务选择，不要求凑齐所有角色。',
-          '- 每次派发的 description 使用中文，并以“角色名：中文短名；任务：具体工作”开头，例如“角色名：灵敏度核验员；任务：独立复算参数变化对目标值的影响”。临时专项角色也必须中文命名；保留有效 subagent_type，不要编造未注册的类型。',
-          '- 给协作成员提供必要的题目条件、数据位置、交付标准和可用技能；成员按需调用匹配的 Skill，禁止为了展示而重复调用无关技能。正式交付前，有可独立复核的关键结论时优先派发核验，并说明未验证项。',
+          '- 可用专业角色及其专属技能（派发后把对应技能名写进成员的任务说明）：' +
+            'problem-analyst（题意分析员：problem-parser、problem-classifier、model-assumptions-builder、symbol-table-builder、related-paper-analyzer）、' +
+            'data-analyst（数据分析员：data-auditor-cleaner、pdf、literature-search、literature-review）、' +
+            'model-solver（建模求解员：modeling-algorithms、method-selector、python-model-code-generator、robustness-checker）、' +
+            'paper-writer（论文写作员：paper-writing、paper-section-writer、literature-positioning、citation-management、reference-manager、paper-search、paper-polisher）、' +
+            'figure-maker（图表制作员：figure-table-planner、scipilot-figure-skill、scientific-figure-making、academic-figures、nature-figure、paper-diagram、mathmodel-figure-templates）、' +
+            'paper-reviewer（论文核验员：paper-review、proof-audit、claim-evidence-audit、verifying-bibliography、quality-assurance-auditor、paper-page-fit、competition-audit）。按实际任务选择角色，不要求凑齐。',
+          '- **只派这六个注册角色**（subagent_type 从上表选择，不要编造未注册类型）。只有六个角色确实都覆盖不了该项工作时，才允许派一个临时专项成员，且必须仍用中文具名（如"灵敏度复算员"）并写清为什么注册角色不合适；禁止把注册角色能承担的工作交给通用临时成员。',
+          '- 每次派发的 description 使用中文，并以“角色名：中文短名；任务：具体工作”开头，例如“角色名：灵敏度核验员；任务：独立复算参数变化对目标值的影响”。',
+          '- 主智能体同样要用技能：本轮工作命中已启用技能时（读 PDF 附件、查真实文献、选模型、绘图、核引用、审计数据、解析题意），先实际调用对应技能再动手，不要把技能全部推给成员，更不要绕开技能直接干。',
+          '- 给协作成员提供必要的题目条件、数据位置、交付标准和上述专属技能；成员收到后必须优先调用匹配的 Skill 并按其步骤执行，返回时说明用了哪个技能、关键产出在哪。正式交付前，有可独立复核的关键结论时优先派发核验，并说明未验证项。',
           '- 一次最多并行 3 个，只派发边界清楚、能独立返回证据的任务；简单问答和单文件小改动不要调用子智能体。',
           // 方向 5：并行策略显式化——依赖梳理保留，但无依赖的必须一把派出去，不吃掉并行收益。
           '- 先梳理依赖再分工：题意与数据检查可并行；求解必须使用前序确认的条件，核验必须等到候选结果，论文整合必须等到关键结果可复核。**彼此没有依赖的成员在同一条消息里一次性并行派发**，不要逐个派、逐个等。优先复用已有成员，避免重复启动无工作内容的成员。',

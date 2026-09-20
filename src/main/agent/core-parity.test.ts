@@ -7,7 +7,7 @@ import { anthropicToOpenAIRequest, AnthropicStreamEncoder, applyReasoning, type 
 import { BridgeRegistry } from './bridge-registry';
 import { userMcpOptions, sdkModel } from './runtime-options';
 import { aggregateCapabilityUsage } from './usage-stats';
-import { MODELING_AGENTS } from './modeling-agents';
+import { MODELING_AGENTS, ROLE_SKILL_HINTS } from './modeling-agents';
 vi.mock('electron', () => ({ app: { getPath: () => 'unused-test-path' } }));
 import { projectSkillsPlugin, workspaceInstructions } from './project-plugins';
 
@@ -97,6 +97,18 @@ describe('核心能力对齐', () => {
   it('专业子智能体有 Skill，同时保留各自工具权限边界', () => {
     for (const agent of Object.values(MODELING_AGENTS)) expect(agent.tools).toContain('Skill');
     expect(MODELING_AGENTS['paper-reviewer'].tools).not.toContain('Write');
+  });
+  it('每个角色的提示词绑定专属技能清单并强制优先调用技能', () => {
+    for (const [id, agent] of Object.entries(MODELING_AGENTS)) {
+      const hint = ROLE_SKILL_HINTS[id];
+      expect(hint, `${id} 缺少常用技能清单`).toBeTruthy();
+      expect(agent.prompt, `${id} 提示词未注入技能清单`).toContain(hint);
+      expect(agent.prompt).toContain('必须实际调用该技能');
+    }
+    // 与 session.ts 协作组映射同源的抽查：求解员绑定算法库与选型，绘图员绑定用户点名的绘图技能
+    expect(ROLE_SKILL_HINTS['model-solver']).toContain('modeling-algorithms');
+    expect(ROLE_SKILL_HINTS['figure-maker']).toContain('scipilot-figure-skill');
+    expect(ROLE_SKILL_HINTS['figure-maker']).toContain('academic-figures');
   });
   it('项目技能独立加载并保留全局配置隔离', () => {
     const dir = mkdtempSync(join(tmpdir(), 'mm-core-test-')); dirs.push(dir);
