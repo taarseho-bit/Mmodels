@@ -365,7 +365,7 @@ describe('工作流观察接线', () => {
 });
 
 describe('数学建模多智能体 —— SDK 原生 agents 与真实进度事件', () => {
-  it('开启后注册四个专门角色并转发开始、进度、完成状态', async () => {
+  it('开启后注册七个专门角色并转发开始、进度、完成状态', async () => {
     const sdk = installFakeQuery([
       subagentStarted('agent-1', 'model-solver'),
       subagentProgress('agent-1', 'model-solver'),
@@ -377,7 +377,7 @@ describe('数学建模多智能体 —— SDK 原生 agents 与真实进度事�
     await done;
 
     expect(Object.keys(sdk.options?.agents as Record<string, unknown>)).toEqual([
-      'problem-analyst', 'data-analyst', 'model-solver', 'paper-writer', 'figure-maker', 'paper-reviewer',
+      'problem-analyst', 'data-analyst', 'model-solver', 'literature-researcher', 'paper-writer', 'figure-maker', 'paper-reviewer',
     ]);
     expect(sdk.options?.agentProgressSummaries).toBe(true);
     expect(sdk.options?.forwardSubagentText).toBe(false);
