@@ -679,6 +679,10 @@ export class AgentSession extends EventEmitter {
       const canonical = canonicalPermissionMode(opts.permissionMode);
       const sdkMode = sdkPermissionModeFor(opts.permissionMode, opts.interactionMode);
       this.canonicalPermissionMode = canonical;
+      // ⚠️ 每轮都要从 opts 刷新 —— 这行决定「AI 自动决策」是否真的拦住提问。
+      //    （2026-09-20 实机教训：这行曾被同文件的并行编辑覆盖丢失，产物里
+      //    askPolicy 恒为初始值 'ask'，导致选了「AI 自动」仍然弹提问框。）
+      this.askPolicy = opts.askPolicy ?? 'ask';
 
       const options: Record<string, unknown> = {
         cwd: opts.cwd,
