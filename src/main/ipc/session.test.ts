@@ -118,11 +118,13 @@ describe('长时任务与多智能体协作', () => {
 
   it('协作组提示词绑定角色-技能映射，并要求注册角色优先', () => {
     const text = buildSystemPrompt(CWD);
-    // 角色-技能映射：六个角色各自列出专属技能（与 modeling-agents.ts 的 ROLE_SKILL_HINTS 同源口径）
+    // 角色-技能映射：七个固定角色各自列出专属技能（与 modeling-agents.ts 的 ROLE_SKILL_HINTS 同源口径）
     expect(text).toContain('可用专业角色及其专属技能');
     expect(text).toContain('model-solver（建模求解员：modeling-algorithms、method-selector');
     expect(text).toContain('figure-maker（图表制作员：figure-table-planner、scipilot-figure-skill');
     expect(text).toContain('paper-reviewer（论文核验员：paper-review、proof-audit');
+    expect(text).toContain('literature-researcher（文献调研员：literature-search');
+    expect(text).toContain('data-analyst（数据分析员：data-auditor-cleaner、pdf');
     // 固定角色优先 + 按章程智能生成新专职角色（2026-09-20 协议）
     expect(text).toContain('固定角色优先');
     expect(text).toContain('新专职角色');

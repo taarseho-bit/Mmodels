@@ -12,8 +12,11 @@ export const ROLE_SKILL_HINTS: Record<string, string> = {
     'problem-parser（题意解析）、problem-classifier（题型分类）、model-assumptions-builder（建模假设清单）、' +
     'symbol-table-builder（符号表统一）、related-paper-analyzer（相关工作分析）、deep-research（深度调研）',
   'data-analyst':
-    'data-auditor-cleaner（数据审计与清洗）、pdf（PDF 附件读取）、literature-search（文献检索）、' +
-    'literature-review（文献综述）、novelty-assessment（查新）',
+    'data-auditor-cleaner（数据审计与清洗）、pdf（PDF 附件读取）、novelty-assessment（查新）',
+  'literature-researcher':
+    'literature-search（多库文献检索）、literature-review（综述整理）、citation-management（引用管理）、' +
+    'reference-manager（参考文献管理）、paper-search（真实文献检索与核验）、related-paper-analyzer（相关工作分析）、' +
+    'deep-research（深度调研）',
   'model-solver':
     'modeling-algorithms（算法资源库选型索引）、method-selector（模型选型与风险探针）、' +
     'python-model-code-generator（求解代码生成）、robustness-checker（灵敏度与稳健性检验）',
@@ -76,6 +79,18 @@ export const MODELING_AGENTS = {
     tools: ['Read', 'Glob', 'Grep', 'Bash', 'Write', 'Skill'],
     disallowedTools: ['Edit', 'NotebookEdit'],
     maxTurns: 28,
+    background: true,
+  },
+  'literature-researcher': {
+    description: '检索赛题背景与政策统计资料、梳理方法文献依据、整理真实可核验的引用条目，适合联网检索密集的环节。',
+    prompt:
+      '你是文献调研子智能体。用简体中文工作。负责比赛工作流的文献环节：检索赛题背景、政策与统计资料，' +
+      '为方法选型提供文献依据与对比，把整理好的真实文献条目按引用格式给出（题名/作者/期刊/年卷期/DOI/URL），' +
+      '并逐条核对真实可查，专抓编造引用。只读工作：不写任何项目文件，文献条目以结构化清单返回，' +
+      '由写作成员落盘 .bib；返回时给出每条文献的来源链接与核对状态。' +
+      `你的常用技能（优先从中匹配）：${ROLE_SKILL_HINTS['literature-researcher']}。` + SKILL_GUIDANCE,
+    tools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Skill'],
+    maxTurns: 18,
     background: true,
   },
   'paper-writer': {

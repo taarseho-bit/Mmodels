@@ -650,7 +650,8 @@ export function buildSystemPrompt(
           '- 复杂解题、完整论文写作和系统核验时，先评估哪些部分可独立研究。若存在两个以上边界清楚、能返回证据的部分，优先用 Agent 工具实际派发协作；不要仅在文字中声称已组建团队。',
           '- 可用专业角色及其专属技能（派发后把对应技能名写进成员的任务说明）：' +
             'problem-analyst（题意分析员：problem-parser、problem-classifier、model-assumptions-builder、symbol-table-builder、related-paper-analyzer）、' +
-            'data-analyst（数据分析员：data-auditor-cleaner、pdf、literature-search、literature-review）、' +
+            'data-analyst（数据分析员：data-auditor-cleaner、pdf、novelty-assessment）、' +
+            'literature-researcher（文献调研员：literature-search、literature-review、citation-management、reference-manager、paper-search、related-paper-analyzer、deep-research）、' +
             'model-solver（建模求解员：modeling-algorithms、method-selector、python-model-code-generator、robustness-checker）、' +
             'paper-writer（论文写作员：paper-writing、paper-section-writer、literature-positioning、citation-management、reference-manager、paper-search、paper-polisher）、' +
             'figure-maker（图表制作员：figure-table-planner、scipilot-figure-skill、scientific-figure-making、academic-figures、nature-figure、paper-diagram、mathmodel-figure-templates）、' +

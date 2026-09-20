@@ -44,6 +44,7 @@ export interface WorkflowApi {
 }
 export const AGENT_NAMES: Record<string, string> = {
   main: '建模主助手', 'problem-analyst': '题意分析员', 'data-analyst': '数据分析员',
+  'literature-researcher': '文献调研员',
   'model-solver': '建模求解员', 'paper-reviewer': '论文核验员',
   'general-purpose': '综合研究员', Explore: '资料探索员', Plan: '方案规划员',
 };
