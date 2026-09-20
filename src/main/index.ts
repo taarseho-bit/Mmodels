@@ -19,6 +19,7 @@
  */
 import { app, BrowserWindow, shell, nativeTheme, dialog, Menu } from 'electron';
 import { join } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { LocalServer, type ServerInfo } from './server';
 import { pushToRenderer, registerIpcHandlers, shutdownIpcRuntimes } from './ipc';
 import { IPC } from '@shared/types';
@@ -68,15 +69,46 @@ function log(...args: unknown[]): void {
 // 单实例锁
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * 单实例锁 —— ⚠️ `app.quit()` 是「排队退出」而不是「当场退出」：
+ * 事件循环还在转，`whenReady` 照样 resolve。所以**拿不到锁时必须把
+ * 整条启动链（whenReady → bootstrap）拦在 else 里**，否则第二个实例会
+ * 带伤跑完 bootstrap 的前半程：initDb 刚把数据库打开，quit 在某个
+ * await 间隙生效 → before-quit 里 `closeDb()` 把模块级 db 置回 null →
+ * bootstrap 后半段任何一次 `getDb()` 都抛「数据库尚未初始化」→
+ * 用户看到莫名其妙的「启动失败」框。
+ *
+ * 实机触发（2026-09-20 便携版）：上一个实例还在托盘/后台活着时再启动
+ * 一个（安装版与便携版共用同一个 userData，锁是按 userData 算的），
+ * 新实例就炸在这个窗口期。修复后：抢锁失败的实例安静退出，已有窗口
+ * 由旧实例的 `second-instance` 监听拉到前台。
+ */
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  // 第二个实例：把已有窗口拉到前台然后退出
+  // 第二个实例：退出（窗口前置由**已运行的**那个实例的 second-instance 处理）
   app.quit();
-}
+} else {
+  app.on('second-instance', () => {
+    showMainApplicationWindow();
+  });
 
-app.on('second-instance', () => {
-  showMainApplicationWindow();
-});
+  app.whenReady().then(bootstrap).catch((err) => {
+    // ⚠️ 先落盘再弹框 —— `dialog.showErrorBox` 是**模态**的，会阻塞事件循环
+    //    （与 bootstrap 里数据库/本地服务两处专属 catch 同一套约定）。
+    //    「启动失败」这条路径此前**不落盘**，排障只能靠用户截图。
+    try {
+      writeFileSync(
+        join(app.getPath('userData'), 'startup-error.log'),
+        `[${new Date().toISOString()}] bootstrap 失败\n${String(err)}\n${err instanceof Error && err.stack ? err.stack : ''}\n`,
+        'utf8',
+      );
+    } catch {
+      /* 日志写不出来也不能挡住后面的提示 */
+    }
+    dialog.showErrorBox('启动失败', String(err));
+    app.quit();
+  });
+}
 
 // ─────────────────────────────────────────────────────────────
 // 窗口创建
@@ -343,10 +375,8 @@ async function bootstrap(): Promise<void> {
 // 生命周期
 // ─────────────────────────────────────────────────────────────
 
-app.whenReady().then(bootstrap).catch((err) => {
-  dialog.showErrorBox('启动失败', String(err));
-  app.quit();
-});
+// whenReady → bootstrap 已移入上方单实例锁的 else 分支：
+// 抢锁失败的实例不得继续初始化（详见该处的长注释）。
 
 app.on('activate', () => {
   // 桌面小模本身也是一个窗口，不能再用 getAllWindows() 判断主界面是否存在。
