@@ -28,6 +28,19 @@ interface Props {
   onCancel: () => void;
 }
 
+/**
+ * 组装单个问题的最终答案 —— **追加语义**（2026-09-20，用户需求）。
+ *
+ * 所选选项原样保留，自由输入的文字**追加**在选项之后一起提交，
+ * 而不是「填了自定义就把所选选项丢掉」。单选与多选行为一致；
+ * 什么都没选、也没填字时返回空串（由「全部作答」校验拦住）。
+ * 抽成纯函数是为了在 node 测试环境（无 DOM）下也能钉死这条语义。
+ */
+export function composeAnswer(picked: string[], freeText: string): string {
+  const text = freeText.trim();
+  return [...picked, ...(text ? [text] : [])].join(', ');
+}
+
 export function AskUserDialog({ request, onSubmit, onCancel }: Props): JSX.Element {
   const questions = request.questions;
   const blank = useMemo(() => questions.map(() => ({ picked: [] as string[], text: '' })), [
@@ -52,11 +65,7 @@ export function AskUserDialog({ request, onSubmit, onCancel }: Props): JSX.Eleme
   const answerOf = (i: number): string => {
     const s = state[i];
     if (!s) return '';
-    const text = s.text.trim();
-    if (questions[i]?.multiSelect === true) {
-      return [...s.picked, ...(text ? [text] : [])].join(', ');
-    }
-    return text || s.picked[0] || '';
+    return composeAnswer(s.picked, s.text);
   };
 
   const answeredAll = questions.every((_, i) => answerOf(i) !== '');

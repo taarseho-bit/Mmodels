@@ -408,6 +408,20 @@ export interface AppSettings {
   modelingPetPosition?: { x: number; y: number };
   /** 输入区的任务模式（自由对话 / 写论文 / 画图 / 评审 / 找数据） */
   composerMode?: 'chat' | 'paper' | 'figure' | 'review' | 'data';
+  /**
+   * 决策模式 —— 与任务模式**正交**的另一个维度（2026-09-20，用户需求）：
+   * 任务模式决定「做什么」，决策模式决定「AI 怎么做决定」，两者可自由组合
+   * （如「AI 自动 + 写论文」「精细人工 + 写论文」）。
+   *
+   *   - `manual`（默认）：精细化人工选择 —— 模型选型、假设、论文结构等关键决策
+   *     逐项弹 AskUserQuestion 征求用户选择。
+   *   - `auto`：AI 自动决策 —— 一次询问完成所有内容，不再打扰人工；兜底由主进程
+   *     把 AskUserQuestion 调用挡回去（deny + 「自主选择并继续」指令）。
+   *   - `plan`：先规划，不改文件 —— 原「选项」菜单里的 planMode 升格而来。
+   *     settings.planMode 保留为它的**投影**（渲染层切换时同步写入，
+   *     主进程 interactionMode / buildSystemPrompt 的老读取点不用改）。
+   */
+  decisionMode?: 'manual' | 'auto' | 'plan';
   /** 选中的论文模板 id */
   paperTemplateId?: string | null;
   /** 个人资料：显示名（本地存储，无账号体系） */

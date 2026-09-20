@@ -471,6 +471,9 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
      */
     permissionMode: settings.permissionMode,
     interactionMode: settings.planMode === true ? 'plan' : 'default',
+    // AI 自动决策（decisionMode='auto'）：AskUserQuestion 不再弹窗（session 侧 deny 兜底）。
+    // 'plan' 走上面的 interactionMode；'manual'（默认）保持弹窗，与现状一致。
+    askPolicy: settings.decisionMode === 'auto' ? 'auto' : 'ask',
   };
   // 所有可能抛错的参数计算都成功后再消费标记；准备失败时，下一次重试仍能恢复协作。
   if (resumingAfterStop) sessionsResumingAfterStop.delete(sessionId);
@@ -502,6 +505,36 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
  *    SDK 的后台完成通知已经能继续同一次运行。现在该节改为要求等待真实结果并自行汇总。
  */
 export type MultiAgentTrigger = 'paper' | 'review' | 'audit' | 'multi-file' | 'complex' | null;
+
+/**
+ * 决策模式（settings.decisionMode）→ 追加到 system prompt 的执行约定。
+ *
+ * 与任务模式（composerMode）正交：任务模式决定做什么，决策模式决定
+ * AI 怎么做决定（2026-09-20，用户需求）。
+ *   - `manual`（精细人工，默认）：关键决策逐项弹窗征求用户 —— 收紧原版
+ *     「模型自主决定何时提问」的自由度，明确列出必须问的五类决策点；
+ *   - `auto`（AI 自动）：自主完成全部决策、禁止提问 —— 与 session 侧的
+ *     AskUserQuestion deny 兜底配套（提示词在前，deny 在后）；
+ *   - `plan`（先规划）不在这里注入 —— 由 planMode 投影经 buildSystemPrompt 处理。
+ */
+export function decisionModePromptPart(mode: string | undefined): string {
+  if (mode === 'manual') {
+    return (
+      '\n\n【决策模式：精细人工选择】本次任务遇到关键决策点时，必须先用 AskUserQuestion 弹窗征求用户的选择，' +
+      '然后再继续执行。必须征求用户的决策点包括但不限于：①数学模型与算法选型；②建模假设与简化；' +
+      '③数据处理与清洗方式；④论文结构安排；⑤任何影响结果方向的分歧。' +
+      '同一阶段的多个决策点尽量合并为一次提问（一次最多 4 问）；用户作答后立即执行，不要重复确认。'
+    );
+  }
+  if (mode === 'auto') {
+    return (
+      '\n\n【决策模式：AI 自动决策】用户已委托你自主完成全部决策：遇到模型选型、假设简化、数据处理、' +
+      '论文结构等任何关键决策点时，直接选择你认为最优的方案，简要说明理由并立即继续执行。' +
+      '禁止调用 AskUserQuestion，不要提出任何需要用户选择的问题；一次性完成任务并交付结果。'
+    );
+  }
+  return '';
+}
 
 /**
  * 判断这一轮是否应该实际组织协作组，而不是只把 Agent 工具注册后交给模型随缘选择。

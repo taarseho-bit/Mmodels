@@ -156,6 +156,14 @@ export interface RunOptions {
    * 这个**顺序**是极易写错的，留出字段 + 单测钉住顺序，B2 只需要往里传值。
    */
   interactionMode?: InteractionMode;
+  /**
+   * 决策模式的提问策略（2026-09-20）：
+   *   - `undefined` / `'ask'`：AskUserQuestion 照常弹窗征求用户（默认，精细人工）；
+   *   - `'auto'`：AI 自动决策 —— 不再弹窗；模型仍调用 AskUserQuestion 时把它
+   *     deny 回去并附「自主选择最优项并继续」的指令（system prompt 已先行注入
+   *     自主决策约定，这条只是兜底，防止个别模型仍然提问）。
+   */
+  askPolicy?: 'ask' | 'auto';
   /** 允许主智能体按任务需要调用数学建模协作组。 */
   multiAgentEnabled?: boolean;
   onWorkflow?: (run: WorkflowRun) => void;
@@ -280,6 +288,12 @@ export class AgentSession extends EventEmitter {
    *    SDK 拿到的是 `jh()` 的产物。见 `permissions.ts` 文件头"二"。
    */
   private canonicalPermissionMode: CanonicalPermissionMode = 'full-access';
+
+  /**
+   * 本轮的提问策略（`run()` 里从 opts 存下来）。
+   * `'auto'` 时 AskUserQuestion 不弹窗，直接 deny 回自主指令（AI 自动决策模式）。
+   */
+  private askPolicy: 'ask' | 'auto' = 'ask';
 
   constructor(public readonly sessionId: string) {
     super();
@@ -502,6 +516,18 @@ export class AgentSession extends EventEmitter {
     const questions = normalizeQuestions(input);
     if (questions.length === 0) {
       return { behavior: 'allow', updatedInput: input };
+    }
+
+    // AI 自动决策模式（decisionMode='auto'）：不弹窗，把问题挡回去让模型自己选。
+    // system prompt 已注入「自主决策、不提问」约定；这里只是个别模型不听话时的兜底。
+    // deny 而不是代答 —— 选哪个最优只有模型自己判断才作数，宿主替选就是瞎选。
+    if (this.askPolicy === 'auto') {
+      return {
+        behavior: 'deny',
+        message:
+          '（AI 自动决策模式）用户已委托 AI 自主完成全部决策：请直接从选项中选择你认为最优的方案，' +
+          '简要说明理由后立即继续执行，不要再次提问，也不要等待用户确认。',
+      };
     }
 
     const requestId = randomUUID();

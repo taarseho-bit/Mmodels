@@ -42,6 +42,29 @@ import { appendPasted, makePastedText, shouldFoldPasted, type PastedText } from 
 
 export type ComposerMode = 'chat' | 'paper' | 'figure' | 'review' | 'data';
 export type PermissionMode = 'full' | 'approval';
+/**
+ * 决策模式 —— 与任务模式（ComposerMode）**正交**的另一个维度：
+ * 任务模式决定「做什么」，决策模式决定「AI 怎么做决定」，可自由组合
+ * （如「AI 自动 + 写论文」「精细人工 + 写论文」）。
+ *
+ *   - `manual`（默认）：精细化人工选择 —— 关键决策逐项弹窗征求用户；
+ *   - `auto`：AI 自动决策 —— 一次问完自主交付，不再打扰人工；
+ *   - `plan`：先规划，不改文件 —— 原「选项」菜单里的 planMode 升格而来，
+ *     settings.planMode 作为它的投影同步写盘（主进程老读取点不变）。
+ */
+export type DecisionMode = 'manual' | 'auto' | 'plan';
+const DECISION_MODES: DecisionMode[] = ['plan', 'manual', 'auto'];
+const DECISION_MODE_ICON: Record<DecisionMode, string> = {
+  plan: 'list-checks',
+  manual: 'hand',
+  auto: 'sparkles',
+};
+/** chip 上显示的短字（菜单里才是全名 + 描述） */
+const DECISION_MODE_SHORT: Record<DecisionMode, string> = {
+  plan: '先规划',
+  manual: '精细',
+  auto: '自动',
+};
 
 interface PaperPageLimitDraft {
   maxPages: string;
@@ -469,8 +492,34 @@ export function Composer({
   //    换成「粘贴题目，或拖入题目 PDF / 附件…」。
   //    兜底写成 chat 会让首屏看不到任何比赛相关内容 —— 用户会以为功能没做。
   const mode: ComposerMode = settings?.composerMode ?? 'paper';
-  const planMode = settings?.planMode === true;
+  /**
+   * 决策模式：新键 `decisionMode` 优先；老数据只有 `planMode: true` 时视为 plan。
+   * planMode 保留为 decisionMode 的投影（见 DecisionMode 注释），派生一次供横幅等复用。
+   */
+  const decisionMode: DecisionMode =
+    settings?.decisionMode ?? (settings?.planMode === true ? 'plan' : 'manual');
+  const planMode = decisionMode === 'plan';
   const multiAgentEnabled = settings?.multiAgentEnabled !== false;
+
+  // ── 决策模式切换（统一入口）──
+  /** 从 plan 切走时回到的模式（Shift+Tab 来回切换用） */
+  const lastDecisionRef = useRef<DecisionMode>('manual');
+  /**
+   * 写决策模式的**唯一出口**：同时把 planMode 投影写盘 ——
+   * 主进程的 interactionMode 与 buildSystemPrompt 仍读 planMode（2026-09-20 决策：
+   * 不动主进程老读取点，渲染层负责两键一致）。
+   */
+  const patchDecisionMode = useCallback(
+    (next: DecisionMode): void => {
+      if (next !== 'plan') lastDecisionRef.current = next;
+      void patchSettings({ decisionMode: next, planMode: next === 'plan' });
+    },
+    [patchSettings],
+  );
+  /** plan ↔ 上一个非 plan 决策模式（Shift+Tab 快捷键用） */
+  const toggleDecisionMode = useCallback((): void => {
+    patchDecisionMode(decisionMode === 'plan' ? lastDecisionRef.current : 'plan');
+  }, [decisionMode, patchDecisionMode]);
   const perm: PermissionMode = settings?.permissionMode ?? 'full';
   // 项目里已经保存过模板时，以项目配置为准；全局值只作为“新项目尚未配置”的默认模板。
   const templateId =
@@ -949,7 +998,7 @@ export function Composer({
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
-      void patchSettings({ planMode: !planMode });
+      toggleDecisionMode();
       return;
     }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -1027,7 +1076,7 @@ export function Composer({
 
         {planMode ? (
           <div className="composer-work-mode" role="status">
-            <Icon name="list-tree" size={12} />
+            <Icon name="list-checks" size={12} />
             <span>{t('先给出方案，不会改文件')}</span>
           </div>
         ) : null}
@@ -1153,6 +1202,46 @@ export function Composer({
                 })}
               </div>
             ) : null}
+          </Popover>
+        </div>
+
+        {/* 决策模式 —— 与任务模式正交的另一个维度（怎么做决定，而不是做什么）。
+            放在任务模式 chip 旁边；「先规划」原是「选项」菜单里的开关，升格至此。 */}
+        <div className="cz-slot">
+          <button
+            className={`cz-btn${decisionMode !== 'manual' ? ' active' : ''}`}
+            title={tx('composer.composerContextBar.decisionModeTooltip')}
+            onClick={() => setOpenMenu(openMenu === 'decision' ? null : 'decision')}
+          >
+            <Icon name={DECISION_MODE_ICON[decisionMode]} size={13} />
+            <span className="truncate">
+              {DECISION_MODE_SHORT[decisionMode]}
+            </span>
+            <Icon name="chevron-down" size={11} />
+          </button>
+          <Popover open={openMenu === 'decision'} onClose={close}>
+            {DECISION_MODES.map((dm) => (
+              <button
+                key={dm}
+                className={`cz-pop-item${dm === decisionMode ? ' selected' : ''}`}
+                onClick={() => {
+                  patchDecisionMode(dm);
+                  close();
+                }}
+              >
+                <Icon name={DECISION_MODE_ICON[dm]} size={13} />
+                <div className="col" style={{ minWidth: 0 }}>
+                  <span className="cz-pop-title">
+                    {tx(`composer.composerContextBar.decisionModes.${dm}`)}
+                  </span>
+                  <span className="cz-pop-hint">
+                    {tx(`composer.composerContextBar.decisionModes.${dm}Description`)}
+                  </span>
+                </div>
+                <span className="grow" />
+                {dm === decisionMode ? <Icon name="check" size={13} className="cz-pop-check" /> : null}
+              </button>
+            ))}
           </Popover>
         </div>
 
@@ -1305,26 +1394,22 @@ export function Composer({
           </Popover>
         </div>
 
-        {/* Less frequent execution options stay one click away; permissions remain visible. */}
+        {/* 多智能体协作 —— 独立常驻开关（2026-09-20，用户要求从「选项」菜单拎出来显眼展示）：
+            开启时高亮，一眼可见当前是否在协作模式。 */}
         <div className="cz-slot">
-          <button type="button" className={`cz-btn ghost${planMode ? ' active' : ''}`}
-            aria-label="任务选项" aria-expanded={openMenu === 'options'}
-            title="先规划、多智能体协作" onClick={() => setOpenMenu(openMenu === 'options' ? null : 'options')}>
-            <Icon name="settings-2" size={14} /><span>{planMode ? '先规划' : '选项'}</span>
+          <button
+            type="button"
+            className={`cz-btn ghost${multiAgentEnabled ? ' active' : ''}`}
+            aria-label="多智能体协作"
+            aria-pressed={multiAgentEnabled}
+            title={multiAgentEnabled
+              ? '多智能体协作：开 —— 复杂任务按需分给建模伙伴并行推进（点击关闭）'
+              : '多智能体协作：关 —— 全部由主助手单干（点击开启）'}
+            onClick={() => void patchSettings({ multiAgentEnabled: !multiAgentEnabled })}
+          >
+            <Icon name="brain" size={14} />
+            <span>协作</span>
           </button>
-          <Popover open={openMenu === 'options'} onClose={close}>
-            <button className={`cz-pop-item${planMode ? ' selected' : ''}`} aria-pressed={planMode}
-              onClick={() => { void patchSettings({ planMode: !planMode }); close(); }}>
-              <Icon name="list-tree" size={14} /><span>先规划，不改文件</span><span className="grow" />
-              {planMode && <Icon name="check" size={13} />}
-            </button>
-            <button className={`cz-pop-item${multiAgentEnabled ? ' selected' : ''}`} aria-pressed={multiAgentEnabled}
-              title="复杂任务按需分给建模伙伴协作"
-              onClick={() => { void patchSettings({ multiAgentEnabled: !multiAgentEnabled }); close(); }}>
-              <Icon name="brain" size={14} /><span>多智能体协作</span><span className="grow" />
-              {multiAgentEnabled && <Icon name="check" size={13} />}
-            </button>
-          </Popover>
         </div>
         <div className="cz-slot">
           <button

@@ -720,7 +720,20 @@ export const zh = {
         review: '评审',
         reviewDescription: '按竞赛标准打分并给出逐条修改建议',
       },
+      /**
+       * 决策模式（与任务模式正交）：
+       * 决定 AI 执行任务时「怎么做决定」—— 先规划 / 精细人工 / AI 自动。
+       */
+      decisionModes: {
+        auto: 'AI 自动',
+        autoDescription: 'AI 自主完成全部决策，一次问完直接交付，不打扰你',
+        manual: '精细人工',
+        manualDescription: '模型选型、假设、论文结构等关键决策逐项弹窗征求你的选择',
+        plan: '先规划',
+        planDescription: '先给出完整方案，不修改任何文件，确认后再动手',
+      },
       modeTooltip: '选择对话或任务模式',
+      decisionModeTooltip: '选择 AI 的决策方式：先规划 / 精细人工 / AI 自动',
       newProject: '新建项目…',
       noTemplates: '暂无模板',
       paperSetup: '比赛信息',
@@ -771,8 +784,8 @@ export const zh = {
       reviewToContinue: '请审核请求后继续。',
     },
     composerPendingUserInputPanel: {
-      customAnswerHint: '也可以在下方输入框中填写自定义回答。',
-      customAnswerHintMultiSelect: '可选择一项或多项，也可以在下方输入框中填写自定义回答。',
+      customAnswerHint: '所选选项会原样提交；上方输入的文字会追加在选项之后一起发给 AI。',
+      customAnswerHintMultiSelect: '可选择一项或多项；上方输入的文字会追加在所选选项之后一起发给 AI。',
       nextQuestion: '下一题',
       previousQuestion: '上一题',
       questionProgress: '第 {{current}} 题，共 {{total}} 题',

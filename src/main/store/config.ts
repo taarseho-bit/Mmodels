@@ -54,6 +54,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   //    「粘贴题目，或拖入题目 PDF / 附件…」。写成 'chat' 会让首屏
   //    看不到任何比赛相关内容 —— 用户会以为整个功能没做。
   composerMode: 'paper',
+  // 决策模式默认「精细人工」：关键决策弹窗征求用户（与旧行为最接近的初始值）
+  decisionMode: 'manual',
   paperTemplateId: null,
   paperProfiles: [],
   paperDefaultProfileId: null,
