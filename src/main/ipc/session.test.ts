@@ -123,9 +123,14 @@ describe('长时任务与多智能体协作', () => {
     expect(text).toContain('model-solver（建模求解员：modeling-algorithms、method-selector');
     expect(text).toContain('figure-maker（图表制作员：figure-table-planner、scipilot-figure-skill');
     expect(text).toContain('paper-reviewer（论文核验员：paper-review、proof-audit');
-    // 注册角色优先：抑制临时/通用智能体滥用
-    expect(text).toContain('只派这六个注册角色');
-    expect(text).toContain('禁止把注册角色能承担的工作交给通用临时成员');
+    // 固定角色优先 + 按章程智能生成新专职角色（2026-09-20 协议）
+    expect(text).toContain('固定角色优先');
+    expect(text).toContain('新专职角色');
+    expect(text).toContain('按「角色章程」设计');
+    expect(text).toContain('必用技能');
+    expect(text).toContain('禁止无章程的裸临时工');
+    expect(text).toContain('不要每轮另起新名');
+    expect(text).toContain('禁止生成与注册角色职责重叠的角色');
     // 主智能体自己也必须用技能，不能全推给成员
     expect(text).toContain('主智能体同样要用技能');
   });
