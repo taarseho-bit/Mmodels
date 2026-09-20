@@ -42,6 +42,7 @@ import { getSettings, findProvider, activeProvider } from '../store/config';
 import { AgentSession, SessionRegistry } from '../agent/session';
 import { bridgeRegistry } from '../agent/bridge-registry';
 import { PROJECT_INSTRUCTIONS, detectSlashCommand } from '../agent/prompts';
+import { mainAgentPersonaSection } from '../agent/main-agent-personas';
 import { initPaperProjectConfig, listPaperTemplates, paperConfigPath } from '../scan/paper-templates';
 import { safeWrap, pushToRenderer, type IpcContext } from './index';
 import { applyStreamEvent } from './stream-blocks';
@@ -629,6 +630,13 @@ export function buildSystemPrompt(
     // 不复述技能目录路径 —— 否则 agent 会再去把每个 SKILL.md 读一遍，纯属浪费。
     '技能已挂载为插件，可直接用斜杠命令调用（/mma-paper、/mma-review、/mma-figure 等）；' +
       '仅当需要查看某个技能的完整说明时，才读取它自己的 SKILL.md。',
+
+    // ── 主智能体领衔角色（2026-09-21 用户需求）────────────────────
+    // 五种任务模式各有领衔角色：写论文→论文写作主智能体、评审→评审主智能体、
+    // 找数据→数据检索主智能体、绘图→图表制作主智能体；chat 与识别不出命令的
+    // 消息返回空数组（不注入，通用主智能体零漂移）。口径与注册成员同源见
+    // `agent/main-agent-personas.ts` 头注。
+    ...mainAgentPersonaSection(turnPrompt),
 
     // ── 本地版要求（用户实机反馈，非原版内容）────────────────────
     // 原版是英文开发者的产品，模型默认用英文解说；中文用户明确要求「全中文 + 讲人话」。
