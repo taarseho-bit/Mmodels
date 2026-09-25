@@ -37,15 +37,17 @@ beforeAll(() => {
 });
 
 describe('设置页 外观 / 快捷键分区结构', () => {
-  it('AppearanceSection 渲染出全局皮肤网格、主题模式与字体与间距（2026-09-25 简化版）', async () => {
+  it('AppearanceSection 渲染出主题网格（11 选 1）与字体与间距（2026-09-26 v3）', async () => {
     const { renderToStaticMarkup } = await import('react-dom/server');
     const React = await import('react');
     const { AppearanceSection } = await import('./AppearanceSection');
     const html = renderToStaticMarkup(React.createElement(AppearanceSection));
-    // 皮肤网格：9 款全局皮肤（经典 + 4 助手色 + 4 新增），卡片带花纹预览与使用中徽标
-    expect(html).toContain('全局皮肤');
+    // 主题网格：11 个平级选项（3 亮度经典 + 8 风格），卡片带预览与使用中徽标
+    expect(html).toContain('>主题<');
     expect(html).toContain('skin-grid');
-    expect(html).toContain('经典');
+    expect(html).toContain('经典白');
+    expect(html).toContain('经典黑');
+    expect(html).toContain('跟随系统');
     expect(html).toContain('求解蓝');
     expect(html).toContain('数据青');
     expect(html).toContain('评审紫');
@@ -55,10 +57,8 @@ describe('设置页 外观 / 快捷键分区结构', () => {
     expect(html).toContain('深夜鸮');
     expect(html).toContain('曙光金');
     expect(html).toContain('使用中');
-    expect((html.match(/class="skin-chip( active)?"/g) ?? []).length).toBe(9);
-    // 主题模式分段控件 + 语言
-    expect(html).toContain('appearance-seg');
-    expect(html).toContain('跟随系统');
+    expect((html.match(/class="skin-chip( active)?"/g) ?? []).length).toBe(11);
+    // 语言
     expect(html).toContain('简体中文');
     // 桌面小模（8 角色）与字体组
     expect(html).toContain('桌面小模');

@@ -59,133 +59,480 @@ function FieldResearcher(): JSX.Element {
   </svg>;
 }
 
-/** ── 写实 3D 风角色（2026-09-25）：径向渐变 + 高光 + 接地阴影，营造体积感 ── */
+/** ── 写实 3D 风角色 v2（2026-09-26）：多层渐变 + 高光带 + 投影 + 边缘光 + 细节 ── */
 
 function OwlProfessor3D(): JSX.Element {
   return <svg className="pet-desk-avatar owl-3d" viewBox="0 0 220 190" role="img" aria-label="3D 猫头鹰教授站在书堆上思考">
     <defs>
-      <radialGradient id="owl-body" cx="38%" cy="30%" r="80%">
-        <stop offset="0%" stopColor="#b8926b" /><stop offset="55%" stopColor="#8a6543" /><stop offset="100%" stopColor="#5d4029" />
+      {/* 身体：三层渐变模拟球体体积 */}
+      <radialGradient id="owl3d-body" cx="35%" cy="25%" r="75%">
+        <stop offset="0%" stopColor="#d4a866" />
+        <stop offset="40%" stopColor="#b8864d" />
+        <stop offset="78%" stopColor="#8c5e32" />
+        <stop offset="100%" stopColor="#5c3a1a" />
       </radialGradient>
-      <radialGradient id="owl-belly" cx="45%" cy="30%" r="75%">
-        <stop offset="0%" stopColor="#f4e3c6" /><stop offset="100%" stopColor="#c8a877" />
+      {/* 肚皮：独立暖白渐变 */}
+      <radialGradient id="owl3d-belly" cx="42%" cy="22%" r="70%">
+        <stop offset="0%" stopColor="#fff8eb" />
+        <stop offset="55%" stopColor="#f0d9a8" />
+        <stop offset="100%" stopColor="#c9a05c" />
       </radialGradient>
+      {/* 头部：更亮的顶部高光 */}
+      <radialGradient id="owl3d-head" cx="34%" cy="24%" r="72%">
+        <stop offset="0%" stopColor="#e8c078" />
+        <stop offset="45%" stopColor="#c49448" />
+        <stop offset="85%" stopColor="#8a5c28" />
+        <stop offset="100%" stopColor="#543410" />
+      </radialGradient>
+      {/* 翅膀：侧面暗部渐变 */}
+      <linearGradient id="owl3d-wing" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#a67a3e" />
+        <stop offset="60%" stopColor="#7a5022" />
+        <stop offset="100%" stopColor="#4a2c0e" />
+      </linearGradient>
+      {/* 眼睛玻璃反光 */}
+      <radialGradient id="owl3d-eye" cx="38%" cy="35%" r="60%">
+        <stop offset="0%" stopColor="#4a3828" />
+        <stop offset="100%" stopColor="#1a1208" />
+      </radialGradient>
+      {/* 嘴喙金属渐变 */}
+      <linearGradient id="owl3d-beak" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#f5c842" />
+        <stop offset="50%" stopColor="#e8a010" />
+        <stop offset="100%" stopColor="#b86f00" />
+      </linearGradient>
+      {/* 书本渐变 */}
+      <linearGradient id="owl3d-book" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#c9943a" />
+        <stop offset="100%" stopColor="#8a5e20" />
+      </linearGradient>
     </defs>
-    <ellipse cx="110" cy="176" rx="62" ry="8" fill="#00000022" />
-    <rect x="74" y="160" width="72" height="10" rx="3" fill="#8a5a3b" />
-    <rect x="80" y="150" width="60" height="10" rx="3" fill="#a86f47" />
-    <g>
-      <ellipse cx="110" cy="104" rx="46" ry="52" fill="url(#owl-body)" />
-      <ellipse cx="110" cy="118" rx="30" ry="34" fill="url(#owl-belly)" />
-      <path d="M96 96q6 8 0 18m14-18q6 8 0 18m14-16q5 7 0 15" stroke="#b09468" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <circle cx="86" cy="66" r="26" fill="url(#owl-body)" />
-      <path d="M64 56 56 34l24 10zM156 56l8-22-24 10z" fill="#7a5836" />
-      <circle cx="98" cy="62" r="13" fill="#f8f4ea" /><circle cx="122" cy="62" r="13" fill="#f8f4ea" />
-      <circle cx="99" cy="63" r="7" fill="#2c2620" /><circle cx="121" cy="63" r="7" fill="#2c2620" />
-      <circle cx="101" cy="60" r="2.4" fill="#ffffffcc" /><circle cx="123" cy="60" r="2.4" fill="#ffffffcc" />
-      <path d="M108 72l6 9-9 2z" fill="#e8a33c" />
-      <g fill="none" stroke="#4f5b6e" strokeWidth="2.5"><circle cx="98" cy="62" r="13" /><circle cx="122" cy="62" r="13" /><path d="M111 62h-2" /></g>
-      <path d="M84 34q14-8 26-2" stroke="#ffffff55" strokeWidth="4" fill="none" strokeLinecap="round" />
-      <ellipse cx="88" cy="160" rx="7" ry="5" fill="#e8a33c" /><ellipse cx="130" cy="160" rx="7" ry="5" fill="#e8a33c" />
-      <path d="M148 92q10 10 6 24" stroke="#ffffff30" strokeWidth="6" fill="none" strokeLinecap="round" />
+
+    {/* 地面投影（椭圆，柔和） */}
+    <ellipse cx="110" cy="178" rx="58" ry="7" fill="#00000018" />
+
+    {/* 书堆（三层） */}
+    <rect x="72" y="162" width="76" height="9" rx="2.5" fill="url(#owl3d-book)" />
+    <rect x="78" y="152" width="64" height="9" rx="2.5" fill="#d4a54a" />
+    <rect x="84" y="143" width="52" height="8" rx="2.5" fill="#e0b562" />
+
+    {/* 身体主体（大椭圆） */}
+    <ellipse cx="110" cy="106" rx="48" ry="54" fill="url(#owl3d-body)" />
+
+    {/* 身体高光带（左上弧形） */}
+    <path d="M72 82q16-28 44-30t36 18" stroke="#ffffff25" strokeWidth="5" fill="none" strokeLinecap="round" />
+
+    {/* 肚皮（覆盖身体下半部分） */}
+    <ellipse cx="110" cy="122" rx="32" ry="36" fill="url(#owl3d-belly)" />
+
+    {/* 肚皮纹理：羽毛线条 */}
+    <path d="M90 108q8 6 0 14m14-18q8 6 0 14m14-16q7 6 0 13m12-14q6 5 0 11"
+          stroke="#c9a05c44" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+
+    {/* 左翅膀（部分可见，增加体积感） */}
+    <path d="M62 94q-8 24 4 46" stroke="url(#owl3d-wing)" strokeWidth="14" fill="none" strokeLinecap="round" />
+    <path d="M62 94q-8 24 4 46" stroke="#ffffff12" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+    {/* 头部（大圆） */}
+    <circle cx="110" cy="62" r="32" fill="url(#owl3d-head)" />
+
+    {/* 头顶高光 */}
+    <path d="M86 42q14-14 28-8t18 16" stroke="#ffffff30" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+    {/* 耳朵/角羽（左右） */}
+    <path d="M80 44 68 22l20 14z" fill="#8a5c28" />
+    <path d="M140 44 152 22l-20 14z" fill="#8a5c28" />
+    {/* 耳朵高光 */}
+    <path d="M74 28l6 8" stroke="#ffffff20" strokeWidth="2" strokeLinecap="round" />
+    <path d="M146 28l-6 8" stroke="#ffffff20" strokeWidth="2" strokeLinecap="round" />
+
+    {/* 眼眶（浅色圈） */}
+    <circle cx="96" cy="58" r="15" fill="#faf3dc" />
+    <circle cx="124" cy="58" r="15" fill="#faf3dc" />
+
+    {/* 眼球（深色） */}
+    <circle cx="97" cy="59" r="9" fill="url(#owl3d-eye)" />
+    <circle cx="123" cy="59" r="9" fill="url(#owl3d-eye)" />
+
+    {/* 眼睛高光点（两层：主高光 + 次高光） */}
+    <circle cx="100" cy="55" r="3.5" fill="#ffffffe8" />
+    <circle cx="126" cy="55" r="3.5" fill="#ffffffe8" />
+    <circle cx="98.5" cy="61" r="1.5" fill="#ffffffa0" />
+    <circle cx="124.5" cy="61" r="1.5" fill="#ffffffa0" />
+
+    {/* 眼镜框 */}
+    <g fill="none" stroke="#4f5b6e" strokeWidth="2.8">
+      <circle cx="96" cy="58" r="15" />
+      <circle cx="124" cy="58" r="15" />
+      <path d="M111 58h-2" />
     </g>
-    <path d="M126 128q18 6 22-8" stroke="#6d4c2f" strokeWidth="9" fill="none" strokeLinecap="round" /><ellipse cx="152" cy="118" rx="8" ry="5" fill="#d9b06f" />
+
+    {/* 喙 */}
+    <path d="M106 70l4 8-10 2z" fill="url(#owl3d-beak)" />
+    {/* 喙高光 */}
+    <path d="M107 73l2 3" stroke="#ffffff50" strokeWidth="1.5" strokeLinecap="round" />
+
+    {/* 脚爪（站在书上） */}
+    <ellipse cx="92" cy="165" rx="7" ry="4.5" fill="url(#owl3d-beak)" />
+    <ellipse cx="128" cy="165" rx="7" ry="4.5" fill="url(#owl3d-beak)" />
+
+    {/* 右手臂/翅膀边缘光 */}
+    <path d="M152 94q12 14 6 30" stroke="#ffffff22" strokeWidth="7" fill="none" strokeLinecap="round" />
+    <ellipse cx="158" cy="122" rx="8" ry="5.5" fill="#d4a866" />
   </svg>;
 }
 
 function RobotAssistant3D(): JSX.Element {
   return <svg className="pet-desk-avatar robot-3d" viewBox="0 0 220 190" role="img" aria-label="3D 金属机器人助手在屏幕前计算">
     <defs>
-      <linearGradient id="robot-shell" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#eef4fb" /><stop offset="45%" stopColor="#b9c9dd" /><stop offset="100%" stopColor="#7c92ad" />
+      {/* 外壳：金属质感四色渐变 */}
+      <linearGradient id="rob3d-shell" x1="0.08" y1="0" x2="0.92" y2="1">
+        <stop offset="0%" stopColor="#f8fbff" />
+        <stop offset="28%" stopColor="#d0e0f0" />
+        <stop offset="65%" stopColor="#9ab4cf" />
+        <stop offset="100%" stopColor="#6a8aa8" />
       </linearGradient>
-      <radialGradient id="robot-head" cx="36%" cy="30%" r="80%">
-        <stop offset="0%" stopColor="#f4f9ff" /><stop offset="60%" stopColor="#c4d4e6" /><stop offset="100%" stopColor="#8ba1bb" />
+      {/* 头部球体渐变 */}
+      <radialGradient id="rob3d-head" cx="34%" cy="26%" r="72%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="35%" stopColor="#dceaf8" />
+        <stop offset="70%" stopColor="#a0bcd4" />
+        <stop offset="100%" stopColor="#6a8aaa" />
       </radialGradient>
-      <linearGradient id="robot-screen" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#1c2c4e" /><stop offset="100%" stopColor="#33518f" />
+      {/* 胸口屏幕深色 */}
+      <linearGradient id="rob3d-screen-bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#142238" />
+        <stop offset="100%" stopColor="#284070" />
+      </linearGradient>
+      {/* 肩/关节 */}
+      <radialGradient id="rob3d-joint" cx="45%" cy="40%" r="60%">
+        <stop offset="0%" stopColor="#c0d4e8" />
+        <stop offset="100%" stopColor="#7a96b4" />
+      </radialGradient>
+      {/* 手臂圆柱 */}
+      <linearGradient id="rob3d-arm" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#8aa4c2" />
+        <stop offset="50%" stopColor="#c4d8ec" />
+        <stop offset="100%" stopColor="#7a94b2" />
+      </linearGradient>
+      {/* 腿部 */}
+      <linearGradient id="rob3d-leg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#8fa8c6" />
+        <stop offset="100%" stopColor="#5c7898" />
       </linearGradient>
     </defs>
-    <ellipse cx="110" cy="176" rx="60" ry="8" fill="#00000022" />
-    <g>
-      <rect x="76" y="92" width="68" height="62" rx="20" fill="url(#robot-shell)" stroke="#6d819b" strokeWidth="2" />
-      <rect x="92" y="106" width="36" height="24" rx="6" fill="#16233f" />
-      <path d="M96 122q6-8 12 0t12-2" stroke="#54e0c8" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <circle cx="122" cy="124" r="3" fill="#ffd27d" />
-      <circle cx="110" cy="58" r="30" fill="url(#robot-head)" stroke="#6d819b" strokeWidth="2" />
-      <rect x="88" y="50" width="44" height="22" rx="11" fill="#1b2740" />
-      <circle cx="101" cy="61" r="5.5" fill="#54e0c8" /><circle cx="119" cy="61" r="5.5" fill="#54e0c8" />
-      <circle cx="102.5" cy="59" r="1.8" fill="#ffffffcc" /><circle cx="120.5" cy="59" r="1.8" fill="#ffffffcc" />
-      <path d="M110 30v-8m-6 0h12" stroke="#9fb2c9" strokeWidth="4" strokeLinecap="round" /><circle cx="110" cy="18" r="4" fill="#ffd27d" />
-      <path d="M88 46q10-12 24-10" stroke="#ffffffb0" strokeWidth="4" fill="none" strokeLinecap="round" />
-      <path d="M144 104q16 2 18-12" stroke="#a8bccf" strokeWidth="10" fill="none" strokeLinecap="round" /><ellipse cx="164" cy="88" rx="8" ry="6" fill="#dbe6f2" />
-      <path d="M76 104q-14 4-14 18" stroke="#a8bccf" strokeWidth="10" fill="none" strokeLinecap="round" /><ellipse cx="60" cy="126" rx="8" ry="6" fill="#dbe6f2" />
-      <rect x="88" y="154" width="18" height="14" rx="6" fill="#8ba1bb" /><rect x="114" y="154" width="18" height="14" rx="6" fill="#8ba1bb" />
+
+    {/* 地面投影 */}
+    <ellipse cx="110" cy="177" rx="56" ry="7" fill="#00000016" />
+
+    {/* 腿（左右） */}
+    <rect x="86" y="152" width="18" height="16" rx="5" fill="url(#rob3d-leg)" />
+    <rect x="116" y="152" width="18" height="16" rx="5" fill="url(#rob3d-leg)" />
+    {/* 腿高光 */}
+    <rect x="88" y="154" width="5" height="12" rx="2" fill="#ffffff20" />
+
+    {/* 身体主躯干（圆角矩形 + 金属渐变） */}
+    <rect x="74" y="88" width="72" height="66" rx="22" fill="url(#rob3d-shell)" stroke="#7a92ae" strokeWidth="1.8" />
+
+    {/* 身体高光带（左上边缘光） */}
+    <path d="M88 92q14-6 32-4t24 10" stroke="#ffffff40" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+    {/* 身体暗部（右下阴影区） */}
+    <path d="M138 120q4 16-8 30" stroke="#00000015" strokeWidth="18" fill="none" strokeLinecap="round" />
+
+    {/* 胸口屏幕外框 */}
+    <rect x="90" y="102" width="40" height="28" rx="7" fill="#16233f" stroke="#4a6184" strokeWidth="1.5" />
+    {/* 屏幕内发光背景 */}
+    <rect x="93" y="105" width="34" height="22" rx="5" fill="url(#rob3d-screen-bg)" />
+
+    {/* 屏幕内容：波形线 */}
+    <path d="M98 120q6-8 12 0t12-2" stroke="#50e8cc" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+    {/* 屏幕指示灯 */}
+    <circle cx="122" cy="122" r="3.2" fill="#ffd84a" />
+    <circle cx="121.5" cy="121.2" r="1.2" fill="#ffffff90" />
+
+    {/* 头部 */}
+    <circle cx="110" cy="54" r="34" fill="url(#rob3d-head)" stroke="#7a92ae" strokeWidth="1.8" />
+
+    {/* 头顶高光弧 */}
+    <path d="M84 32q14-16 30-10t22 16" stroke="#ffffff50" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+
+    {/* 面罩/显示屏区域 */}
+    <rect x="86" y="44" width="48" height="24" rx="12" fill="#182842" stroke="#4a6184" strokeWidth="1.2" />
+
+    {/* 眼睛（发光LED） */}
+    <circle cx="101" cy="57" r="6" fill="#50e8cc" />
+    <circle cx="119" cy="57" r="6" fill="#50e8cc" />
+    {/* 眼睛高光（两层） */}
+    <circle cx="102.5" cy="55" r="2.2" fill="#ffffffd0" />
+    <circle cx="120.5" cy="55" r="2.2" fill="#ffffffd0" />
+    <circle cx="100.5" cy="58.5" r="1" fill="#ffffff80" />
+    <circle cx="118.5" cy="58.5" r="1" fill="#ffffff80" />
+
+    {/* 天线 */}
+    <path d="M110 20v-10m-7 0h14" stroke="#9ab8d4" strokeWidth="4" strokeLinecap="round" />
+    {/* 天线顶端球 */}
+    <circle cx="110" cy="8" r="4.5" fill="#ffd84a" />
+    <circle cx="109" cy="7" r="1.8" fill="#ffffffa0" />
+
+    {/* 左肩关节 */}
+    <ellipse cx="74" cy="106" rx="8" ry="10" fill="url(#rob3d-joint)" />
+    {/* 左手臂 */}
+    <path d="M68 114q-16 6-18 22" stroke="url(#rob3d-arm)" strokeWidth="12" fill="none" strokeLinecap="round" />
+    {/* 左手（圆形末端） */}
+    <ellipse cx="52" cy="138" rx="9" ry="7" fill="#c4d8ec" stroke="#7a92ae" strokeWidth="1" />
+    <ellipse cx="50" cy="136" r="3" fill="#ffffff30" />
+
+    {/* 右肩关节 */}
+    <ellipse cx="146" cy="106" rx="8" ry="10" fill="url(#rob3d-joint)" />
+    {/* 右手臂 */}
+    <path d="M152 114q16 4 18 18" stroke="url(#rob3d-arm)" strokeWidth="12" fill="none" strokeLinecap="round" />
+    {/* 右手（拿着数据板） */}
+    <ellipse cx="170" cy="134" rx="9" ry="7" fill="#d8e8f4" stroke="#7a92ae" strokeWidth="1" />
+
+    {/* 左手持数据板 */}
+    <g transform="rotate(-8 52 138)">
+      <rect x="26" y="128" width="36" height="26" rx="4" fill="#1a3054" stroke="#3a5880" strokeWidth="1.2" />
+      <path d="M32 146l8-10 6 4 8-9" stroke="#50e8cc" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+      <rect x="31" y="133" width="18" height="2" rx="1" fill="#50e8cc44" />
+      <rect x="31" y="138" width="12" height="2" rx="1" fill="#50e8cc33" />
     </g>
-    <rect x="30" y="120" width="34" height="26" rx="4" fill="#22345c" /><path d="M36 138l7-8 6 4 8-9" stroke="#54e0c8" strokeWidth="2.5" fill="none" strokeLinecap="round" />
   </svg>;
 }
 
 function DataFox3D(): JSX.Element {
   return <svg className="pet-desk-avatar fox-3d" viewBox="0 0 220 190" role="img" aria-label="3D 数据狐狸坐着查看数据板">
     <defs>
-      <radialGradient id="fox-body" cx="36%" cy="28%" r="85%">
-        <stop offset="0%" stopColor="#ffb877" /><stop offset="55%" stopColor="#e8833f" /><stop offset="100%" stopColor="#b85a20" />
+      {/* 身体：暖橙多层球渐变 */}
+      <radialGradient id="fox3d-body" cx="34%" cy="24%" r="78%">
+        <stop offset="0%" stopColor="#ffc888" />
+        <stop offset="38%" stopColor="#f0943e" />
+        <stop offset="72%" stopColor="#d46a18" />
+        <stop offset="100%" stopColor="#9c4208" />
       </radialGradient>
-      <radialGradient id="fox-chest" cx="45%" cy="25%" r="80%">
-        <stop offset="0%" stopColor="#fff4e4" /><stop offset="100%" stopColor="#f3cf9f" />
+      {/* 胸部白毛 */}
+      <radialGradient id="fox3d-chest" cx="44%" cy="22%" r="72%">
+        <stop offset="0%" stopColor="#fff8ee" />
+        <stop offset="55%" stopColor="#ffe0b8" />
+        <stop offset="100%" stopColor="#e8b87a" />
+      </radialGradient>
+      {/* 头部同系 */}
+      <radialGradient id="fox3d-head" cx="32%" cy="26%" r="74%">
+        <stop offset="0%" stopColor="#ffc078" />
+        <stop offset="42%" stopColor="#e88230" />
+        <stop offset="80%" stopColor="#c45a10" />
+        <stop offset="100%" stopColor="#8a3404" />
+      </radialGradient>
+      {/* 耳朵内侧 */}
+      <radialGradient id="fox3d-ear-in" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#ffecd0" />
+        <stop offset="100%" stopColor="#e8a060" />
+      </radialGradient>
+      {/* 尾巴 */}
+      <linearGradient id="fox3d-tail" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#f0943e" />
+        <stop offset="70%" stopColor="#d46a18" />
+        <stop offset="100%" stopColor="#a04a06" />
+      </linearGradient>
+      {/* 鼻子 */}
+      <radialGradient id="fox3d-nose" cx="40%" cy="35%" r="55%">
+        <stop offset="0%" stopColor="#4a2814" />
+        <stop offset="100%" stopColor="#1a0c04" />
       </radialGradient>
     </defs>
-    <ellipse cx="110" cy="176" rx="64" ry="8" fill="#00000022" />
-    <g>
-      <path d="M142 96q26-14 20-44 14 26-2 56z" fill="url(#fox-body)" />
-      <path d="M158 58q6 14-4 30" stroke="#ffffff44" strokeWidth="5" fill="none" strokeLinecap="round" />
-      <ellipse cx="112" cy="118" rx="44" ry="40" fill="url(#fox-body)" />
-      <ellipse cx="112" cy="130" rx="26" ry="26" fill="url(#fox-chest)" />
-      <circle cx="110" cy="66" r="30" fill="url(#fox-body)" />
-      <path d="M84 46 78 20l26 14zM136 46l6-26-26 14z" fill="#c96a2c" />
-      <path d="M88 30l-4-12 14 8zM132 30l4-12-14 8z" fill="#4c2c14" />
-      <ellipse cx="99" cy="64" rx="5" ry="6" fill="#2f1c0e" /><ellipse cx="121" cy="64" rx="5" ry="6" fill="#2f1c0e" />
-      <circle cx="100.5" cy="62" r="1.8" fill="#ffffffcc" /><circle cx="122.5" cy="62" r="1.8" fill="#ffffffcc" />
-      <path d="M108 74l4 5-7 2z" fill="#402410" />
-      <path d="M84 44q12-10 26-2" stroke="#ffffff55" strokeWidth="4" fill="none" strokeLinecap="round" />
-      <ellipse cx="82" cy="72" rx="4" ry="2.5" fill="#e89b6b66" /><ellipse cx="138" cy="72" rx="4" ry="2.5" fill="#e89b6b66" />
+
+    {/* 地面投影 */}
+    <ellipse cx="110" cy="178" rx="60" ry="7" fill="#00000016" />
+
+    {/* 大尾巴（蓬松，绕到身体右侧） */}
+    <path d="M148 98q28-16 22-48 14 28-4 62z" fill="url(#fox3d-tail)" />
+    {/* 尾巴高光 */}
+    <path d="M162 58q6 14-6 32" stroke="#ffffff35" strokeWidth="5" fill="none" strokeLinecap="round" />
+    {/* 尾尖白毛 */}
+    <path d="M168 52q4 8-6 20" stroke="#fff4e080" strokeWidth="7" fill="none" strokeLinecap="round" />
+
+    {/* 身体主体 */}
+    <ellipse cx="112" cy="118" rx="46" ry="42" fill="url(#fox3d-body)" />
+
+    {/* 身体高光带（左上） */}
+    <path d="M76 92q18-24 40-22t32 16" stroke="#ffffff28" strokeWidth="5" fill="none" strokeLinecap="round" />
+
+    {/* 胸部白毛区域 */}
+    <ellipse cx="112" cy="132" rx="28" ry="26" fill="url(#fox3d-chest)" />
+
+    {/* 头部 */}
+    <circle cx="110" cy="64" r="33" fill="url(#fox3d-head)" />
+
+    {/* 头顶高光弧 */}
+    <path d="M84 42q14-15 28-8t22 14" stroke="#ffffff32" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+    {/* 耳朵（左右大三角） */}
+    <path d="M82 46 74 16l28 16z" fill="url(#fox3d-head)" />
+    <path d="M138 46 146 16l-28 16z" fill="url(#fox3d-head)" />
+    {/* 耳朵内侧（粉色） */}
+    <path d="M82 42 78 24l16 10z" fill="url(#fox3d-ear-in)" />
+    <path d="M138 42 142 24l-16 10z" fill="url(#fox3d-ear-in)" />
+    {/* 耳朵边缘暗部 */}
+    <path d="M76 20l6 10" stroke="#00000018" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M144 20l-6 10" stroke="#00000018" strokeWidth="2.5" strokeLinecap="round" />
+
+    {/* 眼睛（杏仁形用椭圆模拟） */}
+    <ellipse cx="97" cy="62" rx="5.5" ry="7" fill="url(#fox3d-nose)" />
+    <ellipse cx="123" cy="62" rx="5.5" ry="7" fill="url(#fox3d-nose)" />
+
+    {/* 眼睛高光（两层） */}
+    <circle cx="98.5" cy="59.5" r="2.2" fill="#ffffffe0" />
+    <circle cx="124.5" cy="59.5" r="2.2" fill="#ffffffe0" />
+    <circle cx="97" cy="63.5" r="1" fill="#ffffff90" />
+    <circle cx="123" cy="63.5" r="1" fill="#ffffff90" />
+
+    {/* 鼻子/口鼻 */}
+    <path d="M108 73l4 5-7 2z" fill="#3a1c0c" />
+
+    {/* 眉间到鼻梁的高光 */}
+    <path d="M82 44q14-11 28-3" stroke="#ffffff40" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+    {/* 腮红 */}
+    <ellipse cx="82" cy="72" rx="5" ry="3" fill="#ff886630" />
+    <ellipse cx="138" cy="72" rx="5" ry="3" fill="#ff886630" />
+
+    {/* 左手（拿着数据板） */}
+    <g transform="rotate(-8 96 150)">
+      <rect x="116" y="140" width="46" height="32" rx="5" fill="#1a3054" stroke="#3a5880" strokeWidth="1.2" />
+      {/* 屏幕内容 */}
+      <path d="M124 162q8-8 16 0t14-2" stroke="#50c8f0" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <rect x="123" y="149" width="20" height="2" rx="1" fill="#50c8f038" />
+      <rect x="123" y="154" width="14" height="2" rx="1" fill="#50c8f028" />
+      {/* 指示灯 */}
+      <circle cx="154" cy="156" r="2.5" fill="#50e8cc" />
     </g>
-    <rect x="118" y="140" width="44" height="30" rx="5" fill="#243a5e" transform="rotate(-8 140 155)" />
-    <path d="M126 152q8-8 14 0t14-2" stroke="#54c8f0" strokeWidth="3" fill="none" strokeLinecap="round" transform="rotate(-8 140 155)" />
-    <path d="M96 148q-10 10-2 20" stroke="#c96a2c" strokeWidth="9" fill="none" strokeLinecap="round" /><ellipse cx="93" cy="168" rx="7" ry="5" fill="#f3cf9f" />
+
+    {/* 右手臂/爪子 */}
+    <path d="M94 146q-12 12-4 24" stroke="#d46a18" strokeWidth="10" fill="none" strokeLinecap="round" />
+    <ellipse cx="89" cy="172" rx="7" ry="5" fill="#e8b070" />
+    <ellipse cx="87" cy="170" r="2.5" fill="#ffffff25" />
   </svg>;
 }
 
 function PolarBear3D(): JSX.Element {
   return <svg className="pet-desk-avatar bear-3d" viewBox="0 0 220 190" role="img" aria-label="3D 极地熊分析师抱着计算器端坐">
     <defs>
-      <radialGradient id="bear-body" cx="36%" cy="28%" r="85%">
-        <stop offset="0%" stopColor="#ffffff" /><stop offset="60%" stopColor="#e9edf3" /><stop offset="100%" stopColor="#bcc8d6" />
+      {/* 身体：白→浅蓝灰 球体渐变（模拟皮毛反光） */}
+      <radialGradient id="bear3d-body" cx="34%" cy="24%" r="76%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="35%" stopColor="#f4f7fa" />
+        <stop offset="68%" stopColor="#dce4ee" />
+        <stop offset="100%" stopColor="#b8c8dc" />
       </radialGradient>
-      <radialGradient id="bear-head" cx="36%" cy="30%" r="80%">
-        <stop offset="0%" stopColor="#ffffff" /><stop offset="70%" stopColor="#eef1f6" /><stop offset="100%" stopColor="#cdd7e2" />
+      {/* 头部同系 */}
+      <radialGradient id="bear3d-head" cx="32%" cy="26%" r="74%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="40%" stopColor="#f0f5fa" />
+        <stop offset="75%" stopColor="#d0dde8" />
+        <stop offset="100%" stopColor="#a8bccf" />
       </radialGradient>
+      {/* 耳朵 */}
+      <radialGradient id="bear3d-ear" cx="45%" cy="40%" r="60%">
+        <stop offset="0%" stopColor="#f8fbff" />
+        <stop offset="70%" stopColor="#c8d6e6" />
+        <stop offset="100%" stopColor="#98abc4" />
+      </radialGradient>
+      {/* 口鼻区域（稍暗的白色） */}
+      <radialGradient id="bear3d-snout" cx="48%" cy="42%" r="55%">
+        <stop offset="0%" stopColor="#f0f5fa" />
+        <stop offset="100%" stopColor="#d0dde8" />
+      </radialGradient>
+      {/* 计算器外壳 */}
+      <linearGradient id="bear3d-calc" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#3a5070" />
+        <stop offset="100%" stopColor="#243450" />
+      </linearGradient>
     </defs>
-    <ellipse cx="110" cy="176" rx="66" ry="8" fill="#0000001e" />
-    <g>
-      <ellipse cx="110" cy="120" rx="48" ry="42" fill="url(#bear-body)" />
-      <ellipse cx="110" cy="132" rx="28" ry="26" fill="#f7f9fc" />
-      <circle cx="110" cy="62" r="32" fill="url(#bear-head)" />
-      <circle cx="82" cy="40" r="11" fill="url(#bear-head)" /><circle cx="138" cy="40" r="11" fill="url(#bear-head)" />
-      <ellipse cx="110" cy="72" rx="12" ry="9" fill="#e6ebf2" />
-      <ellipse cx="110" cy="68" rx="5" ry="4" fill="#39424e" />
-      <circle cx="98" cy="58" r="4.5" fill="#39424e" /><circle cx="122" cy="58" r="4.5" fill="#39424e" />
-      <circle cx="99.5" cy="56.5" r="1.6" fill="#ffffffdd" /><circle cx="123.5" cy="56.5" r="1.6" fill="#ffffffdd" />
-      <path d="M84 42q12-10 26-2" stroke="#ffffffcc" strokeWidth="4" fill="none" strokeLinecap="round" />
-      <ellipse cx="86" cy="76" rx="4" ry="2.5" fill="#d8a0a033" /><ellipse cx="134" cy="76" rx="4" ry="2.5" fill="#d8a0a033" />
-      <rect x="82" y="138" width="30" height="22" rx="5" fill="#2c3e56" />
-      <path d="M88 154h18m-18-6h18m-18-6h12" stroke="#6ee7c2" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M148 106q14 2 16-8" stroke="#d7dfe8" strokeWidth="12" fill="none" strokeLinecap="round" /><ellipse cx="166" cy="94" rx="8" ry="6" fill="#f6f8fb" />
-      <path d="M72 108q-14 4-14 18" stroke="#d7dfe8" strokeWidth="12" fill="none" strokeLinecap="round" /><ellipse cx="58" cy="130" rx="8" ry="6" fill="#f6f8fb" />
-      <rect x="90" y="158" width="17" height="12" rx="5" fill="#cdd7e2" /><rect x="112" y="158" width="17" height="12" rx="5" fill="#cdd7e2" />
+
+    {/* 地面投影（极地熊比较重，投影稍大） */}
+    <ellipse cx="110" cy="178" rx="64" ry="7.5" fill="#00000014" />
+
+    {/* 身体主体（大椭圆） */}
+    <ellipse cx="110" cy="120" rx="50" ry="44" fill="url(#bear3d-body)" />
+
+    {/* 身体高光带（左上弧形，模拟毛发光泽） */}
+    <path d="M68 94q20-26 44-24t36 18" stroke="#ffffff50" strokeWidth="5" fill="none" strokeLinecap="round" />
+
+    {/* 身体暗部（右下阴影区） */}
+    <path d="M154 128q6 18-10 34" stroke="#889cb418" strokeWidth="20" fill="none" strokeLinecap="round" />
+
+    {/* 胸部浅色区域 */}
+    <ellipse cx="110" cy="134" rx="30" ry="26" fill="#f8fafc" />
+
+    {/* 头部 */}
+    <circle cx="110" cy="60" r="34" fill="url(#bear3d-head)" />
+
+    {/* 头顶高光 */}
+    <path d="M82 38q16-16 30-8t24 14" stroke="#ffffff55" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+
+    {/* 耳朵（左右小圆） */}
+    <circle cx="80" cy="36" r="12" fill="url(#bear3d-ear)" />
+    <circle cx="140" cy="36" r="12" fill="url(#bear3d-ear)" />
+    {/* 耳朵内部凹陷 */}
+    <circle cx="80" cy="37" r="6" fill="#c0d0e2" />
+    <circle cx="140" cy="37" r="6" fill="#c0d0e2" />
+
+    {/* 口鼻区域 */}
+    <ellipse cx="110" cy="72" rx="14" ry="10" fill="url(#bear3d-snout)" />
+
+    {/* 鼻子 */}
+    <ellipse cx="110" cy="67" rx="5.5" ry="4" fill="#3a4050" />
+    {/* 鼻子高光 */}
+    <ellipse cx="109" cy="66" r="2" fill="#ffffff40" />
+
+    {/* 眼睛（深色，略小——熊眼特征） */}
+    <circle cx="97" cy="56" r="5" fill="#394250" />
+    <circle cx="123" cy="56" r="5" fill="#394250" />
+
+    {/* 眼睛高光（两层） */}
+    <circle cx="98.2" cy="54.5" r="1.8" fill="#ffffffe8" />
+    <circle cx="124.2" cy="54.5" r="1.8" fill="#ffffffe8" />
+    <circle cx="96.8" cy="57.5" r="1" fill="#ffffff90" />
+    <circle cx="122.8" cy="57.5" r="1" fill="#ffffff90" />
+    {/* 眉间到鼻梁的高光 */}
+    <path d="M82 42q14-11 28-3" stroke="#ffffff60" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+    {/* 腮红（极地熊在冷风中微微泛红） */}
+    <ellipse cx="84" cy="76" rx="5" ry="3" fill="#d8a0a025" />
+    <ellipse cx="136" cy="76" rx="5" ry="3" fill="#d8a0a025" />
+
+    {/* 手臂/肩膀（左右圆柱形） */}
+    <path d="M152 106q16 3 18-10" stroke="#d0dde8" strokeWidth="14" fill="none" strokeLinecap="round" />
+    <path d="M152 106q16 3 18-10" stroke="#ffffff30" strokeWidth="4" fill="none" strokeLinecap="round" />
+    <ellipse cx="172" cy="96" rx="9" ry="7" fill="#e8f0f6" stroke="#b0c4d8" strokeWidth="0.8" />
+
+    <path d="M68 108q-16 5-14 20" stroke="#c0d0e2" strokeWidth="14" fill="none" strokeLinecap="round" />
+    <path d="M68 108q-16 5-14 20" stroke="#ffffff25" strokeWidth="4" fill="none" strokeLinecap="round" />
+    <ellipse cx="52" cy="132" rx="9" ry="7" fill="#e0eaf2" stroke="#a8bcd0" strokeWidth="0.8" />
+
+    {/* 腿（左右） */}
+    <rect x="88" y="156" width="18" height="14" rx="5" fill="#c0d0e2" stroke="#a0b8cc" strokeWidth="0.8" />
+    <rect x="114" y="156" width="18" height="14" rx="5" fill="#c0d0e2" stroke="#a0b8cc" strokeWidth="0.8" />
+    {/* 腿高光 */}
+    <rect x="90" y="158" width="5" height="10" rx="2.5" fill="#ffffff30" />
+    <rect x="116" y="158" width="5" height="10" rx="2.5" fill="#ffffff30" />
+
+    {/* 怀里的计算器 */}
+    <g transform="rotate(-3 97 150)">
+      <rect x="80" y="138" width="34" height="24" rx="4" fill="url(#bear3d-calc)" stroke="#4a6084" strokeWidth="1" />
+      {/* 屏幕 */}
+      <rect x="84" y="142" width="22" height="8" rx="2" fill="#0a1628" />
+      <text x="86" y="149" fill="#50e8cc" fontSize="6" fontFamily="monospace">42</text>
+      {/* 按键 */}
+      <g fill="#50e8cc33" stroke="#50e8cc55" strokeWidth="0.5">
+        <rect x="84" y="153" width="4" height="3" rx="0.5" />
+        <rect x="90" y="153" width="4" height="3" rx="0.5" />
+        <rect x="96" y="153" width="4" height="3" rx="0.5" />
+        <rect x="102" y="153" width="4" height="3" rx="0.5" />
+        <rect x="108" y="153" width="4" height="3" rx="0.5" />
+      </g>
     </g>
-    <path d="M28 160q22-8 40 0" stroke="#bcd7e6" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+    {/* 地面上的冰纹装饰 */}
+    <path d="M30 164q22-8 44 0t44 0 44 0" stroke="#b8cce4" strokeWidth="2" fill="none" strokeLinecap="round" opacity=".4" />
   </svg>;
 }
 

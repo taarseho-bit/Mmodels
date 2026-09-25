@@ -1,101 +1,350 @@
-/* ═════════ 全局皮肤（2026-09-25）：花纹底 + 主题色，浅深两用 ═════════
-   机制：store 把 skin id 写到 <html data-skin>，accent 变量由 skins.ts 直写。
-   花纹只铺在画布层（.app-shell / .settings-shell），面板保持实底色，文字永远可读。 */
+/* ═════════ 全局皮肤 v2（2026-09-26）：花纹底 + 部位动画 + 主题平行 ═════════
+   机制：
+   - store 把 skin id 写到 <html data-skin>，accent / pattern-color 由 skins.ts 直写
+   - 每款皮肤的花纹由多层伪元素/子元素组成，各层以不同速率/方向运动
+   - 主题（light/dark）只切换 tintDark + patternColorDark，不改变花纹形态
+   - 花纹只铺在画布层（.app-shell），面板保持实底色，文字永远可读 */
 
 :root[data-skin] .app-shell,
-:root[data-skin] .settings-shell { background-attachment: fixed; }
+:root[data-skin] .settings-shell {
+  background-attachment: fixed;
+  position: relative;
+}
 
-/* ── 求解蓝 · 网格 ── */
+/* ────────────────────────────────────────────────────────
+   通用动画：花纹底层容器
+   ──────────────────────────────────────────────────────── */
+:root[data-skin] .app-shell::before,
+:root[data-skin] .app-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── ① 经典（无花纹，干净） ── */
+:root[data-skin='classic'] .app-shell { background-color: #f5f3ef; }
+:root[data-skin='classic'][data-theme='dark'] .app-shell { background-color: #1c1c1e; }
+
+/* ── ② 求解蓝 · 网格（网格线呼吸 + 交点光点缓移） ── */
 :root[data-skin='solver-blue'] .app-shell {
   background-color: #eef2fc;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M44 0H0v44' fill='none' stroke='%233b62d4' stroke-opacity='.07'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%233b62d4' stroke-opacity='.065'/%3E%3C/svg%3E");
+  animation: skin-grid-breathe 8s ease-in-out infinite alternate;
+}
+:root[data-skin='solver-blue'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='0' cy='0' r='2.5' fill='%233b62d4' fill-opacity='.12'/%3E%3Ccircle cx='60' cy='60' r='2.5' fill='%233b62d4' fill-opacity='.08'/%3E%3Ccircle cx='60' cy='0' r='1.5' fill='%233b62d4' fill-opacity='.06'/%3E%3C/svg%3E");
+  animation: skin-drift-slow 20s linear infinite;
 }
 :root[data-skin='solver-blue'][data-theme='dark'] .app-shell {
   background-color: #12141d;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M44 0H0v44' fill='none' stroke='%237d9df2' stroke-opacity='.08'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%237d9df2' stroke-opacity='.075'/%3E%3C/svg%3E");
+}
+:root[data-skin='solver-blue'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='0' cy='0' r='2.5' fill='%237d9df2' fill-opacity='.14'/%3E%3Ccircle cx='60' cy='60' r='2.5' fill='%237d9df2' fill-opacity='.10'/%3E%3C/svg%3E");
 }
 
-/* ── 数据青 · 波点 ── */
+/* ── ③ 数据青 · 波点（大小两点分层漂浮） ── */
 :root[data-skin='data-teal'] .app-shell {
   background-color: #e9f5f2;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ccircle cx='4' cy='4' r='2' fill='%231d8a80' fill-opacity='.08'/%3E%3Ccircle cx='18' cy='18' r='2' fill='%231d8a80' fill-opacity='.05'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='6' cy='6' r='3' fill='%231d8a80' fill-opacity='.09'/%3E%3Ccircle cx='28' cy='28' r='2' fill='%231d8a80' fill-opacity='.05'/%3E%3C/svg%3E");
+  animation: skin-drift-med 14s linear infinite;
+}
+:root[data-skin='data-teal'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='24' cy='8' r='1.8' fill='%231d8a80' fill-opacity='.07'/%3E%3Ccircle cx='10' cy='32' r='1.4' fill='%231d8a80' fill-opacity='.05'/%3E%3C/svg%3E");
+  animation: skin-drift-slow-reverse 22s linear infinite;
 }
 :root[data-skin='data-teal'][data-theme='dark'] .app-shell {
   background-color: #101a18;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ccircle cx='4' cy='4' r='2' fill='%234ecabf' fill-opacity='.09'/%3E%3Ccircle cx='18' cy='18' r='2' fill='%234ecabf' fill-opacity='.06'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='6' cy='6' r='3' fill='%234ecabf' fill-opacity='.10'/%3E%3Ccircle cx='28' cy='28' r='2' fill='%234ecabf' fill-opacity='.06'/%3E%3C/svg%3E");
+}
+:root[data-skin='data-teal'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='24' cy='8' r='1.8' fill='%234ecabf' fill-opacity='.08'/%3E%3Ccircle cx='10' cy='32' r='1.4' fill='%234ecabf' fill-opacity='.05'/%3E%3C/svg%3E");
 }
 
-/* ── 评审紫 · 菱形 ── */
+/* ── ④ 评审紫 · 菱形（菱形阵列旋转 + 缩放脉冲） ── */
 :root[data-skin='review-violet'] .app-shell {
   background-color: #f1eefc;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 2l9 9-9 9-9-9z' fill='none' stroke='%236a4bd8' stroke-opacity='.07'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cpath d='M26 6l16 16-16 16-16-16z' fill='none' stroke='%236a4bd8' stroke-opacity='.065'/%3E%3Cpath d='M0 0l12 12L0 24z' fill='none' stroke='%236a4bd8' stroke-opacity='.04'/%3E%3Cpath d='M52 28l12 12-12 12z' fill='none' stroke='%236a4bd8' stroke-opacity='.03'/%3E%3C/svg%3E");
+  animation: skin-hex-pulse 10s ease-in-out infinite alternate;
+}
+:root[data-skin='review-violet'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cpath d='M26 14l8 8-8 8-8-8z' fill='%236a4bd8' fill-opacity='.04'/%3E%3C/svg%3E");
+  animation: skin-hex-spin 30s linear infinite;
 }
 :root[data-skin='review-violet'][data-theme='dark'] .app-shell {
   background-color: #151224;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 2l9 9-9 9-9-9z' fill='none' stroke='%23a794f0' stroke-opacity='.08'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cpath d='M26 6l16 16-16 16-16-16z' fill='none' stroke='%23a794f0' stroke-opacity='.075'/%3E%3Cpath d='M0 0l12 12L0 24z' fill='none' stroke='%23a794f0' stroke-opacity='.05'/%3E%3C/svg%3E");
+}
+:root[data-skin='review-violet'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cpath d='M26 14l8 8-8 8-8-8z' fill='%23a794f0' fill-opacity='.05'/%3E%3C/svg%3E");
 }
 
-/* ── 图表橙 · 波浪 ── */
+/* ── ⑤ 图表橙 · 波浪（双层波浪反向流动） ── */
 :root[data-skin='figure-orange'] .app-shell {
   background-color: #fdf1e6;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='20'%3E%3Cpath d='M0 10q10-8 20 0t20 0 20 0' fill='none' stroke='%23d97b2e' stroke-opacity='.08'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='24'%3E%3Cpath d='M0 12q16-10 32 0t32 0 16 0' fill='none' stroke='%23d97b2e' stroke-opacity='.07'/%3E%3C/svg%3E");
+  animation: skin-wave-flow 6s linear infinite;
+}
+:root[data-skin='figure-orange'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='24'%3E%3Cpath d='M0 18q16 8 32 0t32 0 16 0' fill='none' stroke='%23d97b2e' stroke-opacity='.05'/%3E%3C/svg%3E");
+  animation: skin-wave-flow-reverse 9s linear infinite;
 }
 :root[data-skin='figure-orange'][data-theme='dark'] .app-shell {
   background-color: #1b1410;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='20'%3E%3Cpath d='M0 10q10-8 20 0t20 0 20 0' fill='none' stroke='%23f2a45e' stroke-opacity='.09'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='24'%3E%3Cpath d='M0 12q16-10 32 0t32 0 16 0' fill='none' stroke='%23f2a45e' stroke-opacity='.08'/%3E%3C/svg%3E");
+}
+:root[data-skin='figure-orange'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='24'%3E%3Cpath d='M0 18q16 8 32 0t32 0 16 0' fill='none' stroke='%23f2a45e' stroke-opacity='.06'/%3E%3C/svg%3E");
 }
 
-/* ── 论文玫 · 斜纹 ── */
+/* ── ⑥ 论文玫 · 斜纹（斜线双向错位滑动） ── */
 :root[data-skin='rose-paper'] .app-shell {
   background-color: #fdeff4;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M-3 15 15 -3M9 27 27 9' stroke='%23d04a76' stroke-opacity='.06'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M-4 20 20 -4M8 36 36 8' stroke='%23d04a76' stroke-opacity='.055'/%3E%3C/svg%3E");
+  animation: skin-diag-slide 12s linear infinite;
+}
+:root[data-skin='rose-paper'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M-4 8 8 -4M20 36 36 20' stroke='%23d04a76' stroke-opacity='.04'/%3E%3C/svg%3E");
+  animation: skin-diag-slide-reverse 18s linear infinite;
 }
 :root[data-skin='rose-paper'][data-theme='dark'] .app-shell {
   background-color: #1c1116;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M-3 15 15 -3M9 27 27 9' stroke='%23ef83a8' stroke-opacity='.07'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M-4 20 20 -4M8 36 36 8' stroke='%23ef83a8' stroke-opacity='.065'/%3E%3C/svg%3E");
+}
+:root[data-skin='rose-paper'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M-4 8 8 -4M20 36 36 20' stroke='%23ef83a8' stroke-opacity='.05'/%3E%3C/svg%3E");
 }
 
-/* ── 推演森 · 十字 ── */
+/* ── ⑦ 推演森 · 十字（十字闪烁 + 缓慢旋转） ── */
 :root[data-skin='forest-calc'] .app-shell {
   background-color: #eaf4ee;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M16 10v12M10 16h12' stroke='%232e7d5b' stroke-opacity='.07'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 12v20M12 22h20' stroke='%232e7d5b' stroke-opacity='.065'/%3E%3C/svg%3E");
+  animation: skin-plus-twinkle 4s ease-in-out infinite alternate;
+}
+:root[data-skin='forest-calc'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 15v14M15 22h14' stroke='%232e7d5b' stroke-opacity='.045'/%3E%3C/svg%3E");
+  animation: skin-plus-rotate 25s linear infinite;
 }
 :root[data-skin='forest-calc'][data-theme='dark'] .app-shell {
   background-color: #101913;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M16 10v12M10 16h12' stroke='%235cb98d' stroke-opacity='.08'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 12v20M12 22h20' stroke='%235cb98d' stroke-opacity='.075'/%3E%3C/svg%3E");
+}
+:root[data-skin='forest-calc'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 15v14M15 22h14' stroke='%235cb98d' stroke-opacity='.05'/%3E%3C/svg%3E");
 }
 
-/* ── 深夜鸮 · 星点（偏暗的冷静色，浅色下是淡雾蓝） ── */
+/* ── ⑧ 深夜鸮 · 星点（星星闪烁 + 流星划过） ── */
 :root[data-skin='night-owl'] .app-shell {
   background-color: #eceffb;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='m20 12 2 6 6 2-6 2-2 6-2-6-6-2 6-2z' fill='%235a6acf' fill-opacity='.07'/%3E%3Ccircle cx='6' cy='32' r='1.5' fill='%235a6acf' fill-opacity='.08'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='m28 16 2.5 7.5 7.5 2.5-7.5 2.5-2.5 7.5-2.5-7.5L18 26l7.5-2.5z' fill='%235a6acf' fill-opacity='.06'/%3E%3Ccircle cx='8' cy='44' r='2' fill='%235a6acf' fill-opacity='.07'/%3E%3Ccircle cx='46' cy='12' r='1.5' fill='%235a6acf' fill-opacity='.05'/%3E%3C/svg%3E");
+  animation: skin-star-twinkle 3s ease-in-out infinite alternate;
+}
+:root[data-skin='night-owl'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='8'%3E%3Cpath d='M0 4q20-4 40 0t40 0 40 0' fill='none' stroke='%235a6acf' stroke-opacity='.08' stroke-width='1.5'/%3E%3C/svg%3E");
+  animation: skin-shooting-star 14s linear infinite;
+  opacity: 0;
 }
 :root[data-skin='night-owl'][data-theme='dark'] .app-shell {
   background-color: #12131f;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='m20 12 2 6 6 2-6 2-2 6-2-6-6-2 6-2z' fill='%239aa6ee' fill-opacity='.10'/%3E%3Ccircle cx='6' cy='32' r='1.5' fill='%239aa6ee' fill-opacity='.12'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='m28 16 2.5 7.5 7.5 2.5-7.5 2.5-2.5 7.5-2.5-7.5L18 26l7.5-2.5z' fill='%239aa6ee' fill-opacity='.09'/%3E%3Ccircle cx='8' cy='44' r='2' fill='%239aa6ee' fill-opacity='.10'/%3E%3C/svg%3E");
+}
+:root[data-skin='night-owl'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='8'%3E%3Cpath d='M0 4q20-4 40 0t40 0 40 0' fill='none' stroke='%239aa6ee' stroke-opacity='.10' stroke-width='1.5'/%3E%3C/svg%3E");
 }
 
-/* ── 曙光金 · 环纹 ── */
+/* ── ⑨ 曙光金 · 环纹（环波扩散 + 内环旋转） ── */
 :root[data-skin='dawn-gold'] .app-shell {
   background-color: #fbf5e6;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='8' fill='none' stroke='%23b8860b' stroke-opacity='.08'/%3E%3Ccircle cx='20' cy='20' r='3' fill='none' stroke='%23b8860b' stroke-opacity='.06'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Ccircle cx='28' cy='28' r='12' fill='none' stroke='%23b8860b' stroke-opacity='.07'/%3E%3Ccircle cx='28' cy='28' r='22' fill='none' stroke='%23b8860b' stroke-opacity='.045'/%3E%3C/svg%3E");
+  animation: skin-ring-expand 8s ease-in-out infinite alternate;
+}
+:root[data-skin='dawn-gold'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Ccircle cx='28' cy='28' r='5' fill='none' stroke='%23b8860b' stroke-opacity='.06'/%3E%3Cpath d='M28 14v28M14 28h28' stroke='%23b8860b' stroke-opacity='.04'/%3E%3C/svg%3E");
+  animation: skin-ring-spin 20s linear infinite;
 }
 :root[data-skin='dawn-gold'][data-theme='dark'] .app-shell {
   background-color: #1b1710;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='8' fill='none' stroke='%23e0b34e' stroke-opacity='.09'/%3E%3Ccircle cx='20' cy='20' r='3' fill='none' stroke='%23e0b34e' stroke-opacity='.07'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Ccircle cx='28' cy='28' r='12' fill='none' stroke='%23e0b34e' stroke-opacity='.08'/%3E%3Ccircle cx='28' cy='28' r='22' fill='none' stroke='%23e0b34e' stroke-opacity='.05'/%3E%3C/svg%3E");
+}
+:root[data-skin='dawn-gold'][data-theme='dark'] .app-shell::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Ccircle cx='28' cy='28' r='5' fill='none' stroke='%23e0b34e' stroke-opacity='.07'/%3E%3Cpath d='M28 14v28M14 28h28' stroke='%23e0b34e' stroke-opacity='.05'/%3E%3C/svg%3E");
 }
 
-/* 皮肤预览小卡（设置页里同款花纹，所见即所得） */
-.skin-chip { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; padding: 0; background: var(--bg-panel); text-align: left; transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease; }
-.skin-chip:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.10); }
-.skin-chip.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
-.skin-chip-preview { height: 52px; position: relative; }
-.skin-chip-preview::after { content: ''; position: absolute; inset: auto 10px 8px 10px; height: 4px; border-radius: 2px; background: var(--skin-accent, #007aff); opacity: .85; }
-.skin-chip-body { display: flex; align-items: center; gap: 6px; padding: 7px 10px; }
-.skin-chip-body strong { font-size: 11.5px; font-weight: 600; }
-.skin-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--skin-accent, #007aff); flex-shrink: 0; }
+/* ════════════════════════════════════════════════════════
+   关键帧定义（部位级动画）
+   ════════════════════════════════════════════════════════ */
 
-/* 预览卡花纹（中性灰版：tint 用皮肤色，花纹统一淡灰保证小尺寸可辨） */
+/* 网格呼吸：整体透明度微微起伏 */
+@keyframes skin-grid-breathe {
+  0% { background-position: 0 0; opacity: 1; }
+  100% { background-position: 4px 4px; opacity: 0.85; }
+}
+
+/* 缓慢漂移：背景位置持续平移（大点/交点层） */
+@keyframes skin-drift-slow {
+  from { background-position: 0 0; }
+  to { background-position: 60px 60px; }
+}
+@keyframes skin-drift-slow-reverse {
+  from { background-position: 60px 60px; }
+  to { background-position: 0 0; }
+}
+@keyframes skin-drift-med {
+  from { background-position: 0 0; }
+  to { background-position: 40px 40px; }
+}
+
+/* 波浪流动：水平持续滚动 */
+@keyframes skin-wave-flow {
+  from { background-position: 0 0; }
+  to { background-position: 80px 0; }
+}
+@keyframes skin-wave-flow-reverse {
+  from { background-position: 80px 0; }
+  to { background-position: 0 0; }
+}
+
+/* 斜纹滑动：沿对角线错位 */
+@keyframes skin-diag-slide {
+  from { background-position: 0 0; }
+  to { background-position: 32px 32px; }
+}
+@keyframes skin-diag-slide-reverse {
+  from { background-position: 32px 32px; }
+  to { background-position: 0 0; }
+}
+
+/* 菱形脉冲：缩放 + 透明度 */
+@keyframes skin-hex-pulse {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.75; transform: scale(1.03); }
+}
+@keyframes skin-hex-spin {
+  from { background-position: 0 0; }
+  to { background-position: 52px 52px; }
+}
+
+/* 十字闪烁：透明度交替 */
+@keyframes skin-plus-twinkle {
+  0% { opacity: 1; }
+  100% { opacity: 0.65; }
+}
+@keyframes skin-plus-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 星星闪烁：大小星交替明灭 */
+@keyframes skin-star-twinkle {
+  0% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+@keyframes skin-shooting-star {
+  0% { opacity: 0; transform: translateX(-120px) translateY(20px); }
+  15% { opacity: 1; }
+  50% { opacity: 0.6; transform: translateX(60vw) translateY(-10px); }
+  51% { opacity: 0; }
+  100% { opacity: 0; transform: translateX(60vw) translateY(-10px); }
+}
+
+/* 环纹扩散：外环缩放呼吸 */
+@keyframes skin-ring-expand {
+  0% { background-size: 56px 56px; opacity: 1; }
+  100% { background-size: 64px 64px; opacity: 0.75; }
+}
+@keyframes skin-ring-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ════════════════════════════════════════════════════════
+   皮肤预览小卡（设置页里同款花纹缩略）
+   ════════════════════════════════════════════════════════ */
+.skin-chip {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  background: var(--bg-panel);
+  text-align: left;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.skin-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.10);
+}
+.skin-chip.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.skin-chip-preview {
+  height: 52px;
+  position: relative;
+  overflow: hidden;
+}
+.skin-chip-preview::after {
+  content: '';
+  position: absolute;
+  inset: auto 10px 8px 10px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--skin-accent, #007aff);
+  opacity: .85;
+}
+.skin-chip-body {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+}
+.skin-chip-body strong {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.skin-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--skin-accent, #007aff);
+  flex-shrink: 0;
+}
+
+/* 预览卡花纹（静态中性灰版，小尺寸下保证可辨） */
 .skin-chip-preview { background-color: var(--skin-tint, #f5f3ef); display: block; }
 .skin-chip-preview[data-pattern='grid'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cpath d='M22 0H0v22' fill='none' stroke='%23888' stroke-opacity='.18'/%3E%3C/svg%3E"); }
 .skin-chip-preview[data-pattern='dots'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='3' cy='3' r='1.6' fill='%23888' fill-opacity='.22'/%3E%3Ccircle cx='11' cy='11' r='1.6' fill='%23888' fill-opacity='.14'/%3E%3C/svg%3E"); }
@@ -105,5 +354,21 @@
 .skin-chip-preview[data-pattern='plus'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Cpath d='M9 5v8M5 9h8' stroke='%23888' stroke-opacity='.2'/%3E%3C/svg%3E"); }
 .skin-chip-preview[data-pattern='stars'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cpath d='m11 4 1.5 4.5L17 10l-4.5 1.5L11 16l-1.5-4.5L5 10l4.5-1.5z' fill='%23888' fill-opacity='.2'/%3E%3C/svg%3E"); }
 .skin-chip-preview[data-pattern='rings'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='11' cy='11' r='6' fill='none' stroke='%23888' stroke-opacity='.18'/%3E%3C/svg%3E"); }
-.skin-chip-hint { display: block; padding: 0 10px 8px; font-size: 10.5px; color: var(--fg-muted); line-height: 1.5; }
-.skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 4px 2px 2px; }
+.skin-chip-hint {
+  display: block;
+  padding: 0 10px 8px;
+  font-size: 10.5px;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+.skin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 4px 2px 2px;
+}
+
+/* 跟随系统：对角分割白黑示意 */
+.skin-chip-preview[data-split='1'] {
+  background-image: linear-gradient(135deg, #ffffff 0%, #ffffff 49.5%, #1c1c1e 50.5%, #1c1c1e 100%);
+}

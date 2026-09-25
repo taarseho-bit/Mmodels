@@ -1,18 +1,19 @@
 /**
- * 设置页 ⑨ 外观（2026-09-25 重构：像 WorkBuddy 一样简单）
+ * 设置页 ⑨ 外观（2026-09-26 v3：主题 11 选 1）
  *
- *   ① 全局皮肤 —— 9 款带花纹的一键皮肤（4 助手色 + 4 新增 + 经典），全局生效
- *   ② 主题模式（跟随系统/浅/深）+ 语言
+ *   ① 主题 —— 经典白 / 经典黑 / 跟随系统 + 8 款花纹风格，11 个平级选项一键切换
+ *      （用户定稿：不再分「皮肤」「主题模式」两层，全部都叫主题）
+ *   ② 语言
  *   ③ 桌面小模 —— 8 个角色（含 4 个写实 3D 风）+ 大小/动作/气泡偏好
  *   ④ 字体与间距
  *
- * 旧的「深色/浅色双主题卡 + 文字编码导入导出 + 逐项色值」已按用户要求移除 ——
- * 皮肤系统（lib/skins.ts + store 的 skin 字段）取代了它的日常用途。
+ * 底层仍由 AppearanceState.mode（亮度）+ .skin（风格）双字段驱动，
+ * THEME_PRESETS 负责把 11 个选项映射到这两者；风格主题固定 mode='system'。
  */
 import { useState } from 'react';
 import { PetDeskAvatar, PET_APPEARANCES, resolvePetAppearance } from '../PetDeskAvatar';
 import { tx } from '../../i18n';
-import { SKINS } from '../../lib/skins';
+import { THEME_PRESETS } from '../../lib/skins';
 import {
   getAppearance,
   resetAppearance,
@@ -21,42 +22,6 @@ import {
   type AppearanceDensity,
   type AppearanceMode,
 } from '../../store/app';
-
-/** 原版分段控件里的三个主题图标（线性，不用 emoji） */
-function ThemeIcon({ id }: { id: AppearanceMode }): JSX.Element {
-  const common = {
-    width: 13,
-    height: 13,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-  if (id === 'light') {
-    return (
-      <svg {...common}>
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-      </svg>
-    );
-  }
-  if (id === 'dark') {
-    return (
-      <svg {...common}>
-        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-      </svg>
-    );
-  }
-  return (
-    <svg {...common}>
-      <rect x="2.5" y="4" width="19" height="13" rx="2" />
-      <path d="M8.5 21h7M12 17v4" />
-    </svg>
-  );
-}
 
 function densityLabel(d: AppearanceDensity): string {
   if (d === 'compact') return tx('settings.settingsPage.appearance.densityCompact');
@@ -80,71 +45,50 @@ export function AppearanceSection(): JSX.Element {
 
   return (
     <section className="appearance-sec">
-      {/* ── ① 全局皮肤：一键切换，花纹全局生效 ── */}
+      {/* ── ① 主题：11 选 1（经典白 / 经典黑 / 跟随系统 + 8 款花纹风格），全部平级一键切换 ── */}
       <div className="appearance-card">
         <div className="appearance-row">
           <div className="appearance-row-main">
-            <div className="appearance-row-label">全局皮肤</div>
+            <div className="appearance-row-label">主题</div>
             <div className="appearance-row-hint">
-              一键切换整站配色与花纹背景，浅色 / 深色模式各自适配，文字始终清晰。
+              经典白 / 经典黑 / 跟随系统，或选一款带花纹的风格主题。全部平级，点击立即全局生效；风格主题随系统亮暗自动适配，文字始终清晰。
             </div>
           </div>
         </div>
-        <div className="skin-grid" role="group" aria-label="全局皮肤">
-          {SKINS.map((skin) => {
-            const active = app.skin === skin.id;
+        <div className="skin-grid" role="group" aria-label="主题">
+          {THEME_PRESETS.map((preset) => {
+            const active = app.skin !== 'classic' ? app.skin === preset.id : app.mode === preset.id;
             return (
               <button
-                key={skin.id}
+                key={preset.id}
                 type="button"
                 className={`skin-chip${active ? ' active' : ''}`}
-                style={{ ['--skin-accent' as string]: skin.accent, ['--skin-tint' as string]: skin.tint }}
-                onClick={() => commit({ ...app, skin: skin.id })}
-                title={skin.hint}
+                style={{ ['--skin-accent' as string]: preset.accent, ['--skin-tint' as string]: preset.tint }}
+                onClick={() =>
+                  commit(
+                    preset.kind === 'brightness'
+                      ? { ...app, mode: preset.mode!, skin: 'classic' }
+                      : { ...app, mode: 'system', skin: preset.skinId! },
+                  )
+                }
+                title={preset.hint}
                 aria-pressed={active}
               >
-                <span className="skin-chip-preview" data-pattern={skin.pattern} data-skin-accent={skin.accent} />
+                <span className="skin-chip-preview" data-pattern={preset.pattern} data-split={preset.tint === 'split' ? '1' : undefined} />
                 <span className="skin-chip-body">
                   <span className="skin-chip-dot" />
-                  <strong>{skin.name}</strong>
+                  <strong>{preset.name}</strong>
                   {active ? <span className="badge">使用中</span> : null}
                 </span>
-                <span className="skin-chip-hint">{skin.hint}</span>
+                <span className="skin-chip-hint">{preset.hint}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── ② 主题模式 + 语言 ── */}
+      {/* ── ② 语言 ── */}
       <div className="appearance-card">
-        <div className="appearance-row">
-          <div className="appearance-row-main">
-            <div className="appearance-row-label">
-              {tx('settings.settingsPage.appearance.theme')}
-            </div>
-            <div className="appearance-row-hint">
-              {tx('settings.settingsPage.appearance.themeDescription')}
-            </div>
-          </div>
-          <div className="appearance-row-ctl">
-            <div className="appearance-seg" role="group">
-              {(['system', 'light', 'dark'] as const).map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={app.mode === id}
-                  className={`appearance-seg-btn${app.mode === id ? ' on' : ''}`}
-                  onClick={() => commit({ ...app, mode: id })}
-                >
-                  <ThemeIcon id={id} />
-                  {tx(`settings.settingsPage.theme.${id}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         <div className="appearance-row">
           <div className="appearance-row-main">
             <div className="appearance-row-label">
