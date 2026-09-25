@@ -1535,6 +1535,21 @@ export function ChatPage(): JSX.Element {
             </div>
           ))}
 
+          {/* 秒回：发出消息到首 token 之间不再干等 —— 立刻给一颗"正在开工"的打字气泡 */}
+          {!streamingMessage && (preparing || stream.phase !== 'idle') && (
+            <div className="msg msg-assistant">
+              <div className="msg-avatar assistant">
+                <Icon name="bot" size={13} />
+              </div>
+              <div className="msg-body">
+                <div className="typing-line" role="status" aria-live="polite">
+                  <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
+                  <span>{preparing ? '正在创建会话、连接模型…' : '已收到，正在开始这项任务…'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {streamingMessage && (
             <div className="msg msg-assistant">
               <div className="msg-avatar assistant">

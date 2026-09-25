@@ -20,6 +20,22 @@ function inputText(block: ContentBlock): string {
   return Object.values(inputRecord(block)).filter((value): value is string => typeof value === 'string').join(' ').toLowerCase();
 }
 
+/**
+ * 2026-09-25 用户要求：状态行要「完全准确地知道在干什么」。
+ * 模型给工具写的 `description` 若已是中文，就是第一手事实 —— 原样上屏（截断到 60 字），
+ * 不再套启发式模板。英文旁白仍走原启发式收敛。
+ */
+function chineseDescriptionOf(block: ContentBlock): string | null {
+  const raw = inputRecord(block).description;
+  if (typeof raw !== 'string') return null;
+  const text = raw.trim().replace(/\s+/g, ' ');
+  if (text.length < 4) return null;
+  const latin = (text.match(/[A-Za-z]/g) ?? []).length;
+  const han = (text.match(/[\u4e00-\u9fff]/gu) ?? []).length;
+  if (han < 4 || han < latin) return null;
+  return text.length > 60 ? `${text.slice(0, 59)}…` : text;
+}
+
 const HIDDEN_TOOL_NARRATION_FIELDS = new Set([
   'description',
   'explanation',
@@ -51,6 +67,9 @@ export function activityMessagesFor(blocks: readonly ContentBlock[], userText = 
   const tools = blocks.filter((block) => block?.kind === 'tool_use');
   const last = tools.at(-1);
   if (last) {
+    // 第一手事实优先：模型自己写的中文 description 一字不改地上屏
+    const own = chineseDescriptionOf(last);
+    if (own) return [own];
     const name = (last.toolName ?? '').split('__').pop() ?? '';
     const detail = inputText(last);
     const running = last.toolResult === undefined;

@@ -186,3 +186,31 @@
 .competition-shell .muted { color: var(--fg-secondary); }
 .competition-shell .cmp-week { background: var(--border-weak); }
 .competition-shell .studio-delivery-item { border-color: var(--border-weak); }
+
+/* ═════════ 2026-09-25 三轮：聚焦折角 / 秒回 / 丝滑 ═════════ */
+
+/* 折角蓝框根因：theme.css 的 textarea:focus-visible outline（3px 直角）特异性
+   压过 .composer-input 的 outline:none —— 这里以更高特异性压回去，
+   并给输入区本体圆角，聚焦反馈改由 .composer-box:focus-within 的描边承担。 */
+.competition-shell .composer-input:focus-visible,
+.competition-shell .composer-input:focus,
+.competition-shell .composer-input:focus { outline: none; border: none; box-shadow: none; }
+.competition-shell .composer-input,
+.competition-shell .composer-input-region { border-radius: 12px; }
+.competition-shell .composer-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* 秒回：发出消息到首 token 之间的"打字气泡" */
+.typing-line { display: flex; align-items: center; gap: 9px; padding: 2px 0; color: var(--fg-secondary); font-size: 12.5px; }
+.typing-dots { display: inline-flex; gap: 4px; }
+.typing-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .45; animation: typing-bounce 1.2s infinite; }
+.typing-dots i:nth-child(2) { animation-delay: .15s; }
+.typing-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+/* 丝滑：消息入场 */
+.competition-shell .msg { animation: msg-in 200ms ease-out; }
+@keyframes msg-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .competition-shell .msg { animation: none; } .typing-dots i { animation: none; } }
