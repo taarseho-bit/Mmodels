@@ -481,6 +481,17 @@
   overflow-y: auto;
   padding: 0 var(--sp-5) var(--sp-6);
 }
+
+.data-chart-studio { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--bg-panel); }
+.data-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 20px 11px; border-bottom: 1px solid var(--border-weak); flex-shrink: 0; }
+.data-chart-head strong { display: block; font-size: 14px; font-weight: 650; }
+.data-chart-head small { display: block; margin-top: 3px; color: var(--fg-muted); font-size: 11px; }
+.data-chart-tabs { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--border-weak); border-radius: 9px; background: var(--bg-sunken); }
+.data-chart-tabs button { border: 0; border-radius: 6px; padding: 6px 10px; background: transparent; color: var(--fg-muted); font-size: 11px; cursor: pointer; }
+.data-chart-tabs button:hover { color: var(--fg-primary); }
+.data-chart-tabs button.active { background: var(--bg-panel); color: var(--fg-primary); box-shadow: 0 1px 3px #00000012; font-weight: 600; }
+.data-chart-body { flex: 1; min-height: 0; overflow: hidden; }
+.data-chart-body > .page, .data-chart-body > .gallery-page { height: 100%; min-height: 0; }
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -3708,6 +3719,14 @@ audio.ap-media {
 .heat-scroll {
   overflow-x: auto;
 }
+
+.activity-summary { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-weak); }
+.activity-summary-head { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:11px; }
+.activity-bars { display:flex; align-items:flex-end; gap:7px; height:82px; margin-top:10px; }
+.activity-bar-wrap { display:flex; flex:1; min-width:12px; height:100%; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; }
+.activity-bar { display:block; width:100%; max-width:22px; min-height:6px; border-radius:6px 6px 3px 3px; background:linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 44%, transparent)); transition:height 180ms ease, filter 180ms ease; }
+.activity-bar-wrap:hover .activity-bar { filter:brightness(1.14); }
+.activity-bar-wrap small { color:var(--fg-muted); font-size:9px; }
 .heat-grid {
   display: flex;
   gap: 3px;

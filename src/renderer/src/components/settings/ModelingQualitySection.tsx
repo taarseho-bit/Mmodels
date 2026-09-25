@@ -12,6 +12,7 @@ export function ModelingQualitySection(): JSX.Element {
   const patchSettings = useApp((s) => s.patchSettings);
   const parallel = Math.min(4, Math.max(1, settings?.maxParallelAgents ?? 2));
   const total = Math.min(8, Math.max(parallel, settings?.maxTotalAgents ?? 4));
+  const scale = total <= 3 ? 'light' : total <= 5 ? 'standard' : 'dense';
 
   return (
     <div className="col" style={{ gap: 22 }}>
@@ -65,26 +66,18 @@ export function ModelingQualitySection(): JSX.Element {
         </div>
       </Section>
 
-      <Section title="协作人数上限" hint="限制临时协作成员，避免工作流出现大量没有明确分工的节点。">
+      <Section title="协作规模" hint="用三档控制协同密度；智能体会优先复用已有成员，不为了展示而堆很多节点。">
         <div className="panel col" style={{ padding: 14, gap: 12 }}>
-          <label className="row" style={{ justifyContent: 'space-between', gap: 12 }}>
-            <span className="col" style={{ gap: 2 }}><strong style={{ fontSize: 12.5 }}>同时工作的成员</strong><span className="muted" style={{ fontSize: 11 }}>同一时间最多并行处理几个分工。</span></span>
-            <select className="select" value={parallel} onChange={(e) => {
-              const value = Number(e.target.value);
-              void patchSettings({ maxParallelAgents: value, maxTotalAgents: Math.max(value, total) });
-            }}>
-              {[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value} 人</option>)}
-            </select>
-          </label>
-          <label className="row" style={{ justifyContent: 'space-between', gap: 12 }}>
-            <span className="col" style={{ gap: 2 }}><strong style={{ fontSize: 12.5 }}>本轮最多成员</strong><span className="muted" style={{ fontSize: 11 }}>超过后复用已有成员，不继续创建临时智能体。</span></span>
-            <select className="select" value={total} onChange={(e) => {
-              const value = Number(e.target.value);
-              void patchSettings({ maxTotalAgents: Math.max(parallel, value) });
-            }}>
-              {[2, 3, 4, 5, 6, 7, 8].map((value) => <option key={value} value={value}>{value} 人</option>)}
-            </select>
-          </label>
+          <select className="select" value={scale} onChange={(e) => {
+            const value = e.target.value;
+            const next = value === 'light' ? { maxParallelAgents: 1, maxTotalAgents: 2 } : value === 'dense' ? { maxParallelAgents: 4, maxTotalAgents: 8 } : { maxParallelAgents: 2, maxTotalAgents: 4 };
+            void patchSettings(next);
+          }}>
+            <option value="light">轻量协作 · 1–2 位</option>
+            <option value="standard">标准协作 · 2–4 位</option>
+            <option value="dense">密集协作 · 3–6 位</option>
+          </select>
+          <span className="muted" style={{ fontSize: 11, lineHeight: 1.6 }}>轻量适合快速试算，标准适合论文写作，密集只在题目确实需要多个专业分工时启用。</span>
         </div>
       </Section>
     </div>

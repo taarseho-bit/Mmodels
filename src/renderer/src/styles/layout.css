@@ -674,6 +674,13 @@
   padding: var(--sp-5);
 }
 
+/* 设置中的工具页需要把滚动交给内部页面，避免外层吞掉鼠标滚轮。 */
+.settings-tool-scroll { display: flex; padding: 0; overflow: hidden; }
+.settings-tool-content { flex: 1; min-height: 0; display: flex; flex-direction: column; max-width: none; padding: 0; }
+.settings-tool-content > .gallery-page,
+.settings-tool-content > .page,
+.settings-tool-content > .data-chart-studio { flex: 1; min-height: 0; }
+
 .page-narrow {
   max-width: 780px;
   margin: 0 auto;

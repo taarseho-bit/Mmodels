@@ -23,12 +23,11 @@ import { Icon } from './Icon';
 import { GALLERY, templatePrompt } from '@shared/gallery-data';
 import { tx } from '../i18n';
 
-/** 模板缩略图：vite 在构建时解析为 URL（与 GalleryPage 同一批内置 webp） */
-const THUMBS = import.meta.glob('../assets/gallery/*.webp', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-}) as Record<string, string>;
+/** 模板缩略图：同时兼容新的 PNG 参考图和历史 webp。 */
+const THUMBS = {
+  ...import.meta.glob('../assets/gallery/*.png', { eager: true, query: '?url', import: 'default' }),
+  ...import.meta.glob('../assets/gallery/*.webp', { eager: true, query: '?url', import: 'default' }),
+} as Record<string, string>;
 
 /**
  * 科研绘图标签 —— 紧凑版模板列表。

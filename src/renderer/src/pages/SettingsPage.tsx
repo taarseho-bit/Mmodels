@@ -31,9 +31,8 @@ import { KeysSection } from '../components/settings/KeysSection';
 import { NotifySection } from '../components/settings/NotifySection';
 import { TourSection } from '../components/settings/TourSection';
 import { AboutSection } from '../components/settings/AboutSection';
-import { GalleryPage } from './GalleryPage';
+import { DataChartStudioPage } from './DataChartStudioPage';
 import { CompetitionsPage } from './CompetitionsPage';
-import { DatabasePage } from './DatabasePage';
 import { AutomationPage } from './AutomationPage';
 import { ExtensionsPage } from './ExtensionsPage';
 import type { Route } from '../App';
@@ -63,6 +62,7 @@ type SectionGroup = { id: string; label: string; icon: string; items: SectionIte
 function normalizeSection(value: string | null | undefined): SectionId | null {
   if (!value) return null;
   if (value === 'bots') return 'about';
+  if (value === 'gallery') return 'datasets';
   const ids: SectionId[] = [
     'gallery', 'competitions', 'datasets', 'automation', 'extensions', 'profile', 'paper', 'quality',
     'chat', 'model', 'providers', 'env', 'network', 'sysprompt', 'appearance', 'keys',
@@ -125,8 +125,7 @@ export function SettingsPage({
     {
       id: 'resources', label: '建模资源', icon: 'blocks', items: [
         { id: 'extensions', label: '技能、算法与模板', icon: 'blocks' },
-        { id: 'gallery', label: '建模图表', icon: 'chart-column' },
-        { id: 'datasets', label: '数据与案例', icon: 'database' },
+        { id: 'datasets', label: '数据与图表', icon: 'chart-column' },
       ],
     },
     {
@@ -239,9 +238,9 @@ export function SettingsPage({
         </div>
         <div className={`page-scroll${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-scroll' : ''}`}>
           <div className={`settings-content${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-content' : ''}`}>
-            {section === 'gallery' && <GalleryPage />}
+            {section === 'gallery' && <DataChartStudioPage />}
             {section === 'competitions' && <CompetitionsPage />}
-            {section === 'datasets' && <DatabasePage />}
+            {section === 'datasets' && <DataChartStudioPage />}
             {section === 'automation' && <AutomationPage />}
             {section === 'extensions' && <ExtensionsPage requestedTab={requestedExtensionTab} onNavigate={onNavigate} />}
             {section === 'profile' && <ProfileSection />}

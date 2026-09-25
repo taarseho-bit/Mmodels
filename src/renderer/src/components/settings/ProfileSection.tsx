@@ -60,6 +60,8 @@ export function ProfileSection(): JSX.Element {
     () => Math.max(1, ...(stats?.heatmap.map((d) => d.tokens) ?? [1])),
     [stats],
   );
+  const recentActivity = useMemo(() => (stats?.heatmap ?? []).slice(-14), [stats]);
+  const recentMax = Math.max(1, ...recentActivity.map((d) => d.tokens));
 
   const effortLabel =
     settings?.effort === 'low'
@@ -206,6 +208,19 @@ export function ProfileSection(): JSX.Element {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+          {recentActivity.length > 0 && (
+            <div className="activity-summary" aria-label={t('最近14天活跃度')}>
+              <div className="activity-summary-head"><strong>{t('最近14天')}</strong><span className="muted">{t('按对话量和用量显示')}</span></div>
+              <div className="activity-bars">
+                {recentActivity.map((d) => (
+                  <span key={d.day} className="activity-bar-wrap" title={`${d.day} · ${fmtTokens(d.tokens)} tokens · ${d.messages} 条`}>
+                    <i className="activity-bar" style={{ height: `${Math.max(8, (d.tokens / recentMax) * 100)}%` }} />
+                    <small>{d.day.slice(8)}</small>
+                  </span>
+                ))}
               </div>
             </div>
           )}

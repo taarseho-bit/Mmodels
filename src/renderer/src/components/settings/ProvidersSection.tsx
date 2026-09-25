@@ -297,6 +297,7 @@ export function ProvidersSection(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [fastModeModels, setFastModeModels] = useState<string[]>([]);
+  const [discoveringModels, setDiscoveringModels] = useState(false);
 
   /** 原版：已连接列表按名称排序 */
   const connected = useMemo(
@@ -407,6 +408,27 @@ export function ProvidersSection(): JSX.Element {
     }
   }, []);
 
+  const discoverModels = useCallback(async () => {
+    if (!editing || !editingExisting) {
+      setError(t('请先保存供应商，再读取接口中的模型。'));
+      return;
+    }
+    setDiscoveringModels(true);
+    setError(null);
+    try {
+      const found = await window.mathmodel.llm.listModels(editing.id, true);
+      if (!found.length) {
+        setError(t('接口没有返回模型列表，请检查地址、密钥或手动添加模型。'));
+        return;
+      }
+      setModels(found);
+    } catch (e) {
+      setError(friendlyError(e, '读取模型没有完成，可以重试。'));
+    } finally {
+      setDiscoveringModels(false);
+    }
+  }, [editing, editingExisting]);
+
   // ── 编辑态 ──
   if (editing) {
     return (
@@ -511,7 +533,18 @@ export function ProvidersSection(): JSX.Element {
         )}
 
         <div className="field">
-          <label className="field-label">{tx('settings.modelListEditor.models')}</label>
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <label className="field-label">{tx('settings.modelListEditor.models')}</label>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              disabled={!editingExisting || discoveringModels}
+              onClick={() => void discoverModels()}
+              title={t('保存后从 OpenAI /models 或 Anthropic /v1/models 自动读取')}
+            >
+              {discoveringModels ? t('读取中…') : t('读取可用模型')}
+            </button>
+          </div>
           <div className="col" style={{ gap: 6 }}>
             {models.map((m, i) => (
               <div key={i} className="row" style={{ gap: 6 }}>
@@ -566,6 +599,8 @@ export function ProvidersSection(): JSX.Element {
               </button>
             </div>
             <div className="field-hint">
+              {t('保存供应商后可自动读取接口支持的多个模型；OpenAI 兼容接口使用 /models，Anthropic 兼容接口使用 /v1/models。')}
+              <br />
               容量是模型一次能参考的内容，不是消费额度。最大1M；请按接口实际能力选择，修改数字不会扩容模型。未知型号以运行器参考值显示。旧名称 deepseek-chat 建议在确认后改用官方当前名称 deepseek-flash。
               <br />
               {t('列表里的第一个会成为该供应商的默认模型。点击闪电可声明该模型支持快速模式。')}
@@ -678,6 +713,18 @@ export function ProvidersSection(): JSX.Element {
                   )}
                 </span>
                 <p className="provider-desc truncate">{tx(p.descKey)}</p>
+                <p className="provider-desc">
+                  {p.key === 'openai-compatible'
+                    ? t('万能模式：兼容 OpenAI /models，可接入大多数国产与本地服务。')
+                    : p.key === 'anthropic-thirdparty'
+                      ? t('万能模式：兼容 Anthropic /v1/models，可接入第三方中转服务。')
+                      : null}
+                  {p.consoleUrl && (
+                    <a className="provider-console-link" href={p.consoleUrl} target="_blank" rel="noreferrer">
+                      {t('打开官网')} ↗
+                    </a>
+                  )}
+                </p>
               </div>
               <button className="provider-connect" onClick={() => fromPreset(p)}>
                 <Icon name="plus" size={14} />

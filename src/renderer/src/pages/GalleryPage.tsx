@@ -36,11 +36,10 @@ type DiagramTheme = 'mono' | 'color';
 const ALL = 'All';
 
 /** 模板缩略图：vite 在构建时解析为 URL */
-const THUMBS = import.meta.glob('../assets/gallery/*.webp', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-}) as Record<string, string>;
+const THUMBS = {
+  ...import.meta.glob('../assets/gallery/*.png', { eager: true, query: '?url', import: 'default' }),
+  ...import.meta.glob('../assets/gallery/*.webp', { eager: true, query: '?url', import: 'default' }),
+} as Record<string, string>;
 
 function thumbOf(file: string): string | undefined {
   return THUMBS[`../assets/gallery/${file}`];
@@ -67,9 +66,9 @@ function Thumb({ src, alt }: { src?: string; alt: string }): JSX.Element {
   );
 }
 
-/** 原版 `source` 字段取值：流程图来自 paper-diagram，其余来自 daily-figure-lab */
+/** 目录来源直接展示，方便演示时说明参考图来自哪里。 */
 function sourceOf(item: GalleryTemplate): string {
-  return item.category === '流程图' ? 'paper-diagram' : 'daily-figure-lab';
+  return item.library;
 }
 
 function Detail({

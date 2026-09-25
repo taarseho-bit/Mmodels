@@ -294,8 +294,8 @@ const api = {
     testProvider: (id: string): Promise<{ ok: boolean; detail: string }> =>
       ipcRenderer.invoke(IPC.LLM_TEST_PROVIDER, id),
     presets: (): Promise<PresetProvider[]> => ipcRenderer.invoke(IPC.LLM_PRESETS),
-    listModels: (providerId: string): Promise<string[]> =>
-      ipcRenderer.invoke(IPC.LLM_LIST_MODELS, providerId),
+    listModels: (providerId: string, refresh = false): Promise<string[]> =>
+      ipcRenderer.invoke(IPC.LLM_LIST_MODELS, providerId, refresh),
   },
 
   // ── 设置 ──────────────────────────────────────────────────
