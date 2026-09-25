@@ -208,6 +208,10 @@
 .typing-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .45; animation: typing-bounce 1.2s infinite; }
 .typing-dots i:nth-child(2) { animation-delay: .15s; }
 .typing-dots i:nth-child(3) { animation-delay: .3s; }
+
+/* 停止后无产出时的"任务已暂停"确认行（静态，无动画） */
+.typing-line.stream-paused { color: var(--fg-muted); gap: 7px; }
+.typing-line.stream-paused::before { content: '⏸'; font-size: 11px; opacity: .8; }
 @keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
 
 /* 丝滑：消息入场 */

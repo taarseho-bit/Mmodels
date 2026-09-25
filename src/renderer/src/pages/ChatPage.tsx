@@ -1536,8 +1536,10 @@ export function ChatPage(): JSX.Element {
           ))}
 
           {/* 秒回：发出消息到首 token 之间不再干等 —— 立刻给一颗"正在开工"的打字气泡。
-              ⚠️ stopping 态不能再说"正在开始"——用户刚点了停止，要如实说正在停下。 */}
-          {!streamingMessage && (preparing || stream.phase !== 'idle') && (
+              ⚠️ stopping 态不能再说"正在开始"——用户刚点了停止，要如实说正在停下。
+              ⚠️ 渲染条件只认 running/stopping/preparing：停止后 phase 停在 'done'（终态），
+              若把 done 也算进去，占位气泡会带着"正在开始"永远挂着（2026-09-26 用户实测）。 */}
+          {!streamingMessage && (preparing || stream.phase === 'running' || stream.phase === 'stopping') && (
             <div className="msg msg-assistant">
               <div className="msg-avatar assistant">
                 <Icon name="bot" size={13} />
@@ -1552,6 +1554,21 @@ export function ChatPage(): JSX.Element {
                         ? '正在创建会话、连接模型…'
                         : '已收到，正在开始这项任务…'}
                   </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 停止后没有任何内容产出：如实显示"任务已暂停"（静态，无打字动画）。
+              用户点了停止就该看到暂停确认，而不是一条永远挂着的"正在开始"。 */}
+          {!streamingMessage && stream.phase === 'done' && stream.interrupted && (
+            <div className="msg msg-assistant">
+              <div className="msg-avatar assistant">
+                <Icon name="bot" size={13} />
+              </div>
+              <div className="msg-body">
+                <div className="typing-line stream-paused" role="status">
+                  <span>{t('任务已暂停，可随时继续')}</span>
                 </div>
               </div>
             </div>
