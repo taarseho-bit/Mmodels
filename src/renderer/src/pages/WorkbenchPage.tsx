@@ -22,6 +22,8 @@ export function WorkbenchPage(): JSX.Element {
   }, [project?.id]);
   if (!draft) return <div className="studio-page"><p>{message || '正在打开比赛工作台…'}</p></div>;
   const contest = calendarCompetition(draft), countdown = countdownFor(contest, now);
+  const checkedCount = draft.checklist.filter(item => item.done).length;
+  const checkPercent = draft.checklist.length ? Math.round(checkedCount / draft.checklist.length * 100) : 0;
   const patch = (value: Partial<Project>) => {
     const next = { ...draft, ...value }; drafts.set(draft.id, next); setDraft(next); setMessage('有修改待保存'); return next;
   };
@@ -63,6 +65,11 @@ export function WorkbenchPage(): JSX.Element {
         <button className="btn btn-ghost" onClick={() => openRoute('competitions')}>查看赛程</button>
       </div>
       <div className="studio-countdown" aria-live="polite"><span>{countdown.label}</span><strong>{countdown.text}</strong><small>预留核对与上传时间</small></div>
+    </section>
+    <section className="studio-readiness" aria-label="项目准备度">
+      <div><span className="studio-eyebrow">项目准备度</span><strong>{checkPercent}%</strong><small>{checkedCount}/{draft.checklist.length} 项已核对</small></div>
+      <div className="studio-readiness-bar"><i style={{ width: `${checkPercent}%` }} /></div>
+      <div className="studio-readiness-meta"><span>当前阶段：{draft.phase}</span><span>{draft.pageLimit ? `页数上限：${draft.pageLimit}` : '尚未设置页数上限'}</span><span>{draft.evidence.length} 条结论依据 · {draft.alternatives.length} 个候选方案</span></div>
     </section>
     {message && <p className="studio-notice" role="status">{message}</p>}
     <details className="studio-workbench-more"><summary>更多比赛资料与提交检查</summary>

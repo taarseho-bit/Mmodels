@@ -6,7 +6,7 @@ import { WorkflowAvatar } from './WorkflowAvatar';
 import { ResizeHandle } from './ResizeHandle';
 
 const stateLabels = { running: '工作中', returned: '已交回', stopped: '已停止', unknown: '待确认' };
-export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'analysis' }: { run: WorkflowRun; selectedId: string | null; onSelect: (id: string) => void; presentation?: 'demo' | 'analysis' }): JSX.Element {
+export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'analysis', focusId }: { run: WorkflowRun; selectedId: string | null; onSelect: (id: string) => void; presentation?: 'demo' | 'analysis'; focusId?: string | null }): JSX.Element {
   const [compact, setCompact] = useState(presentation === 'demo');
   const [follow, setFollow] = useState(true);
   const [view, setView] = useState({ x: 20, y: 20, scale: 1 });
@@ -23,6 +23,15 @@ export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'anal
     const scale = Math.min(1, Math.max(.72, Math.min((rect.width - 40) / layout.width, (rect.height - 32) / layout.height)));
     setView({ scale, x: Math.max(16, (rect.width - layout.width * scale) / 2), y: Math.max(16, (rect.height - layout.height * scale) / 2) });
   };
+  const focusNode = (id: string | null | undefined = focusId) => {
+    const rect = viewport.current?.getBoundingClientRect();
+    const target = id ? layout.nodes.find(position => position.id === id) : undefined;
+    if (!rect || !target) { fit(); return; }
+    const scale = Math.min(1.35, Math.max(.62, Math.min((rect.width - 80) / target.width, (rect.height - 80) / target.height)));
+    setFollow(false);
+    setView({ scale, x: rect.width / 2 - (target.x + target.width / 2) * scale, y: rect.height / 2 - (target.y + target.height / 2) * scale });
+  };
+  useEffect(() => { if (focusId && run.status === 'running') focusNode(focusId); }, [focusId, layout.width, layout.height, run.status]);
   useEffect(() => {
     if (!follow || !viewport.current) return;
     const observer = new ResizeObserver(fit); observer.observe(viewport.current); fit();
@@ -52,6 +61,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'anal
       <div className="flow-toolbar-actions">
         <button aria-pressed={compact} onClick={() => setCompact(v => !v)}>{compact ? '展开已结束' : '收起已结束'}</button>
         <button aria-pressed={follow} onClick={() => setFollow(v => !v)}>跟随展开</button>
+        <button title="聚焦当前正在工作的成员" aria-label="聚焦当前正在工作的成员" onClick={() => focusNode()}><Icon name="crosshair" size={13} />聚焦当前</button>
         <button title="缩小画布" aria-label="缩小画布" onClick={() => zoom(1 / 1.2)}><Icon name="minus" size={14} /></button>
         <span className="flow-zoom-level">{Math.round(view.scale * 100)}%</span>
         <button title="放大画布" aria-label="放大画布" onClick={() => zoom(1.2)}><Icon name="plus" size={14} /></button>

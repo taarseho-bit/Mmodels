@@ -43,6 +43,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
   const finishedCount = (run?.nodes.length ?? 0) - workingCount;
   const skillCount = new Set(tools.flatMap(t => t.skill ? [t.skill] : [])).size;
   const fileCount = new Set(tools.flatMap(t => t.artifact ? [t.artifact] : [])).size;
+  const activeNodeId = run?.nodes.find(item => item.status === 'running')?.id ?? run?.nodes.find(item => item.id === 'main')?.id ?? null;
   const detailAction = (tool: WorkflowTool) => privateView ? tool.label : tool.action ?? tool.label;
   const skills = [...new Set(node?.tools.flatMap(t => t.skill ? [t.skill] : []) ?? [])].map(id => {
     const calls = node!.tools.filter(t => t.skill === id);
@@ -80,7 +81,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
       })()}
       {!run.collaborationEnabled && <p className="workflow-note">本轮没有开启多智能体协作；仍会记录主助手实际完成的工作。</p>}
       <div className={`workflow-layout is-flow-canvas${node && detailsOpen ? ' with-details' : ''}`}>
-        <WorkflowCanvas key={`${run.id}-${presentation}`} run={run} presentation={presentation} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />
+        <WorkflowCanvas key={`${run.id}-${presentation}`} run={run} presentation={presentation} focusId={activeNodeId} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />
         {node && detailsOpen && <aside className="workflow-detail" aria-label="成员工作详情" onKeyDown={e => { if (e.key === 'Escape') setDetailsOpen(false); }}>
           <ResizeHandle storageKey="mm-workflow-detail-width-v2" label="调整成员详情宽度" edge="left" initial={280} min={220} max={340} fraction={.34} />
           <button className="flow-detail-close" aria-label="关闭成员详情" onClick={() => setDetailsOpen(false)}><Icon name="x" size={15} /></button>
