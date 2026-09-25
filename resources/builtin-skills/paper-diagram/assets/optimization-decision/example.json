@@ -1,0 +1,20 @@
+{
+  "layout": "optimization-decision",
+  "title": "方案优化与决策流程",
+  "subtitle": "从可行方案集合到推荐方案，明确目标、约束和取舍",
+  "steps": [
+    {"id": "scenario", "title": "场景与输入", "detail": "需求、资源、情景", "kind": "input"},
+    {"id": "decision", "title": "决策变量", "detail": "可控制的选择", "kind": "model"},
+    {"id": "objective", "title": "评价目标", "detail": "成本、收益、风险", "kind": "model"},
+    {"id": "optimize", "title": "优化求解", "detail": "算法与可行性", "kind": "solve"},
+    {"id": "recommend", "title": "推荐方案", "detail": "主方案与备选", "kind": "output"},
+    {"id": "sensitivity", "title": "敏感性分析", "detail": "参数变化的影响", "kind": "check"},
+    {"id": "compare", "title": "方案比较", "detail": "基线、边界、权衡", "kind": "check"}
+  ],
+  "edges": [
+    {"from": "scenario", "to": "decision"}, {"from": "decision", "to": "objective"},
+    {"from": "objective", "to": "optimize"}, {"from": "optimize", "to": "recommend"},
+    {"from": "recommend", "to": "sensitivity"}, {"from": "sensitivity", "to": "compare"},
+    {"from": "compare", "to": "recommend", "label": "确认取舍", "dashed": true}
+  ]
+}

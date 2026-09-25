@@ -1,6 +1,6 @@
 ---
 name: paper-diagram
-description: 制作与修改可编辑的 draw.io / diagrams.net 示意图（.drawio XML），产出 .drawio + PNG/PDF。三条路径：套用内置模板（五带技术路线图、三阶段问题驱动路线图、三栏研究框架图、三栏阶段流程图、横版任务流水线图）、从零手写 XML、高保真复刻参考图。当用户要求技术路线图、全文概览、研究框架图、论文流程图、算法流程图、模型/系统架构图、方法示意图、把论文或课题做成一张图、答辩用图，或要求画 drawio 图、照着某张图重画成可编辑矢量图、修图（文字溢出/箭头错乱/配色不一致/排版对不齐）时使用。画折线图热图等数据图表请改用绘图类技能。
+description: 制作与修改可编辑的 draw.io / diagrams.net 示意图（.drawio XML），产出 .drawio + PNG/PDF。优先使用数学建模证据图：问题求解流程、模型结构、优化决策和验证闭环；也支持从零手写 XML 和高保真复刻参考图。当用户要求论文流程图、算法流程图、模型/系统架构图、方法示意图、把建模过程做成一张图，或要求修复文字溢出/箭头错乱/配色不一致/排版对不齐时使用。画折线图、热图等数据图表请改用绘图类技能。
 ---
 
 # 论文与研究示意图（draw.io）
@@ -21,11 +21,12 @@ description: 制作与修改可编辑的 draw.io / diagrams.net 示意图（.dra
 
 | 模板 id | 版式 | 适合表达 | 说明 |
 |---|---|---|---|
-| `roadmap-5band` | 954×1296 竖版，五条点线带 + 左旗标 + 右竖排标签 | 提出问题 → 数据与指标 → 方法与机制 → 结果对比 → 评价推广 | `references/roadmap-5band.md` |
-| `roadmap-3phase` | 980×1260 竖版，三阶段主流程 + 两个点划线容器 + 右侧问题导轨 | 数据与指标 → 两组建模预测 → 情景与路径规划 | `references/roadmap-3phase.md` |
-| `framework-3col` | 1026 宽三栏，左阶段链 / 中内容块 / 右方法清单，高度自适应 | 研究**内容**全景：每个阶段对应哪些研究内容、用什么方法 | `references/framework-3col.md` |
-| `stageflow-3col` | 1000 宽三栏，中栏每块标题条 + 独立语义层级，高度自适应 | 研究/系统的**执行流程**：阶段推进、决策分支、成果分发 | `references/stageflow-3col.md` |
-| `taskflow-land` | **横版** 1360 宽，若干任务块，块内流水线 + 每步挂做法细节 | 课题拆成「任务一…任务四」，每步要写清方法与结论；适合 16:9 | `references/taskflow-land.md` |
+| `problem-flow` | 1400×900，两行主流程 + 一条回修虚线 | 题目/数据 → 假设 → 模型 → 求解 → 检验 → 结论 | `assets/problem-flow/example.json` |
+| `model-architecture` | 1400×900，中间变量流 + 上方假设 + 下方检验 | 输入如何进入变量、目标、约束和模型输出 | `assets/model-architecture/example.json` |
+| `optimization-decision` | 1400×900，场景到方案的决策链 + 敏感性反馈 | 优化题的目标、约束、求解、方案比较和取舍 | `assets/optimization-decision/example.json` |
+| `validation-loop` | 1400×900，验证主环 + 失败回到模型的虚线 | 基线、运行、误差、稳健性、证据闭环 | `assets/validation-loop/example.json` |
+
+旧版 `roadmap-*`、`framework-3col`、`stageflow-3col`、`taskflow-land` 脚本仍可读取历史项目，但不再作为新任务的首选模板。它们偏“项目路线/汇报总览”，不应该替代论文中的问题求解逻辑图。
 
 1. 读模板说明的两节：**语义约定**（哪些槽位并列、哪些汇流、哪两组必须可对比）与**字数预算**。语义放错比字数超框严重。
 2. 从用户材料抽内容，**不要编**；有源文件（`.tex`/`.md`/代码）时逐个核对数值，术语用原文。
@@ -33,11 +34,10 @@ description: 制作与修改可编辑的 draw.io / diagrams.net 示意图（.dra
 4. 渲染（写文件前逐槽校验字数，超框报出具体预算）：
 
 ```bash
-python3 scripts/roadmap_5band.py content.json -o out.drawio     # roadmap-5band
-python3 scripts/roadmap_3phase.py content.json -o out.drawio    # roadmap-3phase
-python3 scripts/framework_3col.py content.json -o out.drawio    # framework-3col
-python3 scripts/stageflow_3col.py content.json -o out.drawio    # stageflow-3col
-python3 scripts/taskflow_land.py  content.json -o out.drawio    # taskflow-land（横版）
+python3 scripts/modeling_flow.py assets/problem-flow/example.json -o out.drawio
+python3 scripts/modeling_flow.py assets/model-architecture/example.json -o out.drawio
+python3 scripts/modeling_flow.py assets/optimization-decision/example.json -o out.drawio
+python3 scripts/modeling_flow.py assets/validation-loop/example.json -o out.drawio
 ```
 
 五个模板默认输出灰白论文版；需要原彩色演示风格时统一加 `--theme color`。
@@ -84,6 +84,12 @@ python3 scripts/preview_html.py fig.drawio      # 浏览器预览，无需 drawi
 
 | 文件 | 何时读 |
 |---|---|
+| `scripts/modeling_flow.py` | 新建数学建模问题流程、模型结构、优化决策或验证闭环图 |
+| `references/modeling-flow.md` | 四种版式的选择、箭头语义和证据对应要求 |
+| `assets/problem-flow/example.json` | 题目 → 数据 → 假设 → 模型 → 求解 → 检验 → 结论 |
+| `assets/model-architecture/example.json` | 输入、变量、目标、约束、输出和检验的模型结构 |
+| `assets/optimization-decision/example.json` | 优化题的方案生成、比较和敏感性反馈 |
+| `assets/validation-loop/example.json` | 基线、运行、误差、稳健性和结论的验证闭环 |
 | `authoring.md` | 手写示意图：骨架、样式串、字宽预算、连接器 |
 | `icons.md` | 需要图标、旗标、块箭头、弯箭头等特殊图元 |
 | `roadmap-5band.md` | 用五带路线图模板 |

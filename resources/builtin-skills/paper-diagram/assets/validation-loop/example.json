@@ -1,0 +1,19 @@
+{
+  "layout": "validation-loop",
+  "title": "模型验证闭环",
+  "subtitle": "结果只有通过复算、基线和稳健性检查，才进入论文结论",
+  "steps": [
+    {"id": "data", "title": "数据与样本", "detail": "训练/测试或情景数据", "kind": "input"},
+    {"id": "baseline", "title": "基线方案", "detail": "可解释的对照结果", "kind": "neutral"},
+    {"id": "fit", "title": "模型运行", "detail": "参数、求解状态、输出", "kind": "solve"},
+    {"id": "error", "title": "误差与残差", "detail": "数量级、约束、预测误差", "kind": "check"},
+    {"id": "robust", "title": "稳健性检验", "detail": "敏感性、交叉验证、极端情景", "kind": "check"},
+    {"id": "claim", "title": "结论证据", "detail": "图表、数值、适用边界", "kind": "output"}
+  ],
+  "edges": [
+    {"from": "data", "to": "baseline"}, {"from": "baseline", "to": "fit"},
+    {"from": "fit", "to": "error"}, {"from": "error", "to": "robust"},
+    {"from": "robust", "to": "claim"}
+  ],
+  "loop": {"from": "robust", "to": "fit", "label": "未通过：重新运行或换模型"}
+}

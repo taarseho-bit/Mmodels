@@ -1,6 +1,8 @@
 # MModels 交接报告（HANDOFF）
 
-> **最新：数学建模图表目录与表格排版审计（2026-09-25）**。新增 `table-layout-audit`，论文 Skill 在编译前扫描宽表并要求渲染复核；绘图入口只展示 28 项数据模板和 5 项技术路线图，旧脚本仅用于历史复现。`academic-figures`、`nature-figure` 不再作为内置可用技能物化。附件 `main(15).pdf` 的表 8.16—8.18 右侧裁切已作为回归问题记录。Node/Web TypeScript、模板清单和 TeX 审计均通过；本轮未跑全量测试、未打包 Portable。
+> **最新：流程图改为数学建模证据图（2026-09-25）**。新任务不再优先展示技术路线/课题申请式总览，改为 `problem-flow`、`model-architecture`、`optimization-decision`、`validation-loop` 四套模板，分别对应问题求解、模型结构、优化决策和验证闭环。4 套 draw.io 示例均通过版式检查并完成 PNG 视觉检查；旧路线图仅保留历史兼容。
+
+> **最新：数学建模图表目录与表格排版审计（2026-09-25）**。新增 `table-layout-audit`，论文 Skill 在编译前扫描宽表并要求渲染复核；绘图入口只展示 28 项数据模板和 4 项问题求解证据图，旧脚本仅用于历史复现。`academic-figures`、`nature-figure` 不再作为内置可用技能物化。附件 `main(15).pdf` 的表 8.16—8.18 右侧裁切已作为回归问题记录。Node/Web TypeScript、模板清单和 TeX 审计均通过；本轮未跑全量测试、未打包 Portable。
 
 > **最新：SDK 真实事件驱动阶段轨（2026-09-25）**。`WorkflowRun` 增加阶段计划、当前阶段和阶段状态；`WorkflowTrace` 根据真实工具活动推进阶段，`WorkflowView` 在项目级画布前显示阶段轨。旧快照向下兼容通用四阶段。40 项定向工作流/策略测试、TypeScript、生产构建通过；本轮未跑全量、未重新打包 Portable。
 

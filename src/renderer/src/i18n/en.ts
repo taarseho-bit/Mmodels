@@ -973,7 +973,7 @@ export const en = {
     diagramsPanel: {
       backToList: "Back to list",
       count: "{{count}} flowcharts",
-      emptyDescription: "Ask the agent to draw a roadmap or flowchart with the paper-diagram skill; the .drawio files show up here.",
+      emptyDescription: "Ask the agent to draw a problem-solving flow, model structure, or validation loop with the paper-diagram skill; the .drawio files show up here.",
       emptyTitle: "No flowcharts yet",
       export: "Export",
       exportBusy: "The agent is busy — you can export once it finishes",
@@ -1484,7 +1484,7 @@ export const en = {
         apiIssue: "- API connectivity issue ({{provider}}: {{message}}) — try to diagnose network/proxy problems; if it is a key issue, just tell me instead of changing settings",
         currentProvider: "the current provider",
         drawioLinuxCommand: "install via your distro package manager or the official draw.io Desktop AppImage / deb",
-        drawioMissing: "- draw.io Desktop is not installed — the paper-diagram skill needs its CLI to export roadmap diagrams to PNG/PDF (install command: {{command}})",
+        drawioMissing: "- draw.io Desktop is not installed — the paper-diagram skill needs its CLI to export modeling diagrams to PNG/PDF (install command: {{command}})",
         gitMissing: "- Git is not installed — MathModel needs it for local version snapshots and restore",
         intro: "My mathmodel environment check found problems. Please help me fix them:",
         latexMissing: "- LaTeX (xelatex) is not installed — needed to compile the CUMCM paper template. Install a TeX distribution for my platform (macOS: MacTeX / BasicTeX, Windows: MiKTeX, Linux: TeX Live). It is a large download, so tell me the plan and confirm with me before installing.",

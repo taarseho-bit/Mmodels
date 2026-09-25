@@ -1,5 +1,14 @@
 # MModels 交付说明
 
+## 2026-09-25 数学建模图替换为问题求解证据图（本轮）
+
+- 根据公开数学建模工作流和科学工作流的共同结构，移除新任务里的“技术路线/课题总览”首选入口，替换为 4 套论文更适合的图：`problem-flow`（题目到结论）、`model-architecture`（变量/目标/约束）、`optimization-decision`（优化决策）、`validation-loop`（验证闭环）。
+- 新增 `resources/builtin-skills/paper-diagram/scripts/modeling_flow.py` 和 4 份可编辑 JSON 示例，支持灰白论文版和彩色演示版；每个箭头都有明确语义，验证失败用虚线回到模型修正。
+- 绘图面板现在展示 28 项数据模板 + 4 项建模证据流程图；旧 `roadmap-*`、`framework-3col`、`stageflow-3col`、`taskflow-land` 仍可读取历史项目，但不再作为新任务推荐。
+- 4 套新图均已用 draw.io 导出 PNG，经过 `check_layout.py` 版式检查，均为 FAIL 0 / WARN 0，并完成视觉检查。
+
+公开参考包括数学建模工作流模板、面向可复现科学任务的 DAG 工作流模板，以及“问题—方法—解释”的实验流程图规范；未把任何公开示例直接当作获奖保证或直接复制为模板。
+
 ## 2026-09-25 数学建模图表目录与表格排版审计（本轮）
 
 - 新增 `resources/builtin-skills/table-layout-audit/`：论文编译前扫描 `tabular/tabularx/longtable/array`，提示无换行列、列数过多和缺少结束标记；论文 Skill 规定先审计再渲染 PDF，发现右侧裁切或 `Overfull \\hbox` 时不得直接压缩页数掩盖问题。

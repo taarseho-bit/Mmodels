@@ -1009,7 +1009,7 @@ export const zh = {
     diagramsPanel: {
       backToList: '返回列表',
       count: '{{count}} 张流程图',
-      emptyDescription: '让 Agent 用 paper-diagram 技能画技术路线图或流程图，画好的 .drawio 会出现在这里。',
+      emptyDescription: '让 Agent 用 paper-diagram 技能画问题求解流程、模型结构或验证闭环图，画好的 .drawio 会出现在这里。',
       emptyTitle: '还没有流程图',
       export: '导出',
       exportBusy: 'Agent 正在工作，结束后即可导出',
@@ -1520,7 +1520,7 @@ export const zh = {
         apiIssue: '- API 连通性异常（{{provider}}：{{message}}）——请尝试诊断网络或代理问题；如果是密钥问题，只告诉我，不要修改设置',
         currentProvider: '当前供应商',
         drawioLinuxCommand: '用发行版包管理器或 draw.io Desktop 官方 AppImage / deb 安装',
-        drawioMissing: '- 未安装 draw.io 桌面版（paper-diagram 技能把技术路线图导出成 PNG/PDF 需要它的命令行；安装命令：{{command}}）',
+        drawioMissing: '- 未安装 draw.io 桌面版（paper-diagram 技能把建模流程图导出成 PNG/PDF 需要它的命令行；安装命令：{{command}}）',
         gitMissing: '- 未安装 Git（MModels 的本地版本存档与恢复需要）',
         intro: '我的 MModels 运行环境检测有问题，请帮我修复：',
         latexMissing: '- 未安装 LaTeX（论文编译需要）',

@@ -1,0 +1,20 @@
+{
+  "layout": "problem-flow",
+  "title": "从赛题到结论的建模流程",
+  "subtitle": "把每一步和数据、公式、代码、验证证据对应起来",
+  "steps": [
+    {"id": "question", "title": "题目与分问", "detail": "目标、约束、输出", "kind": "input"},
+    {"id": "data", "title": "数据审计", "detail": "口径、缺失、异常", "kind": "input"},
+    {"id": "assumption", "title": "假设与变量", "detail": "边界、符号、单位", "kind": "model"},
+    {"id": "model", "title": "模型建立", "detail": "目标、约束、机制", "kind": "model"},
+    {"id": "solve", "title": "求解与实验", "detail": "算法、参数、基线", "kind": "solve"},
+    {"id": "validate", "title": "检验与复算", "detail": "误差、敏感性、稳健性", "kind": "check"},
+    {"id": "conclusion", "title": "结论与建议", "detail": "回答分问、说明边界", "kind": "output"}
+  ],
+  "edges": [
+    {"from": "question", "to": "data"}, {"from": "data", "to": "assumption"},
+    {"from": "assumption", "to": "model"}, {"from": "model", "to": "solve"},
+    {"from": "solve", "to": "validate"}, {"from": "validate", "to": "conclusion"}
+  ],
+  "loop": {"from": "validate", "to": "model", "label": "未通过：修正假设或参数"}
+}

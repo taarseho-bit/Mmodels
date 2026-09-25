@@ -1,0 +1,20 @@
+{
+  "layout": "model-architecture",
+  "title": "模型结构与变量流向",
+  "subtitle": "输入如何经过变量、目标和约束，得到可解释的模型输出",
+  "steps": [
+    {"id": "input", "title": "原始数据", "detail": "观测、附件、先验", "kind": "input"},
+    {"id": "features", "title": "变量构造", "detail": "指标、特征、状态", "kind": "model"},
+    {"id": "objective", "title": "目标函数", "detail": "要最小/最大化什么", "kind": "model"},
+    {"id": "constraint", "title": "约束与边界", "detail": "资源、物理、逻辑", "kind": "model"},
+    {"id": "output", "title": "模型输出", "detail": "方案、预测、评价", "kind": "output"},
+    {"id": "assumption", "title": "建模假设", "detail": "适用范围与简化条件", "kind": "neutral"},
+    {"id": "validate", "title": "输出检验", "detail": "残差、基线、敏感性", "kind": "check"}
+  ],
+  "edges": [
+    {"from": "input", "to": "features"}, {"from": "features", "to": "objective"},
+    {"from": "objective", "to": "constraint"}, {"from": "constraint", "to": "output"},
+    {"from": "assumption", "to": "features", "label": "限定口径", "dashed": true},
+    {"from": "output", "to": "validate"}, {"from": "validate", "to": "objective", "label": "反馈修正", "dashed": true}
+  ]
+}
