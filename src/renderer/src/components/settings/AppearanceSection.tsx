@@ -85,6 +85,35 @@ export function AppearanceSection(): JSX.Element {
             );
           })}
         </div>
+
+        {/* 自定义强调色：设置后优先于主题色板（深色模式自动提亮保证对比） */}
+        <div className="appearance-row" style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
+          <div className="appearance-row-main">
+            <div className="appearance-row-label">自定义强调色</div>
+            <div className="appearance-row-hint">
+              覆盖当前主题的按钮、链接与高亮色。留空 = 跟随主题配色。
+            </div>
+          </div>
+          <div className="appearance-row-ctl" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="color"
+              value={app.accentOverride || '#007aff'}
+              onChange={(e) => commit({ ...app, accentOverride: e.target.value })}
+              disabled={!app.accentOverride}
+              style={{ width: 34, height: 26, padding: 0, border: '1px solid var(--border)', borderRadius: 6, background: 'none', cursor: app.accentOverride ? 'pointer' : 'not-allowed' }}
+              aria-label="选择自定义强调色"
+            />
+            <button
+              type="button"
+              className={`switch${app.accentOverride ? ' on' : ''}`}
+              aria-pressed={!!app.accentOverride}
+              aria-label="启用自定义强调色"
+              onClick={() => commit({ ...app, accentOverride: app.accentOverride ? '' : '#007aff' })}
+            >
+              <span className="switch-knob" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── ② 语言 ── */}

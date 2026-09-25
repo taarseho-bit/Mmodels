@@ -1,0 +1,58 @@
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/mathmodel-desktop[39m
+
+ [31m❯[39m src/main/agent/permissions.test.ts [2m([22m[2m38 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[90m 17[2mms[22m[39m
+[31m   [31m×[31m gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链[2m > [22m只读白名单 = 原版那 10 个 MCP 名（逐字对照 Ju + _u）[90m 7[2mms[22m[31m[39m
+[31m     → expected [ …(11) ] to deeply equal [ …(10) ][39m
+[31m   [31m×[31m 结构级判据 —— agent/session.ts 里的顺序与"别跟着改"的东西[2m > [22m权限门排在"发审批请求"之前（先放行再问，顺序反了会把放行分支饿死）[90m 0[2mms[22m[31m[39m
+[31m     → expected 17661 to be greater than 17744[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 2 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/main/agent/permissions.test.ts[2m > [22mgateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链[2m > [22m只读白名单 = 原版那 10 个 MCP 名（逐字对照 Ju + _u）
+[31m[1mAssertionError[22m: expected [ …(11) ] to deeply equal [ …(10) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  Array [[22m
+[2m    "mcp__mathmodel-browser__browser_logs",[22m
+[2m    "mcp__mathmodel-browser__browser_screenshot",[22m
+[2m    "mcp__mathmodel-browser__browser_snapshot",[22m
+[2m    "mcp__mathmodel-browser__browser_status",[22m
+[31m+   "mcp__mathmodel-browser__browser_wait",[39m
+[2m    "mcp__mathmodel__check_environment",[22m
+[2m    "mcp__mathmodel__get_settings",[22m
+[2m    "mcp__mathmodel__list_automations",[22m
+[2m    "mcp__mathmodel__list_keybindings",[22m
+[2m    "mcp__mathmodel__list_projects",[22m
+[2m    "mcp__mathmodel__list_skills",[22m
+[2m  ][22m
+
+[36m [2m❯[22m src/main/agent/permissions.test.ts:[2m241:40[22m[39m
+    [90m239| [39m  [34mit[39m([32m'只读白名单 = 原版那 10 个 MCP 名（逐字对照 Ju + _u）'[39m[33m,[39m () [33m=>[39m {
+    [90m240| [39m    [90m// 原版 @638492：Ju = 6 个 mcp__mathmodel__*；@622345：_u = 4 个 m[39m…
+    [90m241| [39m    [34mexpect[39m([[33m...[39m[33mREADONLY_TOOLS[39m][33m.[39m[34msort[39m())[33m.[39m[34mtoEqual[39m([
+    [90m   | [39m                                       [31m^[39m
+    [90m242| [39m      [32m'mcp__mathmodel-browser__browser_logs'[39m[33m,[39m
+    [90m243| [39m      [32m'mcp__mathmodel-browser__browser_screenshot'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/main/agent/permissions.test.ts[2m > [22m结构级判据 —— agent/session.ts 里的顺序与"别跟着改"的东西[2m > [22m权限门排在"发审批请求"之前（先放行再问，顺序反了会把放行分支饿死）
+[31m[1mAssertionError[22m: expected 17661 to be greater than 17744[39m
+[36m [2m❯[22m src/main/agent/permissions.test.ts:[2m328:24[22m[39m
+    [90m326| [39m    [35mconst[39m approvalAt [33m=[39m [33mSRC[39m[33m.[39m[34mindexOf[39m([32m'this.requestApproval('[39m)[33m;[39m
+    [90m327| [39m    [34mexpect[39m(gateAt)[33m.[39m[34mtoBeGreaterThan[39m([33m-[39m[34m1[39m)[33m;[39m
+    [90m328| [39m    [34mexpect[39m(approvalAt)[33m.[39m[34mtoBeGreaterThan[39m(gateAt)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m329| [39m  })[33m;[39m
+    [90m330| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m36 passed[39m[22m[90m (38)[39m
+[2m   Start at [22m 02:40:41
+[2m   Duration [22m 830ms[2m (transform 58ms, setup 10ms, collect 56ms, tests 17ms, environment 0ms, prepare 140ms)[22m
+

@@ -501,6 +501,15 @@ export class AgentSession extends EventEmitter {
       return this.handleAskUserQuestion(input);
     }
 
+    // ② ExitPlanMode（B2 / plan 模式）：**无论权限档**都截下 —— 计划必须经用户批准
+    //    才能退出 plan。走 requestApproval 复用审批框全链路（pending/超时/abort 清理），
+    //    渲染层 ApprovalDialog 按 kind==='plan' 展示计划全文。
+    //    ⚠️ 必须插在 ③ 全放行之前：否则 plan + 完全访问 会先被 ③ 放行，计划永远捕获不到
+    //    （原版同位，@771414 if 链 ②）。
+    if (toolName === 'ExitPlanMode') {
+      return this.requestApproval(toolName, input, ctx);
+    }
+
     // ②~⑤ 权限门
     const step = gateStepFor(this.canonicalPermissionMode, toolName, this.sessionAllowedTools);
     if (step !== 'approval') {

@@ -79,10 +79,10 @@
  *   等于在"需要批准"模式下**静默放行了原版会弹框的每一次读文件**。
  *   对一个审批门来说，**错的方向是"更宽松"**，必须纠正成原版清单。
  *
- * ⚠️ 已知偏离（登记，不擅自扩大）：复刻侧**不注册任何内置 MCP 服务器**
- *   （`agent/session.ts:567-582` 只注入用户在设置里配的 `mcpServers`），
- *   所以这 10 个名字在复刻里通常命中不到 ⇒ 实际效果约等于"白名单为空"。
- *   这是**比原版更严格**的方向（安全侧），不是 bug；要放宽得等复刻真内置了这些 MCP 工具。
+ * ⚠️ 状态更新（2026-09-26）：复刻侧**已经内置注册** `mcp__mathmodel`（15 工具，
+ *   `agent/builtin-mcp.ts`）与 `mcp__mathmodel-browser`（12 工具，`agent/browser-tools.ts`），
+ *   下面这批只读名字**全部真实存在**，白名单在"需要批准"模式下实际生效。
+ *   原先"复刻侧不注册内置 MCP、白名约等于空集"的说明已过时。
  *   ⚠️ 另注：`settings.builtinMcpEnabled` 在 `session.ts` 里**只有接口声明、没有读取点**
  *   （与 `notifyEnabled` 同类的"假开关"），这条不在本轮范围内，已另行上报。
  */
@@ -155,6 +155,7 @@ export const READONLY_TOOLS: ReadonlySet<string> = new Set([
   'mcp__mathmodel-browser__browser_snapshot',
   'mcp__mathmodel-browser__browser_screenshot',
   'mcp__mathmodel-browser__browser_logs',
+  'mcp__mathmodel-browser__browser_wait',
 ]);
 
 /**
@@ -175,6 +176,7 @@ export const READONLY_TOOLS: ReadonlySet<string> = new Set([
  *    真要修，应该单开一条并在原版侧确认，而不是在这里顺手修。
  */
 export function approvalKindOf(toolName: string): ApprovalKind {
+  if (toolName === 'ExitPlanMode') return 'plan';
   if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') return 'file-read';
   if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') {
     return 'file-change';
@@ -193,6 +195,10 @@ const DETAIL_MAX = 0x190;
  * 这里也保留，否则一个畸形 input 会把整条审批链抛穿、用户看到的是"卡死"。
  */
 export function approvalDetailOf(toolName: string, input: unknown): string {
+  // ExitPlanMode：detail 就是计划全文（不截断、不走 JSON 串）—— 用户要审的就是它
+  if (toolName === 'ExitPlanMode' && input && typeof input === 'object' && typeof (input as Record<string, unknown>).plan === 'string') {
+    return (input as Record<string, unknown>).plan as string;
+  }
   let json: string;
   try {
     json = JSON.stringify(input);

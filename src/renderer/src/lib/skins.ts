@@ -171,10 +171,15 @@ function patternFrontUri(pattern: SkinDef['pattern'], color: string): string {
 }
 
 /** 把皮肤变量写到文档根（皮肤与主题平行：读 theme 选色板，skin 选身份） */
-export function applySkinVars(root: HTMLElement, skinId: string): void {
+export function applySkinVars(root: HTMLElement, skinId: string, accentOverride?: string): void {
   const skin = skinById(skinId);
   const dark = root.dataset.theme === 'dark';
-  const accent = dark ? skin.accentDark : skin.accent;
+  // 用户自定义强调色（外观设置取色器）优先于皮肤色板；
+  // 深色模式下把自定义色自动提亮一档，保证对比（复用 mixHex 管线）。
+  const base = accentOverride && /^#[0-9a-fA-F]{6}$/.test(accentOverride)
+    ? accentOverride
+    : (dark ? skin.accentDark : skin.accent);
+  const accent = dark && !accentOverride ? skin.accentDark : base;
   const tint = dark ? skin.tintDark : skin.tint;
   const patternColor = dark ? skin.patternColorDark : skin.patternColor;
   root.dataset.skin = skin.id;

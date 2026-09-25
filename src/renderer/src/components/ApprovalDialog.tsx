@@ -38,6 +38,7 @@ const PROMPT_KEY: Record<ApprovalKind, string> = {
   command: 'composer.composerPendingApprovalPanel.promptCommand',
   'file-read': 'composer.composerPendingApprovalPanel.promptFileRead',
   'file-change': 'composer.composerPendingApprovalPanel.promptFileChange',
+  plan: 'composer.composerPendingApprovalPanel.promptPlan',
 };
 
 /**

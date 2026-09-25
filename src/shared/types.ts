@@ -261,9 +261,9 @@ export interface AskUserRequest {
  * 审批类别 —— **逐字取自原版** zod（decoded main @387559）：
  * `requestKind: z.enum(['command','file-read','file-change'])`
  *
- * 渲染层据此选 `composer.composerPendingApprovalPanel.prompt{Command,FileRead,FileChange}`。
+ * 渲染层据此选 `composer.composerPendingApprovalPanel.prompt{Command,FileRead,FileChange,Plan}`。
  */
-export type ApprovalKind = 'command' | 'file-read' | 'file-change';
+export type ApprovalKind = 'command' | 'file-read' | 'file-change' | 'plan';
 
 /**
  * 用户在审批框里的四种选择 —— **逐字取自原版** `buildCanUseTool` @771414

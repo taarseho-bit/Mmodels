@@ -744,6 +744,7 @@ export const en = {
       declineDescription: "Reject and let the agent continue",
       promptCommand: "Approve this command?",
       promptFileChange: "Approve this file change?",
+      promptPlan: "The AI submitted an execution plan for your approval.",
       promptFileRead: "Approve reading this file?",
       reviewToContinue: "Review the request to continue.",
     },

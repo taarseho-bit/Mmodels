@@ -780,6 +780,7 @@ export const zh = {
       declineDescription: '拒绝请求并让 Agent 继续',
       promptCommand: '批准执行此命令？',
       promptFileChange: '批准此次文件修改？',
+      promptPlan: 'AI 提交了执行计划，等待你的批准。',
       promptFileRead: '批准读取此文件？',
       reviewToContinue: '请审核请求后继续。',
     },

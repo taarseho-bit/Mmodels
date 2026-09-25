@@ -131,6 +131,8 @@ export interface AppearanceState {
   terminalFont: string;
   /** 全局皮肤 id（skins.ts） */
   skin: string;
+  /** 自定义强调色（#rrggbb）。空 = 跟随皮肤；设置后优先于皮肤的 accent */
+  accentOverride: string;
 }
 
 export const APPEARANCE_DEFAULTS: AppearanceState = {
@@ -165,6 +167,7 @@ export const APPEARANCE_DEFAULTS: AppearanceState = {
   terminalFontSize: 11,
   terminalFont: '',
   skin: 'classic',
+  accentOverride: '',
 };
 
 const APPEARANCE_KEY = 'mm-appearance';
@@ -342,7 +345,7 @@ export function applyAppearance(): void {
   }
 
   // ── 全局皮肤（2026-09-25）：覆盖 accent 系变量 + 花纹底（CSS 按 data-skin）──
-  applySkinVars(root, a.skin || 'classic');
+  applySkinVars(root, a.skin || 'classic', a.accentOverride || undefined);
 
   // ── 字体与间距 ──
   root.dataset.appearanceDensity = a.density;

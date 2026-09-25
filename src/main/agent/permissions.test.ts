@@ -238,11 +238,14 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
 
   it('只读白名单 = 原版那 10 个 MCP 名（逐字对照 Ju + _u）', () => {
     // 原版 @638492：Ju = 6 个 mcp__mathmodel__*；@622345：_u = 4 个 mcp__mathmodel-browser__*
+    // 原版 10 个逐字保留；复刻侧新增 browser_wait（内置浏览器等待轮询，无副作用只读）。
+    // 2026-09-26：内置 MCP 已真实注册（builtin-mcp.ts / browser-tools.ts），白名单实际生效。
     expect([...READONLY_TOOLS].sort()).toEqual([
       'mcp__mathmodel-browser__browser_logs',
       'mcp__mathmodel-browser__browser_screenshot',
       'mcp__mathmodel-browser__browser_snapshot',
       'mcp__mathmodel-browser__browser_status',
+      'mcp__mathmodel-browser__browser_wait',
       'mcp__mathmodel__check_environment',
       'mcp__mathmodel__get_settings',
       'mcp__mathmodel__list_automations',
@@ -250,7 +253,7 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
       'mcp__mathmodel__list_projects',
       'mcp__mathmodel__list_skills',
     ]);
-    expect(READONLY_TOOLS.size).toBe(10);
+    expect(READONLY_TOOLS.size).toBe(11);
   });
 
   it('反向对照：**任何内置工具都不在白名单里**（最易错的是 Read/Glob/Grep）', () => {
@@ -322,9 +325,14 @@ describe('结构级判据 —— agent/session.ts 里的顺序与"别跟着改"�
   });
 
   it('权限门排在"发审批请求"之前（先放行再问，顺序反了会把放行分支饿死）', () => {
+    // B2（2026-09-26）：② 位 ExitPlanMode 走 requestApproval，合法地出现在权限门之前；
+    // 这里钉的是 ③~⑥ 的关系 —— gateStepFor（③④⑤ 判定）必须在⑥ 兜底审批之前。
     const gateAt = SRC.indexOf('gateStepFor(');
-    const approvalAt = SRC.indexOf('this.requestApproval(');
+    const planAt = SRC.indexOf("toolName === 'ExitPlanMode'");
+    const approvalAt = SRC.lastIndexOf('this.requestApproval(');
     expect(gateAt).toBeGreaterThan(-1);
+    expect(planAt).toBeGreaterThan(-1);
+    expect(planAt).toBeLessThan(gateAt);
     expect(approvalAt).toBeGreaterThan(gateAt);
   });
 
