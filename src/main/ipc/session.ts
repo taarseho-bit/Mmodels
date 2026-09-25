@@ -468,6 +468,7 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
         maxParallelAgents: collaborationPolicy.maxParallelAgents,
         maxTotalAgents: collaborationPolicy.maxTotalAgents,
       },
+      workflowStages: collaborationPolicy.stages,
     } : {}),
     onWorkflow: publishWorkflow,
     /**

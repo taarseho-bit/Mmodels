@@ -39,10 +39,13 @@ export class WorkflowTrace {
     private publish: (run: WorkflowRun) => void,
     private readonly maxParallelAgents = 2,
     private readonly maxTotalAgents = 4,
+    workflowStages?: string[],
   ) {
     const now = Date.now();
     this.run = { id: randomUUID(), sessionId, startedAt: now, updatedAt: now, revision: 0,
-      status: 'running', collaborationEnabled: this.collaborationEnabled, truncated: false, nodes: [] };
+      status: 'running', collaborationEnabled: this.collaborationEnabled, truncated: false, nodes: [],
+      workflowStages: workflowStages?.length ? workflowStages.slice(0, 8) : ['了解问题', '研究与计算', '核对结果', '整理交付'],
+      currentStage: 0, stageStatus: 'running' };
     this.node('main', 'main');
     this.flush();
   }
@@ -82,6 +85,17 @@ export class WorkflowTrace {
     const runningNodes = this.run.nodes.filter(node => node.id !== 'main' && node.status === 'running').length;
     const pendingDispatches = [...this.requests.keys()].filter(id => !this.linkedRequests.has(id)).length;
     return runningNodes + pendingDispatches;
+  }
+  /** 由真实工具活动推进阶段，不读取工具参数正文，也不猜成员关系。 */
+  private advanceStage(toolName: string, skill?: string): void {
+    const stages = this.run.workflowStages ?? [];
+    if (!stages.length) return;
+    const value = `${toolName} ${skill ?? ''}`.toLowerCase();
+    let next = 0;
+    if (/review|audit|page-fit|delivery|终审|核验|复核/.test(value)) next = stages.length - 1;
+    else if (/write|edit|notebook|paper|figure|diagram|polish|论文|图表/.test(value)) next = Math.min(2, stages.length - 1);
+    else if (/bash|python|计算|model|solve|optimization|求解/.test(value)) next = Math.min(1, stages.length - 1);
+    this.run.currentStage = Math.max(this.run.currentStage ?? 0, next);
   }
   private observe(input: HookInput, toolUseID?: string): Record<string, unknown> {
     const event = input.hook_event_name;
@@ -164,6 +178,7 @@ export class WorkflowTrace {
       }
       node.tools.push(tool);
     }
+    this.advanceStage(input.tool_name, tool.skill);
     if (event === 'PostToolUse') {
       tool.status = 'completed'; tool.endedAt = Date.now();
       if (/^(Agent|Task)$/.test(input.tool_name) && input.tool_response && typeof input.tool_response === 'object') {
@@ -198,6 +213,7 @@ export class WorkflowTrace {
   finish(status: Exclude<WorkflowStatus, 'running'>): void {
     if (this.run.status !== 'running') return;
     this.run.status = status;
+    this.run.stageStatus = 'completed';
     for (const node of this.run.nodes) {
       if (node.status === 'running') node.status = status === 'completed' && node.id === 'main' ? 'returned' : status === 'stopped' ? 'stopped' : 'unknown';
       node.endedAt ??= Date.now();

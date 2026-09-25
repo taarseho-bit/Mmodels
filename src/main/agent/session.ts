@@ -169,6 +169,8 @@ export interface RunOptions {
   multiAgentEnabled?: boolean;
   /** 本轮协作预算：并行成员数和整轮新建成员数都由编排策略决定。 */
   collaborationBudget?: { maxParallelAgents: number; maxTotalAgents: number };
+  /** 给工作流画布的阶段短名；只用于展示，不会注入模型。 */
+  workflowStages?: string[];
   onWorkflow?: (run: WorkflowRun) => void;
 }
 
@@ -652,6 +654,7 @@ export class AgentSession extends EventEmitter {
           opts.onWorkflow,
           opts.collaborationBudget?.maxParallelAgents ?? DEFAULT_MAX_PARALLEL_AGENTS,
           opts.collaborationBudget?.maxTotalAgents ?? 4,
+          opts.workflowStages,
         )
       : undefined;
 

@@ -13,6 +13,14 @@
 .workflow-summary { justify-content:flex-start; flex-wrap:wrap; font-size:12px; padding:10px 0; border-block:1px solid #8882; }
 .workflow-summary label { margin-right:auto; }.workflow-summary select { color:inherit; background:var(--bg-panel); border:1px solid #8883; border-radius:6px; padding:6px; margin-left:8px; max-width:260px; }
 .workflow-status { border-radius:20px; padding:4px 9px; background:#8881; }.workflow-status.is-running { color:#268568; background:#329b7b16; }
+.workflow-stage-rail { margin:14px 0 2px; padding:12px 14px; border:1px solid #8882; border-radius:10px; background:color-mix(in srgb, var(--bg-panel) 76%, transparent); }
+.workflow-stage-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--fg-secondary); font-size:11px; }.workflow-stage-heading small { color:var(--fg-muted); }
+.workflow-stage-rail ol { display:flex; align-items:flex-start; gap:0; list-style:none; padding:12px 0 0; margin:0; }
+.workflow-stage-rail li { display:flex; align-items:center; gap:7px; flex:1; min-width:0; color:var(--fg-muted); font-size:11px; position:relative; }
+.workflow-stage-rail li:not(:last-child)::after { content:''; height:1px; flex:1; margin:0 10px; background:#8883; }
+.workflow-stage-rail li.is-done { color:#4b987f; }.workflow-stage-rail li.is-current { color:var(--fg-primary); font-weight:600; }.workflow-stage-rail li.is-current::after { background:color-mix(in srgb, var(--accent) 45%, #8883); }
+.workflow-stage-dot { display:grid; place-items:center; flex:0 0 20px; height:20px; border-radius:50%; border:1px solid #8884; color:inherit; font-size:10px; background:var(--bg-canvas); }.workflow-stage-rail li.is-done .workflow-stage-dot { border-color:#4b987f66; background:#4b987f18; }.workflow-stage-rail li.is-current .workflow-stage-dot { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+@media (max-width:620px) { .workflow-stage-rail ol { display:grid; grid-template-columns:1fr 1fr; gap:9px; }.workflow-stage-rail li:not(:last-child)::after { display:none; } }
 .workflow-layout { display:grid; grid-template-columns:minmax(260px, 1fr) minmax(250px, 310px); gap:24px; margin-top:14px; align-items:start; }
 .workflow-graph-caption { margin:0 0 14px; }
 .workflow-nodes { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:26px 16px; position:relative; }

@@ -56,9 +56,11 @@ export function buildProjectWorkflow(projectId: string, runs: WorkflowRun[]): Wo
       if (nodes.some(node => node.id === source) && nodes.some(node => node.id === target)) exchanges.push({ ...link, id: `${run.id}:${link.id}`, source, target });
     }
   }
+  const latest = [...ordered].reverse().find(item => item.status === 'running') ?? ordered.at(-1);
   return { id: `project:${projectId}`, sessionId: `project:${projectId}`, projectId, startedAt: ordered[0].startedAt,
     updatedAt: Math.max(...ordered.map(run => run.updatedAt)), revision: Math.max(...ordered.map(run => run.revision)), status: status as WorkflowRun['status'],
-    collaborationEnabled: ordered.some(run => run.collaborationEnabled), nodes, truncated: ordered.some(run => run.truncated), exchanges };
+    collaborationEnabled: ordered.some(run => run.collaborationEnabled), nodes, truncated: ordered.some(run => run.truncated), exchanges,
+    workflowStages: latest?.workflowStages, currentStage: latest?.currentStage, stageStatus: latest?.stageStatus };
 }
 
 /** 仅允许已有项目预览器打开项目内部文件；外部路径不转成可点击成果。 */

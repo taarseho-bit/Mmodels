@@ -38,6 +38,11 @@ export interface WorkflowRun {
   collaborationEnabled: boolean;
   nodes: WorkflowNode[];
   truncated: boolean;
+  /** 本轮由编排策略提供的短阶段名；不保存提示词或模型思考正文。 */
+  workflowStages?: string[];
+  /** 最近一次真实工具活动所在阶段，按 0 开始。 */
+  currentStage?: number;
+  stageStatus?: 'waiting' | 'running' | 'completed';
   exchanges?: { id: string; source: string; target: string }[];
 }
 export const WORKFLOW_IPC = { list: 'workflow:list', listProject: 'workflow:list-project', changed: 'workflow:changed' } as const;

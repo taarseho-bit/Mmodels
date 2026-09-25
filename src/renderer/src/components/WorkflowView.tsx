@@ -64,6 +64,16 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
         <span className={`workflow-status is-${run.status}`}>{runLabel[run.status]}</span>
         <span>{workingCount} 位正在工作</span><span>{finishedCount} 位已收起</span><span>{skillCount} 项技能与流程</span><span>{fileCount} 份文件成果</span>
       </div>
+      {(() => {
+        const stages = run.workflowStages?.length ? run.workflowStages : ['了解问题', '研究与计算', '核对结果', '整理交付'];
+        const current = Math.min(Math.max(run.currentStage ?? 0, 0), stages.length - 1);
+        return <section className="workflow-stage-rail" aria-label="任务推进阶段">
+          <div className="workflow-stage-heading"><span>推进到哪一步</span><small>{run.stageStatus === 'completed' ? '本轮已收口' : `当前：${stages[current]}`}</small></div>
+          <ol>{stages.map((stage, index) => <li key={`${stage}-${index}`} className={index < current || (run.stageStatus === 'completed' && index === current) ? 'is-done' : index === current && run.stageStatus !== 'completed' ? 'is-current' : 'is-next'}>
+            <span className="workflow-stage-dot">{index < current || (run.stageStatus === 'completed' && index === current) ? '✓' : index + 1}</span><span>{stage}</span>
+          </li>)}</ol>
+        </section>;
+      })()}
       {!run.collaborationEnabled && <p className="workflow-note">本轮没有开启多智能体协作；仍会记录主助手实际完成的工作。</p>}
       <div className={`workflow-layout is-flow-canvas${node && detailsOpen ? ' with-details' : ''}`}>
         <WorkflowCanvas key={run.id} run={run} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />

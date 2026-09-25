@@ -65,6 +65,16 @@ describe('真实事件工作流观察器', () => {
     expect(trace.run.nodes.map(node => node.id)).not.toContain('child-c');
     trace.finish('completed');
   });
+  it('按真实工具活动推进阶段并在结束时标记阶段轨完成', async () => {
+    const trace = new WorkflowTrace('a', true, () => {}, 2, 4, ['题意', '计算', '核验']);
+    expect(trace.run).toMatchObject({ workflowStages: ['题意', '计算', '核验'], currentStage: 0, stageStatus: 'running' });
+    await invoke(trace, { ...pre('calc', undefined, 'Bash', { command: 'python model.py' }), hook_event_name: 'PostToolUse', tool_response: {} });
+    expect(trace.run.currentStage).toBe(1);
+    await invoke(trace, { ...pre('audit', undefined, 'Skill', { skill: 'competition-audit' }), hook_event_name: 'PostToolUse', tool_response: {} });
+    expect(trace.run.currentStage).toBe(2);
+    trace.finish('completed');
+    expect(trace.run.stageStatus).toBe('completed');
+  });
   it('允许一层受控嵌套，但仍共享并行预算', async () => {
     const trace = new WorkflowTrace('a', true, () => {}, 2, 4);
     await invoke(trace, pre('dispatch-parent', undefined, 'Agent', { description: '角色名：模型求解员' }));
