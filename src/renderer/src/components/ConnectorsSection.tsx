@@ -87,6 +87,24 @@ const PRESETS: Preset[] = [
     server: { transport: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '.'], env: {} },
     credentials: [],
   },
+  {
+    key: 'github',
+    displayName: 'GitHub 项目协作',
+    group: '协作',
+    description: '读取代码仓库、Issue 和提交记录，适合把建模脚本与论文版本放进同一条工作流。',
+    capabilities: ['仓库文件检索', 'Issue 与讨论整理', '提交记录回顾'],
+    server: { transport: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'], env: {} },
+    credentials: [{ key: 'GITHUB_PERSONAL_ACCESS_TOKEN', label: '访问令牌', placeholder: '只保存在本机设置中' }],
+  },
+  {
+    key: 'time',
+    displayName: '时间与时区',
+    group: '效率',
+    description: '统一比赛截止时间、队伍协作时间和自动化提醒的时区。',
+    capabilities: ['时区转换', '当前时间查询', '截止时间换算'],
+    server: { transport: 'stdio', command: 'uvx', args: ['mcp-server-time'], env: {} },
+    credentials: [],
+  },
 ];
 
 export function ConnectorsSection(): JSX.Element {

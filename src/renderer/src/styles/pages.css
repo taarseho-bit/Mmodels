@@ -3561,7 +3561,9 @@ audio.ap-media {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  margin-bottom: 5px;
+  margin: 5px 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-weak);
 }
 
 .settings-nav-group-head {
@@ -3571,10 +3573,11 @@ audio.ap-media {
   width: 100%;
   border: none;
   background: transparent;
-  color: var(--muted-fg, var(--fg-muted, #888));
-  font-size: 11px;
+  color: var(--fg-primary);
+  font-size: 13px;
+  font-weight: 650;
   text-align: left;
-  padding: 6px 8px 4px;
+  padding: 9px 8px 7px;
   border-radius: 7px;
   cursor: pointer;
 }
@@ -3592,6 +3595,7 @@ audio.ap-media {
   padding-left: 26px;
   min-height: 30px;
   font-size: 12px;
+  color: var(--fg-secondary);
 }
 .settings-nav-child .settings-nav-icon {
   width: 15px;
@@ -3614,8 +3618,10 @@ audio.ap-media {
   background: var(--accent);
 }
 .settings-nav-item.active {
-  background: var(--accent);
-  font-weight: 500;
+  background: color-mix(in srgb, var(--accent) 13%, var(--bg-panel));
+  color: var(--fg-primary);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .settings-nav-icon {
   width: 18px;
@@ -3633,6 +3639,29 @@ audio.ap-media {
   margin: 0 auto;
   padding: 4px 20px 40px;
 }
+
+/* 工作台顶部只承担“当前项目 + 主动作”，把交付卡片留给正文。 */
+.studio-workbench { padding-top: 20px; }
+.studio-workbench .studio-page-heading { margin-bottom: 18px; }
+.studio-workbench .studio-page-heading h1 { font-size: 22px; }
+.studio-workbench .studio-mission { min-height: 142px; padding: 18px 20px; margin-bottom: 16px; }
+.studio-workbench .studio-countdown strong { font-size: clamp(22px, 2.2vw, 30px); }
+.studio-workbench .studio-delivery-panel { margin-bottom: 18px; }
+
+/* 技能库的层级：类型导航 > 条目 > 技能说明。 */
+.ext-skill-overview { padding: 9px 12px 7px; border-bottom: 1px solid var(--border-weak); background: color-mix(in srgb, var(--bg-sunken) 55%, transparent); }
+.ext-skill-overview strong { display: block; font-size: 12px; font-weight: 650; color: var(--fg-primary); }
+.ext-skill-overview small { display: block; margin-top: 3px; color: var(--fg-muted); font-size: 10.5px; line-height: 1.45; }
+.ext-skill-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.ext-skill-filter { border: 1px solid var(--border-weak); border-radius: 999px; padding: 3px 7px; background: transparent; color: var(--fg-muted); font-size: 10px; cursor: pointer; }
+.ext-skill-filter:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.ext-skill-filter.active { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: var(--accent-weak); color: var(--accent-contrast); }
+.ext-item-tags { display: flex; gap: 4px; margin-top: 3px; }
+.ext-item-tags .badge { height: 15px; padding: 0 5px; font-size: 9px; }
+.ext-detail-auto { margin-top: 6px; padding: 9px 10px; border-radius: 7px; background: var(--accent-weak); color: var(--fg-secondary); font-size: 11px; line-height: 1.55; }
+.algo-route-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border-weak); border-radius: 10px; background: color-mix(in srgb, var(--bg-sunken) 55%, transparent); }
+.algo-route-head strong { display: block; font-size: 13px; font-weight: 650; }
+.algo-route-head small { display: block; margin-top: 4px; color: var(--fg-muted); font-size: 11px; }
 
 /* 资料卡头像 */
 .settings-avatar {

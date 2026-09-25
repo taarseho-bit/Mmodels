@@ -47,13 +47,23 @@ export function AlgorithmsMarket(): JSX.Element {
   const tasks: Array<{ key: string; label: string }> = [
     { key: 'all', label: tx('extensions.algorithmsSection.tasks.all') },
     { key: 'decision', label: t('决策评价') },
-    { key: 'prediction', label: tx('extensions.algorithmsSection.tasks.prediction') },
-    { key: 'classification', label: tx('extensions.algorithmsSection.tasks.classification') },
-    { key: 'clustering', label: tx('extensions.algorithmsSection.tasks.clustering') },
-    { key: 'optimization', label: tx('extensions.algorithmsSection.tasks.optimization') },
-    { key: 'multiObjective', label: tx('extensions.algorithmsSection.tasks.multiObjective') },
-    { key: 'statistics', label: tx('extensions.algorithmsSection.tasks.statistics') },
+    { key: 'prediction', label: '预测与拟合' },
+    { key: 'classification', label: '分类判别' },
+    { key: 'clustering', label: '聚类分群' },
+    { key: 'optimization', label: '优化配置' },
+    { key: 'multiObjective', label: '多目标权衡' },
+    { key: 'statistics', label: '统计检验' },
   ];
+  const taskHints: Record<string, string> = {
+    all: '先按题目自动推荐，再由你决定是否安装依赖',
+    decision: '权重、排序、评价与方案选择',
+    prediction: '趋势、拟合、回归和时间序列',
+    classification: '类别判断、风险识别和样本分组',
+    clustering: '无监督分群、画像和结构发现',
+    optimization: '资源配置、路径、调度和参数寻优',
+    multiObjective: '多个指标之间的平衡与折中',
+    statistics: '显著性、相关性、分布和稳健性检查',
+  };
   const runtimeLabel: Record<RuntimeState, string> = {
     ready: t('就绪'),
     installable: tx('extensions.extensionsPage.groupAvailable'),
@@ -217,6 +227,10 @@ export function AlgorithmsMarket(): JSX.Element {
       )}
 
       {/* ── 任务分类 + 搜索 ── */}
+      <div className="algo-route-head">
+        <div><strong>建模算法导航</strong><small>{taskHints[task]}</small></div>
+        <span className="badge">智能体会先判断适用性，再调用算法</span>
+      </div>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {tasks.map((tk) => (
           <button key={tk.key} className={`btn btn-sm${task === tk.key ? ' btn-primary' : ''}`} onClick={() => setTask(tk.key)}>
@@ -256,6 +270,7 @@ export function AlgorithmsMarket(): JSX.Element {
                 <div className="row" style={{ gap: 8, alignItems: 'center' }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600 }}>{a.name}</span>
                   <span className="badge">{tasks.find((tk) => tk.key === a.task)?.label ?? a.task}</span>
+                  <span className="badge">{a.suitableFor.slice(0, 2).join(' · ')}</span>
                   {a.installed ? (
                     <span className="badge badge-success">{t('依赖已就绪')}</span>
                   ) : (

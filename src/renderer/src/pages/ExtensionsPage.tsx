@@ -36,6 +36,27 @@ type Tab = 'skills' | 'templates' | 'algorithms' | 'plugins' | 'connectors';
 /** SKILL.md 的两种查看方式（原版 viewToggle） */
 type ViewMode = 'rendered' | 'source';
 
+type SkillCategory = '读题与资料' | '数据与统计' | '建模与求解' | '绘图与表达' | '论文与交付' | '通用协作';
+const SKILL_CATEGORIES: Array<{ key: SkillCategory | 'all'; label: string; hint: string }> = [
+  { key: 'all', label: '全部技能', hint: '让智能体从完整能力库中自动挑选' },
+  { key: '读题与资料', label: '读题与资料', hint: '拆题、检索、资料整理' },
+  { key: '数据与统计', label: '数据与统计', hint: '清洗、检验、探索分析' },
+  { key: '建模与求解', label: '建模与求解', hint: '优化、预测、仿真、评价' },
+  { key: '绘图与表达', label: '绘图与表达', hint: '图表、流程图、可视化' },
+  { key: '论文与交付', label: '论文与交付', hint: '写作、排版、页数、审阅' },
+  { key: '通用协作', label: '通用协作', hint: '文件、代码、工作流协调' },
+];
+
+function skillCategory(skill: SkillMeta): SkillCategory {
+  const text = `${skill.dirName} ${skill.name} ${skill.description}`.toLowerCase();
+  if (/paper|论文|latex|tex|排版|审阅|交付|page|引用/.test(text)) return '论文与交付';
+  if (/plot|figure|draw|chart|绘图|图表|可视化|diagram/.test(text)) return '绘图与表达';
+  if (/model|optim|predict|forecast|simulation|仿真|优化|预测|建模|求解|评价/.test(text)) return '建模与求解';
+  if (/data|stat|table|excel|csv|数据|统计|清洗|检验|回归/.test(text)) return '数据与统计';
+  if (/search|research|read|题|文献|检索|资料|arxiv/.test(text)) return '读题与资料';
+  return '通用协作';
+}
+
 /** 左栏类型 tab（图标取自仓库 Icon 组件，不用 emoji） */
 const SECTIONS: Array<{ key: Tab; labelKey: string; icon: string }> = [
   { key: 'skills', labelKey: 'extensions.sections.skills', icon: 'sparkles' },
@@ -140,6 +161,7 @@ function SkillsTab(): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<SkillCategory | 'all'>('all');
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -159,8 +181,15 @@ function SkillsTab(): JSX.Element {
             s.description.toLowerCase().includes(q),
         )
       : skills;
-    return [...list].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
-  }, [skills, query]);
+    const categorized = category === 'all' ? list : list.filter((s) => skillCategory(s) === category);
+    return [...categorized].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+  }, [skills, query, category]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<SkillCategory, number>();
+    for (const skill of skills) counts.set(skillCategory(skill), (counts.get(skillCategory(skill)) ?? 0) + 1);
+    return counts;
+  }, [skills]);
 
   /** 原版分组：已启用 / 已停用（顺序固定） */
   const groups = useMemo(
@@ -275,6 +304,23 @@ function SkillsTab(): JSX.Element {
           )}
         </div>
 
+        <div className="ext-skill-overview">
+          <strong>技能库 · 自动选择已开启</strong>
+          <small>智能体会根据题目、附件和当前阶段挑选技能；你也可以按类型查看或导入自己的技能。</small>
+          <div className="ext-skill-filters">
+            {SKILL_CATEGORIES.map((item) => (
+              <button
+                key={item.key}
+                className={`ext-skill-filter${category === item.key ? ' active' : ''}`}
+                title={item.hint}
+                onClick={() => setCategory(item.key)}
+              >
+                {item.label}{item.key !== 'all' ? ` ${categoryCounts.get(item.key) ?? 0}` : ` ${skills.length}`}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {error && <div className="ext-banner danger">{error}</div>}
         {notice && <div className="ext-banner">{notice}</div>}
 
@@ -301,6 +347,7 @@ function SkillsTab(): JSX.Element {
                       <span className="ext-item-main">
                         <span className="ext-item-name">{s.name}</span>
                         <span className="ext-item-desc">{s.description}</span>
+                        <span className="ext-item-tags"><span className="badge">{skillCategory(s)}</span><span className="badge">{s.source === 'builtin' ? '内置' : '我的技能'}</span></span>
                       </span>
                     </button>
                   ))}
@@ -440,6 +487,7 @@ function SkillDetail({
           <div className="ext-field-label">{tx('extensions.detail.description')}</div>
           <div className="ext-desc-text">{skill.description}</div>
         </div>
+        <div className="ext-detail-auto"><strong>调用方式：</strong>开启“自动选择技能”后，智能体会在读题、分析数据、建模、绘图、写作和交付检查阶段按需调用；你也可以在对话中直接输入技能名称。</div>
 
         {/* ── SKILL.md：Markdown 渲染 / 源码 ── */}
         <div className="ext-doc">

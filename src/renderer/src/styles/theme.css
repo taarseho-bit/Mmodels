@@ -446,6 +446,27 @@ a:hover {
   border-color: var(--accent);
 }
 
+/* 下拉框统一成和输入框一致的轻量控件，避免浏览器默认箭头和边框抢视觉。 */
+select,
+.select {
+  min-height: 32px;
+  padding: 0 34px 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--bg-panel);
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg-muted) 50%), linear-gradient(135deg, var(--fg-muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 13px, calc(100% - 11px) 13px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), background-color var(--t-fast);
+}
+select:hover,
+.select:hover { border-color: var(--border-strong); background-color: var(--bg-hover); }
+select:focus,
+.select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+
 /* ── 徽标 ── */
 
 .badge {

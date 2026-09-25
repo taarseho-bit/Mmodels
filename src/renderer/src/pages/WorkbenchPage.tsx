@@ -34,6 +34,8 @@ function scanDeliveryFiles(nodes: FileNode[]): DeliveryFileStats {
 }
 export function WorkbenchPage(): JSX.Element {
   const project = useApp(s => s.currentProject);
+  // 所有 hook 必须在条件渲染之前执行；项目资料异步加载时也不能改变 hook 顺序。
+  const qualityMode = useApp(s => s.settings?.modelingQualityMode ?? 'balanced');
   const [draft, setDraft] = useState<Project | null>(null);
   const [fileStats, setFileStats] = useState<DeliveryFileStats | null>(null);
   const [pdfInfo, setPdfInfo] = useState<{ relPath: string; pages: number | null; size: number } | null>(null);
@@ -99,7 +101,6 @@ export function WorkbenchPage(): JSX.Element {
   const checkedCount = draft.checklist.filter(item => item.done).length;
   const checkPercent = draft.checklist.length ? Math.round(checkedCount / draft.checklist.length * 100) : 0;
   const checkedEvidence = draft.evidence.filter(item => item.checked).length;
-  const qualityMode = useApp(s => s.settings?.modelingQualityMode ?? 'balanced');
   const workflowSkillCount = workflowSummary?.skills.length ?? 0;
   const workflowSkillReviewCount = workflowSummary?.skills.filter(item => item.status === '需要复核').length ?? 0;
   const pageLimitNumber = Number((draft.pageLimit.match(/\d+/) ?? [])[0] ?? 0);
