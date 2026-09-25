@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DeliveryAudit, Project, Phase } from '../../../shared/competition-studio';
 import type { FileNode } from '@shared/types';
+import type { WorkflowRun } from '@shared/workflow';
 import { COMPETITIONS } from '../../../shared/competitions-data';
 import { calendarCompetition, competitionDeadline, countdownFor } from '../../../shared/competition-countdown';
 import { useApp } from '../store/app';
@@ -10,6 +11,11 @@ import { friendlyError } from '../lib/friendly-error';
 const drafts = new Map<string, Project>();
 const contests = [...COMPETITIONS].sort((a, b) => b.year - a.year || a.name.localeCompare(b.name, 'zh-CN'));
 type DeliveryFileStats = { pdf: number; source: number; figure: number; table: number };
+type WorkflowQualitySummary = {
+  runStatus: WorkflowRun['status'];
+  updatedAt: number;
+  skills: Array<{ id: string; label: string; status: '进行中' | '已完成' | '需要复核'; calls: number }>;
+};
 function flattenFiles(nodes: FileNode[], out: FileNode[] = []): FileNode[] {
   for (const node of nodes) { out.push(node); if (node.children) flattenFiles(node.children, out); }
   return out;
@@ -32,6 +38,7 @@ export function WorkbenchPage(): JSX.Element {
   const [fileStats, setFileStats] = useState<DeliveryFileStats | null>(null);
   const [fileScanNonce, setFileScanNonce] = useState(0);
   const [fileScannedAt, setFileScannedAt] = useState<number | null>(null);
+  const [workflowSummary, setWorkflowSummary] = useState<WorkflowQualitySummary | null>(null);
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, []);
   useEffect(() => {
@@ -49,12 +56,43 @@ export function WorkbenchPage(): JSX.Element {
     void window.mathmodel.file.tree().then(nodes => { if (live) { setFileStats(scanDeliveryFiles(nodes)); setFileScannedAt(Date.now()); } }).catch(() => { if (live) { setFileStats({ pdf: 0, source: 0, figure: 0, table: 0 }); setFileScannedAt(Date.now()); } });
     return () => { live = false; };
   }, [project?.id, fileScanNonce]);
+  useEffect(() => {
+    let live = true;
+    setWorkflowSummary(null);
+    if (!project) return () => { live = false; };
+    void window.mathmodel.workflow.listProject(project.id).then(rows => {
+      if (!live || !Array.isArray(rows) || rows.length === 0) return;
+      const latest = [...rows].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      const bySkill = new Map<string, { label: string; calls: number; running: number; failed: number }>();
+      for (const node of latest.nodes) for (const tool of node.tools) {
+        if (!tool.skill) continue;
+        const current = bySkill.get(tool.skill) ?? { label: tool.label.replace(/^(载入入口指令|参考技能) · /, ''), calls: 0, running: 0, failed: 0 };
+        current.calls += 1;
+        if (tool.status === 'running') current.running += 1;
+        if (tool.status === 'unsuccessful' || tool.status === 'stopped') current.failed += 1;
+        bySkill.set(tool.skill, current);
+      }
+      setWorkflowSummary({
+        runStatus: latest.status,
+        updatedAt: latest.updatedAt,
+        skills: [...bySkill.entries()].map(([id, value]) => ({
+          id,
+          label: value.label,
+          calls: value.calls,
+          status: value.running > 0 ? '进行中' as const : value.failed > 0 ? '需要复核' as const : '已完成' as const,
+        })).sort((a, b) => (a.status === '进行中' ? -1 : b.status === '进行中' ? 1 : b.calls - a.calls)),
+      });
+    }).catch(() => { if (live) setWorkflowSummary(null); });
+    return () => { live = false; };
+  }, [project?.id]);
   if (!draft) return <div className="studio-page"><p>{message || '正在打开比赛工作台…'}</p></div>;
   const contest = calendarCompetition(draft), countdown = countdownFor(contest, now);
   const checkedCount = draft.checklist.filter(item => item.done).length;
   const checkPercent = draft.checklist.length ? Math.round(checkedCount / draft.checklist.length * 100) : 0;
   const checkedEvidence = draft.evidence.filter(item => item.checked).length;
   const qualityMode = useApp(s => s.settings?.modelingQualityMode ?? 'balanced');
+  const workflowSkillCount = workflowSummary?.skills.length ?? 0;
+  const workflowSkillReviewCount = workflowSummary?.skills.filter(item => item.status === '需要复核').length ?? 0;
   const deliveryChecks = [
     { label: '比赛信息', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛', ok: Boolean(contest) },
     { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
@@ -63,6 +101,7 @@ export function WorkbenchPage(): JSX.Element {
     { label: '模型方案', detail: draft.alternatives.length ? `${draft.alternatives.length} 个候选方案已记录` : '还没有记录模型方案对比', ok: draft.alternatives.length > 0 },
     { label: '结论依据', detail: draft.evidence.length ? `${checkedEvidence}/${draft.evidence.length} 条依据已核对` : '还没有记录结论依据', ok: draft.evidence.length > 0 && checkedEvidence === draft.evidence.length },
     { label: '复现材料', detail: fileStats ? `${fileStats.source} 个源文件 · ${fileStats.table} 个数据文件` : '正在读取项目文件', ok: fileStats ? fileStats.source > 0 && fileStats.table > 0 : null },
+    { label: '技能执行', detail: workflowSummary ? `${workflowSkillCount} 项技能 · ${workflowSkillReviewCount ? `${workflowSkillReviewCount} 项需要复核` : '暂无失败记录'}` : '等待真实工作流记录', ok: workflowSummary ? workflowSkillCount > 0 && workflowSkillReviewCount === 0 : null },
     { label: '提交清单', detail: `${checkedCount}/${draft.checklist.length} 项已核对`, ok: checkPercent === 100 },
   ];
   const patch = (value: Partial<Project>) => {
@@ -99,6 +138,7 @@ export function WorkbenchPage(): JSX.Element {
         { id: 'model-plan', label: '模型方案', status: draft.alternatives.length > 0 ? '通过' : '待补充', detail: draft.alternatives.length > 0 ? `已记录 ${draft.alternatives.length} 个候选方案` : '还没有记录模型方案对比' },
         { id: 'evidence', label: '结论依据', status: draft.evidence.length > 0 && checkedEvidence === draft.evidence.length ? '通过' : '待补充', detail: draft.evidence.length > 0 ? `${checkedEvidence}/${draft.evidence.length} 条依据已核对` : '还没有记录结论依据' },
         { id: 'reproducibility', label: '复现材料', status: stats.source > 0 && stats.table > 0 ? '通过' : '待补充', detail: `${stats.source} 个源文件 · ${stats.table} 个数据文件` },
+        { id: 'skills', label: '技能执行', status: workflowSummary && workflowSkillCount > 0 && workflowSkillReviewCount === 0 ? '通过' : workflowSummary ? '需深度核验' : '待补充', detail: workflowSummary ? `${workflowSkillCount} 项技能${workflowSkillReviewCount ? `，${workflowSkillReviewCount} 项需要复核` : '，调用状态正常'}` : '还没有完整的工作流技能记录' },
         { id: 'checklist', label: '提交清单', status: checkPercent === 100 ? '通过' : '待补充', detail: `${checkedCount}/${draft.checklist.length} 项已核对` },
         { id: 'deep-review', label: 'PDF 深度核验', status: '需深度核验', detail: '需要助手实际读取 PDF、表格和图表后确认' },
       ];
@@ -140,6 +180,7 @@ export function WorkbenchPage(): JSX.Element {
     <section className="studio-delivery-panel" aria-label="论文交付检查">
       <header><div><span className="studio-eyebrow">提交前先看一眼</span><h2>论文交付检查</h2><p className="studio-delivery-last">{draft.deliveryAudit ? `上次预检查：${new Date(draft.deliveryAudit.checkedAt).toLocaleString('zh-CN')} · ${draft.deliveryAudit.status}` : '还没有保存过项目级预检查'}</p></div><div className="studio-delivery-actions"><button className="btn btn-ghost" onClick={() => setFileScanNonce(value => value + 1)}>重新读取</button><button className="btn btn-primary" disabled={busy} onClick={() => void runDeliveryAudit()}>预检查并深度核验</button></div></header>
       <div className="studio-delivery-grid">{deliveryChecks.map(item => <div className={`studio-delivery-item${item.ok === true ? ' is-ok' : item.ok === null ? ' is-pending' : ''}`} key={item.label}><span className="studio-delivery-dot">{item.ok === true ? '✓' : item.ok === null ? '…' : '!'}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div><em>{item.ok === true ? '已具备' : item.ok === null ? '读取中' : '待补充'}</em></div>)}</div>
+      {workflowSummary && <div className="studio-workflow-skills"><div><strong>最近一次工作流的技能记录</strong><small>{new Date(workflowSummary.updatedAt).toLocaleString('zh-CN')} · {workflowSummary.runStatus === 'completed' ? '本轮已结束' : workflowSummary.runStatus === 'running' ? '仍在工作' : '本轮未完整结束'}</small></div><div className="studio-workflow-skill-list">{workflowSummary.skills.length ? workflowSummary.skills.slice(0, 8).map(skill => <span className={`studio-workflow-skill is-${skill.status === '已完成' ? 'ok' : skill.status === '进行中' ? 'running' : 'review'}`} key={skill.id}><i />{skill.label} · {skill.status}</span>) : <span className="muted">这轮没有记录到专门技能调用。</span>}</div></div>}
       <p className="studio-delivery-note">这里显示的是项目资料是否准备齐全，不代替助手对 PDF、表格和比赛规则的实际核对。{fileScannedAt ? ` 文件目录最近读取于 ${new Date(fileScannedAt).toLocaleTimeString('zh-CN')}` : ''}</p>
       {draft.deliveryAudit && <div className="studio-audit-history"><strong>最近一次预检查</strong>{draft.deliveryAudit.items.filter(item => item.status !== '通过').map(item => <span key={item.id} className={item.status === '需深度核验' ? 'is-review' : 'is-pending'}>{item.label}：{item.detail}</span>)}{draft.deliveryAudit.items.every(item => item.status === '通过') && <span className="is-ok">项目资料已基本齐全，等待 PDF 深度核验。</span>}</div>}
     </section>
