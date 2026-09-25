@@ -30,6 +30,8 @@ export function WorkbenchPage(): JSX.Element {
   const project = useApp(s => s.currentProject);
   const [draft, setDraft] = useState<Project | null>(null);
   const [fileStats, setFileStats] = useState<DeliveryFileStats | null>(null);
+  const [fileScanNonce, setFileScanNonce] = useState(0);
+  const [fileScannedAt, setFileScannedAt] = useState<number | null>(null);
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, []);
   useEffect(() => {
@@ -42,10 +44,11 @@ export function WorkbenchPage(): JSX.Element {
   useEffect(() => {
     let live = true;
     setFileStats(null);
+    setFileScannedAt(null);
     if (!project) return () => { live = false; };
-    void window.mathmodel.file.tree().then(nodes => { if (live) setFileStats(scanDeliveryFiles(nodes)); }).catch(() => { if (live) setFileStats({ pdf: 0, source: 0, figure: 0, table: 0 }); });
+    void window.mathmodel.file.tree().then(nodes => { if (live) { setFileStats(scanDeliveryFiles(nodes)); setFileScannedAt(Date.now()); } }).catch(() => { if (live) { setFileStats({ pdf: 0, source: 0, figure: 0, table: 0 }); setFileScannedAt(Date.now()); } });
     return () => { live = false; };
-  }, [project?.id]);
+  }, [project?.id, fileScanNonce]);
   if (!draft) return <div className="studio-page"><p>{message || '正在打开比赛工作台…'}</p></div>;
   const contest = calendarCompetition(draft), countdown = countdownFor(contest, now);
   const checkedCount = draft.checklist.filter(item => item.done).length;
@@ -105,9 +108,9 @@ export function WorkbenchPage(): JSX.Element {
       <div className="studio-readiness-meta"><span>当前阶段：{draft.phase}</span><span>{draft.pageLimit ? `页数上限：${draft.pageLimit}` : '尚未设置页数上限'}</span><span>{draft.evidence.length} 条结论依据 · {draft.alternatives.length} 个候选方案</span></div>
     </section>
     <section className="studio-delivery-panel" aria-label="论文交付检查">
-      <header><div><span className="studio-eyebrow">提交前先看一眼</span><h2>论文交付检查</h2></div><button className="btn btn-primary" disabled={busy} onClick={() => void ask('请运行一次论文交付检查：读取当前项目的比赛信息、论文 PDF、图表和表格，核对正文页数、表格是否裁切、图片是否缺失、引用与章节结构是否完整，并区分已确认、需要修改和需要人工确认的项目。请使用 competition-audit、table-layout-audit 和 paper-page-fit 等匹配技能；不要把我的勾选视为验证结果。', 'chat')}>立即检查</button></header>
+      <header><div><span className="studio-eyebrow">提交前先看一眼</span><h2>论文交付检查</h2></div><div className="studio-delivery-actions"><button className="btn btn-ghost" onClick={() => setFileScanNonce(value => value + 1)}>重新读取</button><button className="btn btn-primary" disabled={busy} onClick={() => void ask('请运行一次论文交付检查：读取当前项目的比赛信息、论文 PDF、图表和表格，核对正文页数、表格是否裁切、图片是否缺失、引用与章节结构是否完整，并区分已确认、需要修改和需要人工确认的项目。请使用 competition-audit、table-layout-audit 和 paper-page-fit 等匹配技能；不要把我的勾选视为验证结果。', 'chat')}>立即检查</button></div></header>
       <div className="studio-delivery-grid">{deliveryChecks.map(item => <div className={`studio-delivery-item${item.ok === true ? ' is-ok' : item.ok === null ? ' is-pending' : ''}`} key={item.label}><span className="studio-delivery-dot">{item.ok === true ? '✓' : item.ok === null ? '…' : '!'}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div><em>{item.ok === true ? '已具备' : item.ok === null ? '读取中' : '待补充'}</em></div>)}</div>
-      <p className="studio-delivery-note">这里显示的是项目资料是否准备齐全，不代替助手对 PDF、表格和比赛规则的实际核对。</p>
+      <p className="studio-delivery-note">这里显示的是项目资料是否准备齐全，不代替助手对 PDF、表格和比赛规则的实际核对。{fileScannedAt ? ` 文件目录最近读取于 ${new Date(fileScannedAt).toLocaleTimeString('zh-CN')}` : ''}</p>
     </section>
     {message && <p className="studio-notice" role="status">{message}</p>}
     <details className="studio-workbench-more"><summary>更多比赛资料与提交检查</summary>
