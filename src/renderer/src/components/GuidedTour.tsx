@@ -87,9 +87,9 @@ const STEPS: TourStep[] = [
     route: 'chat',
   },
   {
-    // 检查强度 chip（快速 / 标准 / 严格交付）—— 2026-09-25 用户点名要的对话区入口
+    // 任务深度 chip（快速 / 标准 / 深度）—— 2026-09-25 用户点名要的对话区入口
     id: 'quality',
-    selectors: ['.cz-foot [title^="检查强度"]', '.cz-foot'],
+    selectors: ['.cz-foot [title^="任务深度"]', '.cz-foot'],
     placement: 'top',
     route: 'chat',
   },

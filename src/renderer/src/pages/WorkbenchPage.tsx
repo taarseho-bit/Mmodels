@@ -177,7 +177,7 @@ export function WorkbenchPage(): JSX.Element {
     } finally { setBusy(false); }
   };
   return <div className="studio-page studio-workbench">
-    <header className="studio-page-heading"><div><h1>比赛工作台</h1><p>{project?.name} · {qualityMode === 'strict' ? '严格交付' : qualityMode === 'fast' ? '快速探索' : '标准检查'}</p></div>
+    <header className="studio-page-heading"><div><h1>比赛工作台</h1><p>{project?.name} · {qualityMode === 'strict' ? '深度模式' : qualityMode === 'fast' ? '快速模式' : '标准模式'}</p></div>
       <button className="btn btn-primary" disabled={busy} onClick={() => void ask('请读取当前项目题目、数据与比赛资料，核对条件后开始建模写作。')}>开始建模</button></header>
     <section className="studio-mission studio-simple-countdown">
       <div><label htmlFor="workbench-contest">选择竞赛</label>

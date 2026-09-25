@@ -1804,7 +1804,7 @@ export const en = {
           title: "Install community skills",
         },
         composer: {
-          description: "Paste the contest problem here and send it. The top row of chips sets the task mode and decision style; the bottom row sets check intensity, model, and collaboration — the agent handles the rest.",
+          description: "Paste the contest problem here and send it. The top row of chips sets the task mode and decision style; the bottom row sets task depth, model, and collaboration — the agent handles the rest.",
           title: "Hand your problem to the agent",
         },
         dataStudio: {
@@ -1814,6 +1814,10 @@ export const en = {
         decisionModes: {
           description: "These three modes decide how the AI makes choices: Plan-only proposes without touching files; Manual asks you at key decision points; Auto decides everything itself. Switch anytime — applies from the next turn.",
           title: "Decision style: plan / manual / auto",
+        },
+        quality: {
+          description: "Task depth sets how thorough each turn is: Fast sketches ideas, Standard proceeds normally, Deep verifies everything — recomputation, sensitivity analysis, citation checks, and polishing. Applies to writing and data work too.",
+          title: "Task depth: fast / standard / deep",
         },
         deliveryCheck: {
           description: "This is the delivery-check desk of the competition workbench: paper, figures, data, and reproducibility status at a glance. Run the deep delivery audit to verify page counts, figures, references, and submission rules.",

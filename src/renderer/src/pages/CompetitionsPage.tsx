@@ -106,154 +106,147 @@ function eventShortLabel(ev: CompetitionEvent): string {
  */
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
-/** 月历每周最多画几条横条，超出记 `+N` */
-const MAX_LANES = 3;
-
 // ─────────────────────────────────────────────────────────────
-// 月历：按周切分 + 跨天横条排道
+// 迷你月历（2026-09-25 大改：不再画跨天横条 —— 每天最多三枚事件色点，
+// 整体高度收进一屏；点日期在下方列出当日赛事，点赛事行开详情）
 // ─────────────────────────────────────────────────────────────
 
-interface WeekDay {
+interface MiniCell {
   date: Date;
   day: number;
   dim: boolean;
 }
 
-interface WeekBar {
-  key: string;
-  comp: Competition;
-  ev: CompetitionEvent;
-  col: number;
-  span: number;
-  lane: number;
-  label: string;
+function monthGridCells(year: number, month: number): MiniCell[] {
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // 周一 = 0
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: MiniCell[] = [];
+  for (let i = 0; i < firstDow; i++) {
+    const d = new Date(year, month, 1);
+    d.setDate(d.getDate() - (firstDow - i));
+    cells.push({ date: d, day: d.getDate(), dim: true });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ date: new Date(year, month, d), day: d, dim: false });
+  }
+  while (cells.length % 7 !== 0) {
+    const last = cells[cells.length - 1].date;
+    const d = new Date(last);
+    d.setDate(d.getDate() + 1);
+    cells.push({ date: d, day: d.getDate(), dim: true });
+  }
+  return cells;
 }
 
-interface Week {
-  days: WeekDay[];
-  bars: WeekBar[];
-  overflow: number;
-}
-
-function barLabel(comp: Competition, ev: CompetitionEvent): string {
-  const s = dayOf(ev.start);
-  const e = ev.end ? dayOf(ev.end) : s;
-  const name = comp.shortName || comp.name;
-  return s === e ? `${name} · ${eventShortLabel(ev)}` : `${name} · ${mmdd(s)}—${mmdd(e)}`;
-}
-
-function buildWeeks(
+/** 当月有事件的日子 → 事件列表（日期序号从 1 起） */
+function eventsByDay(
   year: number,
   month: number,
   items: Array<{ ev: CompetitionEvent; comp: Competition }>,
-): Week[] {
-  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // 周一 = 0
+): Map<number, Array<{ ev: CompetitionEvent; comp: Competition }>> {
+  const startIdx = dayIdx(new Date(year, month, 1));
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const nWeeks = Math.ceil((firstDow + daysInMonth) / 7);
-  const firstIdx = dayIdx(new Date(year, month, 1)) - firstDow;
-
-  const weeks: Week[] = [];
-  for (let w = 0; w < nWeeks; w++) {
-    const wsIdx = firstIdx + w * 7;
-    const days: WeekDay[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(year, month, 1);
-      d.setDate(d.getDate() - firstDow + w * 7 + i);
-      days.push({ date: d, day: d.getDate(), dim: d.getMonth() !== month });
+  const endIdx = startIdx + daysInMonth - 1;
+  const map = new Map<number, Array<{ ev: CompetitionEvent; comp: Competition }>>();
+  for (const it of items) {
+    const a = Math.max(dayIdx(parseDay(dayOf(it.ev.start))), startIdx);
+    const b = Math.min(dayIdx(parseDay(dayOf(it.ev.end ?? it.ev.start))), endIdx);
+    for (let idx = a; idx <= b; idx++) {
+      const day = idx - startIdx + 1;
+      const arr = map.get(day) ?? [];
+      arr.push(it);
+      map.set(day, arr);
     }
-
-    const occupied: Array<{ col: number; span: number; lane: number }> = [];
-    const bars: WeekBar[] = [];
-    let overflow = 0;
-    for (const it of items) {
-      const sIdx = dayIdx(parseDay(dayOf(it.ev.start)));
-      const eIdx = dayIdx(parseDay(dayOf(it.ev.end ?? it.ev.start)));
-      if (eIdx < wsIdx || sIdx > wsIdx + 6) continue;
-      const col = Math.max(0, sIdx - wsIdx);
-      const span = Math.min(6, eIdx - wsIdx) - col + 1;
-      let lane = 0;
-      while (
-        lane < MAX_LANES &&
-        occupied.some((o) => o.lane === lane && col < o.col + o.span && o.col < col + span)
-      ) {
-        lane++;
-      }
-      if (lane >= MAX_LANES) {
-        overflow++;
-        continue;
-      }
-      occupied.push({ col, span, lane });
-      bars.push({
-        key: `${it.comp.id}:${it.ev.kind}:${it.ev.start}`,
-        comp: it.comp,
-        ev: it.ev,
-        col,
-        span,
-        lane,
-        label: barLabel(it.comp, it.ev),
-      });
-    }
-    weeks.push({ days, bars, overflow });
   }
-  return weeks;
+  return map;
 }
 
-// ─────────────────────────────────────────────────────────────
-// 子组件
-// ─────────────────────────────────────────────────────────────
-
-function MonthGrid({
+function MiniMonth({
   year,
   month,
   items,
-  onPick,
+  pickedDay,
+  onPickDay,
+  onOpen,
 }: {
   year: number;
   month: number;
   items: Array<{ ev: CompetitionEvent; comp: Competition }>;
-  onPick: (c: Competition) => void;
+  pickedDay: number | null;
+  onPickDay: (day: number | null) => void;
+  onOpen: (c: Competition) => void;
 }): JSX.Element {
-  const weeks = useMemo(() => buildWeeks(year, month, items), [year, month, items]);
+  const cells = useMemo(() => monthGridCells(year, month), [year, month]);
+  const byDay = useMemo(() => eventsByDay(year, month, items), [year, month, items]);
   const todayIdx = dayIdx(new Date());
 
   return (
-    <div className="cal-grid">
-      {WEEKDAYS.map((w) => (
-        <div key={w} className="cal-dow">
-          周{w}
-        </div>
-      ))}
-
-      {weeks.map((week, wi) => (
-        <div key={wi} className="cmp-week">
-          {week.days.map((d, i) => (
-            <div
-              key={i}
-              className={`cal-cell${d.dim ? ' dim' : ''}${
-                dayIdx(d.date) === todayIdx ? ' today' : ''
-              }`}
-              style={{ gridColumn: i + 1, gridRow: `1 / span ${MAX_LANES + 1}` }}
-            >
-              <span className="cal-daynum">{d.day}</span>
-            </div>
-          ))}
-
-          {week.bars.map((b) => (
+    <div className="cal-mini">
+      <div className="cal-mini-head" aria-hidden="true">
+        {WEEKDAYS.map((w) => (
+          <span key={w}>{w}</span>
+        ))}
+      </div>
+      <div className="cal-mini-grid">
+        {cells.map((c, i) => {
+          const evs = byDay.get(c.day) ?? [];
+          const idx = dayIdx(c.date);
+          const inMonth = !c.dim;
+          const isToday = idx === todayIdx;
+          const isPicked = pickedDay === c.day && inMonth;
+          return (
             <button
-              key={b.key}
+              key={i}
               type="button"
-              className={`cmp-bar kind-${b.ev.kind}`}
-              style={{ gridColumn: `${b.col + 1} / span ${b.span}`, gridRow: b.lane + 2 }}
-              title={`${b.comp.name} · ${eventShortLabel(b.ev)} ${fmtRange(b.ev.start, b.ev.end)}`}
-              onClick={() => onPick(b.comp)}
+              className={`cal-mini-cell${c.dim ? ' dim' : ''}${isToday ? ' today' : ''}${
+                isPicked ? ' picked' : ''
+              }${evs.length ? ' has-events' : ''}`}
+              disabled={c.dim && evs.length === 0}
+              onClick={() => {
+                if (c.dim) return;
+                onPickDay(pickedDay === c.day ? null : c.day);
+              }}
+              title={
+                evs.length
+                  ? evs.map((x) => `${x.comp.shortName || x.comp.name} · ${eventShortLabel(x.ev)}`).join('\n')
+                  : undefined
+              }
             >
-              {b.label}
+              <span className="cal-mini-day">{c.day}</span>
+              <span className="cal-mini-dots" aria-hidden="true">
+                {[...new Set(evs.map((x) => x.ev.kind))].slice(0, 3).map((k) => (
+                  <i key={k} className={`cal-mini-dot kind-${k}`} />
+                ))}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {/* 点日期后列出当日赛事（小屏信息不丢） */}
+      {pickedDay !== null ? (
+        <div className="cal-mini-daylist">
+          <div className="cal-mini-daylist-head">
+            <span>
+              {t('{{month}}月{{day}}日', { month: month + 1, day: pickedDay })} ·{' '}
+              {(byDay.get(pickedDay) ?? []).length} 项
+            </span>
+            <button type="button" className="cmp-clear" onClick={() => onPickDay(null)}>
+              {tx('competitions.reset')}
+            </button>
+          </div>
+          {(byDay.get(pickedDay) ?? []).map((x) => (
+            <button
+              key={`${x.comp.id}:${x.ev.kind}:${x.ev.start}`}
+              type="button"
+              className="cal-mini-dayitem"
+              onClick={() => onOpen(x.comp)}
+            >
+              <span className={`cmp-recent-kind kind-${x.ev.kind}`}>{eventShortLabel(x.ev)}</span>
+              <span className="truncate">{x.comp.shortName || x.comp.name}</span>
             </button>
           ))}
-
-          {week.overflow ? <span className="cmp-week-more">+{week.overflow}</span> : null}
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }
@@ -505,6 +498,8 @@ export function CompetitionsPage(): JSX.Element {
   const [recentOpen, setRecentOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => loadFavorites());
   const [open, setOpen] = useState<Competition | null>(null);
+  /** 迷你月历选中的日子（null = 看整月） */
+  const [pickedDay, setPickedDay] = useState<number | null>(null);
 
   const toggleFav = (id: string): void => {
     setFavorites((prev) => {
@@ -585,6 +580,7 @@ export function CompetitionsPage(): JSX.Element {
   const recentShown = recentOpen ? recent.slice(0, 10) : recent.slice(0, 3);
 
   const move = (delta: number): void => {
+    setPickedDay(null);
     setCursor((p) => {
       const d = new Date(p.y, p.m + delta, 1);
       return { y: d.getFullYear(), m: d.getMonth() };
@@ -697,7 +693,10 @@ export function CompetitionsPage(): JSX.Element {
               <button
                 type="button"
                 className="btn btn-sm btn-ghost"
-                onClick={() => setCursor({ y: now.getFullYear(), m: now.getMonth() })}
+                onClick={() => {
+                  setPickedDay(null);
+                  setCursor({ y: now.getFullYear(), m: now.getMonth() });
+                }}
               >
                 {tx('competitions.today')}
               </button>
@@ -756,11 +755,13 @@ export function CompetitionsPage(): JSX.Element {
               </div>
             ) : null}
 
-            <MonthGrid
+            <MiniMonth
               year={cursor.y}
               month={cursor.m}
               items={monthItems}
-              onPick={setOpen}
+              pickedDay={pickedDay}
+              onPickDay={setPickedDay}
+              onOpen={setOpen}
             />
           </div>
 

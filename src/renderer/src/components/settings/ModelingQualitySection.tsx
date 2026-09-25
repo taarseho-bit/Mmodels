@@ -19,15 +19,14 @@ export function ModelingQualitySection(): JSX.Element {
       <div className="panel col" style={{ padding: 14, gap: 5 }}>
         <strong style={{ fontSize: 13.5 }}>建模质量与交付</strong>
         <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.7 }}>
-          这是数学建模任务的默认策略。检查强度决定智能体每一轮任务要多认真地自查：
-          数据核对、模型验证、敏感性分析、引用核对和提交前检查的深浅都随档位变化；简单问答不会因此变慢。
+          这是数学建模任务的默认策略。任务深度决定智能体每一轮要做多细——写论文、找数据、建模验证、引用核对、提交检查的投入程度都随档位变化；简单问答不会因此变慢。
         </span>
         <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.7 }}>
-          💡 对话输入框底部栏的「✓ 标准检查」按钮就是同一设置的快速入口，写论文、对答案时随时切换，不用进设置页。
+          💡 对话输入框底部栏的「✓ 标准」按钮就是同一设置的快速入口，随时切换，不用进设置页。
         </span>
       </div>
 
-      <Section title="默认检查强度" hint="对话框底部栏可临时切换；当前项目的比赛规则优先于这里的默认值。">
+      <Section title="默认任务深度" hint="对话框底部栏可临时切换；当前项目的比赛规则优先于这里的默认值。">
         <div className="panel col" style={{ padding: 14, gap: 8 }}>
           <label className="row" style={{ gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
             <input
@@ -54,7 +53,7 @@ export function ModelingQualitySection(): JSX.Element {
               checked={(settings?.modelingQualityMode ?? 'balanced') === 'strict'}
               onChange={() => void patchSettings({ modelingQualityMode: 'strict' })}
             />
-            <span className="col" style={{ gap: 2 }}><strong style={{ fontSize: 12.5 }}>严格交付</strong><span className="muted" style={{ fontSize: 11 }}>主动做验证、敏感性分析、引用核对和提交前检查。</span></span>
+            <span className="col" style={{ gap: 2 }}><strong style={{ fontSize: 12.5 }}>深度</strong><span className="muted" style={{ fontSize: 11 }}>写论文、找数据、建模验证全按交付标准：复算、敏感性分析、引用核对一样不少。</span></span>
           </label>
         </div>
       </Section>

@@ -141,17 +141,46 @@ async function fetchRemoteModelList(p: ProviderConfig): Promise<string[]> {
   if (p.apiFormat === 'anthropic') {
     const base = p.baseUrl.replace(/\/+$/, '');
     const root = base.endsWith('/v1') ? base : `${base}/v1`;
-    const headers: Record<string, string> = { 'anthropic-version': '2023-06-01' };
-    if (p.anthropicAuthMode === 'authToken') headers.authorization = `Bearer ${p.apiKey}`;
-    else headers['x-api-key'] = p.apiKey;
+    const headers = (): Record<string, string> => {
+      const h: Record<string, string> = { 'anthropic-version': '2023-06-01' };
+      if (p.anthropicAuthMode === 'authToken') h.authorization = `Bearer ${p.apiKey}`;
+      else h['x-api-key'] = p.apiKey;
+      return h;
+    };
     try {
-      const res = await fetch(`${root}/models`, { headers, signal: AbortSignal.timeout(15000) });
+      const res = await fetch(`${root}/models`, { headers: headers(), signal: AbortSignal.timeout(15000) });
       if (res.ok) {
         const data = (await res.json()) as { data?: Array<{ id?: string }> };
-        return (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
+        const ids = (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
+        if (ids.length) return ids;
       }
     } catch {
-      /* 拉不到就返回空，让用户手填 */
+      /* 落到下面的回退 */
+    }
+    // 2026-09-25 回退：很多「Anthropic 兼容」端点并不提供 /models（如 DeepSeek 的
+    // /anthropic 路径）——试源站的 OpenAI 风格 /models，把真实可用的模型捞回来。
+    try {
+      const origin = new URL(base).origin;
+      const authVariants: Record<string, string>[] = [
+        { authorization: `Bearer ${p.apiKey}` },
+        { 'x-api-key': p.apiKey },
+      ];
+      for (const url of [`${origin}/v1/models`, `${origin}/models`]) {
+        for (const h of authVariants) {
+          try {
+            const res = await fetch(url, { headers: h, signal: AbortSignal.timeout(12000) });
+            if (res.ok) {
+              const data = (await res.json()) as { data?: Array<{ id?: string }> };
+              const ids = (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
+              if (ids.length) return ids;
+            }
+          } catch {
+            /* 下一个组合 */
+          }
+        }
+      }
+    } catch {
+      /* base 不是合法 URL 就彻底放弃 */
     }
   }
   return [];

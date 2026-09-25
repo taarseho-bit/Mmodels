@@ -7200,3 +7200,33 @@ body.desktop-pet-document #root {
 .image-lightbox { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 56px 24px 24px; background: rgba(0,0,0,.82); }
 .image-lightbox img { max-width: 96vw; max-height: calc(100vh - 88px); object-fit: contain; cursor: default; }
 .image-lightbox-toolbar { position: absolute; top: 14px; right: 18px; display: flex; gap: 6px; padding: 4px; background: var(--bg-panel); border: 1px solid var(--border-strong); }
+
+/* ═════════ 迷你月历（2026-09-25 大改：点日期看当日赛事，整体小巧一屏放下） ═════════ */
+.cal-mini { display: flex; flex-direction: column; gap: 8px; }
+.cal-mini-head { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0 2px; }
+.cal-mini-head span { text-align: center; font-size: 10.5px; color: var(--fg-muted); }
+.cal-mini-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-mini-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-height: 44px; padding: 5px 2px 4px;
+  border: 1px solid transparent; border-radius: 9px;
+  background: transparent; color: var(--fg-primary); cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.cal-mini-cell:hover { background: var(--bg-hover); }
+.cal-mini-cell.dim { color: var(--fg-muted); opacity: .55; }
+.cal-mini-cell.dim { cursor: default; }
+.cal-mini-cell.today { border-color: var(--accent); }
+.cal-mini-cell.today .cal-mini-day { color: var(--accent); font-weight: 650; }
+.cal-mini-cell.picked { background: var(--accent-weak); border-color: var(--accent); }
+.cal-mini-cell.has-events:not(.dim):not(.picked) { background: var(--bg-active); }
+.cal-mini-day { font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.cal-mini-dots { display: flex; gap: 3px; min-height: 5px; }
+.cal-mini-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.cal-mini-dot.kind-registration { background: var(--warning); }
+.cal-mini-dot.kind-submission { background: var(--fg-muted); }
+.cal-mini-daylist { display: flex; flex-direction: column; gap: 5px; padding: 10px 12px; border: 1px solid var(--border-weak); border-radius: 10px; background: var(--bg-sunken); }
+.cal-mini-daylist-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; }
+.cal-mini-daylist-head .cmp-clear { border: 0; background: transparent; color: var(--accent); font-size: 11px; cursor: pointer; padding: 2px 4px; }
+.cal-mini-dayitem { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 7px; background: var(--bg-panel); color: var(--fg-primary); font-size: 12px; cursor: pointer; text-align: left; }
+.cal-mini-dayitem:hover { background: var(--bg-hover); }

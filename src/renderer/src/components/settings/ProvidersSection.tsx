@@ -369,6 +369,31 @@ export function ProvidersSection(): JSX.Element {
       });
       useApp.setState({ providers: list });
 
+      // 2026-09-25 用户要求：填完 API Key 保存后**自动**发现该接口支持的所有模型，
+      // 对话框里立刻可以选——不用再手动点「自动发现模型」。失败静默（保留现有清单）。
+      if (editing.apiKey.trim() && !/127\.0\.0\.1|localhost/.test(editing.baseUrl)) {
+        try {
+          const found = await window.mathmodel.llm.listModels(editing.id, true);
+          if (found.length) {
+            const cur = list.find((p) => p.id === editing.id);
+            if (cur) {
+              const merged = Array.from(new Set([...found, ...(cur.models ?? [])]));
+              const windows = editing.contextWindows ?? {};
+              const fast = (cur.fastModeModels ?? []).filter((m) => merged.includes(m));
+              const updated = await window.mathmodel.llm.upsertProvider({
+                ...cur,
+                models: merged,
+                fastModeModels: fast,
+                contextWindows: windows,
+              });
+              useApp.setState({ providers: updated });
+            }
+          }
+        } catch {
+          /* 自动发现失败不阻断保存，用户仍可手填或点按钮重试 */
+        }
+      }
+
       if (!settings?.activeProviderId) {
         await patchSettings({ activeProviderId: editing.id, defaultModel: models[0] ?? null });
       }

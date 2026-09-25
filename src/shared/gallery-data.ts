@@ -53,9 +53,9 @@ const E = (id: string, title: string, category: string, description: string, dat
 const M = (name: string, title: string, category: string, description: string, dataTypes: GalleryTemplate['dataTypes'], tags: string[]): GalleryTemplate => ({
   id: `mpl-${name}`, title, category, description, tags, library: MPL_LIB, createdAt: DATE, dataTypes, image: `mpl-${name}.png`,
 });
-/** graphviz 流程图项 */
+/** graphviz 流程图项（已栅格化为 PNG —— SVG 在缩略图里跨主题渲染不稳，2026-09-25 教训） */
 const G = (name: string, title: string, category: string, description: string, dataTypes: GalleryTemplate['dataTypes'], tags: string[]): GalleryTemplate => ({
-  id: `gv-${name}`, title, category, description, tags, library: GV_LIB, createdAt: DATE, dataTypes, image: `gv-${name}.svg`,
+  id: `gv-${name}`, title, category, description, tags, library: GV_LIB, createdAt: DATE, dataTypes, image: `gv-${name}.png`,
 });
 
 export const GALLERY: GalleryTemplate[] = [

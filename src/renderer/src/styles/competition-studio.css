@@ -134,3 +134,55 @@
 @media (max-width:900px) { .studio-delivery-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:580px) { .studio-delivery-grid { grid-template-columns:1fr; }.studio-delivery-panel > header { align-items:flex-start; flex-direction:column; } }
 @media (max-width:580px) { .studio-delivery-actions { width:100%; }.studio-delivery-actions .btn { flex:1; } }
+
+/* ═════════ 2026-09-25 质感升级：快捷卡渐变 / 内联输入 / 圆角协调 / 对比度 ═════════ */
+
+/* 快捷功能卡：图标章 + 分类渐变底 + 悬停浮起 */
+.competition-shell .starter { position: relative; overflow: hidden; border-radius: 12px; transition: transform 120ms ease, box-shadow 120ms ease; }
+.competition-shell .starter:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.10); }
+.competition-shell .starter.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 8px 22px rgba(0,0,0,.08); }
+.starter-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; margin-bottom: 8px; color: #fff; flex-shrink: 0; }
+.starter-icon-blue { background: linear-gradient(135deg, #5586f2, #3b62d4); }
+.starter-icon-teal { background: linear-gradient(135deg, #2fb3a0, #1d8a80); }
+.starter-icon-violet { background: linear-gradient(135deg, #8b6cf0, #6a4bd8); }
+.starter-icon-orange { background: linear-gradient(135deg, #f09a4f, #d97b2e); }
+.starter-icon-rose { background: linear-gradient(135deg, #e8709a, #d04a76); }
+.competition-shell .starter-tint-blue { background: linear-gradient(180deg, color-mix(in srgb, #5586f2 8%, var(--bg-panel)), var(--bg-panel)); }
+.competition-shell .starter-tint-teal { background: linear-gradient(180deg, color-mix(in srgb, #2fb3a0 8%, var(--bg-panel)), var(--bg-panel)); }
+.competition-shell .starter-tint-violet { background: linear-gradient(180deg, color-mix(in srgb, #8b6cf0 8%, var(--bg-panel)), var(--bg-panel)); }
+.competition-shell .starter-tint-orange { background: linear-gradient(180deg, color-mix(in srgb, #f09a4f 9%, var(--bg-panel)), var(--bg-panel)); }
+.competition-shell .starter-tint-rose { background: linear-gradient(180deg, color-mix(in srgb, #e8709a 8%, var(--bg-panel)), var(--bg-panel)); }
+.competition-shell .starter .starter-title { display: block; font-weight: 600; margin-top: 2px; }
+.competition-shell .starter .starter-desc { display: block; margin-top: 4px; line-height: 1.55; }
+.competition-shell .starter .starter-tags { margin-top: 6px; }
+
+/* 点卡片下方展开的内联输入框 */
+.starter-inline { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-weak)); border-radius: 12px; background: var(--bg-panel); box-shadow: 0 6px 20px rgba(0,0,0,.07); animation: fade-in 150ms ease-out; }
+.starter-inline-icon { color: var(--accent); }
+.starter-inline-input { width: 100%; resize: vertical; min-height: 62px; border: 1px solid var(--border-weak); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; line-height: 1.6; background: var(--bg-sunken); color: var(--fg-primary); font-family: inherit; }
+.starter-inline-input:focus { outline: none; border-color: var(--accent); }
+.starter-inline-actions { display: flex; align-items: center; gap: 8px; }
+.starter-inline-hint { font-size: 10.5px; }
+
+/* 全局圆角协调：面板 / 卡片 / 输入 / 按钮 统一 10-12px */
+.competition-shell .panel, .competition-shell .studio-card, .competition-shell .env-card { border-radius: 12px; }
+.competition-shell .input, .competition-shell .select, .competition-shell textarea.input { border-radius: 9px; }
+.competition-shell .btn { border-radius: 9px; }
+.competition-shell .badge { border-radius: 999px; }
+.competition-shell .msg-body { border-radius: 12px; }
+.competition-shell .composer-box { border-radius: 16px; }
+.competition-shell .settings-side { border-radius: 0 12px 12px 0; }
+.competition-shell .cz-pop { border-radius: 12px; }
+.competition-shell .sidepanel-tab, .competition-shell .provider-row, .competition-shell .cmp-card, .competition-shell .cmp-recent-row { border-radius: 10px; }
+.competition-shell .cmp-block { border-radius: 12px; }
+.competition-shell .heat-cell { border-radius: 3px; }
+.competition-shell .stat-card { border-radius: 12px; }
+.competition-shell .tour-card { border-radius: 12px; }
+.competition-shell .gallery-card, .competition-shell .gallery-thumb-wrap { border-radius: 12px; }
+.competition-shell .gallery-dialog { border-radius: 14px; }
+
+/* 对比度加深：弱边框加重一档、次要文字加深，避免"糊成一片" */
+.competition-shell { --border-weak: color-mix(in srgb, var(--fg-primary) 14%, transparent); }
+.competition-shell .muted { color: var(--fg-secondary); }
+.competition-shell .cmp-week { background: var(--border-weak); }
+.competition-shell .studio-delivery-item { border-color: var(--border-weak); }

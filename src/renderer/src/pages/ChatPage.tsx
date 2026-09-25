@@ -364,40 +364,49 @@ export const STARTER_HINT =
 /**
  * 空会话快捷功能卡（2026-09-25 用户要求：删掉旧的三张「拆题/写论文/提交前看」，
  * 换成覆盖建模全流程的实用动作 —— 每张卡都是一句可直接开工的提示词，
- * 填入后可修改、不会自动发送）。
+ * 点击后**在卡片下方展开输入框**（可改可发），不是静默填进底部输入框。
+ * icon/tint 让卡片有自己的视觉身份（tint 对应 .starter-tint-* 的渐变底色）。
  */
-const STARTERS: Array<{ title: string; desc: string; tags: string[]; prompt: string }> = [
+const STARTERS: Array<{ title: string; desc: string; tags: string[]; prompt: string; icon: string; tint: string }> = [
   {
     title: '找公开数据', desc: '全网检索并下载到 data/，记录来源与许可', tags: ['数据'],
     prompt: '/data-search 请围绕当前题目的数据需求检索公开数据源，核验可得性后下载到项目 data/ 目录，逐条记录来源链接、获取时间与许可；找不到就说明并给出替代口径。',
+    icon: 'globe', tint: 'blue',
   },
   {
     title: '数据体检', desc: '缺失、异常、口径与分布一次查清', tags: ['清洗'],
     prompt: '请对项目 data/ 下的数据做一次体检：字段口径、缺失值、异常值、分布与相关性概览，给出清洗建议与可直接用于建模的处理步骤；先不动原文件，等我确认后再执行。',
+    icon: 'activity', tint: 'teal',
   },
   {
     title: '方法选型', desc: '按题目与数据推荐 2-3 个候选模型', tags: ['建模'],
     prompt: '请根据当前题目与数据特点推荐 2-3 个候选模型，说明适用性、假设条件、实现难度与风险，给出你的首选方案与理由，等我确认后再开始实现。',
+    icon: 'sigma', tint: 'violet',
   },
   {
     title: '求解与复现', desc: '可复现脚本 + 运行验证 + 稳健性检查', tags: ['求解'],
     prompt: '请为当前选定的模型编写可复现的求解脚本，运行验证并输出关键数值结果、误差或目标值，附必要的稳健性检查；脚本和结果落盘到项目内并报出路径。',
+    icon: 'code-xml', tint: 'blue',
   },
   {
     title: '灵敏度分析', desc: '参数扰动下结论稳不稳', tags: ['检验'],
     prompt: '请对当前模型的关键参数做灵敏度分析：给出扰动范围、指标变化和结论是否改变的判断，输出灵敏度图表与简表到项目 figures/。',
+    icon: 'chart-line', tint: 'orange',
   },
   {
     title: '论文成稿', desc: '按比赛模板完成正文、图表与参考文献', tags: ['论文'],
     prompt: '/mma-paper 请读取当前项目的题目、数据、比赛规则和已有结果，先复核关键结论再成文；不以写作代替求解，完成后报出 PDF 路径、页数与内容构成。',
+    icon: 'pen-line', tint: 'rose',
   },
   {
     title: '投稿级图表', desc: '数据图与示意图按出版标准出图', tags: ['图表'],
     prompt: '/mma-figure 请根据当前项目的结果与数据规划一组投稿级图表（先给清单再逐张绘制），统一风格与中文标注，输出到 figures/ 并给出 LaTeX 插图片段。',
+    icon: 'chart-column', tint: 'violet',
   },
   {
     title: '评审与打分', desc: '评委视角的评分与逐条修改清单', tags: ['评审'],
     prompt: '/mma-review 请以数学建模竞赛评委视角审读当前论文，输出分项评分、总评与按严重程度排序的修改清单（review.md），不直接改动论文正文。',
+    icon: 'clipboard-check', tint: 'teal',
   },
 ];
 
@@ -450,6 +459,8 @@ export function ChatPage(): JSX.Element {
   const newChatRequest = useApp((s) => s.newChatRequest);
   const settings = useApp((s) => s.settings);
   const createSession = useApp((s) => s.createSession);
+  /** 快捷功能卡点击后在卡片下方展开的内联输入框内容（null = 收起）——2026-09-25 用户要求 */
+  const [starterDraft, setStarterDraft] = useState<string | null>(null);
   const refreshSessions = useApp((s) => s.refreshSessions);
   const selectSession = useApp((s) => s.selectSession);
   const consumePendingPrompt = useApp((s) => s.consumePendingPrompt);
@@ -1299,10 +1310,13 @@ export function ChatPage(): JSX.Element {
                   {STARTERS.map((s) => (
                     <button
                       key={s.title}
-                      className="starter"
-                      onClick={() => useApp.getState().fillPrompt(s.prompt)}
+                      className={`starter starter-tint-${s.tint}${starterDraft !== null && starterDraft.startsWith(s.prompt.slice(0, 24)) ? ' is-active' : ''}`}
+                      onClick={() => setStarterDraft((prev) => (prev !== null && prev.startsWith(s.prompt.slice(0, 24)) ? null : s.prompt))}
                       disabled={isRunning}
                     >
+                      <span className={`starter-icon starter-icon-${s.tint}`}>
+                        <Icon name={s.icon} size={15} />
+                      </span>
                       <span className="starter-title">{t(s.title)}</span>
                       <span className="starter-desc">{t(s.desc)}</span>
                       <span className="starter-tags">
@@ -1315,6 +1329,46 @@ export function ChatPage(): JSX.Element {
                     </button>
                   ))}
                 </div>
+
+                {/* 点卡片 → 下方就地展开输入框（可改可发），比静默填进底部输入框更直观 */}
+                {starterDraft !== null ? (
+                  <div className="starter-inline" role="group" aria-label="快捷功能输入">
+                    <Icon name="corner-down-right" size={14} className="starter-inline-icon" />
+                    <textarea
+                      className="starter-inline-input"
+                      value={starterDraft}
+                      autoFocus
+                      rows={3}
+                      onChange={(e) => setStarterDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && starterDraft.trim()) {
+                          e.preventDefault();
+                          const text = starterDraft;
+                          setStarterDraft(null);
+                          void dispatch(text);
+                        }
+                      }}
+                    />
+                    <div className="starter-inline-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={isRunning || !starterDraft.trim()}
+                        onClick={() => {
+                          const text = starterDraft;
+                          setStarterDraft(null);
+                          void dispatch(text);
+                        }}
+                      >
+                        发送
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStarterDraft(null)}>
+                        收起
+                      </button>
+                      <span className="muted starter-inline-hint">可修改后再发送 · Ctrl+Enter 直接发送</span>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="newchat-beta">
                   题目、数据和比赛规则越清楚，协作越有方向。重要结论请保留复算依据。
