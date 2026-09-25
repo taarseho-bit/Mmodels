@@ -519,6 +519,7 @@ export function ChatPage(): JSX.Element {
   // 只渲染最近 visibleLimit 条，更早的折叠成一条展开按钮 —— 不改 DOM 结构，
   // 流式底部锚定 / 消息操作 / fork 定位全部不受影响（相比虚拟滚动是更稳的取舍）。
   const [visibleLimit, setVisibleLimit] = useState(60);
+  const [stream, setStream] = useState<StreamView>(EMPTY_STREAM);
   const [draft] = useState(createComposerDraft);
   const setInput = draft.set;
   const [loading, setLoading] = useState(false);
