@@ -54,7 +54,6 @@ export function WorkbenchPage(): JSX.Element {
     { label: '比赛信息', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛', ok: Boolean(contest) },
     { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
     { label: '论文文件', detail: fileStats ? `${fileStats.pdf} 个 PDF · ${fileStats.source} 个源文件` : '正在读取项目文件', ok: fileStats ? fileStats.pdf > 0 : null },
-    { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
     { label: '图表与数据', detail: fileStats ? `${fileStats.figure} 个图表 · ${fileStats.table} 个数据文件` : '正在读取项目文件', ok: fileStats ? fileStats.figure > 0 || fileStats.table > 0 : null },
     { label: '提交清单', detail: `${checkedCount}/${draft.checklist.length} 项已核对`, ok: checkPercent === 100 },
   ];
