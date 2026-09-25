@@ -1796,28 +1796,40 @@ export const en = {
       prev: "Back",
       steps: {
         collaboration: {
-          description: "Use the collaboration button in the top-right to create a room for this project or join a teammate’s room. Teammates can co-edit files, follow progress, and submit agent tasks for the host to approve.",
-          title: "Work together with teammates",
+          description: "The \"Collab\" toggle at the bottom of the composer is the master switch: when on, complex tasks are shared with specialist agents for data, modeling, writing, and review — progress shows in the workflow panel.",
+          title: "Build your modeling team",
         },
         communitySkills: {
-          description: "Recommended · Community contains third-party skills selected by MathModel for problem reading, modeling ideas, restatements, abstract checks, paper reviews, and more. Open a skill and choose “Install with agent”; afterward, invoke it from the composer with /Skill name.",
+          description: "The Extensions page holds built-in and community skills: problem parsing, data cleaning, algorithm libraries, plotting, paper review, and delivery audits. Open one to learn its usage; the agent also picks skills automatically, or invoke with /skill-name.",
           title: "Install community skills",
         },
         composer: {
-          description: "Paste the contest problem here and send it. The agent does the rest — modeling, coding, plotting, and writing the full paper.",
+          description: "Paste the contest problem here and send it. The top row of chips sets the task mode and decision style; the bottom row sets check intensity, model, and collaboration — the agent handles the rest.",
           title: "Hand your problem to the agent",
+        },
+        dataStudio: {
+          description: "Data & Charts puts your project data and figure selection in one workspace: browse project data on one side, pick reference figures by modeling scenario on the other.",
+          title: "Data & chart workspace",
+        },
+        decisionModes: {
+          description: "These three modes decide how the AI makes choices: Plan-only proposes without touching files; Manual asks you at key decision points; Auto decides everything itself. Switch anytime — applies from the next turn.",
+          title: "Decision style: plan / manual / auto",
+        },
+        deliveryCheck: {
+          description: "This is the delivery-check desk of the competition workbench: paper, figures, data, and reproducibility status at a glance. Run the deep delivery audit to verify page counts, figures, references, and submission rules.",
+          title: "The final gate before submission",
         },
         environment: {
           description: "Running models and compiling papers needs local Python and LaTeX — the check results live on this card. Missing something? Click \"Let the agent set it up\" and it installs everything for you.",
           title: "Your runtime lives here too",
         },
         examples: {
-          description: "Not sure what to type? Pick an example card — the problem and data are filled in for you. Send it to see the full workflow.",
-          title: "Start with an example",
+          description: "These eight cards cover the full modeling workflow: data search, data checkup, method selection, solving & reproducibility, sensitivity analysis, paper drafting, publication figures, and review scoring.",
+          title: "Start from a function card",
         },
         model: {
-          description: "The current model shows here. Switch models and reasoning effort anytime.",
-          title: "Switch models",
+          description: "The current model shows at the bottom of the composer. Click it to switch between every model of every connected provider — your model dispatch desk.",
+          title: "Switch models on the fly",
         },
         newThread: {
           description: "Start a new thread for each new problem. Past threads stay in the list below — come back anytime.",
@@ -1867,7 +1879,7 @@ export const en = {
         },
         quickStart: {
           description: "The original full tour covering models, the runtime, projects, the composer, collaboration, skills, and examples.",
-          duration: "About 4 min · 11 steps",
+          duration: "About 5 min · 15 steps",
           title: "Quick start",
         },
         skills: {

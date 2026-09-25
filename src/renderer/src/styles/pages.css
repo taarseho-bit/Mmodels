@@ -476,6 +476,25 @@
   opacity: 0.7;
 }
 
+/* 「按数据类型」筛选行（SPSSPRO 式选型） */
+.gallery-chips-types {
+  padding-top: 0;
+  padding-bottom: 10px;
+}
+.gallery-types-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+.gallery-chip-type {
+  padding: 3px 10px;
+  font-size: 11px;
+  border-style: dashed;
+}
+.gallery-chip-type.active {
+  border-style: solid;
+}
+
 /* 卡片网格 */
 .gallery-scroll {
   flex: 1;
@@ -494,8 +513,13 @@
 .data-chart-tabs button { border: 0; border-radius: 6px; padding: 6px 10px; background: transparent; color: var(--fg-muted); font-size: 11px; cursor: pointer; }
 .data-chart-tabs button:hover { color: var(--fg-primary); }
 .data-chart-tabs button.active { background: var(--bg-panel); color: var(--fg-primary); box-shadow: 0 1px 3px #00000012; font-weight: 600; }
-.data-chart-body { flex: 1; min-height: 0; overflow: hidden; }
+/* ⚠️ 必须是 flex 容器：图库经 PageShell 包裹后子级是 .shell（flex:1），
+   这里若不是 flex，.shell 高度失控 → 被 overflow:hidden 裁掉 → 滚轮怎么滑都没反应（实机 bug）。 */
+.data-chart-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .data-chart-body > .page, .data-chart-body > .gallery-page { height: 100%; min-height: 0; }
+/* 兜底：PageShell 根 .shell 直接内嵌时，让内部滚动区自己接管（防双容器抢高度） */
+.data-chart-body > .shell > .shell-body { display: flex; flex-direction: column; }
+.data-chart-body > .shell > .shell-body > .gallery-page { flex: 1; height: auto; }
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -707,6 +731,15 @@
   font-size: 13px;
   line-height: 24px;
   color: var(--fg-muted);
+}
+
+/* 适合的数据类型（选型提示） */
+.gallery-aside-types {
+  margin: 0;
+  padding: 10px var(--sp-5) 0;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--gallery-accent);
 }
 
 .gallery-theme {

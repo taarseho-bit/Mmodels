@@ -41,7 +41,7 @@ interface TourStep {
   go?: { route: AppRoute; panel?: string };
 }
 
-/** 步骤定义：id 与 `onboarding.tour.steps.<id>.*` 对应 */
+/** 步骤定义：id 与 `onboarding.tour.steps.<id>.*` 对应（2026-09-25 版：15 步覆盖新版功能） */
 const STEPS: TourStep[] = [
   {
     id: 'settings',
@@ -80,22 +80,44 @@ const STEPS: TourStep[] = [
     route: 'chat',
   },
   {
+    // 决策模式 chip（先规划 / 精细人工 / AI 自动）—— 2026-09-20 新增的正交维度
+    id: 'decisionModes',
+    selectors: ['.cz-bar [title^="选择 AI 的决策方式"]', '.cz-bar'],
+    placement: 'top',
+    route: 'chat',
+  },
+  {
+    // 检查强度 chip（快速 / 标准 / 严格交付）—— 2026-09-25 用户点名要的对话区入口
+    id: 'quality',
+    selectors: ['.cz-foot [title^="检查强度"]', '.cz-foot'],
+    placement: 'top',
+    route: 'chat',
+  },
+  {
+    // 模型切换已收进输入框底部栏：点一下列出所有已配置供应商的全部模型
+    id: 'model',
+    selectors: ['.cz-foot [title="请选择模型"]', '.topbar-model', '.badge'],
+    placement: 'top',
+    route: 'chat',
+  },
+  {
     id: 'examples',
     selectors: ['#tour-examples', '.starter'],
     placement: 'bottom',
     route: 'chat',
   },
   {
+    // 数据与图表工作室（推荐图表 + 当前项目数据，SPSSPRO 式选型）
+    id: 'dataStudio',
+    selectors: ['.data-chart-studio', '.data-chart-head'],
+    placement: 'left',
+    go: { route: 'datasets' },
+  },
+  {
     id: 'environment',
     selectors: ['#tour-environment', '.settings-env'],
     placement: 'left',
     route: 'settings',
-  },
-  {
-    id: 'model',
-    selectors: ['#tour-model', '.topbar-model', '.badge'],
-    placement: 'bottom',
-    route: 'chat',
   },
   {
     id: 'communitySkills',
@@ -105,10 +127,18 @@ const STEPS: TourStep[] = [
     route: 'chat',
   },
   {
+    // 协作开关现在住在输入框底部栏（2026-09-20 从选项菜单拎出来）
     id: 'collaboration',
-    selectors: ['#tour-collab', '.topbar-actions > button.topbar-action'],
-    placement: 'bottom',
+    selectors: ['.cz-foot [aria-label="多智能体协作"]', '#tour-collab', '.topbar-actions > button.topbar-action'],
+    placement: 'top',
     route: 'chat',
+  },
+  {
+    // 比赛工作台的交付检查 —— 提交前的最后一道关
+    id: 'deliveryCheck',
+    selectors: ['.studio-delivery-panel', '.studio-readiness'],
+    placement: 'left',
+    route: 'workbench',
   },
 ];
 

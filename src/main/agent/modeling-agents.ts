@@ -26,7 +26,8 @@ export const ROLE_SKILL_HINTS: Record<string, string> = {
     'paper-polisher（语言润色）',
   'figure-maker':
     'figure-table-planner（图表规划）、scipilot-figure-skill（数据图选型顾问）、scientific-figure-making（出版级数据图）、' +
-    'paper-diagram（问题求解流程、模型结构、优化决策、验证闭环）、mathmodel-figure-templates（建模证据图）、table-layout-audit（表格宽度与分页检查）',
+    'academic-figures（SVG 示意图/图形摘要）、nature-figure（高级图表）、paper-diagram（问题求解流程、模型结构、优化决策、验证闭环）、' +
+    'mathmodel-figure-templates（赛事图表模板）、table-layout-audit（表格宽度与分页检查）',
   'paper-reviewer':
     'paper-review（审稿评审）、proof-audit（推导审计）、claim-evidence-audit（论断-证据审计）、' +
     'verifying-bibliography（引用真实性核验）、quality-assurance-auditor（终审清单）、' +

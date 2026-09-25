@@ -107,45 +107,52 @@ export function registerLlmHandlers(_ctx: IpcContext): void {
 
   ipcMain.handle(
     IPC.LLM_LIST_MODELS,
-    safeWrap(async (_e, id: string, refresh = false) => {
-      const p = findProvider(id);
+    // 2026-09-25：第三个参数支持**未保存**的内联配置 —— 用户刚填完 baseUrl + apiKey
+    // 就能立刻拉模型列表，不用先保存再回头点（实机反馈「自动分析有哪些模型可用」）。
+    safeWrap(async (_e, id: string, refresh = false, inline?: ProviderConfig) => {
+      const p = findProvider(id) ?? (inline?.baseUrl ? inline : null);
       if (!p) throw new Error('供应商不存在');
-      // 已配置过模型列表的直接返回
-      if (p.models?.length && !refresh) return p.models;
-      // OpenAI 兼容接口：GET /models
-      if (p.apiFormat === 'openai') {
-        const base = p.baseUrl.replace(/\/+$/, '');
-        try {
-          const res = await fetch(`${base}/models`, {
-            headers: { authorization: `Bearer ${p.apiKey}` },
-            signal: AbortSignal.timeout(15000),
-          });
-          if (res.ok) {
-            const data = (await res.json()) as { data?: Array<{ id?: string }> };
-            return (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
-          }
-        } catch {
-          /* 拉不到就返回空，让用户手填 */
-        }
-      }
-      // Anthropic 官方及兼容接口：GET /v1/models
-      if (p.apiFormat === 'anthropic') {
-        const base = p.baseUrl.replace(/\/+$/, '');
-        const root = base.endsWith('/v1') ? base : `${base}/v1`;
-        const headers: Record<string, string> = { 'anthropic-version': '2023-06-01' };
-        if (p.anthropicAuthMode === 'authToken') headers.authorization = `Bearer ${p.apiKey}`;
-        else headers['x-api-key'] = p.apiKey;
-        try {
-          const res = await fetch(`${root}/models`, { headers, signal: AbortSignal.timeout(15000) });
-          if (res.ok) {
-            const data = (await res.json()) as { data?: Array<{ id?: string }> };
-            return (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
-          }
-        } catch {
-          /* 拉不到就返回空，让用户手填 */
-        }
-      }
-      return [];
+      // 已配置过模型列表的直接返回（内联模式永远现拉）
+      if (p.models?.length && !refresh && !inline) return p.models;
+      return fetchRemoteModelList(p);
     }, '拉取模型列表'),
   );
+}
+
+/** 从远端接口拉模型清单：OpenAI 兼容走 GET /models，Anthropic 兼容走 GET /v1/models */
+async function fetchRemoteModelList(p: ProviderConfig): Promise<string[]> {
+  // OpenAI 兼容接口：GET /models
+  if (p.apiFormat === 'openai') {
+    const base = p.baseUrl.replace(/\/+$/, '');
+    try {
+      const res = await fetch(`${base}/models`, {
+        headers: { authorization: `Bearer ${p.apiKey}` },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { data?: Array<{ id?: string }> };
+        return (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
+      }
+    } catch {
+      /* 拉不到就返回空，让用户手填 */
+    }
+  }
+  // Anthropic 官方及兼容接口：GET /v1/models
+  if (p.apiFormat === 'anthropic') {
+    const base = p.baseUrl.replace(/\/+$/, '');
+    const root = base.endsWith('/v1') ? base : `${base}/v1`;
+    const headers: Record<string, string> = { 'anthropic-version': '2023-06-01' };
+    if (p.anthropicAuthMode === 'authToken') headers.authorization = `Bearer ${p.apiKey}`;
+    else headers['x-api-key'] = p.apiKey;
+    try {
+      const res = await fetch(`${root}/models`, { headers, signal: AbortSignal.timeout(15000) });
+      if (res.ok) {
+        const data = (await res.json()) as { data?: Array<{ id?: string }> };
+        return (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
+      }
+    } catch {
+      /* 拉不到就返回空，让用户手填 */
+    }
+  }
+  return [];
 }

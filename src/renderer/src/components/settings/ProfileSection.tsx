@@ -63,6 +63,22 @@ export function ProfileSection(): JSX.Element {
   const recentActivity = useMemo(() => (stats?.heatmap ?? []).slice(-14), [stats]);
   const recentMax = Math.max(1, ...recentActivity.map((d) => d.tokens));
 
+  /** 本周 vs 上周对比（最近 14 天对半分）—— 2026-09-25 可视化升级 */
+  const weekly = useMemo(() => {
+    if (!stats || stats.heatmap.length < 7) return null;
+    const days = stats.heatmap.slice(-14);
+    const thisWeek = days.slice(-7);
+    const prevWeek = days.length === 14 ? days.slice(0, 7) : null;
+    const sum = (arr: typeof days, key: 'tokens' | 'messages') =>
+      arr.reduce((acc, d) => acc + d[key], 0);
+    const t1 = sum(thisWeek, 'tokens');
+    const t0 = prevWeek ? sum(prevWeek, 'tokens') : 0;
+    const m1 = sum(thisWeek, 'messages');
+    const m0 = prevWeek ? sum(prevWeek, 'messages') : 0;
+    const delta = t0 > 0 ? Math.round(((t1 - t0) / t0) * 100) : t1 > 0 ? 100 : 0;
+    return { t1, t0, m1, m0, delta, max: Math.max(1, t0, t1) };
+  }, [stats]);
+
   const effortLabel =
     settings?.effort === 'low'
       ? tx('chat.modelPicker.effortLow')
@@ -224,10 +240,40 @@ export function ProfileSection(): JSX.Element {
               </div>
             </div>
           )}
+          {weekly && (
+            <div className="activity-summary" aria-label={t('本周与上周对比')}>
+              <div className="activity-summary-head">
+                <strong>{t('本周对比')}</strong>
+                <span
+                  className="muted"
+                  style={{ color: weekly.delta >= 0 ? 'var(--success, #2e9e5b)' : 'var(--danger, #d64545)' }}
+                >
+                  {weekly.delta >= 0 ? '↑' : '↓'} {Math.abs(weekly.delta)}%
+                </span>
+              </div>
+              <div className="col" style={{ gap: 8, marginTop: 8 }}>
+                {([
+                  [t('本周'), weekly.t1, weekly.m1],
+                  [t('上周'), weekly.t0, weekly.m0],
+                ] as const).map(([label, tokens, msgs]) => (
+                  <div key={label} className="col" style={{ gap: 3 }}>
+                    <div className="row" style={{ justifyContent: 'space-between', fontSize: 11.5 }}>
+                      <span className="muted">{label}</span>
+                      <span>{t('{{tokens}} · {{count}} 条', { tokens: fmtTokens(tokens), count: msgs })}</span>
+                    </div>
+                    <div className="bar-track" style={{ height: 8 }}>
+                      <div
+                        className="bar-fill"
+                        style={{ width: `${Math.max(2, (tokens / weekly.max) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Section>
-
-      {/* ── 活跃度洞察 + 最常用插件（原版为左右两列）── */}
       <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
         <div className="col grow" style={{ gap: 10, minWidth: 0 }}>
           <span style={{ fontWeight: 600, fontSize: 14 }}>
@@ -283,14 +329,25 @@ export function ProfileSection(): JSX.Element {
                 {tx('profile.profileSettingsPanel.noSkillsYet')}
               </span>
             ) : (
-              stats.bySkill.slice(0, 20).map((p) => (
-                <div key={p.name} className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
-                  <span className="truncate">{p.name}</span>
-                  <span className="muted" style={{ flexShrink: 0 }}>
-                    {p.runs} 条记录
-                  </span>
-                </div>
-              ))
+              stats.bySkill.slice(0, 20).map((p) => {
+                const maxRuns = Math.max(1, ...stats.bySkill.map((x) => x.runs));
+                return (
+                  <div key={p.name} className="col" style={{ gap: 3 }}>
+                    <div className="row" style={{ justifyContent: 'space-between', gap: 8, fontSize: 12.5 }}>
+                      <span className="truncate">{p.name}</span>
+                      <span className="muted" style={{ flexShrink: 0 }}>
+                        {p.runs} 条记录
+                      </span>
+                    </div>
+                    <div className="bar-track" style={{ height: 6 }}>
+                      <div
+                        className="bar-fill"
+                        style={{ width: `${Math.max(3, (p.runs / maxRuns) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
           <span className="muted" style={{ fontSize: 11 }}>入口表示发起技能任务，调用表示模型加载技能；不等于任务已成功完成。子智能体与连接器单独统计。</span>

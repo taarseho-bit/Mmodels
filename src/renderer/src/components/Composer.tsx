@@ -437,7 +437,7 @@ export function Composer({
 
   // ── 下拉开关 ──
   const [openMenu, setOpenMenu] = useState<
-    null | 'project' | 'mode' | 'decision' | 'template' | 'perm' | 'model' | 'plus' | 'options'
+    null | 'project' | 'mode' | 'decision' | 'quality' | 'template' | 'perm' | 'model' | 'plus' | 'options'
   >(null);
   const [contextOpen, setContextOpen] = useState(false);
   // ── 「＋」菜单（原版 `data-tour="composer-plus"` 那个 Popover）──
@@ -1420,7 +1420,7 @@ export function Composer({
           <button
             type="button"
             className="cz-btn ghost"
-            title="控制本次建模任务要检查到什么程度"
+            title="检查强度：这一轮任务里智能体自查的深度 —— 快速探索少检查，严格交付会主动做验证、敏感性分析、引用核对和提交前检查。随时可改，只对之后的回合生效。"
             onClick={() => setOpenMenu(openMenu === 'options' ? null : 'options')}
           >
             <Icon name="circle-check" size={13} />
@@ -1428,11 +1428,14 @@ export function Composer({
             <Icon name="chevron-down" size={11} />
           </button>
           <Popover open={openMenu === 'options'} onClose={close} align="right">
-            <div className="cz-pop-label">本次检查强度</div>
+            <div className="cz-pop-label">检查强度（建模质量策略）</div>
+            <div className="muted" style={{ fontSize: 10, lineHeight: 1.5, padding: '0 10px 6px' }}>
+              决定智能体这一轮要多认真地自查：数据核对、模型验证、引用与交付检查的深浅。简单问答不受影响。
+            </div>
             {([
-              ['fast', '快速检查', '先给出可用思路，适合探索'],
-              ['balanced', '标准检查', '核对主要数据、模型和结论'],
-              ['strict', '严格交付', '增加复算、敏感性和提交前检查'],
+              ['fast', '快速检查', '先给出可用思路和初步结果，适合探索与头脑风暴'],
+              ['balanced', '标准检查', '完成基本数据核对、模型验证和结果解释'],
+              ['strict', '严格交付', '主动加做复算、敏感性分析、引用核对和提交前检查'],
             ] as const).map(([value, label, hint]) => (
               <button key={value} className={`cz-pop-item${qualityMode === value ? ' selected' : ''}`} onClick={() => { void patchSettings({ modelingQualityMode: value }); close(); }}>
                 <Icon name="circle-check" size={13} />
@@ -1514,7 +1517,7 @@ export function Composer({
                   </span>
                   {pct >= 75 ? <span className="cz-context-pct">{pct}%</span> : null}
                 </button>
-                <Popover open={contextOpen} onClose={() => setContextOpen(false)} align="right" maxHeight={260}>
+                <Popover open={contextOpen} onClose={() => setContextOpen(false)} align="right">
                   <div className="cz-context-popover" role="dialog" aria-label="上下文用量详情">
                     <div className="cz-pop-label">上下文用量</div>
                     {total > 0 ? <>

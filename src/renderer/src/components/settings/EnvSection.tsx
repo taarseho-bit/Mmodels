@@ -305,12 +305,15 @@ export function EnvSection(): JSX.Element {
       navigated = true;
       setConfirming(false);
     } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e ?? '');
       const msg = friendlyError(e, '环境操作没有完成，可以重试。');
+      // A5e 护栏：失败提示必须带上底层原因（没有被友好化覆盖时原样追加），绝不静默吞掉。
+      const detail = raw.trim() && !msg.includes(raw) ? `${msg}（${raw}）` : msg;
       // 正常路径下失败时**还停在运行环境分区**（跳页在 send 成功之后），页内 toast 看得见；
       // 只有 `openRoute` 派发之后那一小段（`navigated=true`，极窄）才需要 alert 兜底。
       // 两条通道都保留：绝不静默。
-      if (navigated) window.alert(t('发送失败：{{msg}}', { msg }));
-      else notify(t('启动安装失败：{{msg}}', { msg }));
+      if (navigated) window.alert(t('发送失败：{{msg}}', { msg: detail }));
+      else notify(t('启动安装失败：{{msg}}', { msg: detail }));
     } finally {
       setInstalling(false);
     }

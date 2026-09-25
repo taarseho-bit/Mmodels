@@ -36,7 +36,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const SRC_PATH = fileURLToPath(new URL('./ChatPage.tsx', import.meta.url));
-const RAW = readFileSync(SRC_PATH, 'utf8');
+// ⚠️ 必须归一化行尾（2026-09-25）：编辑器把源码重写成 CRLF 后，下面所有
+// `\n` 手术串会静默落空 → 反向对照假绿。这里统一成 LF 再做文本手术。
+const RAW = readFileSync(SRC_PATH, 'utf8').replace(/\r\n/g, '\n');
 
 /** 去掉注释：注释里出现 `confirm: true` 这类"说明性文字"不算接线 */
 function stripComments(src: string): string {

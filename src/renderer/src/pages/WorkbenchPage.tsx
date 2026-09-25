@@ -199,7 +199,7 @@ export function WorkbenchPage(): JSX.Element {
     </section>
     <section className="studio-readiness" aria-label="项目准备度">
       <div><span className="studio-eyebrow">项目准备度</span><strong>{checkPercent}%</strong><small>{checkedCount}/{draft.checklist.length} 项已核对</small></div>
-      <div className="studio-readiness-bar"><i style={{ width: `${checkPercent}%` }} /></div>
+      <div className="studio-readiness-bar"><i style={{ width: `${checkPercent}%`, background: checkPercent >= 100 ? '#2e9e5b' : checkPercent >= 50 ? '#d68b22' : '#d9485f' }} /></div>
       <div className="studio-readiness-meta"><span>当前阶段：{draft.phase}</span><span>{draft.pageLimit ? `页数上限：${draft.pageLimit}` : '尚未设置页数上限'}</span><span>{draft.evidence.length} 条结论依据 · {draft.alternatives.length} 个候选方案</span></div>
     </section>
     <section className="studio-delivery-panel" aria-label="论文交付检查">

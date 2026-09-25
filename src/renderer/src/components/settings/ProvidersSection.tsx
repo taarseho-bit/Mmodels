@@ -409,14 +409,23 @@ export function ProvidersSection(): JSX.Element {
   }, []);
 
   const discoverModels = useCallback(async () => {
-    if (!editing || !editingExisting) {
-      setError(t('请先保存供应商，再读取接口中的模型。'));
+    if (!editing) return;
+    // 2026-09-25：填好 Base URL + 密钥就能直接拉，不必先保存（内联配置走临时通道）。
+    if (!editingExisting && (!editing.baseUrl.trim() || !editing.apiKey.trim())) {
+      setError(t('先填写接口基址和 API Key，再读取该接口下可用的模型。'));
       return;
     }
     setDiscoveringModels(true);
     setError(null);
     try {
-      const found = await window.mathmodel.llm.listModels(editing.id, true);
+      const found = editingExisting
+        ? await window.mathmodel.llm.listModels(editing.id, true)
+        : await window.mathmodel.llm.listModels(editing.id, true, {
+            ...editing,
+            baseUrl: editing.baseUrl.trim().replace(/\/+$/, ''),
+            apiKey: editing.apiKey.trim(),
+            models: [],
+          });
       if (!found.length) {
         setError(t('接口没有返回模型列表，请检查地址、密钥或手动添加模型。'));
         return;
@@ -538,11 +547,11 @@ export function ProvidersSection(): JSX.Element {
             <button
               type="button"
               className="btn btn-sm btn-ghost"
-              disabled={!editingExisting || discoveringModels}
+              disabled={discoveringModels}
               onClick={() => void discoverModels()}
-              title={t('保存后从 OpenAI /models 或 Anthropic /v1/models 自动读取')}
+              title={t('从 OpenAI /models 或 Anthropic /v1/models 自动读取；填好基址和密钥即可，无需先保存')}
             >
-              {discoveringModels ? t('读取中…') : t('读取可用模型')}
+              {discoveringModels ? t('读取中…') : t('自动发现模型')}
             </button>
           </div>
           <div className="col" style={{ gap: 6 }}>

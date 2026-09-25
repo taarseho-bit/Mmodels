@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   MATHMODEL_GALLERY,
   GALLERY_CATEGORIES,
+  DATA_TYPES,
   DIAGRAM_THEMES,
   DEFAULT_DIAGRAM_THEME,
   templatePrompt,
@@ -178,6 +179,11 @@ function Detail({
 
           <p className="gallery-aside-desc">{item.description}</p>
 
+          <p className="gallery-aside-types">
+            <span className="muted">适合数据：</span>
+            {item.dataTypes.join(' · ')}
+          </p>
+
           {item.diagramKey ? (
             <fieldset className="gallery-theme">
               <legend className="gallery-theme-legend">{tx('shell.galleryPage.diagramTheme')}</legend>
@@ -235,6 +241,8 @@ function Detail({
 export function GalleryPage(): JSX.Element {
   const fillPrompt = useApp((s) => s.fillPrompt);
   const [cat, setCat] = useState<string>(ALL);
+  /** 「按数据类型」筛选 —— SPSSPRO 式选型：先说手里是什么数据，再看适合什么图 */
+  const [dataType, setDataType] = useState<string | null>(null);
   const [theme, setTheme] = useState<DiagramTheme>(DEFAULT_DIAGRAM_THEME);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -245,10 +253,20 @@ export function GalleryPage(): JSX.Element {
     return m;
   }, []);
 
-  const items = useMemo(
-    () => (cat === ALL ? MATHMODEL_GALLERY : MATHMODEL_GALLERY.filter((g) => g.category === cat)),
-    [cat],
-  );
+  /** 各数据类型的可选项数（不受当前筛选影响，方便对比取舍） */
+  const typeCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const g of MATHMODEL_GALLERY) {
+      for (const t of g.dataTypes) m.set(t, (m.get(t) ?? 0) + 1);
+    }
+    return m;
+  }, []);
+
+  const items = useMemo(() => {
+    let list = cat === ALL ? MATHMODEL_GALLERY : MATHMODEL_GALLERY.filter((g) => g.category === cat);
+    if (dataType) list = list.filter((g) => g.dataTypes.includes(dataType));
+    return list;
+  }, [cat, dataType]);
 
   const openIdx = openId === null ? -1 : items.findIndex((g) => g.id === openId);
   const openItem = openIdx >= 0 ? (items[openIdx] as GalleryTemplate) : null;
@@ -292,6 +310,25 @@ export function GalleryPage(): JSX.Element {
             >
               {c === ALL ? tx('shell.galleryPage.all') : c}
               <span className="gallery-chip-count">{counts.get(c) ?? 0}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 按数据类型选型（SPSSPRO 式）：先选手里数据长什么样，再看适合的表达方式 */}
+        <div className="gallery-chips gallery-chips-types" role="group" aria-label="按数据类型筛选">
+          <span className="gallery-types-label">数据类型：</span>
+          {DATA_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`gallery-chip gallery-chip-type${dataType === t ? ' active' : ''}`}
+              onClick={() => {
+                setDataType((prev) => (prev === t ? null : t));
+                setOpenId(null);
+              }}
+            >
+              {t}
+              <span className="gallery-chip-count">{typeCounts.get(t) ?? 0}</span>
             </button>
           ))}
         </div>
