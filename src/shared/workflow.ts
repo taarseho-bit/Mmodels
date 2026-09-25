@@ -108,7 +108,7 @@ export function chineseAgentName(type: string, description = ''): string {
     ?? (/^[\u3400-\u9fff]{2,12}$/.test(type) ? type : '协作研究员');
 }
 const SKILLS: Record<string, string> = {
-  'write-paper': '论文写作', 'review-paper': '论文审阅', 'mma-model': '建模求解',
+  'write-paper': '论文写作', 'review-paper': '论文审阅',
   'paper-search': '文献检索', 'paper-diagram': '论文绘图', 'paper-page-fit': '正文页数优化',
   'paper-polish': '论文润色', 'nature-figure': '科研绘图', 'competition-delivery-check': '比赛交付核对',
   'competition-audit': '比赛交付核对', 'data-search': '数据检索', doctor: '环境检查',
