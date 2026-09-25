@@ -28,6 +28,18 @@ import {
 
 const SHARE_PREFIX = 'codex-theme-v1:';
 
+/**
+ * 助手配色预设（2026-09-25 用户要求）：与四位建模助手的颜色风格一一对应。
+ * 只改 accent —— store 的 applyAppearance 会自动派生 hover / weak / fg。
+ */
+const ACCENT_PRESETS: Array<{ id: string; label: string; color: string; hint: string }> = [
+  { id: 'solver-blue', label: '求解蓝', color: '#3b62d4', hint: '建模求解 · 沉稳理性' },
+  { id: 'data-teal', label: '数据青', color: '#1d8a80', hint: '数据分析 · 清爽干净' },
+  { id: 'review-violet', label: '评审紫', color: '#6a4bd8', hint: '论文评审 · 严谨深邃' },
+  { id: 'figure-orange', label: '图表橙', color: '#d97b2e', hint: '图表制作 · 明快活泼' },
+  { id: 'classic', label: '经典蓝', color: '#007aff', hint: '恢复默认强调色' },
+];
+
 /** 原版分段控件里的三个主题图标（线性，不用 emoji） */
 function ThemeIcon({ id }: { id: AppearanceMode }): JSX.Element {
   const common = {
@@ -296,6 +308,43 @@ export function AppearanceSection(): JSX.Element {
               </div>
             </div>
           )}
+
+          <div className="appearance-row">
+            <div className="appearance-row-main">
+              <div className="appearance-row-label">
+                助手配色
+              </div>
+              <div className="appearance-row-hint muted" style={{ fontSize: 10.5, marginTop: 2 }}>
+                {ACCENT_PRESETS.find((p) => p.color.toLowerCase() === app[key].accent.toLowerCase())?.hint ?? '与四位建模助手的颜色风格对应'}
+              </div>
+            </div>
+            <div className="appearance-row-ctl">
+              <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {ACCENT_PRESETS.map((p) => {
+                  const active = app[key].accent.toLowerCase() === p.color.toLowerCase();
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      title={`${p.label} · ${p.hint}`}
+                      aria-label={p.label}
+                      aria-pressed={active}
+                      onClick={() => patchVariant(key, { accent: p.color })}
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 7,
+                        background: p.color,
+                        cursor: 'pointer',
+                        border: active ? '2px solid var(--fg-primary)' : '1px solid var(--border-strong)',
+                        padding: 0,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
           <div className="appearance-row">
             <div className="appearance-row-main">

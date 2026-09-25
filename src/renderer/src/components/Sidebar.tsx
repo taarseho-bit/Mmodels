@@ -351,8 +351,19 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
     ctxMenu?.kind === 'project'
       ? [
           {
+            label: pinnedProjects.includes(ctxMenu.project.id) ? '取消置顶' : '置顶项目',
+            icon: 'pin',
+            onSelect: () => togglePinProject(ctxMenu.project.id),
+          },
+          {
+            label: favoritedProjects.includes(ctxMenu.project.id) ? '取消收藏' : '收藏项目',
+            icon: 'star',
+            onSelect: () => toggleFavoriteProject(ctxMenu.project.id),
+          },
+          {
             label: t('打开文件夹目录'),
             icon: 'folder-open',
+            divider: true,
             onSelect: () => openFolder(ctxMenu.project.root),
           },
           {
@@ -431,6 +442,15 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
               onSelect: () => void shareSession(ctxMenu.session, false),
             },
             {
+              label: archivedChats.includes(ctxMenu.session.id) ? '取消归档' : '归档聊天',
+              icon: 'archive',
+              divider: true,
+              onSelect: () => {
+                toggleArchiveChat(ctxMenu.session.id);
+                showToast(archivedChats.includes(ctxMenu.session.id) ? '已取消归档' : '已归档，可在「已归档」里找回');
+              },
+            },
+            {
               label: t('删除会话'),
               icon: 'trash-2',
               danger: true,
@@ -440,18 +460,94 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
         })()
       : [];
 
+  // 2026-09-25 重排：建模对话是主界面放最上；工作台与论文库随后
   const navigation: Array<{ icon: string; label: string; route?: Route; onClick?: () => void; id?: string }> = [
-    { icon: 'chart-column', label: '比赛工作台', route: 'workbench' },
     { icon: 'message-square', label: '建模对话', route: 'chat' },
+    { icon: 'chart-column', label: '比赛工作台', route: 'workbench' },
     { icon: 'file-text', label: '优秀获奖论文', route: 'papers' },
   ];
 
-  // 会话过滤（搜索框）
+  /** 置顶的项目（2026-09-25 用户要求）—— localStorage 持久化，置顶的排最前 */
+  const [pinnedProjects, setPinnedProjects] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('mm-projects-pinned');
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const togglePinProject = useCallback((id: string): void => {
+    setPinnedProjects((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try { localStorage.setItem('mm-projects-pinned', JSON.stringify(next)); } catch { /* 忽略 */ }
+      return next;
+    });
+  }, []);
+
+  /** 收藏的项目（与置顶独立）—— 收藏的排在置顶之后、其余之前 */
+  const [favoritedProjects, setFavoritedProjects] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('mm-projects-favorited');
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const toggleFavoriteProject = useCallback((id: string): void => {
+    setFavoritedProjects((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try { localStorage.setItem('mm-projects-favorited', JSON.stringify(next)); } catch { /* 忽略 */ }
+      return next;
+    });
+  }, []);
+
+  /** 归档的会话（2026-09-25 用户要求）—— 不删，收进「已归档」折叠区 */
+  const [archivedChats, setArchivedChats] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('mm-chats-archived');
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const toggleArchiveChat = useCallback((id: string): void => {
+    setArchivedChats((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try { localStorage.setItem('mm-chats-archived', JSON.stringify(next)); } catch { /* 忽略 */ }
+      return next;
+    });
+  }, []);
+
+  // 会话过滤（搜索框）+ 归档分离（2026-09-25）
   const visibleSessions = useMemo(() => {
     const kw = q.trim().toLowerCase();
-    if (!kw) return sessions;
-    return sessions.filter((s) => (s.title ?? '').toLowerCase().includes(kw));
-  }, [sessions, q]);
+    const live = sessions.filter((s) => !archivedChats.includes(s.id));
+    if (!kw) return live;
+    return live.filter((s) => (s.title ?? '').toLowerCase().includes(kw));
+  }, [sessions, q, archivedChats]);
+
+  const archivedSessions = useMemo(() => {
+    const kw = q.trim().toLowerCase();
+    const archived = sessions.filter((s) => archivedChats.includes(s.id));
+    if (!kw) return archived;
+    return archived.filter((s) => (s.title ?? '').toLowerCase().includes(kw));
+  }, [sessions, q, archivedChats]);
+
+  /** 项目排序（2026-09-25）：置顶 → 收藏 → 最近打开（时间倒序） */
+  const sortedProjects = useMemo(() => {
+    const byRecency = [...projects].sort((a, b) => b.lastOpenedAt - a.lastOpenedAt || b.updatedAt - a.updatedAt);
+    const pinned = pinnedProjects
+      .map((id) => byRecency.find((p) => p.id === id))
+      .filter((p): p is ProjectMeta => !!p);
+    const rest = byRecency.filter((p) => !pinnedProjects.includes(p.id));
+    const favs = rest.filter((p) => favoritedProjects.includes(p.id));
+    const others = rest.filter((p) => !favoritedProjects.includes(p.id));
+    return [...pinned, ...favs, ...others];
+  }, [projects, pinnedProjects, favoritedProjects]);
 
   return (
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}`} aria-label="主导航">
@@ -534,11 +630,6 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
           ),
         )}
       </nav>
-      <div className="rail-compact-projects">
-        <RailItem icon="folder-open" label="工作项目" title={current ? `工作项目 · ${current.name}` : '工作项目'} onClick={() => { setCollapsed(false); setProjectSwitcherOpen(true); }} />
-        <RailItem icon="plus" label="新建或打开项目" onClick={() => void handleNewProject()} />
-        <RailItem icon="list-checks" label="项目任务" onClick={() => { setCollapsed(false); setProjectSwitcherOpen(false); requestAnimationFrame(() => document.getElementById('sidebar-tasks')?.scrollIntoView({ block: 'nearest' })); }} />
-      </div>
 
       {/* ── 搜索框（点「搜索」展开）── */}
       {searchOpen && (
@@ -597,7 +688,10 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
 
           {projectSwitcherOpen && (
             <div className="rail-project-list" aria-label="平级工作项目">
-              {projects.map((p) => (
+              {sortedProjects.map((p) => {
+                const pinned = pinnedProjects.includes(p.id);
+                const favored = favoritedProjects.includes(p.id);
+                return (
                 <div key={p.id} className="rail-sub-row">
                   {renameFor === p.id ? (
                     <input
@@ -629,6 +723,8 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
                     >
                       <Icon name="folder-open" size={13} />
                       <span className="rail-label truncate">{p.name}</span>
+                      {pinned ? <Icon name="pin" size={11} className="rail-pin-flag" /> : null}
+                      {!pinned && favored ? <Icon name="star" size={11} className="rail-fav-flag" /> : null}
                     </button>
                   )}
 
@@ -639,6 +735,28 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
                   */}
                   {renameFor !== p.id && (
                     <div className="rail-row-actions">
+                      <button
+                        className="rail-item-x"
+                        title={pinned ? '取消置顶' : '置顶项目'}
+                        aria-label={pinned ? '取消置顶' : '置顶项目'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePinProject(p.id);
+                        }}
+                      >
+                        <Icon name="pin" size={12} />
+                      </button>
+                      <button
+                        className="rail-item-x"
+                        title={favored ? '取消收藏' : '收藏项目'}
+                        aria-label={favored ? '取消收藏' : '收藏项目'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavoriteProject(p.id);
+                        }}
+                      >
+                        <Icon name="star" size={12} />
+                      </button>
                       <button
                         className="rail-item-x"
                         title={tx('shell.sidebar.rename')}
@@ -664,7 +782,8 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -712,18 +831,67 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
                 </button>
                 <button
                   className="rail-item-x"
-                  title={tx('common.delete')}
+                  title="归档聊天"
                   onClick={(e) => {
                     e.stopPropagation();
-                    void removeSession(s.id);
+                    toggleArchiveChat(s.id);
                   }}
                 >
-                  <Icon name="x" size={12} />
+                  <Icon name="archive" size={12} />
                 </button>
               </div>
             ))
           )}
         </div>
+
+        {/* 已归档聊天（2026-09-25）：折叠区，可恢复 */}
+        {archivedSessions.length > 0 && (
+          <div className="rail-archived">
+            <button
+              type="button"
+              className="rail-archived-head"
+              onClick={() => setArchivedOpen((v) => !v)}
+              aria-expanded={archivedOpen}
+            >
+              <Icon name="archive" size={12} />
+              <span className="truncate">已归档 · {archivedSessions.length}</span>
+              <Icon name={archivedOpen ? 'chevron-down' : 'chevron-right'} size={11} style={{ opacity: 0.5 }} />
+            </button>
+            {archivedOpen && (
+              <div className="rail-archived-list">
+                {archivedSessions.map((s) => (
+                  <div key={s.id} className="rail-sub-row">
+                    <button
+                      className="rail-item sm"
+                      onClick={() => {
+                        selectSession(s.id);
+                        if (route !== 'chat') setRoute('chat');
+                      }}
+                      title={s.title}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setCtxMenu({ kind: 'session', x: e.clientX, y: e.clientY, session: s });
+                      }}
+                    >
+                      <span className="rail-dot" />
+                      <span className="rail-label truncate">{s.title || tx('integrations.taskCompletion.untitledChat')}</span>
+                    </button>
+                    <button
+                      className="rail-item-x"
+                      title="取消归档"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleArchiveChat(s.id);
+                      }}
+                    >
+                      <Icon name="archive-restore" size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       </div>
 

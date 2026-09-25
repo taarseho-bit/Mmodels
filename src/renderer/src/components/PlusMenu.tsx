@@ -108,6 +108,7 @@ import { GALLERY, templatePrompt } from '@shared/gallery-data';
 import { Icon } from './Icon';
 import { SubFlyout } from './Popover';
 import { tx } from '../i18n';
+import { skillDisplayName } from '../lib/skill-display';
 
 /**
  * 取 `composer.composerPlusMenu.<leaf>` 的文案。
@@ -450,7 +451,7 @@ export function buildPlusSubItems(id: PlusSubmenuId, deps: PlusMenuDeps): PlusSu
       const items = deps.skills.map((s) => ({
         id: s.dirName,
         group: 0,
-        label: s.name,
+        label: skillDisplayName(s.name),
         icon: PLUS_ICON.skills,
         run: () => deps.onInsertSkill(s.name),
       }));

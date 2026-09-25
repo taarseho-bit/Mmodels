@@ -30,6 +30,7 @@ import { Markdown } from '../components/Markdown';
 import { AlgorithmsMarket } from '../components/AlgorithmsMarket';
 import { ConnectorsSection } from '../components/ConnectorsSection';
 import { friendlyError } from '../lib/friendly-error';
+import { skillDisplayName } from '../lib/skill-display';
 import { LocalPluginsPanel } from '../components/LocalPluginsPanel';
 
 type Tab = 'skills' | 'templates' | 'algorithms' | 'plugins' | 'connectors';
@@ -345,7 +346,10 @@ function SkillsTab(): JSX.Element {
                     >
                       <Icon name="box" size={16} className="ext-item-icon" />
                       <span className="ext-item-main">
-                        <span className="ext-item-name">{s.name}</span>
+                        <span className="ext-item-name">
+                          {skillDisplayName(s.name)}
+                          {skillDisplayName(s.name) !== s.name ? <span className="muted" style={{ fontSize: 10, marginLeft: 6 }}>/{s.name}</span> : null}
+                        </span>
                         <span className="ext-item-desc">{s.description}</span>
                         <span className="ext-item-tags"><span className="badge">{skillCategory(s)}</span><span className="badge">{s.source === 'builtin' ? '内置' : '我的技能'}</span></span>
                       </span>
@@ -438,7 +442,10 @@ function SkillDetail({
   return (
     <div className="ext-detail">
       <div className="ext-detail-head">
-        <span className="ext-detail-name">{skill.name}</span>
+        <span className="ext-detail-name">
+          {skillDisplayName(skill.name)}
+          {skillDisplayName(skill.name) !== skill.name ? <span className="muted" style={{ fontSize: 11, marginLeft: 8 }}>/{skill.name}</span> : null}
+        </span>
         <div className="grow" />
         {copied && <span className="badge badge-success">{tx('common.copied')}</span>}
         <button

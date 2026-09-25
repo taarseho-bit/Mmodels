@@ -1535,7 +1535,8 @@ export function ChatPage(): JSX.Element {
             </div>
           ))}
 
-          {/* 秒回：发出消息到首 token 之间不再干等 —— 立刻给一颗"正在开工"的打字气泡 */}
+          {/* 秒回：发出消息到首 token 之间不再干等 —— 立刻给一颗"正在开工"的打字气泡。
+              ⚠️ stopping 态不能再说"正在开始"——用户刚点了停止，要如实说正在停下。 */}
           {!streamingMessage && (preparing || stream.phase !== 'idle') && (
             <div className="msg msg-assistant">
               <div className="msg-avatar assistant">
@@ -1544,7 +1545,13 @@ export function ChatPage(): JSX.Element {
               <div className="msg-body">
                 <div className="typing-line" role="status" aria-live="polite">
                   <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
-                  <span>{preparing ? '正在创建会话、连接模型…' : '已收到，正在开始这项任务…'}</span>
+                  <span>
+                    {stream.stopping
+                      ? t('正在停下，当前内容已经保留')
+                      : preparing
+                        ? '正在创建会话、连接模型…'
+                        : '已收到，正在开始这项任务…'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -214,3 +214,32 @@
 .competition-shell .msg { animation: msg-in 200ms ease-out; }
 @keyframes msg-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .competition-shell .msg { animation: none; } .typing-dots i { animation: none; } }
+
+/* ═════════ 2026-09-25 四轮：侧栏紧凑 / 置顶收藏 / 归档 / 日历框线 ═════════ */
+
+/* 项目/会话行压扁：一屏多看一倍的项目 */
+.competition-shell .rail-item.sm { min-height: 24px; padding: 3px 8px; gap: 7px; }
+.competition-shell .rail-item.sm .rail-label { font-size: 11.5px; }
+.competition-shell .rail-project-list { display: flex; flex-direction: column; gap: 1px; }
+.competition-shell .rail-sec-head { min-height: 24px; padding: 2px 10px 3px; font-size: 10.5px; }
+.competition-shell .rail-nav .rail-item { min-height: 30px; padding: 5px 10px; }
+.competition-shell .rail-sub-row { margin: 0; }
+.competition-shell .rail-row-actions { gap: 1px; }
+
+/* 置顶 / 收藏标记 */
+.rail-pin-flag { color: var(--accent); margin-left: auto; flex-shrink: 0; }
+.rail-fav-flag { color: #d9a13b; margin-left: auto; flex-shrink: 0; }
+.competition-shell .rail-item-x.is-pin-on { color: var(--accent); }
+
+/* 已归档聊天折叠区 */
+.rail-archived { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-weak); }
+.rail-archived-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 10px; font-size: 11px; color: var(--fg-muted); background: transparent; border: 0; cursor: pointer; border-radius: 7px; text-align: left; }
+.rail-archived-head:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.rail-archived-list { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 4px; }
+.rail-archived-list .rail-item { opacity: .72; }
+
+/* 竞赛日历框线：格子有边、事件日高亮、表头压线 */
+.competition-shell .cal-mini-cell { border-color: var(--border-weak); background: var(--bg-panel); }
+.competition-shell .cal-mini-cell.dim { background: transparent; border-color: transparent; }
+.competition-shell .cal-mini-cell.has-events:not(.dim):not(.picked) { background: var(--accent-weak); border-color: color-mix(in srgb, var(--accent) 32%, var(--border-weak)); }
+.competition-shell .cal-mini-head { padding-bottom: 3px; border-bottom: 1px solid var(--border-weak); }
