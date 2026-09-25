@@ -35,6 +35,7 @@ import {
 import { DraftComposer } from '../components/DraftComposer';
 import { createComposerDraft } from '../store/composer-draft';
 import { withPendingMessage } from '../lib/optimistic-message';
+import { friendlyError } from '../lib/friendly-error';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
 import { AgentCollaboration } from '../components/AgentCollaboration';
@@ -638,7 +639,7 @@ export function ChatPage(): JSX.Element {
       }
     } catch (e) {
       if (activeSessionIdRef.current !== sid) return;
-      setLoadError(e instanceof Error ? e.message : String(e));
+      setLoadError(friendlyError(e, '当前项目的对话暂时没有读取成功，可以重试。'));
     } finally {
       setLoading(false);
     }
@@ -1563,7 +1564,7 @@ function useSendMessage(onFailure: (message: string) => void): (sid: string, tex
         await window.mathmodel.session.send(sid, text, displayText);
         return true;
       } catch (e) {
-        onFailure(e instanceof Error ? e.message : String(e));
+        onFailure(friendlyError(e, '这条消息暂未发出，内容已保留，可以重试。'));
         return false;
       }
     },

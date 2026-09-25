@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { Paper } from '../../../shared/competition-studio';
 import { PaperShareDialog } from '../components/PaperShareDialog';
+import { friendlyError } from '../lib/friendly-error';
 
 export function PapersPage(): JSX.Element {
   const [papers, setPapers] = useState<Paper[]>([]), [folder, setFolder] = useState('');
@@ -9,12 +10,12 @@ export function PapersPage(): JSX.Element {
   const [favorites, setFavorites] = useState(false), [upload, setUpload] = useState(false), [error, setError] = useState('');
   const [editing, setEditing] = useState<string | null>(null), [note, setNote] = useState(''), [busy, setBusy] = useState(false);
   useEffect(() => { let live = true;
-    void Promise.all([window.mathmodel.competition.state(), window.mathmodel.competition.libraryFolder()]).then(([s, f]) => { if (live) { setPapers(s.papers); setFolder(f); } }).catch(e => live && setError(String(e)));
+    void Promise.all([window.mathmodel.competition.state(), window.mathmodel.competition.libraryFolder()]).then(([s, f]) => { if (live) { setPapers(s.papers); setFolder(f); } }).catch(e => live && setError(friendlyError(e, '论文资料库暂时没有打开成功，可以重试。')));
     const off = window.mathmodel.competition.onState(s => { if (live) setPapers(s.papers); });
     return () => { live = false; off(); };
   }, []);
   const visible = useMemo(() => papers.filter(p => (!comp || p.competition === comp) && (!year || String(p.year) === year) && (!favorites || p.favorite) && `${p.title} ${p.problem} ${p.award} ${p.notes}`.toLowerCase().includes(deferredSearch.toLowerCase())).sort((a, b) => b.added - a.added), [papers, comp, year, favorites, deferredSearch]);
-  const run = async (fn: () => Promise<unknown>) => { setError(''); setBusy(true); try { await fn(); } catch (e) { setError(String(e)); } finally { setBusy(false); } };
+  const run = async (fn: () => Promise<unknown>) => { setError(''); setBusy(true); try { await fn(); } catch (e) { setError(friendlyError(e, '这一步没有完成，资料已保留，可以重试。')); } finally { setBusy(false); } };
   return <div className="studio-page">
     <header className="studio-page-heading"><div><span className="studio-eyebrow">本地资料库</span><h1>优秀获奖论文</h1><p>你的本地阅读与方法收藏库。按竞赛、年份整理，随时回看。</p></div><button className="btn btn-primary" onClick={() => setUpload(true)}>＋ 上传优秀论文</button></header>
     <div className="studio-stat-strip"><div><strong>{papers.length}</strong><span>本地论文</span></div><div><strong>{new Set(papers.map(p => p.competition)).size}</strong><span>竞赛分类</span></div><div><strong>{papers.filter(p => p.favorite).length}</strong><span>重点收藏</span></div><button className="btn" title={folder} onClick={() => void run(() => window.mathmodel.competition.revealLibrary())}>打开存储目录 ↗</button></div>

@@ -15,6 +15,7 @@ import { Icon } from './Icon';
 import { Skeleton } from './Skeleton';
 import { useApp } from '../store/app';
 import { t, tx, txPlural } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 const KIND_KEY: Record<VersionKind, string> = {
   manual: 'dock.versionPanel.kinds.manual',
@@ -78,7 +79,7 @@ export function VersionHistoryPanel(): JSX.Element {
       setIsRepo(r.isRepo);
       setVersions(r.versions);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '版本记录没有读取成功，可以重试。'));
     } finally {
       setLoading(false);
     }
@@ -121,7 +122,7 @@ export function VersionHistoryPanel(): JSX.Element {
         setToast(r.reason ?? tx('common.failed'));
       }
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      setToast(friendlyError(e, '版本操作没有完成，可以重试。'));
     } finally {
       setSaving(false);
     }
@@ -147,7 +148,7 @@ export function VersionHistoryPanel(): JSX.Element {
       setRestoreTarget(null);
       await refresh();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      setToast(friendlyError(e, '版本恢复没有完成，当前内容没有被删除。'));
     } finally {
       setRestoring(false);
     }

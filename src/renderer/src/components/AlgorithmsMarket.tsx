@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
 import { tx, t } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 type RuntimeState = 'ready' | 'installable' | 'no-python' | 'broken';
 
@@ -75,7 +76,7 @@ export function AlgorithmsMarket(): JSX.Element {
     void window.mathmodel.algorithms
       .list()
       .then(setSnap)
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .catch((e) => setError(friendlyError(e, '算法目录暂时没有读取成功，可以重试。')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -121,7 +122,7 @@ export function AlgorithmsMarket(): JSX.Element {
         // 装完刷新安装状态
         refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '算法安装没有完成，可以重试。'));
       } finally {
         setInstalling(null);
       }
@@ -138,7 +139,7 @@ export function AlgorithmsMarket(): JSX.Element {
       if (!r.ok) setError(t('Python 静默安装未完成，请查看日志或手动安装后重启应用。'));
       refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '算法操作没有完成，可以重试。'));
     } finally {
       setPyInstalling(false);
     }

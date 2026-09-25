@@ -16,6 +16,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
   const [selectedNode, setSelectedNode] = useState('main');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [privateView, setPrivateView] = useState(true);
+  const [presentation, setPresentation] = useState<'demo' | 'analysis'>('demo');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
@@ -49,10 +50,13 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
     const source = calls[0].skillSource === 'entry' ? '写作流程已加载' : calls[0].skillSource === 'read' ? '已阅读技能说明' : '已调用技能';
     return { id, label: calls[0].label.replace(/^(载入入口指令|参考技能) · /, ''), count: calls.length, status, source };
   });
-  return <section className="workflow-view" aria-label="任务工作流">
+  return <section className={`workflow-view is-${presentation}`} aria-label="任务工作流">
     <div className="workflow-heading">
       <div><h2>项目工作流</h2><p className="workflow-heading-subtitle">同一项目里的多个任务，会汇总在这张工作图中。</p></div>
-      <button className="btn btn-ghost" aria-pressed={privateView} onClick={() => setPrivateView(v => !v)}>{privateView ? '演示保护已开' : '开启演示保护'}</button>
+      <div className="workflow-view-switch" role="group" aria-label="工作流视图">
+        <button className={`btn btn-ghost${presentation === 'demo' ? ' active' : ''}`} aria-pressed={presentation === 'demo'} onClick={() => { setPresentation('demo'); setPrivateView(true); }}>演示视图</button>
+        <button className={`btn btn-ghost${presentation === 'analysis' ? ' active' : ''}`} aria-pressed={presentation === 'analysis'} onClick={() => { setPresentation('analysis'); setPrivateView(false); }}>分析视图</button>
+      </div>
     </div>
     <p className="workflow-note">看看谁在做什么，用了哪些方法，交回了什么成果。</p>
     {notice && <p role="status">{notice} <button className="btn btn-ghost" onClick={() => setRetry(v => v + 1)}>重新读取</button></p>}
@@ -76,7 +80,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
       })()}
       {!run.collaborationEnabled && <p className="workflow-note">本轮没有开启多智能体协作；仍会记录主助手实际完成的工作。</p>}
       <div className={`workflow-layout is-flow-canvas${node && detailsOpen ? ' with-details' : ''}`}>
-        <WorkflowCanvas key={run.id} run={run} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />
+        <WorkflowCanvas key={`${run.id}-${presentation}`} run={run} presentation={presentation} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />
         {node && detailsOpen && <aside className="workflow-detail" aria-label="成员工作详情" onKeyDown={e => { if (e.key === 'Escape') setDetailsOpen(false); }}>
           <ResizeHandle storageKey="mm-workflow-detail-width-v2" label="调整成员详情宽度" edge="left" initial={280} min={220} max={340} fraction={.34} />
           <button className="flow-detail-close" aria-label="关闭成员详情" onClick={() => setDetailsOpen(false)}><Icon name="x" size={15} /></button>

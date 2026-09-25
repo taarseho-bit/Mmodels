@@ -13,6 +13,7 @@ import type { AnthropicAuthMode, ApiFormat, ProviderConfig } from '@shared/types
 import { useApp } from '../../store/app';
 import { tx, t } from '../../i18n';
 import { Icon } from '../Icon';
+import { friendlyError } from '../../lib/friendly-error';
 
 /** 生成一个本地 id（不需要后端参与） */
 function newId(): string {
@@ -373,7 +374,7 @@ export function ProvidersSection(): JSX.Element {
       closeForm();
       await refreshProviders();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '供应商设置没有保存成功，可以重试。'));
     } finally {
       setSaving(false);
     }
@@ -399,7 +400,7 @@ export function ProvidersSection(): JSX.Element {
     } catch (e) {
       setTestResult((prev) => ({
         ...prev,
-        [id]: { ok: false, detail: e instanceof Error ? e.message : String(e) },
+        [id]: { ok: false, detail: friendlyError(e, '连接测试没有完成，可以重试。') },
       }));
     } finally {
       setTesting(null);

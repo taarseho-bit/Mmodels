@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/app';
 import { t, tx } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 /** 可打印的最小 ANSI 清理：把颜色/光标控制序列去掉，保留换行与制表 */
 function stripAnsi(s: string): string {
@@ -108,7 +109,7 @@ export function TerminalPanel(): JSX.Element {
       // 等一帧让 ref 挂上
       setTimeout(() => inputRef.current?.focus(), 60);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '终端暂时没有打开成功，可以重试。'));
     }
   }, [project]);
 
@@ -124,7 +125,7 @@ export function TerminalPanel(): JSX.Element {
     async (data: string) => {
       if (!termId) return;
       await window.mathmodel.terminal.write(termId, data).catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '终端操作没有完成，可以重试。'));
       });
     },
     [termId],

@@ -437,6 +437,7 @@ export function Composer({
   const [openMenu, setOpenMenu] = useState<
     null | 'project' | 'mode' | 'decision' | 'template' | 'perm' | 'model' | 'plus' | 'options'
   >(null);
+  const [contextOpen, setContextOpen] = useState(false);
   // ── 「＋」菜单（原版 `data-tour="composer-plus"` 那个 Popover）──
   /**
    * 二级子菜单开关。与「思考强度」同一套"悬停展开 + 点击固定 + 延时关闭"，
@@ -1456,32 +1457,45 @@ export function Composer({
         <div className="grow" />
 
         {/* 模型 · 思考强度 */}
-        <div className="cz-slot">
+        <div className="cz-slot cz-context-slot">
           {(() => {
             const pct = Math.round(Math.min(100, Math.max(0, contextUsage?.percentage ?? 0)));
             const tone = pct >= 90 ? ' danger' : pct >= 75 ? ' warn' : '';
+            const used = contextUsage?.used ?? 0;
+            const total = contextUsage?.total ?? 0;
+            const threshold = contextUsage?.autoCompactThreshold ?? (total > 0 ? Math.floor(total * .9) : 0);
             const title = contextUsage && contextUsage.total > 0
               ? t('上下文已用 {{percentage}}%，{{used}} / {{total}}', {
-                  percentage: pct,
-                  used: contextUsage.used.toLocaleString('zh-CN'),
-                  total: contextUsage.total.toLocaleString('zh-CN'),
+                percentage: pct,
+                used: used.toLocaleString('zh-CN'),
+                total: total.toLocaleString('zh-CN'),
                 })
               : t('上下文用量将在对话开始后显示');
             return (
-              <span className={`cz-context-ring${tone}`} tabIndex={0} title={`${title}\n这是本轮可参考的临时记忆，不是累计消费额度。\n${contextUsage?.capacitySource === 'reference' ? '容量尚未确认，当前为运行器参考值。' : contextUsage?.capacitySource === 'configured' ? '容量来自你的模型设置，上限1M。' : '容量按已识别的模型设置，上限1M。'}${contextUsage?.estimated ? '当前用量含估算。' : ''}\n${contextUsage?.autoCompactEnabled ? '接近容量上限时会自动整理旧内容，保留要点继续工作。' : '等待运行器确认自动整理状态。'}`} aria-label={title}>
-                <svg viewBox="0 0 24 24" aria-hidden>
-                  <circle className="cz-context-ring-bg" cx="12" cy="12" r="9" pathLength="100" />
-                  <circle
-                    className="cz-context-ring-value"
-                    cx="12"
-                    cy="12"
-                    r="9"
-                    pathLength="100"
-                    strokeDasharray={`${pct} 100`}
-                  />
-                </svg>
-                {contextUsage?.compacted ? <span className="cz-context-ring-dot" /> : null}
-              </span>
+              <>
+                <button className={`cz-context-trigger${contextOpen ? ' is-open' : ''}`} type="button" onClick={() => setContextOpen(v => !v)} aria-expanded={contextOpen} aria-label={title} title="查看上下文用量">
+                  <span className={`cz-context-ring${tone}`} aria-hidden>
+                    <svg viewBox="0 0 24 24">
+                      <circle className="cz-context-ring-bg" cx="12" cy="12" r="9" pathLength="100" />
+                      <circle className="cz-context-ring-value" cx="12" cy="12" r="9" pathLength="100" strokeDasharray={`${pct} 100`} />
+                    </svg>
+                    {contextUsage?.compacted ? <span className="cz-context-ring-dot" /> : null}
+                  </span>
+                  {pct >= 75 ? <span className="cz-context-pct">{pct}%</span> : null}
+                </button>
+                <Popover open={contextOpen} onClose={() => setContextOpen(false)} align="right" maxHeight={260}>
+                  <div className="cz-context-popover" role="dialog" aria-label="上下文用量详情">
+                    <div className="cz-pop-label">上下文用量</div>
+                    {total > 0 ? <>
+                      <div className="cz-context-summary"><strong>{pct}%</strong><span>{used.toLocaleString('zh-CN')} / {total.toLocaleString('zh-CN')}</span></div>
+                      <div className="cz-context-bar"><i style={{ width: `${pct}%` }} /></div>
+                      <div className="cz-context-meta"><span>自动整理线</span><strong>{threshold ? `${Math.round(threshold / 1000)}K` : '等待确认'}</strong></div>
+                    </> : <p className="cz-pop-note">开始一次对话后，这里会显示当前回合的上下文用量。</p>}
+                    <p className="cz-context-note">{contextUsage?.autoCompactEnabled ? '接近上限时会自动整理旧内容，保留关键结论继续工作。' : '正在等待运行器确认自动整理状态。'}</p>
+                    <p className="cz-context-source">{contextUsage?.estimated ? '当前数字包含估算' : contextUsage?.capacitySource === 'configured' ? '容量来自模型设置' : contextUsage?.capacitySource === 'known' ? '容量已由模型确认' : '容量为运行器参考值'}{contextUsage?.compacted ? ' · 最近已整理过一次' : ''}</p>
+                  </div>
+                </Popover>
+              </>
             );
           })()}
           <button

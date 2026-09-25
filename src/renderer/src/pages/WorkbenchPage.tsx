@@ -4,6 +4,7 @@ import { COMPETITIONS } from '../../../shared/competitions-data';
 import { calendarCompetition, competitionDeadline, countdownFor } from '../../../shared/competition-countdown';
 import { useApp } from '../store/app';
 import { openRoute } from '../lib/settings-nav';
+import { friendlyError } from '../lib/friendly-error';
 
 const drafts = new Map<string, Project>();
 const contests = [...COMPETITIONS].sort((a, b) => b.year - a.year || a.name.localeCompare(b.name, 'zh-CN'));
@@ -16,7 +17,7 @@ export function WorkbenchPage(): JSX.Element {
     let live = true; setDraft(project ? drafts.get(project.id) ?? null : null); setMessage('');
     if (project) void window.mathmodel.competition.ensureProject(project.id).then(s => {
       if (live) setDraft(drafts.get(project.id) ?? s.projects.find(p => p.id === project.id) ?? null);
-    }).catch(e => live && setMessage(String(e)));
+    }).catch(e => live && setMessage(friendlyError(e, '比赛信息暂时没有读取成功，可以重新打开。')));
     return () => { live = false; };
   }, [project?.id]);
   if (!draft) return <div className="studio-page"><p>{message || '正在打开比赛工作台…'}</p></div>;
@@ -33,7 +34,7 @@ export function WorkbenchPage(): JSX.Element {
       if (drafts.get(value.id) === value) drafts.delete(value.id);
       if (useApp.getState().currentProject?.id === value.id) setMessage(drafts.has(value.id) ? '还有修改待保存' : '已保存');
       return true;
-    } catch (e) { if (useApp.getState().currentProject?.id === value.id) setMessage(String(e)); return false; }
+    } catch (e) { if (useApp.getState().currentProject?.id === value.id) setMessage(friendlyError(e, '比赛信息没有保存成功，内容已保留。')); return false; }
     finally { setBusy(false); }
   };
   const ask = async (prompt: string, mode: 'paper' | 'chat' = 'paper') => {
@@ -74,7 +75,7 @@ export function WorkbenchPage(): JSX.Element {
           <button className="btn" disabled={busy} onClick={() => void save()}>保存资料</button>
         </section>
         <section className="studio-card"><h2>提交前检查</h2>{draft.checklist.map(c => <label className="studio-checkline" key={c.id}><input type="checkbox" checked={c.done} onChange={e => patch({ checklist: draft.checklist.map(v => v.id === c.id ? { ...v, done: e.target.checked } : v) })} /><span>{c.text}</span></label>)}
-          <button className="btn" disabled={busy} onClick={() => void ask('请调用比赛交付核对技能，检查当前项目提交材料。逐项说明已核对、未通过和需人工确认的内容，不将我的勾选视为验证结果。', 'chat')}>让助手检查</button></section>
+          <button className="btn" disabled={busy} onClick={() => void ask('请运行一次论文交付检查：读取当前项目的比赛信息、论文 PDF、图表和表格，核对正文页数、表格是否裁切、图片是否缺失、引用与章节结构是否完整，并区分已确认、需要修改和需要人工确认的项目。请使用 competition-audit、table-layout-audit 和 paper-page-fit 等匹配技能；不要把我的勾选视为验证结果。', 'chat')}>运行论文交付检查</button></section>
       </div>
       <section className="studio-card"><header><h2>方案对比</h2><button className="btn" onClick={() => patch({ alternatives: [...draft.alternatives, { id: crypto.randomUUID(), name: '', score: '', risks: '' }] })}>添加方案</button></header>
         {draft.alternatives.map(a => <div className="studio-form-row" key={a.id}>{(['name', 'score', 'risks'] as const).map((field, i) => <label key={field}>{['方案', '结果', '注意事项'][i]}<input className="input" value={a[field]} onChange={e => patch({ alternatives: draft.alternatives.map(v => v.id === a.id ? { ...v, [field]: e.target.value } : v) })} /></label>)}<button className="btn btn-ghost" onClick={() => patch({ alternatives: draft.alternatives.filter(v => v.id !== a.id) })}>移除</button></div>)}
@@ -83,7 +84,7 @@ export function WorkbenchPage(): JSX.Element {
         {draft.evidence.map(a => <div className="studio-form-row" key={a.id}><label>结论<input className="input" value={a.claim} onChange={e => patch({ evidence: draft.evidence.map(v => v.id === a.id ? { ...v, claim: e.target.value } : v) })} /></label><label>依据<input className="input" value={a.source} onChange={e => patch({ evidence: draft.evidence.map(v => v.id === a.id ? { ...v, source: e.target.value } : v) })} /></label><label><input type="checkbox" checked={a.checked} onChange={e => patch({ evidence: draft.evidence.map(v => v.id === a.id ? { ...v, checked: e.target.checked } : v) })} />已人工核对</label><button className="btn btn-ghost" onClick={() => patch({ evidence: draft.evidence.filter(v => v.id !== a.id) })}>移除</button></div>)}
       </section>
       <button className="btn btn-primary" disabled={busy} onClick={() => void save()}>保存修改</button>
-      <button className="btn btn-ghost" onClick={() => void window.mathmodel.competition.revealProject(draft.id).catch(e => setMessage(String(e)))}>打开项目文件夹</button>
+      <button className="btn btn-ghost" onClick={() => void window.mathmodel.competition.revealProject(draft.id).catch(e => setMessage(friendlyError(e, '项目文件夹暂时无法打开。')))}>打开项目文件夹</button>
     </details>
   </div>;
 }

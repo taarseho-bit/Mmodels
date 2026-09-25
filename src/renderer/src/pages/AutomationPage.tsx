@@ -19,6 +19,7 @@ import { useApp } from '../store/app';
 import { PageShell, EmptyState } from '../components/PageShell';
 import { Icon } from '../components/Icon';
 import { t, tx, getLang } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 /**
  * 主进程回传的记录形态。
@@ -136,7 +137,7 @@ export function AutomationPage(): JSX.Element {
     try {
       setItems(toAutomations(await window.mathmodel.automation.list(projectId)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '自动化任务没有读取成功，可以重试。'));
     } finally {
       setLoading(false);
     }
@@ -189,7 +190,7 @@ export function AutomationPage(): JSX.Element {
       setItems(list);
       setEditing(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '自动化任务没有保存成功，可以重试。'));
     } finally {
       setBusy(null);
     }
@@ -201,7 +202,7 @@ export function AutomationPage(): JSX.Element {
     try {
       setItems(toAutomations(await window.mathmodel.automation.toggle(a.id, !a.enabled)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '自动化任务没有更新成功，可以重试。'));
     } finally {
       setBusy(null);
     }
@@ -214,7 +215,7 @@ export function AutomationPage(): JSX.Element {
       try {
         setItems(toAutomations(await window.mathmodel.automation.remove(a.id)));
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '自动化任务没有删除成功，可以重试。'));
       } finally {
         setBusy(null);
       }
@@ -230,7 +231,7 @@ export function AutomationPage(): JSX.Element {
       // 等两秒再刷新，让主进程把状态写进去
       window.setTimeout(() => void reload(), 2000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '自动化任务没有暂停成功，可以重试。'));
     } finally {
       setBusy(null);
     }
@@ -246,7 +247,7 @@ export function AutomationPage(): JSX.Element {
       const list = toRuns(await window.mathmodel.automation.runs(a.id));
       setRuns((prev) => ({ ...prev, [a.id]: list }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '自动化任务没有立即运行，可以重试。'));
     }
   }, [expandedRuns]);
 

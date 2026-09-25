@@ -6,8 +6,8 @@ import { WorkflowAvatar } from './WorkflowAvatar';
 import { ResizeHandle } from './ResizeHandle';
 
 const stateLabels = { running: '工作中', returned: '已交回', stopped: '已停止', unknown: '待确认' };
-export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun; selectedId: string | null; onSelect: (id: string) => void }): JSX.Element {
-  const [compact, setCompact] = useState(true);
+export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'analysis' }: { run: WorkflowRun; selectedId: string | null; onSelect: (id: string) => void; presentation?: 'demo' | 'analysis' }): JSX.Element {
+  const [compact, setCompact] = useState(presentation === 'demo');
   const [follow, setFollow] = useState(true);
   const [view, setView] = useState({ x: 20, y: 20, scale: 1 });
   const viewport = useRef<HTMLDivElement>(null);
@@ -16,6 +16,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect }: { run: WorkflowRun
   const layout = useMemo(() => layoutWorkflow(run, compact), [run, compact]);
   const running = run.nodes.filter(n => n.status === 'running').length;
   const returned = run.nodes.filter(n => n.status === 'returned').length;
+  useEffect(() => { setCompact(presentation === 'demo'); }, [presentation]);
   const fit = () => {
     const rect = viewport.current?.getBoundingClientRect();
     if (!rect || !rect.width || !rect.height) return;

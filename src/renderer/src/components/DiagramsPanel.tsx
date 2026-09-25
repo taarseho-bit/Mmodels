@@ -15,6 +15,7 @@ import { Skeleton } from './Skeleton';
 import { Icon } from './Icon';
 import { useApp } from '../store/app';
 import { t, tx } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 interface DiagramEntry {
   relPath: string;
@@ -139,7 +140,7 @@ export function DiagramsPanel(): JSX.Element {
       // 详情页跟着刷新（源文件可能刚被 Agent 改过）
       setDetail((prev) => (prev ? (r.diagrams.find((d) => d.relPath === prev.relPath) ?? null) : null));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '图表列表没有读取成功，可以重试。'));
     } finally {
       setLoading(false);
     }

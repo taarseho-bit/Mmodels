@@ -27,6 +27,7 @@ import { Icon } from './Icon';
 import { ResizeHandle } from './ResizeHandle';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
+import { friendlyError } from '../lib/friendly-error';
 
 export interface FilesPanelProps {
   /** 接管"打开文件"（编辑器视图可改为在自己的编辑区打开）；默认走 store 的 `openArtifact` */
@@ -267,7 +268,7 @@ export function FilesPanel({
     try {
       setTree(await window.mathmodel.file.tree());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '文件读取没有完成，可以重试。'));
     } finally {
       setLoading(false);
     }
@@ -305,7 +306,7 @@ export function FilesPanel({
         }
       })
       .catch((e: unknown) => {
-        if (!cancelled) setMdError(e instanceof Error ? e.message : String(e));
+        if (!cancelled) setMdError(friendlyError(e, '预览没有生成成功，可以重试。'));
       })
       .finally(() => {
         if (!cancelled) setMdLoading(false);
@@ -382,7 +383,7 @@ export function FilesPanel({
       setDelTarget(null);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '文件保存没有完成，内容已保留。'));
     } finally {
       setDelBusy(false);
     }
@@ -414,7 +415,7 @@ export function FilesPanel({
       setRenTarget(null);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '文件操作没有完成，可以重试。'));
     } finally {
       setRenBusy(false);
     }
@@ -430,7 +431,7 @@ export function FilesPanel({
         await refresh();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, 'PDF 编译没有完成，可以重试。'));
     } finally {
       setDuplicateBusy(false);
     }

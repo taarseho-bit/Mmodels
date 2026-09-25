@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../store/app';
+import { friendlyError } from '../lib/friendly-error';
 
 export function LocalPluginsPanel(): JSX.Element {
   const { settings, refreshSettings, activeSessionId } = useApp();
@@ -8,11 +9,11 @@ export function LocalPluginsPanel(): JSX.Element {
   const [runtime, setRuntime] = useState<Awaited<ReturnType<typeof window.mathmodel.skill.runtime>>>(null);
   const [query, setQuery] = useState('');
   const refresh = async () => { setRuntime(await window.mathmodel.skill.runtime(activeSessionId ?? undefined)); };
-  useEffect(() => { void refresh().catch(e => setError(String(e))); }, [activeSessionId]);
+  useEffect(() => { void refresh().catch(e => setError(friendlyError(e, '扩展列表暂时没有读取成功，可以重试。'))); }, [activeSessionId]);
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true); setError('');
     try { await fn(); await refreshSettings(); await refresh(); }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    catch (e) { setError(friendlyError(e, '扩展操作没有完成，可以重试。')); }
     finally { setBusy(false); }
   };
   const plugins = settings?.localPlugins ?? [];

@@ -13,6 +13,7 @@ import { Icon } from './Icon';
 import { Skeleton } from './Skeleton';
 import { useApp } from '../store/app';
 import { tx, txPlural } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 const STATUS_LABEL_KEY: Record<ChangeStatus, string> = {
   added: 'dock.versionPanel.fileAdded',
@@ -73,7 +74,7 @@ export function DiffPanel(): JSX.Element {
         prev && r.files.some((f) => f.path === prev) ? prev : (r.files[0]?.path ?? null),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '更改记录没有读取成功，可以重试。'));
     } finally {
       setLoading(false);
     }
@@ -96,7 +97,7 @@ export function DiffPanel(): JSX.Element {
         const d = (await window.mathmodel.git.diff(active)) as FileDiff;
         if (!cancelled) setDiff(d);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+        if (!cancelled) setError(friendlyError(e, '文件差异没有读取成功，可以重试。'));
       } finally {
         if (!cancelled) setDiffLoading(false);
       }

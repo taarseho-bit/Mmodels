@@ -2009,7 +2009,7 @@
   display: grid;
   place-items: center;
   color: var(--accent);
-  cursor: help;
+  pointer-events: none;
 }
 .cz-context-ring svg {
   width: 22px;
@@ -2037,6 +2037,30 @@
   background: currentColor;
   box-shadow: 0 0 0 2px var(--bg-panel);
 }
+.cz-context-trigger {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  min-height:26px;
+  padding:2px 4px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:var(--fg-muted);
+  cursor:pointer;
+}
+.cz-context-trigger:hover,.cz-context-trigger.is-open { background:var(--bg-hover); color:var(--fg-primary); }
+.cz-context-pct { font-size:10px; font-variant-numeric:tabular-nums; }
+.cz-context-popover { min-width:218px; padding:4px 2px 2px; }
+.cz-context-summary { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:5px 10px 7px; }
+.cz-context-summary strong { font-size:18px; font-variant-numeric:tabular-nums; }
+.cz-context-summary span,.cz-context-meta,.cz-context-source { color:var(--fg-muted); font-size:10px; font-variant-numeric:tabular-nums; }
+.cz-context-bar { height:5px; margin:0 10px 9px; overflow:hidden; border-radius:4px; background:var(--border); }
+.cz-context-bar i { display:block; height:100%; border-radius:inherit; background:var(--accent); transition:width 240ms ease, background-color 180ms ease; }
+.cz-context-meta { display:flex; justify-content:space-between; padding:0 10px 8px; }
+.cz-context-meta strong { color:var(--fg-secondary); font-weight:500; }
+.cz-context-note { margin:6px 10px 4px; color:var(--fg-secondary); font-size:11px; line-height:1.5; }
+.cz-context-source { margin:0 10px 6px; }
 
 .cz-icon-btn {
   display: flex;

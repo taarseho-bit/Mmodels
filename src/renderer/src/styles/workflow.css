@@ -1,4 +1,9 @@
 .workflow-switch { display:flex; padding:3px; border-radius:9px; background:var(--bg-sunken, #8881); border:1px solid #8882; }
+.workflow-view-switch { display:flex; gap:2px; padding:3px; border:1px solid var(--border); border-radius:9px; background:var(--bg-sunken, #8881); }
+.workflow-view-switch .btn { border:0; min-height:28px; padding:4px 10px; border-radius:7px; }
+.workflow-view-switch .btn.active { background:var(--bg-panel); color:var(--fg-primary); box-shadow:0 1px 3px #0001; }
+.workflow-view.is-demo .workflow-heading-subtitle::after { content:' · 面向演示，已收起无关细节'; color:var(--fg-muted); }
+.workflow-view.is-analysis .workflow-heading-subtitle::after { content:' · 显示实际技能和工作记录'; color:var(--fg-muted); }
 .workflow-view { container-type:inline-size; }
 .workflow-switch button { padding:4px 12px; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; font-size:12px; }
 .workflow-switch button[aria-pressed="true"] { background:var(--bg-panel, #8882); box-shadow:0 1px 3px #0002; }
@@ -54,7 +59,7 @@
 .flow-live, .flow-toolbar-actions { display:flex; align-items:center; gap:8px; }.flow-live > span { width:6px; height:6px; background:#8c94a1; border-radius:50%; }.flow-live > span.is-live { background:#37a984; box-shadow:0 0 0 4px #37a98417; }.flow-live small { color:var(--fg-muted); margin-left:5px; }
 .flow-toolbar-actions button { border:0; background:transparent; color:var(--fg-secondary); padding:5px 7px; font-size:11px; border-radius:5px; cursor:pointer; display:inline-flex; align-items:center; }
 .flow-toolbar-actions button:hover, .flow-toolbar-actions button[aria-pressed="true"] { background:var(--bg-hover); color:var(--fg-primary); }.flow-zoom-level { font-size:10px; color:var(--fg-muted); min-width:29px; text-align:center; }
-.flow-viewport { position:relative; height:clamp(345px, 47vh, 510px); min-width:0; overflow:hidden; touch-action:none; cursor:grab; background-image:radial-gradient(circle, #8993a538 .8px, transparent .8px); background-size:18px 18px; isolation:isolate; }
+.flow-viewport { position:relative; height:clamp(390px, 58vh, 680px); min-height:300px; min-width:0; overflow:hidden; touch-action:none; cursor:grab; background-image:radial-gradient(circle, #8993a538 .8px, transparent .8px); background-size:18px 18px; isolation:isolate; }
 .flow-viewport.is-panning { cursor:grabbing; }.flow-viewport:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
 .flow-world { position:absolute; inset:0 auto auto 0; transform-origin:0 0; will-change:transform; }.flow-connections { position:absolute; inset:0; overflow:visible; pointer-events:none; }
 .flow-edge path { fill:none; stroke:var(--flow-color); stroke-width:1.5; stroke-linejoin:round; }.flow-edge .flow-edge-base { opacity:.52; }.flow-edge.is-participation .flow-edge-base { stroke-dasharray:5 5; opacity:.42; }.flow-edge.is-exchange .flow-edge-base { stroke-dasharray:3 5; opacity:.32; }.flow-edge.is-muted { opacity:.38; }

@@ -13,6 +13,7 @@ import type { SkillMeta } from '@shared/types';
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
 import { t } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 function humanSize(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -57,7 +58,7 @@ export function SkillsPanel(): JSX.Element {
       try {
         await toggleSkill(s.dirName, !s.enabled);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '技能列表没有读取成功，可以重试。'));
       } finally {
         setBusy(null);
       }
@@ -74,7 +75,7 @@ export function SkillsPanel(): JSX.Element {
     } catch (e) {
       setDetail({
         meta: s,
-        doc: t('读取失败：{{msg}}', { msg: e instanceof Error ? e.message : String(e) }),
+        doc: t('读取失败：{{msg}}', { msg: friendlyError(e, '暂时无法读取技能说明。') }),
       });
     } finally {
       setDocLoading(false);
