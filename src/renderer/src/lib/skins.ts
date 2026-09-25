@@ -1,13 +1,13 @@
 /**
- * 全局皮肤（2026-09-26 v2：皮肤与主题完全平行、各自独立）
+ * 全局皮肤 v3（2026-09-26：变量驱动 + 双层花纹 + 零模糊动画）
  *
- * 设计原则：
- * - 皮肤 = 配色身份（accent / 花纹 / 底色），主题 = 亮度模式（light / dark）
- * - 换皮肤不换主题时，花纹和强调色平滑过渡；换主题不换皮肤时，同一皮肤的深浅两态自动适配
- * - 不再从 theme 反推 accent —— 每款皮肤自带 light/dark 完整调色板
- *
- * 应用方式：`documentElement.dataset.skin = id`（CSS 按 [data-skin] 套花纹底 + 动画）
- * + applySkinVars 直写 --accent 系变量（读当前 theme 自选亮/暗色板）。
+ * 用户实测三轮反馈定稿：
+ * 1. 主题 11 选 1（经典白/经典黑/跟随系统 + 8 风格），全部平级——THEME_PRESETS
+ * 2. 风格主题必须让**整个界面**带色调 → 覆盖 --bg-canvas / --bg-panel（布局体系
+ *    的侧栏 72%/顶栏 82% 半透明 + blur 会自动透出画布色，app-main 直接用变量）
+ * 3. 界面本体上严禁 opacity/transform 动画（呼吸闪烁/整体模糊都是这么来的）——
+ *    动画只存在于花纹前景层（::before，独立合成层，transform translate 由
+ *    GPU 加速，内容层不动，永不模糊、零重绘负担）
  */
 
 export interface SkinDef {
@@ -18,7 +18,7 @@ export interface SkinDef {
   accent: string;
   /** 深色模式强调色（更亮保证对比） */
   accentDark: string;
-  /** 图案种类（对应 skins.css 里的花纹 + 关键帧动画） */
+  /** 图案种类 */
   pattern: 'none' | 'grid' | 'dots' | 'hex' | 'waves' | 'diag' | 'plus' | 'stars' | 'rings';
   /** 浅色模式画布底色 */
   tint: string;
@@ -32,14 +32,14 @@ export interface SkinDef {
 
 export const SKINS: SkinDef[] = [
   { id: 'classic',      name: '经典',     hint: '默认干净版面',             accent: '#007aff', accentDark: '#0a84ff', pattern: 'none',  tint: '#ffffff', tintDark: '#1c1c1e', patternColor: '#007aff', patternColorDark: '#0a84ff' },
-  { id: 'solver-blue',  name: '求解蓝',   hint: '网格纹 · 建模求解',         accent: '#3b62d4', accentDark: '#7d9df2', pattern: 'grid',  tint: '#eef2fc', tintDark: '#12141d', patternColor: '#3b62d4', patternColorDark: '#7d9df2' },
-  { id: 'data-teal',    name: '数据青',   hint: '波点纹 · 数据分析',         accent: '#1d8a80', accentDark: '#4ecabf', pattern: 'dots',  tint: '#e9f5f2', tintDark: '#101a18', patternColor: '#1d8a80', patternColorDark: '#4ecabf' },
-  { id: 'review-violet',name: '评审紫',   hint: '菱形纹 · 论文评审',         accent: '#6a4bd8', accentDark: '#a794f0', pattern: 'hex',   tint: '#f1eefc', tintDark: '#151224', patternColor: '#6a4bd8', patternColorDark: '#a794f0' },
-  { id: 'figure-orange',name: '图表橙',   hint: '波浪纹 · 图表制作',         accent: '#d97b2e', accentDark: '#f2a45e', pattern: 'waves', tint: '#fdf1e6', tintDark: '#1b1410', patternColor: '#d97b2e', patternColorDark: '#f2a45e' },
-  { id: 'rose-paper',   name: '论文玫',   hint: '斜纹 · 论文写作',           accent: '#d04a76', accentDark: '#ef83a8', pattern: 'diag',  tint: '#fdeff4', tintDark: '#1c1116', patternColor: '#d04a76', patternColorDark: '#ef83a8' },
-  { id: 'forest-calc',  name: '推演森',   hint: '十字纹 · 推导演算',         accent: '#2e7d5b', accentDark: '#5cb98d', pattern: 'plus',  tint: '#eaf4ee', tintDark: '#101913', patternColor: '#2e7d5b', patternColorDark: '#5cb98d' },
-  { id: 'night-owl',   name: '深夜鸮',   hint: '星点纹 · 深夜推演',         accent: '#5a6acf', accentDark: '#9aa6ee', pattern: 'stars', tint: '#eceffb', tintDark: '#12131f', patternColor: '#5a6acf', patternColorDark: '#9aa6ee' },
-  { id: 'dawn-gold',    name: '曙光金',   hint: '环纹 · 汇总交付',           accent: '#b8860b', accentDark: '#e0b34e', pattern: 'rings', tint: '#fbf5e6', tintDark: '#1b1710', patternColor: '#b8860b', patternColorDark: '#e0b34e' },
+  { id: 'solver-blue',  name: '求解蓝',   hint: '网格纹 · 建模求解',         accent: '#3b62d4', accentDark: '#7d9df2', pattern: 'grid',  tint: '#e8eefb', tintDark: '#12141d', patternColor: '#3b62d4', patternColorDark: '#7d9df2' },
+  { id: 'data-teal',    name: '数据青',   hint: '波点纹 · 数据分析',         accent: '#1d8a80', accentDark: '#4ecabf', pattern: 'dots',  tint: '#e4f3ef', tintDark: '#101a18', patternColor: '#1d8a80', patternColorDark: '#4ecabf' },
+  { id: 'review-violet',name: '评审紫',   hint: '菱形纹 · 论文评审',         accent: '#6a4bd8', accentDark: '#a794f0', pattern: 'hex',   tint: '#edeafa', tintDark: '#151224', patternColor: '#6a4bd8', patternColorDark: '#a794f0' },
+  { id: 'figure-orange',name: '图表橙',   hint: '波浪纹 · 图表制作',         accent: '#d97b2e', accentDark: '#f2a45e', pattern: 'waves', tint: '#fcefdf', tintDark: '#1b1410', patternColor: '#d97b2e', patternColorDark: '#f2a45e' },
+  { id: 'rose-paper',   name: '论文玫',   hint: '斜纹 · 论文写作',           accent: '#d04a76', accentDark: '#ef83a8', pattern: 'diag',  tint: '#fceaf1', tintDark: '#1c1116', patternColor: '#d04a76', patternColorDark: '#ef83a8' },
+  { id: 'forest-calc',  name: '推演森',   hint: '十字纹 · 推导演算',         accent: '#2e7d5b', accentDark: '#5cb98d', pattern: 'plus',  tint: '#e5f2ea', tintDark: '#101913', patternColor: '#2e7d5b', patternColorDark: '#5cb98d' },
+  { id: 'night-owl',    name: '深夜鸮',   hint: '星点纹 · 深夜推演',         accent: '#5a6acf', accentDark: '#9aa6ee', pattern: 'stars', tint: '#e9ecf9', tintDark: '#12131f', patternColor: '#5a6acf', patternColorDark: '#9aa6ee' },
+  { id: 'dawn-gold',    name: '曙光金',   hint: '环纹 · 汇总交付',           accent: '#b8860b', accentDark: '#e0b34e', pattern: 'rings', tint: '#f9f2dd', tintDark: '#1b1710', patternColor: '#b8860b', patternColorDark: '#e0b34e' },
 ];
 
 export function skinById(id: string): SkinDef {
@@ -48,8 +48,6 @@ export function skinById(id: string): SkinDef {
 
 // ── 主题预设（2026-09-26 用户定稿：主题 = 3 亮度经典 + 8 花纹风格，11 选 1 平级） ──
 //
-// 用户心智模型：设置页只有一个「主题」选择器——
-//   经典白 / 经典黑 / 跟随系统 + 8 款风格主题，全部平级、点了就换，没有第二层概念。
 // 每个主题完全自包含（一键到位，无隐藏状态）：
 //   亮度类 → skin='classic' + 指定 mode；
 //   风格类 → 指定 skin + mode='light'（锁定浅色底！）。
@@ -112,17 +110,83 @@ function relLum(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+// ── 花纹 SVG data-URI（浅/深同形，颜色不同；透明度压得很低保证文字清晰） ──
+
+function svgUri(w: number, h: number, body: string): string {
+  return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'%3E${body}%3C/svg%3E")`;
+}
+
+function hex2(hx: string): string {
+  return `%23${hx.replace('#', '')}`;
+}
+
+/** 底层花纹（静态，铺在 app-shell / app-main / settings-shell 背景） */
+function patternMainUri(pattern: SkinDef['pattern'], color: string): string {
+  const c = hex2(color);
+  switch (pattern) {
+    case 'grid':
+      return svgUri(60, 60, `%3Cpath d='M60 0H0v60' fill='none' stroke='${c}' stroke-opacity='.09'/%3E`);
+    case 'dots':
+      return svgUri(40, 40, `%3Ccircle cx='6' cy='6' r='3' fill='${c}' fill-opacity='.12'/%3E%3Ccircle cx='28' cy='28' r='2' fill='${c}' fill-opacity='.07'/%3E`);
+    case 'hex':
+      return svgUri(52, 52, `%3Cpath d='M26 6l16 16-16 16-16-16z' fill='none' stroke='${c}' stroke-opacity='.09'/%3E`);
+    case 'waves':
+      return svgUri(80, 24, `%3Cpath d='M0 12q16-10 32 0t32 0 16 0' fill='none' stroke='${c}' stroke-opacity='.10'/%3E`);
+    case 'diag':
+      return svgUri(32, 32, `%3Cpath d='M-4 20 20 -4M8 36 36 8' stroke='${c}' stroke-opacity='.08'/%3E`);
+    case 'plus':
+      return svgUri(44, 44, `%3Cpath d='M22 12v20M12 22h20' stroke='${c}' stroke-opacity='.09'/%3E`);
+    case 'stars':
+      return svgUri(56, 56, `%3Cpath d='m28 16 2.5 7.5 7.5 2.5-7.5 2.5-2.5 7.5-2.5-7.5L18 26l7.5-2.5z' fill='${c}' fill-opacity='.08'/%3E%3Ccircle cx='8' cy='44' r='2' fill='${c}' fill-opacity='.09'/%3E%3Ccircle cx='46' cy='12' r='1.5' fill='${c}' fill-opacity='.07'/%3E`);
+    case 'rings':
+      return svgUri(56, 56, `%3Ccircle cx='28' cy='28' r='12' fill='none' stroke='${c}' stroke-opacity='.09'/%3E%3Ccircle cx='28' cy='28' r='22' fill='none' stroke='${c}' stroke-opacity='.06'/%3E`);
+    default:
+      return 'none';
+  }
+}
+
+/** 前景花纹（动层，与底层错位/反向形成"部位动"） */
+function patternFrontUri(pattern: SkinDef['pattern'], color: string): string {
+  const c = hex2(color);
+  switch (pattern) {
+    case 'grid':
+      return svgUri(60, 60, `%3Ccircle cx='0' cy='0' r='2.5' fill='${c}' fill-opacity='.14'/%3E%3Ccircle cx='60' cy='60' r='2.5' fill='${c}' fill-opacity='.10'/%3E%3Ccircle cx='60' cy='0' r='1.5' fill='${c}' fill-opacity='.08'/%3E`);
+    case 'dots':
+      return svgUri(40, 40, `%3Ccircle cx='24' cy='8' r='1.8' fill='${c}' fill-opacity='.10'/%3E%3Ccircle cx='10' cy='32' r='1.4' fill='${c}' fill-opacity='.07'/%3E`);
+    case 'hex':
+      return svgUri(52, 52, `%3Cpath d='M26 14l8 8-8 8-8-8z' fill='${c}' fill-opacity='.06'/%3E`);
+    case 'waves':
+      return svgUri(80, 24, `%3Cpath d='M0 18q16 8 32 0t32 0 16 0' fill='none' stroke='${c}' stroke-opacity='.07'/%3E`);
+    case 'diag':
+      return svgUri(32, 32, `%3Cpath d='M-4 8 8 -4M20 36 36 20' stroke='${c}' stroke-opacity='.06'/%3E`);
+    case 'plus':
+      return svgUri(44, 44, `%3Cpath d='M22 15v14M15 22h14' stroke='${c}' stroke-opacity='.06'/%3E`);
+    case 'stars':
+      return svgUri(56, 56, `%3Cpath d='m12 20 1.5 4.5L18 26l-4.5 1.5L12 32l-1.5-4.5L6 26l4.5-1.5z' fill='${c}' fill-opacity='.06'/%3E%3Ccircle cx='44' cy='40' r='1.8' fill='${c}' fill-opacity='.07'/%3E%3Ccircle cx='50' cy='6' r='1.3' fill='${c}' fill-opacity='.05'/%3E`);
+    case 'rings':
+      return svgUri(56, 56, `%3Ccircle cx='28' cy='28' r='5' fill='none' stroke='${c}' stroke-opacity='.07'/%3E%3Cpath d='M28 14v28M14 28h28' stroke='${c}' stroke-opacity='.05'/%3E`);
+    default:
+      return 'none';
+  }
+}
+
 /** 把皮肤变量写到文档根（皮肤与主题平行：读 theme 选色板，skin 选身份） */
 export function applySkinVars(root: HTMLElement, skinId: string): void {
   const skin = skinById(skinId);
   const dark = root.dataset.theme === 'dark';
   const accent = dark ? skin.accentDark : skin.accent;
+  const tint = dark ? skin.tintDark : skin.tint;
+  const patternColor = dark ? skin.patternColorDark : skin.patternColor;
   root.dataset.skin = skin.id;
+  // accent 系
   root.style.setProperty('--accent', accent);
   root.style.setProperty('--accent-hover', mixHex(accent, relLum(accent) > 0.5 ? '#000000' : '#ffffff', 0.14));
-  root.style.setProperty('--accent-weak', mixHex(dark ? skin.tintDark : skin.tint, accent, 0.15));
+  root.style.setProperty('--accent-weak', mixHex(tint, accent, 0.15));
   root.style.setProperty('--accent-fg', relLum(accent) > 0.55 ? '#1a1a1a' : '#ffffff');
-  // 暴露花纹色给 CSS 动画用
-  root.style.setProperty('--skin-pattern-color', dark ? skin.patternColorDark : skin.patternColor);
-  root.style.setProperty('--skin-tint-color', dark ? skin.tintDark : skin.tint);
+  // 全局色调：画布 = 皮肤 tint；面板 = tint 调白保持层次（侧栏/顶栏半透明会自动透出画布色）
+  root.style.setProperty('--bg-canvas', tint);
+  root.style.setProperty('--bg-panel', dark ? mixHex(tint, '#2c2c2e', 0.55) : mixHex(tint, '#ffffff', 0.55));
+  // 花纹双层：底层静态铺画布，前景动层由 CSS ::before 引用并做 translate 动画
+  root.style.setProperty('--skin-pattern', patternMainUri(skin.pattern, patternColor));
+  root.style.setProperty('--skin-pattern-front', patternFrontUri(skin.pattern, patternColor));
 }
