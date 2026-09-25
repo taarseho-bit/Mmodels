@@ -35,10 +35,11 @@ type DiagramTheme = 'mono' | 'color';
 /** 原版「全部」胶囊的内部值（与 `shell.galleryPage.all` 文案区分） */
 const ALL = 'All';
 
-/** 模板缩略图：vite 在构建时解析为 URL */
+/** 模板缩略图：vite 在构建时解析为 URL（⚠️ svg 必须在列 —— 流程图参考全是 svg） */
 const THUMBS = {
   ...import.meta.glob('../assets/gallery/*.png', { eager: true, query: '?url', import: 'default' }),
   ...import.meta.glob('../assets/gallery/*.webp', { eager: true, query: '?url', import: 'default' }),
+  ...import.meta.glob('../assets/gallery/*.svg', { eager: true, query: '?url', import: 'default' }),
 } as Record<string, string>;
 
 function thumbOf(file: string): string | undefined {

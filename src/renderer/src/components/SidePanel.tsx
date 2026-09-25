@@ -23,10 +23,11 @@ import { Icon } from './Icon';
 import { GALLERY, templatePrompt } from '@shared/gallery-data';
 import { tx } from '../i18n';
 
-/** 模板缩略图：同时兼容新的 PNG 参考图和历史 webp。 */
+/** 模板缩略图：同时兼容新的 PNG 参考图、历史 webp 与流程图 svg（⚠️ svg 必须在列）。 */
 const THUMBS = {
   ...import.meta.glob('../assets/gallery/*.png', { eager: true, query: '?url', import: 'default' }),
   ...import.meta.glob('../assets/gallery/*.webp', { eager: true, query: '?url', import: 'default' }),
+  ...import.meta.glob('../assets/gallery/*.svg', { eager: true, query: '?url', import: 'default' }),
 } as Record<string, string>;
 
 /**
