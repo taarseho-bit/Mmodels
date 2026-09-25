@@ -24,4 +24,21 @@ describe('write-paper 原版兼容', () => {
     }
     expect(skill).toContain('description`、`summary`、`reason`');
   });
+
+  it('追加了建模求解链（problem-parser → method-selector → assumptions → code → robustness）', () => {
+    // 2026-09-26 深度审查 P0：求解链五技能此前是孤儿，主流程建模阶段靠裸问。
+    const skill = readFileSync(skillPath, 'utf8');
+    for (const required of [
+      'MMODELS-LOCAL-START: solve-chain',
+      '`problem-parser`',
+      '`problem-classifier`',
+      '`method-selector`',
+      '`model-assumptions-builder`',
+      '`python-model-code-generator`',
+      '`robustness-checker`',
+      '基于方法卡',
+    ]) {
+      expect(skill).toContain(required);
+    }
+  });
 });

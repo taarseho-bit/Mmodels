@@ -675,3 +675,20 @@ select:focus,
   border-top: 1px solid var(--border-weak);
   margin: var(--sp-5) 0;
 }
+
+/* ── shiki 代码高亮（2026-09-26）：双主题随 data-theme 切换，颜色吃变量 ── */
+pre.shiki-host { padding: 10px 12px; overflow-x: auto; }
+pre.shiki-host code { display: block; background: none; padding: 0; }
+pre.shiki-host,
+pre.shiki-host code,
+pre.shiki-host span {
+  color: var(--shiki-light);
+  background-color: transparent;
+}
+pre.shiki-host { background-color: var(--shiki-light-bg); }
+[data-theme='dark'] pre.shiki-host,
+[data-theme='dark'] pre.shiki-host code,
+[data-theme='dark'] pre.shiki-host span {
+  color: var(--shiki-dark);
+}
+[data-theme='dark'] pre.shiki-host { background-color: var(--shiki-dark-bg); }

@@ -19,6 +19,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Icon } from './Icon';
+import { highlightInHost } from '../lib/highlight';
 import { marked } from 'marked';
 import markedKatex from 'marked-katex-extension';
 import 'katex/dist/katex.min.css';
@@ -158,6 +159,14 @@ export function Markdown({ source, className }: Props): JSX.Element {
     })();
   }, [html, mermaidCount, theme]);
 
+  // 语法高亮（shiki）：与 mermaid 同一套 DOM 后处理模式，幂等（data-shiki-done）。
+  // 只有闭合 fence 才生成 code 块，流式中间态天然不会进入这里。
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    void highlightInHost(host).catch(() => undefined);
+  }, [html]);
+
   return (
     <>
       <div
@@ -225,6 +234,14 @@ export function MarkdownStreaming({ source, className }: Props): JSX.Element {
       }
     })();
   }, [stableHtml, tailHtml, mermaidCount, theme]);
+
+  // 语法高亮：只处理 stable 段（tail 段每 token 重建 DOM，逐块高亮反而抖动；
+  // 流式结束内容并入 stable 后自然获得高亮）。
+  useEffect(() => {
+    const host = stableRef.current;
+    if (!host) return;
+    void highlightInHost(host).catch(() => undefined);
+  }, [stableHtml]);
 
   const onImgClick = (event: MouseEvent<HTMLDivElement>): void => {
     const target = event.target;

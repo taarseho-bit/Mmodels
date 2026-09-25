@@ -25,6 +25,19 @@ description: 使用内置的多赛事 LaTeX 模板完成数学建模竞赛的逐
 
 创建 python 虚拟环境，使用 python 或 uv
 
+<!-- MMODELS-LOCAL-START: solve-chain -->
+**建模求解链（本地增强，2026-09-26）：在 AskUserQuestion 之前先依次走完这条链，让用户的选择建立在分析之上**：
+
+1. `problem-parser`：通读题目附件与数据材料，抽出每个子问题的目标、约束、已知条件与数据清单，落 `solve/00-problem-parse.md`。
+2. `problem-classifier`：把每个子问题归类（评价 / 预测 / 优化 / 机理解析），据此确定建模路线。
+3. `method-selector`：按子问题类型产出"主候选 + 基线 + 备选"方法卡（含适用条件、数据要求与理由）。
+4. AskUserQuestion：**基于方法卡**让用户确认每问选型——选项来自方法卡候选，不要脱离分析空想。
+5. `model-assumptions-builder`：对已确认的方法生成假设清单（每条假设附失效信号），落 `solve/01-assumptions.md`。
+6. `python-model-code-generator`：按"每问一个 .py"的规范产码（以该 Skill 的模块化模板为准）。
+7. `robustness-checker`：对每问结果做灵敏度 / 误差 / 基线对比检验，结论写进论文"模型检验"小节。
+
+若上述某个技能未启用，按其职责自行完成同等产出并落盘同类文件，**不要跳过该环节**。
+<!-- MMODELS-LOCAL-END: solve-chain -->
 使用 AskUserQuestion 工具询问我一些问题（关于每个模型的选择），然后做 plan，再开始执行。
 <!-- MMODELS-LOCAL-START: continue-after-question -->
 **拿到用户答案后立即执行，不再二次确认**（不要再复述一遍问题、也不要问"需要我继续吗/现在开始吗"）。

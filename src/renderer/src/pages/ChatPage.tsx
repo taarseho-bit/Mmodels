@@ -514,6 +514,21 @@ export function ChatPage(): JSX.Element {
   const [preparing, setPreparing] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // 长会话渐进渲染（2026-09-26 深度审查：百条消息全量 map 首屏卡顿）。
+  // 只渲染最近 visibleLimit 条，更早的折叠成一条展开按钮 —— 不改 DOM 结构，
+  // 流式底部锚定 / 消息操作 / fork 定位全部不受影响（相比虚拟滚动是更稳的取舍）。
+  const [visibleLimit, setVisibleLimit] = useState(60);
+
+  // 长会话渐进渲染（2026-09-26 深度审查：百条消息全量 map 首屏卡顿）。
+  // 只渲染最近 visibleLimit 条，更早的折叠成一条展开按钮 —— 不改 DOM 结构，
+  // 流式底部锚定 / 消息操作 / fork 定位全部不受影响（相比虚拟滚动是更稳的取舍）。
+  const [visibleLimit, setVisibleLimit] = useState(60);
+
+  // 长会话渐进渲染（2026-09-26 深度审查：百条消息全量 map 首屏卡顿）。
+  // 只渲染最近 visibleLimit 条，更早的折叠成一条展开按钮 —— 不改 DOM 结构，
+  // 流式底部锚定 / 消息操作 / fork 定位全部不受影响（相比虚拟滚动是更稳的取舍）。
+  const [visibleLimit, setVisibleLimit] = useState(60);
   const [stream, setStream] = useState<StreamView>(EMPTY_STREAM);
   const [draft] = useState(createComposerDraft);
   const setInput = draft.set;
@@ -595,8 +610,23 @@ export function ChatPage(): JSX.Element {
     if (findMatches.length === 0) return;
     const normalized = (nextIndex + findMatches.length) % findMatches.length;
     setFindIndex(normalized);
-    document.querySelector(`[data-search-index="${findMatches[normalized]}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [findMatches]);
+    const target = findMatches[normalized];
+    const hiddenCount = Math.max(0, messages.length - visibleLimit);
+    if (target < hiddenCount) {
+      // 目标消息还在折叠区：先全部展开，下一帧再定位
+      setVisibleLimit(messages.length);
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-search-index="${target}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+      return;
+    }
+    document.querySelector(`[data-search-index="${target}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [findMatches, messages.length, visibleLimit]);
+
+  // 切会话时重置渐进渲染窗口（上一会话可能已全部展开）
+  useEffect(() => {
+    setVisibleLimit(60);
+  }, [activeSessionId]);
 
   useEffect(() => {
     const offFind = registerCommand('chat.find', () => {
@@ -1377,7 +1407,24 @@ export function ChatPage(): JSX.Element {
             </div>
           )}
 
-          {messages.map((m, messageIndex) => (
+          {(() => {
+            const hiddenCount = Math.max(0, messages.length - visibleLimit);
+            const shown = hiddenCount > 0 ? messages.slice(hiddenCount) : messages;
+            return (
+              <>
+                {hiddenCount > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    style={{ margin: '6px auto', display: 'block' }}
+                    onClick={() => setVisibleLimit((v) => v + 120)}
+                  >
+                    ↑ 显示更早的消息（还有 {hiddenCount} 条）
+                  </button>
+                ) : null}
+                {shown.map((m, idx) => {
+                const messageIndex = hiddenCount + idx;
+                return (
             <div key={m.id} data-search-index={messageIndex} className={`msg msg-${m.role}`}>
               <div className={`msg-avatar ${m.role}`}>
                 {m.role === 'user' ? t('我') : <Icon name="bot" size={13} />}
@@ -1533,7 +1580,11 @@ export function ChatPage(): JSX.Element {
                 </div>
               )}
             </div>
-          ))}
+                );
+                })}
+              </>
+            );
+          })()}
 
           {/* 秒回：发出消息到首 token 之间不再干等 —— 立刻给一颗"正在开工"的打字气泡。
               ⚠️ stopping 态不能再说"正在开始"——用户刚点了停止，要如实说正在停下。
