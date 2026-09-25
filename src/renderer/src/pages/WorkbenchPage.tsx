@@ -53,11 +53,16 @@ export function WorkbenchPage(): JSX.Element {
   const contest = calendarCompetition(draft), countdown = countdownFor(contest, now);
   const checkedCount = draft.checklist.filter(item => item.done).length;
   const checkPercent = draft.checklist.length ? Math.round(checkedCount / draft.checklist.length * 100) : 0;
+  const checkedEvidence = draft.evidence.filter(item => item.checked).length;
+  const qualityMode = useApp(s => s.settings?.modelingQualityMode ?? 'balanced');
   const deliveryChecks = [
     { label: '比赛信息', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛', ok: Boolean(contest) },
     { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
     { label: '论文文件', detail: fileStats ? `${fileStats.pdf} 个 PDF · ${fileStats.source} 个源文件` : '正在读取项目文件', ok: fileStats ? fileStats.pdf > 0 : null },
     { label: '图表与数据', detail: fileStats ? `${fileStats.figure} 个图表 · ${fileStats.table} 个数据文件` : '正在读取项目文件', ok: fileStats ? fileStats.figure > 0 || fileStats.table > 0 : null },
+    { label: '模型方案', detail: draft.alternatives.length ? `${draft.alternatives.length} 个候选方案已记录` : '还没有记录模型方案对比', ok: draft.alternatives.length > 0 },
+    { label: '结论依据', detail: draft.evidence.length ? `${checkedEvidence}/${draft.evidence.length} 条依据已核对` : '还没有记录结论依据', ok: draft.evidence.length > 0 && checkedEvidence === draft.evidence.length },
+    { label: '复现材料', detail: fileStats ? `${fileStats.source} 个源文件 · ${fileStats.table} 个数据文件` : '正在读取项目文件', ok: fileStats ? fileStats.source > 0 && fileStats.table > 0 : null },
     { label: '提交清单', detail: `${checkedCount}/${draft.checklist.length} 项已核对`, ok: checkPercent === 100 },
   ];
   const patch = (value: Partial<Project>) => {
@@ -91,6 +96,9 @@ export function WorkbenchPage(): JSX.Element {
         { id: 'paper', label: '论文文件', status: stats.pdf > 0 ? '通过' : '待补充', detail: stats.pdf > 0 ? `找到 ${stats.pdf} 个 PDF` : '项目中没有找到 PDF' },
         { id: 'page-limit', label: '页数要求', status: draft.pageLimit.trim() ? '通过' : '待补充', detail: draft.pageLimit.trim() ? `上限 ${draft.pageLimit}` : '还没有设置页数上限' },
         { id: 'materials', label: '图表与数据', status: stats.figure > 0 || stats.table > 0 ? '通过' : '待补充', detail: `${stats.figure} 个图表 · ${stats.table} 个数据文件` },
+        { id: 'model-plan', label: '模型方案', status: draft.alternatives.length > 0 ? '通过' : '待补充', detail: draft.alternatives.length > 0 ? `已记录 ${draft.alternatives.length} 个候选方案` : '还没有记录模型方案对比' },
+        { id: 'evidence', label: '结论依据', status: draft.evidence.length > 0 && checkedEvidence === draft.evidence.length ? '通过' : '待补充', detail: draft.evidence.length > 0 ? `${checkedEvidence}/${draft.evidence.length} 条依据已核对` : '还没有记录结论依据' },
+        { id: 'reproducibility', label: '复现材料', status: stats.source > 0 && stats.table > 0 ? '通过' : '待补充', detail: `${stats.source} 个源文件 · ${stats.table} 个数据文件` },
         { id: 'checklist', label: '提交清单', status: checkPercent === 100 ? '通过' : '待补充', detail: `${checkedCount}/${draft.checklist.length} 项已核对` },
         { id: 'deep-review', label: 'PDF 深度核验', status: '需深度核验', detail: '需要助手实际读取 PDF、表格和图表后确认' },
       ];
@@ -104,7 +112,7 @@ export function WorkbenchPage(): JSX.Element {
     } finally { setBusy(false); }
   };
   return <div className="studio-page studio-workbench">
-    <header className="studio-page-heading"><div><h1>比赛工作台</h1><p>{project?.name}</p></div>
+    <header className="studio-page-heading"><div><h1>比赛工作台</h1><p>{project?.name} · {qualityMode === 'strict' ? '严格交付' : qualityMode === 'fast' ? '快速探索' : '标准检查'}</p></div>
       <button className="btn btn-primary" disabled={busy} onClick={() => void ask('请读取当前项目题目、数据与比赛资料，核对条件后开始建模写作。')}>开始建模</button></header>
     <section className="studio-mission studio-simple-countdown">
       <div><label htmlFor="workbench-contest">选择竞赛</label>
