@@ -3557,6 +3557,46 @@ audio.ap-media {
   gap: 2px;
 }
 
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 5px;
+}
+
+.settings-nav-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--muted-fg, var(--fg-muted, #888));
+  font-size: 11px;
+  text-align: left;
+  padding: 6px 8px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.settings-nav-group-head:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.settings-nav-chevron {
+  width: 12px;
+  font-size: 16px;
+  line-height: 12px;
+  text-align: center;
+}
+.settings-nav-child {
+  padding-left: 26px;
+  min-height: 30px;
+  font-size: 12px;
+}
+.settings-nav-child .settings-nav-icon {
+  width: 15px;
+}
+
 .settings-nav-item {
   display: flex;
   align-items: center;

@@ -11,7 +11,6 @@
 import { useEffect, useState } from 'react';
 import { tx, txPlural, t } from '../../i18n';
 import { Section } from './shared';
-import { Icon } from '../Icon';
 import { CHANGELOG } from '../WhatsNew';
 
 /** changelog 里展示的版本数（原版为「最近 3 个版本」） */
@@ -27,6 +26,7 @@ export function AboutSection(): JSX.Element {
     arch: string;
     packaged: boolean;
   } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     void window.mathmodel.app.version().then(setInfo).catch(() => undefined);
@@ -35,13 +35,26 @@ export function AboutSection(): JSX.Element {
   const releases = CHANGELOG.slice(0, RELEASE_WINDOW);
   const currentVersion = info?.app ?? null;
 
-  /** 外部链接：本地版没有可用的云端落点，统一按原版「即将推出」态展示 */
-  const links: { key: string; icon: string; name: string; desc: string }[] = [
-    { key: 'website', icon: 'globe', name: tx('settings.socialLinks.website'), desc: tx('settings.socialLinks.websiteDescription') },
-    { key: 'xiaohongshu', icon: 'book-open', name: tx('settings.socialLinks.xiaohongshu'), desc: tx('settings.socialLinks.xiaohongshuDescription') },
-    { key: 'qq', icon: 'message-circle', name: tx('settings.socialLinks.qqGroup'), desc: tx('settings.socialLinks.qqGroupDescription') },
-    { key: 'github', icon: 'git-fork', name: 'GitHub', desc: tx('settings.socialLinks.githubDescription') },
-  ];
+  const copyDiagnostics = async (): Promise<void> => {
+    const lines = info
+      ? [
+          `MModels v${info.app}`,
+          `Electron ${info.electron}`,
+          `Chromium ${info.chrome}`,
+          `Node ${info.node}`,
+          `${info.platform} / ${info.arch}`,
+          `运行方式：${info.packaged ? '打包版' : '开发版'}`,
+          `本地服务：${window.mathmodel.serverBaseUrl || '未启动'}`,
+        ]
+      : ['MModels：版本信息暂未读取'];
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // 剪贴板被系统拦截时不打断设置页操作。
+    }
+  };
 
   return (
     <div className="col" style={{ gap: 22 }}>
@@ -57,9 +70,7 @@ export function AboutSection(): JSX.Element {
             {t('自动更新按既定决策未提供，当前为本地版。')}
           </span>
         </div>
-        <button className="btn btn-sm" disabled title={tx('settings.socialLinks.soon')}>
-          {t('检查更新')}
-        </button>
+        <span className="badge">{t('本地运行')}</span>
       </div>
 
       {/* ── 版本更新（changelog）── */}
@@ -104,68 +115,6 @@ export function AboutSection(): JSX.Element {
               </details>
             ))
           )}
-          <button className="btn btn-sm btn-ghost" disabled style={{ alignSelf: 'flex-start' }} title={tx('settings.socialLinks.soon')}>
-            {tx('whatsnew.releaseHistoryCard.viewAll')} ↗
-          </button>
-        </div>
-      </Section>
-
-      {/* ── 外部链接 2×2 网格 ── */}
-      <div className="col" style={{ gap: 8 }}>
-        {[0, 1].map((rowIdx) => (
-          <div key={rowIdx} className="row" style={{ gap: 8 }}>
-            {links.slice(rowIdx * 2, rowIdx * 2 + 2).map((l) => (
-              <div
-                key={l.key}
-                className="panel row"
-                style={{ padding: 12, gap: 10, alignItems: 'center', flex: 1, minWidth: 0, opacity: 0.6 }}
-                title={tx('settings.socialLinks.comingSoon', { name: l.name })}
-              >
-                <span style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center' }}>
-                  <Icon name={l.icon} size={16} />
-                </span>
-                <div className="col grow" style={{ gap: 2, minWidth: 0 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>{l.name}</span>
-                  <span className="muted truncate" style={{ fontSize: 11 }}>
-                    {l.desc}
-                  </span>
-                </div>
-                <span className="badge" style={{ flexShrink: 0 }}>
-                  {tx('settings.socialLinks.soon')}
-                </span>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {/* ── 参加测试版（自动更新范畴 → 骨架 + 置灰）── */}
-      <div className="panel row" style={{ padding: 14, gap: 12, alignItems: 'flex-start', opacity: 0.6 }}>
-        <span style={{ fontSize: 14, lineHeight: 1.4, display: 'inline-flex', alignItems: 'center' }}>
-          <Icon name="sparkles" size={14} />
-        </span>
-        <div className="col grow" style={{ gap: 3 }}>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>{t('参加测试版')}</span>
-          <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.7 }}>
-            {t('加入后优先收到测试版本；本地版不提供自动更新通道。')}
-          </span>
-        </div>
-        <button className="btn btn-sm" disabled title={tx('settings.socialLinks.soon')}>
-          {t('暂不可用')}
-        </button>
-      </div>
-
-      {/* ── 帮助排查问题（诊断上传 → 骨架 + 置灰）── */}
-      <Section title={tx('settings.diagnostics.title')} hint={tx('settings.diagnostics.description')}>
-        <div className="panel row" style={{ padding: 14, gap: 12, alignItems: 'center', opacity: 0.6 }}>
-          <div className="col grow" style={{ gap: 3 }}>
-            <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.6 }}>
-              {tx('settings.diagnostics.more')}
-            </span>
-          </div>
-          <button className="btn btn-sm" disabled title={tx('settings.socialLinks.soon')}>
-            {tx('settings.diagnostics.upload')}
-          </button>
         </div>
       </Section>
 
@@ -206,6 +155,11 @@ export function AboutSection(): JSX.Element {
             </div>
           </div>
         )}
+        <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
+          <button className="btn btn-sm btn-ghost" onClick={() => void copyDiagnostics()}>
+            {copied ? t('已复制') : t('复制诊断信息')}
+          </button>
+        </div>
       </div>
     </div>
   );

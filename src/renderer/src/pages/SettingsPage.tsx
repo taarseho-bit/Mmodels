@@ -28,7 +28,6 @@ import { SysPromptSection } from '../components/settings/SysPromptSection';
 import { AppearanceSection } from '../components/settings/AppearanceSection';
 import { KeysSection } from '../components/settings/KeysSection';
 import { NotifySection } from '../components/settings/NotifySection';
-import { BotsSection } from '../components/settings/BotsSection';
 import { TourSection } from '../components/settings/TourSection';
 import { AboutSection } from '../components/settings/AboutSection';
 import { GalleryPage } from './GalleryPage';
@@ -55,17 +54,29 @@ type SectionId =
   | 'tour'
   | 'about';
 
+type SectionItem = { id: SectionId; label: string; icon: string };
+type SectionGroup = { id: string; label: string; icon: string; items: SectionItem[] };
+
+/** 旧入口仍可能由插件或历史链接传入，但不再把“机器人”作为假功能展示。 */
+function normalizeSection(value: string | null | undefined): SectionId | null {
+  if (!value) return null;
+  if (value === 'bots') return 'about';
+  const ids: SectionId[] = [
+    'gallery', 'competitions', 'datasets', 'automation', 'extensions', 'profile', 'paper',
+    'chat', 'model', 'providers', 'env', 'network', 'sysprompt', 'appearance', 'keys',
+    'notify', 'tour', 'about',
+  ];
+  return ids.includes(value as SectionId) ? (value as SectionId) : null;
+}
+
 export function SettingsPage({
   onBack,
-  onOpenAutomations,
   requestedSection,
   requestedExtensionTab,
   onNavigate,
 }: {
   /** 「返回应用」——回到对话页 */
   onBack: () => void;
-  /** 「机器人」分区里跳自动化管理 */
-  onOpenAutomations: () => void;
   /** 外部请求打开设置页时指定的分区（见 lib/settings-nav.ts）；null = 用默认分区 */
   requestedSection?: string | null;
   requestedExtensionTab?: string | null;
@@ -73,18 +84,27 @@ export function SettingsPage({
 }): JSX.Element {
   const settings = useApp((s) => s.settings);
 
-  const [section, setSection] = useState<SectionId>('profile');
+  const [section, setSection] = useState<SectionId>('paper');
   const [query, setQuery] = useState('');
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
+    resources: false,
+    model: false,
+    runtime: true,
+    automation: true,
+    appearance: true,
+  });
 
   // 冷启动进设置页时把 App 带进来的分区用上（此时下面的事件监听还没注册）
   useEffect(() => {
-    if (requestedSection) setSection(requestedSection as SectionId);
+    const next = normalizeSection(requestedSection);
+    if (next) setSection(next);
   }, [requestedSection]);
 
   // 外部（如扩展页的「跳到运行环境」）通过事件总线指定分区
   useEffect(() => {
     return onOpenSettings(({ section: s }) => {
-      if (s) setSection(s as SectionId);
+      const next = normalizeSection(s);
+      if (next) setSection(next);
     });
   }, []);
 
@@ -92,30 +112,61 @@ export function SettingsPage({
    * 分区导航 —— 与原版实机一致：**线性图标**（不是 emoji），
    * 顺序即原版侧栏顺序（个人资料 → 关于）。
    */
-  const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
-    { id: 'gallery', label: '科研绘图', icon: 'chart-column' },
-    { id: 'competitions', label: '竞赛日历', icon: 'calendar-days' },
-    { id: 'datasets', label: '数据集', icon: 'database' },
-    { id: 'automation', label: '自动化', icon: 'clock' },
-    { id: 'extensions', label: '扩展 · 技能与模板', icon: 'blocks' },
-    { id: 'profile', label: tx('settings.settingsPage.nav.profile'), icon: 'user' },
-    { id: 'paper', label: tx('settings.settingsPage.nav.paperCompetition'), icon: 'file-text' },
-    { id: 'chat', label: tx('settings.settingsPage.nav.conversation'), icon: 'message-square' },
-    { id: 'model', label: tx('settings.settingsPage.nav.models'), icon: 'cpu' },
-    { id: 'providers', label: tx('settings.settingsPage.nav.providers'), icon: 'plug' },
-    { id: 'env', label: tx('settings.settingsPage.nav.environment'), icon: 'monitor' },
-    { id: 'network', label: tx('settings.settingsPage.nav.network'), icon: 'globe' },
-    { id: 'sysprompt', label: tx('settings.settingsPage.nav.systemPrompt'), icon: 'text-quote' },
-    { id: 'appearance', label: tx('settings.settingsPage.nav.appearance'), icon: 'sun-moon' },
-    { id: 'keys', label: tx('settings.settingsPage.nav.shortcuts'), icon: 'keyboard' },
-    { id: 'notify', label: tx('settings.settingsPage.nav.notifications'), icon: 'bell' },
-    { id: 'bots', label: tx('settings.settingsPage.nav.bots'), icon: 'bot' },
-    { id: 'tour', label: tx('settings.settingsPage.nav.tutorial'), icon: 'graduation-cap' },
-    { id: 'about', label: tx('settings.settingsPage.nav.about'), icon: 'info' },
+  const groups: SectionGroup[] = [
+    {
+      id: 'competition', label: '比赛与论文', icon: 'trophy', items: [
+        { id: 'competitions', label: '竞赛日历', icon: 'calendar-days' },
+        { id: 'paper', label: '论文默认规则', icon: 'file-text' },
+      ],
+    },
+    {
+      id: 'resources', label: '建模资源', icon: 'blocks', items: [
+        { id: 'extensions', label: '技能、算法与模板', icon: 'blocks' },
+        { id: 'gallery', label: '建模图表', icon: 'chart-column' },
+        { id: 'datasets', label: '数据与案例', icon: 'database' },
+      ],
+    },
+    {
+      id: 'model', label: '模型与协作', icon: 'cpu', items: [
+        { id: 'model', label: '模型与思考强度', icon: 'cpu' },
+        { id: 'providers', label: '模型供应商', icon: 'plug' },
+        { id: 'chat', label: '对话与协作', icon: 'message-square' },
+        { id: 'sysprompt', label: '高级提示词', icon: 'text-quote' },
+      ],
+    },
+    {
+      id: 'runtime', label: '运行环境', icon: 'monitor', items: [
+        { id: 'env', label: '公共环境与项目依赖', icon: 'monitor' },
+        { id: 'network', label: '网络连接（高级）', icon: 'globe' },
+      ],
+    },
+    {
+      id: 'automation', label: '自动化与通知', icon: 'clock', items: [
+        { id: 'automation', label: '比赛提醒与自动化', icon: 'clock' },
+        { id: 'notify', label: '通知', icon: 'bell' },
+      ],
+    },
+    {
+      id: 'appearance', label: '外观与帮助', icon: 'sun-moon', items: [
+        { id: 'appearance', label: '界面与桌面小模', icon: 'sun-moon' },
+        { id: 'keys', label: '快捷键', icon: 'keyboard' },
+        { id: 'profile', label: '使用统计', icon: 'user' },
+        { id: 'tour', label: '新手教程', icon: 'graduation-cap' },
+        { id: 'about', label: '关于与诊断', icon: 'info' },
+      ],
+    },
   ];
 
+  const allSections = groups.flatMap((g) => g.items);
+
   const q = query.trim().toLowerCase();
-  const visible = q ? SECTIONS.filter((s) => s.label.toLowerCase().includes(q)) : SECTIONS;
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      items: q ? group.items.filter((s) => `${group.label} ${s.label}`.toLowerCase().includes(q)) : group.items,
+    }))
+    .filter((group) => group.items.length > 0);
+  const current = allSections.find((s) => s.id === section);
 
   if (!settings) {
     return (
@@ -146,28 +197,42 @@ export function SettingsPage({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="settings-group-label">工具与偏好 · {settings.profileName ?? 'MModels'}</div>
+        <div className="settings-group-label">数学建模工作台 · {settings.profileName ?? 'MModels'}</div>
         <nav className="settings-nav">
-          {visible.map((s) => (
-            <button
-              key={s.id}
-              className={`settings-nav-item${section === s.id ? ' active' : ''}`}
-              onClick={() => setSection(s.id)}
-            >
-              <span className="settings-nav-icon">
-                <Icon name={s.icon} size={15} />
-              </span>
-              <span>{s.label}</span>
-            </button>
-          ))}
-          {visible.length === 0 && <div className="muted" style={{ padding: '8px 12px', fontSize: 12 }}>{t('没有匹配的设置项')}</div>}
+          {visibleGroups.map((group) => {
+            const open = q.length > 0 || !collapsed[group.id];
+            return (
+              <div className="settings-nav-group" key={group.id}>
+                <button
+                  className="settings-nav-group-head"
+                  onClick={() => setCollapsed((prev) => ({ ...prev, [group.id]: !prev[group.id] }))}
+                  aria-expanded={open}
+                >
+                  <span className="settings-nav-icon"><Icon name={group.icon} size={14} /></span>
+                  <span className="grow">{group.label}</span>
+                  <span className="settings-nav-chevron">{open ? '⌄' : '›'}</span>
+                </button>
+                {open && group.items.map((s) => (
+                  <button
+                    key={s.id}
+                    className={`settings-nav-item settings-nav-child${section === s.id ? ' active' : ''}`}
+                    onClick={() => setSection(s.id)}
+                  >
+                    <span className="settings-nav-icon"><Icon name={s.icon} size={14} /></span>
+                    <span>{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+          {visibleGroups.length === 0 && <div className="muted" style={{ padding: '8px 12px', fontSize: 12 }}>{t('没有匹配的设置项')}</div>}
         </nav>
       </aside>
 
       {/* ── 右侧内容 ── */}
       <div className="settings-main page">
         <div className="page-head">
-          <span className="page-title">{SECTIONS.find((s) => s.id === section)?.label ?? t('设置')}</span>
+          <span className="page-title">{current?.label ?? t('设置')}</span>
         </div>
         <div className={`page-scroll${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-scroll' : ''}`}>
           <div className={`settings-content${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-content' : ''}`}>
@@ -187,7 +252,6 @@ export function SettingsPage({
             {section === 'appearance' && <AppearanceSection />}
             {section === 'keys' && <KeysSection />}
             {section === 'notify' && <NotifySection />}
-            {section === 'bots' && <BotsSection onOpenAutomations={onOpenAutomations} />}
             {section === 'tour' && <TourSection />}
             {section === 'about' && <AboutSection />}
           </div>

@@ -281,6 +281,17 @@ export function PaperSection(): JSX.Element {
   // ── 列表态 ──
   return (
     <div className="col" style={{ gap: 22 }}>
+      <div className="panel row" style={{ padding: 12, gap: 10, alignItems: 'center', borderColor: 'color-mix(in srgb, var(--accent) 35%, var(--border-weak))' }}>
+        <Icon name="folder" size={15} />
+        <div className="col grow" style={{ gap: 2, minWidth: 0 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600 }}>当前项目的论文设置</span>
+          <span className="muted truncate" style={{ fontSize: 11.5 }}>
+            {project ? `${project.name} · 模板、队伍和比赛资料只保存在这个项目中` : '请先打开一个项目；项目之间不会共用比赛信息'}
+          </span>
+        </div>
+        <span className="badge badge-accent">{project ? '当前项目' : '未选择项目'}</span>
+      </div>
+
       {/* ① 本机存储说明 */}
       <div className="panel row" style={{ padding: 14, gap: 12, alignItems: 'flex-start' }}>
         <Icon name="shield-check" size={15} style={{ marginTop: 2 }} />

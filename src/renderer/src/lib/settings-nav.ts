@@ -19,7 +19,7 @@ export const OPEN_SETTINGS_EVENT = 'mm:open-settings';
 export const OPEN_ROUTE_EVENT = 'mm:open-route';
 
 export interface OpenSettingsDetail {
-  /** 目标分区 id（见 SettingsPage 的 SectionId），省略则保持/默认「个人资料」 */
+  /** 目标分区 id（见 SettingsPage 的 SectionId），省略则保持/默认「论文默认规则」 */
   section?: string;
 }
 

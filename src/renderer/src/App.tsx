@@ -582,7 +582,6 @@ export function App(): JSX.Element {
                   {route === 'settings' && (
                     <SettingsPage
                       onBack={() => setRoute('chat')}
-                      onOpenAutomations={() => setRoute('automation')}
                       requestedSection={settingsSection}
                       requestedExtensionTab={extensionsSection}
                       onNavigate={setRoute}

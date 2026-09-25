@@ -10,7 +10,7 @@
  * 保留功能、整体下移，收在同分区末尾的「本地附加项」里（原版无这些控件）。
  */
 import { useCallback, useMemo, useState } from 'react';
-import type { AppSettings, ProviderConfig } from '@shared/types';
+import type { ProviderConfig } from '@shared/types';
 import { useApp } from '../../store/app';
 import { tx, t } from '../../i18n';
 import { Icon } from '../Icon';
@@ -294,35 +294,12 @@ export function ModelSection(): JSX.Element {
         />
       </div>
 
-      {/* ③ 本地附加项 —— 原版模型页没有这些控件，复刻保留功能并下移到末尾 */}
+      {/* ③ 高级模型选项 —— 默认模型与思考强度在对话框统一调整，避免出现两套入口 */}
       <Section
-        title={t('本地附加项')}
-        hint={t('本机附加的推理与工具开关，不影响上面的供应商与模型选择。')}
+        title={t('高级模型选项')}
+        hint={t('模型、思考强度和上下文用量在对话框中即时调整；这里仅保留兼容性开关。')}
       >
         <div className="panel col" style={{ padding: 14, gap: 14 }}>
-          <div className="field">
-            <label className="field-label">{t('模型名（自由填写）')}</label>
-            <input
-              className="input mono"
-              style={{ fontSize: 12 }}
-              value={settings?.defaultModel ?? ''}
-              onChange={(e) => void patchSettings({ defaultModel: e.target.value })}
-              placeholder={t('留空则用当前供应商的第一个模型')}
-            />
-          </div>
-          <div className="field">
-            <label className="field-label">{t('推理强度（effort）')}</label>
-            <select
-              className="select"
-              value={settings?.effort ?? ''}
-              onChange={(e) => void patchSettings({ effort: (e.target.value || null) as AppSettings['effort'] })}
-            >
-              <option value="">{t('默认（不指定）')}</option>
-              <option value="low">{t('低 — 快，适合简单任务')}</option>
-              <option value="medium">{tx('chat.modelPicker.effortMedium')}</option>
-              <option value="high">{t('高 — 适合复杂建模推理')}</option>
-            </select>
-          </div>
           <Switch
             on={!!settings?.disableThinking}
             onChange={(v) => void patchSettings({ disableThinking: v })}
@@ -332,8 +309,8 @@ export function ModelSection(): JSX.Element {
           <Switch
             on={!!settings?.builtinMcpEnabled}
             onChange={(v) => void patchSettings({ builtinMcpEnabled: v })}
-            label={t('启用内置 MCP 工具')}
-            hint={t('给 agent 提供内置浏览器等工具。关闭后 agent 只能用文件与终端能力。')}
+            label={t('允许使用内置工具')}
+            hint={t('允许智能体使用文件、终端和内置建模工具。关闭后只保留对话能力。')}
           />
         </div>
       </Section>

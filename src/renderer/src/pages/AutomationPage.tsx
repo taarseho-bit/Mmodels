@@ -68,6 +68,27 @@ const TEMPLATES: Array<{ label: string; cron: string; hint: string }> = [
   { label: '每 30 分钟', cron: '*/30 * * * *', hint: '高频，注意 token 消耗' },
 ];
 
+const MODELING_PRESETS: Array<{ label: string; name: string; prompt: string; cron: string }> = [
+  {
+    label: '数据更新后复盘',
+    name: '数据更新后复盘',
+    prompt: '读取 data/ 下最新数据，检查缺失值、异常值和字段变化；如果数据结构没有问题，重新运行当前项目的模型，并把数据质量摘要写入 .mathmodel/data-quality.md。',
+    cron: '0 */6 * * *',
+  },
+  {
+    label: '论文交付检查',
+    name: '论文交付检查',
+    prompt: '检查当前项目论文的页数、图表、表格、参考文献、中文字体和 PDF 输出；把需要处理的问题写入 .mathmodel/delivery-check.md，不要擅自修改正文。',
+    cron: '0 8 * * *',
+  },
+  {
+    label: '比赛截止提醒',
+    name: '比赛截止前准备',
+    prompt: '读取当前项目比赛信息和截止时间，检查论文和提交文件是否齐全；如果距离截止时间不足 72 小时，生成简短的待办清单。',
+    cron: '0 9 * * *',
+  },
+];
+
 /** 空态图标 —— 原版是圆角容器内的线性 SVG（两个错位圆角方块），不是 emoji */
 function TasksIcon(): JSX.Element {
   return (
@@ -293,6 +314,24 @@ export function AutomationPage(): JSX.Element {
               </div>
             )}
 
+            <div className="panel col" style={{ padding: 14, gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>数学建模预设</div>
+              <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.6 }}>
+                先选一个常用场景，再按当前项目修改内容。高级定时规则仍然可以在下方调整。
+              </div>
+              <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                {MODELING_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setEditing({ ...editing, name: preset.name, prompt: preset.prompt, cron: preset.cron })}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="field">
               <label className="field-label">{t('任务名称')}</label>
               <input
@@ -320,7 +359,10 @@ export function AutomationPage(): JSX.Element {
             </div>
 
             <div className="field">
-              <label className="field-label">{t('触发时间（cron，5 段：分 时 日 月 周）')}</label>
+              <label className="field-label">{t('运行时间')}</label>
+              <div className="field-hint" style={{ marginBottom: 6 }}>
+                {t('常用场景可以直接选择；需要更精确的时间时，再展开高级定时规则。')}
+              </div>
               <input
                 className="input mono"
                 style={{ fontSize: 13 }}
@@ -328,18 +370,21 @@ export function AutomationPage(): JSX.Element {
                 onChange={(e) => setEditing({ ...editing, cron: e.target.value })}
                 placeholder="0 8 * * *"
               />
-              <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
-                {TEMPLATES.map((tpl) => (
-                  <button
-                    key={tpl.cron}
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => setEditing({ ...editing, cron: tpl.cron })}
-                    title={t(tpl.hint)}
-                  >
-                    {t(tpl.label)}
-                  </button>
-                ))}
-              </div>
+              <details style={{ marginTop: 6 }}>
+                <summary className="muted" style={{ cursor: 'pointer', fontSize: 11.5 }}>高级定时规则</summary>
+                <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                  {TEMPLATES.map((tpl) => (
+                    <button
+                      key={tpl.cron}
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => setEditing({ ...editing, cron: tpl.cron })}
+                      title={t(tpl.hint)}
+                    >
+                      {t(tpl.label)}
+                    </button>
+                  ))}
+                </div>
+              </details>
               <div className="field-hint">
                 {t('当前含义：')}{describeCron(editing.cron)} · {t('例：')}{' '}
                 <code className="mono">0 8 * * 1-5</code> {t('表示周一至周五 8:00')}

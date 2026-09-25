@@ -11,9 +11,13 @@ import {
   writeFollowUpBehavior,
   type FollowUpBehavior,
 } from '../../store/app';
+import { useApp } from '../../store/app';
 import { tx } from '../../i18n';
+import { Switch } from './shared';
 
 export function ChatSection(): JSX.Element {
+  const settings = useApp((s) => s.settings);
+  const patchSettings = useApp((s) => s.patchSettings);
   const [followUp, setFollowUp] = useState<FollowUpBehavior>(() => readFollowUpBehavior());
 
   return (
@@ -41,6 +45,18 @@ export function ChatSection(): JSX.Element {
           <option value="queue">{tx('settings.settingsPage.conversation.queue')}</option>
           <option value="steer">{tx('settings.settingsPage.conversation.steer')}</option>
         </select>
+      </div>
+
+      <div className="panel col" style={{ padding: 14, gap: 12 }}>
+        <Switch
+          on={settings?.multiAgentEnabled !== false}
+          onChange={(enabled) => void patchSettings({ multiAgentEnabled: enabled })}
+          label="允许多智能体协作"
+          hint="开启后，写论文、数据分析和复杂建模任务可以按需分给建模伙伴；普通问答不会强制创建临时智能体。"
+        />
+        <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.65 }}>
+          本轮是否真的创建协作成员，会在对话框和工作流视图中显示。暂停任务后可以继续使用同一个项目的协作设置。
+        </div>
       </div>
     </div>
   );
