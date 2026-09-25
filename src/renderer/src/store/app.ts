@@ -7,6 +7,7 @@
  *  - 流式消息不在这里 —— 它更新频率太高，放 store 会让整棵树重渲染。
  *    流式内容由 ChatPage 自己维护一个 ref + 局部 state。
  */
+import { applySkinVars } from '../lib/skins';
 import { create } from 'zustand';
 import type {
   AppSettings,
@@ -128,6 +129,8 @@ export interface AppearanceState {
   terminalFontSize: number;
   /** 终端字体，空 = 默认等宽字体 */
   terminalFont: string;
+  /** 全局皮肤 id（skins.ts） */
+  skin: string;
 }
 
 export const APPEARANCE_DEFAULTS: AppearanceState = {
@@ -161,6 +164,7 @@ export const APPEARANCE_DEFAULTS: AppearanceState = {
   baseFontSize: 14,
   terminalFontSize: 11,
   terminalFont: '',
+  skin: 'classic',
 };
 
 const APPEARANCE_KEY = 'mm-appearance';
@@ -336,6 +340,9 @@ export function applyAppearance(): void {
     delete root.dataset.appearanceTranslucent;
     delete root.dataset.appearanceContrast;
   }
+
+  // ── 全局皮肤（2026-09-25）：覆盖 accent 系变量 + 花纹底（CSS 按 data-skin）──
+  applySkinVars(root, a.skin || 'classic');
 
   // ── 字体与间距 ──
   root.dataset.appearanceDensity = a.density;

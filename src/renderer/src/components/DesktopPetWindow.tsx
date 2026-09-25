@@ -15,6 +15,7 @@ import {
   toView,
 } from '../store/chat-stream';
 import { PET_COPY, petStateFor } from '../lib/modeling-activity';
+import { activityMessagesFor } from '../lib/activity-copy';
 import { Icon } from './Icon';
 import type { AppSettings } from '@shared/types';
 import { PET_APPEARANCES, PetDeskAvatar, resolvePetAppearance, type PetAppearance } from './PetDeskAvatar';
@@ -122,6 +123,15 @@ export function DesktopPetWindow(): JSX.Element {
     [view],
   );
 
+  /** 实时状态行（2026-09-25 用户要求）：与对话页同一套本地推导，不消耗 token。
+      停止/待命回落到 PET_COPY；工作态优先显示真实动作。 */
+  const liveActivity = useMemo(() => {
+    if (state === 'resting' || state === 'stopping') return null;
+    const blocks = view.blocks.filter(Boolean);
+    const lines = activityMessagesFor(blocks, '');
+    return lines[0] ?? null;
+  }, [view, state]);
+
   const playGesture = useCallback((next: Exclude<PetGesture, 'idle'>): void => {
     if (gestureTimer.current) clearTimeout(gestureTimer.current);
     setGesture(next);
@@ -133,10 +143,15 @@ export function DesktopPetWindow(): JSX.Element {
   }, []);
 
   useEffect(() => {
+    // 工作态时气泡常显并随实时状态刷新（每次活动变化重新计时 6.5s）；待命时照旧自动收起
+    if (state === 'resting') {
+      setBubbleVisible(true);
+      const timer = setTimeout(() => setBubbleVisible(false), 6500);
+      return () => clearTimeout(timer);
+    }
     setBubbleVisible(true);
-    const timer = setTimeout(() => setBubbleVisible(false), 6500);
-    return () => clearTimeout(timer);
-  }, [state, gestureCopy, appearance]);
+    return undefined;
+  }, [state, gestureCopy, appearance, liveActivity]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -265,7 +280,7 @@ export function DesktopPetWindow(): JSX.Element {
             </button>
           </span>
         </div>
-        <p>{gestureCopy ?? PET_COPY[state]}</p>
+        <p>{gestureCopy ?? liveActivity ?? PET_COPY[state]}</p>
         <small>按住可拖动 · 双击回到工作台</small>
       </section>
 

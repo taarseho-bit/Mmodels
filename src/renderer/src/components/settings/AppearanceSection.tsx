@@ -1,20 +1,18 @@
 /**
- * 设置页 ⑨ 外观
+ * 设置页 ⑨ 外观（2026-09-25 重构：像 WorkBuddy 一样简单）
  *
- * 对照原版（original/s08-appearance）逐控件复刻：
- *   1. 主题分段控件（跟随系统 / 浅色 / 深色）+ 语言下拉
- *   2. 深色主题卡 / 浅色主题卡 —— 各 9 个控件：
- *      主题方案下拉（Aa + mathmodel）、导入、复制、说明行、
- *      强调色 / 背景色 / 前景色、界面字体、代码字体、半透明侧栏、对比度
- *   3. 「字体与间距」整组：使用系统界面字体、界面密度、基础字号、终端字号、终端字体
- *   4. 分区标题右侧「恢复默认」
+ *   ① 全局皮肤 —— 9 款带花纹的一键皮肤（4 助手色 + 4 新增 + 经典），全局生效
+ *   ② 主题模式（跟随系统/浅/深）+ 语言
+ *   ③ 桌面小模 —— 8 个角色（含 4 个写实 3D 风）+ 大小/动作/气泡偏好
+ *   ④ 字体与间距
  *
- * 改动实时生效：状态与 DOM 应用逻辑都在 store/app.ts（applyAppearance），
- * 这里只负责改状态 + 持久化。
+ * 旧的「深色/浅色双主题卡 + 文字编码导入导出 + 逐项色值」已按用户要求移除 ——
+ * 皮肤系统（lib/skins.ts + store 的 skin 字段）取代了它的日常用途。
  */
 import { useState } from 'react';
 import { PetDeskAvatar, PET_APPEARANCES, resolvePetAppearance } from '../PetDeskAvatar';
 import { tx } from '../../i18n';
+import { SKINS } from '../../lib/skins';
 import {
   getAppearance,
   resetAppearance,
@@ -22,23 +20,7 @@ import {
   useApp,
   type AppearanceDensity,
   type AppearanceMode,
-  type AppearanceState,
-  type ThemeVariant,
 } from '../../store/app';
-
-const SHARE_PREFIX = 'codex-theme-v1:';
-
-/**
- * 助手配色预设（2026-09-25 用户要求）：与四位建模助手的颜色风格一一对应。
- * 只改 accent —— store 的 applyAppearance 会自动派生 hover / weak / fg。
- */
-const ACCENT_PRESETS: Array<{ id: string; label: string; color: string; hint: string }> = [
-  { id: 'solver-blue', label: '求解蓝', color: '#3b62d4', hint: '建模求解 · 沉稳理性' },
-  { id: 'data-teal', label: '数据青', color: '#1d8a80', hint: '数据分析 · 清爽干净' },
-  { id: 'review-violet', label: '评审紫', color: '#6a4bd8', hint: '论文评审 · 严谨深邃' },
-  { id: 'figure-orange', label: '图表橙', color: '#d97b2e', hint: '图表制作 · 明快活泼' },
-  { id: 'classic', label: '经典蓝', color: '#007aff', hint: '恢复默认强调色' },
-];
 
 /** 原版分段控件里的三个主题图标（线性，不用 emoji） */
 function ThemeIcon({ id }: { id: AppearanceMode }): JSX.Element {
@@ -83,12 +65,11 @@ function densityLabel(d: AppearanceDensity): string {
 }
 
 export function AppearanceSection(): JSX.Element {
-  const [app, setApp] = useState<AppearanceState>(() => getAppearance());
-  /** 正在导入分享字符串的主题（null = 没展开导入框） */
-  const [importing, setImporting] = useState<'dark' | 'light' | null>(null);
-  const [importText, setImportText] = useState('');
-  const [importError, setImportError] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [app, setApp] = useState(() => getAppearance());
+  const commit = (next: typeof app): void => {
+    setApp(next);
+    setAppearance(next);
+  };
 
   // 语言走的是 settings.locale（不是外观状态）
   const locale = useApp((s) => s.settings?.locale ?? 'zh-CN');
@@ -96,94 +77,46 @@ export function AppearanceSection(): JSX.Element {
   const petAppearance = useApp((s) => resolvePetAppearance(s.settings?.modelingPetAppearance));
   const petEnabled = useApp((s) => s.settings?.modelingPetEnabled !== false);
   const petPreferences = useApp((s) => s.settings);
-  /** 当前生效的浅/深（决定两张卡片的说明文案：正在用 / 切到某模式时用） */
-  const activeTheme =
-    (document.documentElement.dataset.theme as 'light' | 'dark' | undefined) ?? 'light';
-
-  const commit = (next: AppearanceState): void => {
-    setApp(next);
-    setAppearance(next);
-  };
-
-  const patchVariant = (key: 'dark' | 'light', patch: Partial<ThemeVariant>): void => {
-    // 任何一次编辑都视作「这张主题卡已被用户接管」
-    commit({ ...app, [key]: { ...app[key], ...patch, touched: true } });
-  };
-
-  const flash = (msg: string): void => {
-    setToast(msg);
-    window.setTimeout(() => setToast(null), 2200);
-  };
-
-  const copyVariant = async (key: 'dark' | 'light'): Promise<void> => {
-    const payload = { variant: key, preset: app[key].preset, tokens: app[key] };
-    const token = `${SHARE_PREFIX}${btoa(encodeURIComponent(JSON.stringify(payload)))}`;
-    try {
-      await navigator.clipboard.writeText(token);
-      flash(tx('settings.settingsPage.appearance.copiedTitle'));
-    } catch {
-      flash(tx('settings.settingsPage.appearance.copyFailed'));
-    }
-  };
-
-  const doImport = (key: 'dark' | 'light'): void => {
-    try {
-      const raw = importText.trim();
-      if (!raw.startsWith(SHARE_PREFIX)) throw new Error('bad prefix');
-      const payload = JSON.parse(decodeURIComponent(atob(raw.slice(SHARE_PREFIX.length)))) as {
-        variant?: string;
-        tokens?: Partial<ThemeVariant>;
-      };
-      // 原版行为：字符串里的模式必须与目标卡一致
-      if (payload.variant && payload.variant !== key) throw new Error('variant mismatch');
-      patchVariant(key, { ...(payload.tokens ?? {}), touched: true });
-      setImporting(null);
-      setImportText('');
-      setImportError(false);
-      flash(tx('settings.settingsPage.appearance.importedTitle'));
-    } catch {
-      setImportError(true);
-    }
-  };
 
   return (
     <section className="appearance-sec">
-      <div className="appearance-card pet-appearance-settings">
+      {/* ── ① 全局皮肤：一键切换，花纹全局生效 ── */}
+      <div className="appearance-card">
         <div className="appearance-row">
           <div className="appearance-row-main">
-            <div className="appearance-row-label">桌面小模</div>
-            <div className="appearance-row-hint">选择你的建模伙伴，外观立即生效并自动保存。按住人物或气泡可一起拖动。</div>
+            <div className="appearance-row-label">全局皮肤</div>
+            <div className="appearance-row-hint">
+              一键切换整站配色与花纹背景，浅色 / 深色模式各自适配，文字始终清晰。
+            </div>
           </div>
-          <button type="button" className={`switch${petEnabled ? ' on' : ''}`} aria-label="显示桌面小模" aria-pressed={petEnabled}
-            onClick={() => void patchSettings({ modelingPetEnabled: !petEnabled })}><span className="switch-knob" /></button>
         </div>
-        <div className="pet-appearance-grid" role="group" aria-label="小模外观">
-          {PET_APPEARANCES.map((item) => (
-            <button key={item.id} type="button" className={`pet-appearance-option${petAppearance === item.id ? ' selected' : ''}`}
-              aria-pressed={petAppearance === item.id} onClick={() => void patchSettings({ modelingPetAppearance: item.id })}>
-              <PetDeskAvatar appearance={item.id} />
-              <strong>{item.name}{petAppearance === item.id ? ' · 已选择' : ''}</strong>
-              <span>{item.description}</span>
-            </button>
-          ))}
+        <div className="skin-grid" role="group" aria-label="全局皮肤">
+          {SKINS.map((skin) => {
+            const active = app.skin === skin.id;
+            return (
+              <button
+                key={skin.id}
+                type="button"
+                className={`skin-chip${active ? ' active' : ''}`}
+                style={{ ['--skin-accent' as string]: skin.accent, ['--skin-tint' as string]: skin.tint }}
+                onClick={() => commit({ ...app, skin: skin.id })}
+                title={skin.hint}
+                aria-pressed={active}
+              >
+                <span className="skin-chip-preview" data-pattern={skin.pattern} data-skin-accent={skin.accent} />
+                <span className="skin-chip-body">
+                  <span className="skin-chip-dot" />
+                  <strong>{skin.name}</strong>
+                  {active ? <span className="badge">使用中</span> : null}
+                </span>
+                <span className="skin-chip-hint">{skin.hint}</span>
+              </button>
+            );
+          })}
         </div>
-        <div className="pet-preference-controls">
-          <label>角色大小<select className="select" value={petPreferences?.modelingPetSize ?? 'normal'} onChange={(e) => void patchSettings({ modelingPetSize: e.target.value as 'small' | 'normal' })}><option value="small">小巧</option><option value="normal">标准</option></select></label>
-          <label>动作频率<select className="select" value={petPreferences?.modelingPetMotion ?? 'lively'} onChange={(e) => void patchSettings({ modelingPetMotion: e.target.value as 'gentle' | 'lively' })}><option value="lively">活泼</option><option value="gentle">轻柔</option></select></label>
-          <label>提示气泡<select className="select" value={petPreferences?.modelingPetBubble ?? 'progress'} onChange={(e) => void patchSettings({ modelingPetBubble: e.target.value as 'progress' | 'always' })}><option value="progress">有进展时显示</option><option value="always">一直显示</option></select></label>
-          <label><input type="checkbox" checked={petPreferences?.modelingPetQuiet ?? false} onChange={(e) => void patchSettings({ modelingPetQuiet: e.target.checked })} />安静模式（暂停动作和气泡）</label>
-        </div>
-      </div>
-      {/* ── 分区头：恢复默认（原版在标题行右侧）── */}
-      <div className="appearance-head">
-        <div className="grow" />
-        <button className="btn btn-sm btn-ghost" onClick={() => resetAppearance()}>
-          <span aria-hidden>↺</span>
-          {tx('settings.settingsPage.appearance.restoreDefaults')}
-        </button>
       </div>
 
-      {/* ── 主题 + 语言 ── */}
+      {/* ── ② 主题模式 + 语言 ── */}
       <div className="appearance-card">
         <div className="appearance-row">
           <div className="appearance-row-main">
@@ -236,233 +169,35 @@ export function AppearanceSection(): JSX.Element {
         </div>
       </div>
 
-      {/* ── 深色 / 浅色主题编辑器 ── */}
-      {(['dark', 'light'] as const).map((key) => (
-        <div className="appearance-card" key={key}>
-          <div className="appearance-card-head">
-            <span className="appearance-card-title">
-              {tx(
-                key === 'dark'
-                  ? 'settings.settingsPage.appearance.darkTheme'
-                  : 'settings.settingsPage.appearance.lightTheme',
-              )}
-            </span>
-            <div className="grow" />
-            <button
-              className="btn btn-sm btn-ghost"
-              onClick={() => {
-                setImporting(key);
-                setImportText('');
-                setImportError(false);
-              }}
-            >
-              {tx('settings.settingsPage.appearance.import')}
-            </button>
-            <button className="btn btn-sm btn-ghost" onClick={() => void copyVariant(key)}>
-              {tx('settings.settingsPage.appearance.copy')}
-            </button>
-            <span className="appearance-preset">
-              <span className="appearance-aa" aria-hidden>
-                Aa
-              </span>
-              <select
-                className="appearance-preset-select"
-                value={app[key].preset}
-                onChange={(e) => patchVariant(key, { preset: e.target.value })}
-              >
-                <option value="mathmodel">mathmodel</option>
-              </select>
-            </span>
+      {/* ── ③ 桌面小模 ── */}
+      <div className="appearance-card pet-appearance-settings">
+        <div className="appearance-row">
+          <div className="appearance-row-main">
+            <div className="appearance-row-label">桌面小模</div>
+            <div className="appearance-row-hint">选择你的建模伙伴，外观立即生效并自动保存。按住人物或气泡可一起拖动；工作时会同步汇报当前进展。</div>
           </div>
-
-          <div className="appearance-card-desc">
-            {key === activeTheme
-              ? tx('settings.settingsPage.appearance.systemUsingSlot', { variant: key })
-              : tx('settings.settingsPage.appearance.usedWhenSystem', { variant: key })}
-          </div>
-
-          {importing === key && (
-            <div className="appearance-import">
-              <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.7 }}>
-                {tx('settings.settingsPage.appearance.importHint', { variant: key })}
-              </div>
-              <textarea
-                className="textarea"
-                style={{ minHeight: 56, fontSize: 11.5, fontFamily: 'var(--font-mono)' }}
-                value={importText}
-                placeholder={`${SHARE_PREFIX}…`}
-                onChange={(e) => setImportText(e.target.value)}
-              />
-              {importError && (
-                <div style={{ color: 'var(--danger)', fontSize: 11.5 }}>
-                  {tx('settings.settingsPage.appearance.importInvalid')}
-                </div>
-              )}
-              <div className="row" style={{ gap: 8 }}>
-                <button className="btn btn-sm btn-primary" onClick={() => doImport(key)}>
-                  {tx('settings.settingsPage.appearance.import')}
-                </button>
-                <button className="btn btn-sm btn-ghost" onClick={() => setImporting(null)}>
-                  {tx('common.cancel')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                助手配色
-              </div>
-              <div className="appearance-row-hint muted" style={{ fontSize: 10.5, marginTop: 2 }}>
-                {ACCENT_PRESETS.find((p) => p.color.toLowerCase() === app[key].accent.toLowerCase())?.hint ?? '与四位建模助手的颜色风格对应'}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {ACCENT_PRESETS.map((p) => {
-                  const active = app[key].accent.toLowerCase() === p.color.toLowerCase();
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      title={`${p.label} · ${p.hint}`}
-                      aria-label={p.label}
-                      aria-pressed={active}
-                      onClick={() => patchVariant(key, { accent: p.color })}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 7,
-                        background: p.color,
-                        cursor: 'pointer',
-                        border: active ? '2px solid var(--fg-primary)' : '1px solid var(--border-strong)',
-                        padding: 0,
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                {tx('settings.settingsPage.appearance.accent')}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <ColorChip
-                value={app[key].accent}
-                onChange={(v) => patchVariant(key, { accent: v })}
-              />
-            </div>
-          </div>
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                {tx('settings.settingsPage.appearance.background')}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <ColorChip
-                value={app[key].background}
-                onChange={(v) => patchVariant(key, { background: v })}
-              />
-            </div>
-          </div>
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                {tx('settings.settingsPage.appearance.foreground')}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <ColorChip
-                value={app[key].foreground}
-                onChange={(v) => patchVariant(key, { foreground: v })}
-              />
-            </div>
-          </div>
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                {tx('settings.settingsPage.appearance.uiFont')}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <input
-                className="input appearance-text"
-                value={app[key].uiFont}
-                placeholder={tx('settings.settingsPage.appearance.uiFontPlaceholder')}
-                onChange={(e) => patchVariant(key, { uiFont: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                {tx('settings.settingsPage.appearance.codeFont')}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <input
-                className="input appearance-text"
-                value={app[key].codeFont}
-                placeholder={tx('settings.settingsPage.appearance.uiFontPlaceholder')}
-                onChange={(e) => patchVariant(key, { codeFont: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                {tx('settings.settingsPage.appearance.translucentSidebar')}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <button
-                type="button"
-                className={`switch${app[key].translucentSidebar ? ' on' : ''}`}
-                aria-pressed={app[key].translucentSidebar}
-                onClick={() =>
-                  patchVariant(key, { translucentSidebar: !app[key].translucentSidebar })
-                }
-              >
-                <span className="switch-knob" />
-              </button>
-            </div>
-          </div>
-
-          <div className="appearance-row">
-            <div className="appearance-row-main">
-              <div className="appearance-row-label">
-                {tx('settings.settingsPage.appearance.contrast')}
-              </div>
-            </div>
-            <div className="appearance-row-ctl">
-              <input
-                className="appearance-slider"
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={app[key].contrast}
-                onChange={(e) => patchVariant(key, { contrast: Number(e.target.value) })}
-              />
-              <span className="appearance-slider-value">{app[key].contrast}</span>
-            </div>
-          </div>
+          <button type="button" className={`switch${petEnabled ? ' on' : ''}`} aria-label="显示桌面小模" aria-pressed={petEnabled}
+            onClick={() => void patchSettings({ modelingPetEnabled: !petEnabled })}><span className="switch-knob" /></button>
         </div>
-      ))}
+        <div className="pet-appearance-grid" role="group" aria-label="小模外观">
+          {PET_APPEARANCES.map((item) => (
+            <button key={item.id} type="button" className={`pet-appearance-option${petAppearance === item.id ? ' selected' : ''}`}
+              aria-pressed={petAppearance === item.id} onClick={() => void patchSettings({ modelingPetAppearance: item.id })}>
+              <PetDeskAvatar appearance={item.id} />
+              <strong>{item.name}{petAppearance === item.id ? ' · 已选择' : ''}</strong>
+              <span>{item.description}</span>
+            </button>
+          ))}
+        </div>
+        <div className="pet-preference-controls">
+          <label>角色大小<select className="select" value={petPreferences?.modelingPetSize ?? 'normal'} onChange={(e) => void patchSettings({ modelingPetSize: e.target.value as 'small' | 'normal' })}><option value="small">小巧</option><option value="normal">标准</option></select></label>
+          <label>动作频率<select className="select" value={petPreferences?.modelingPetMotion ?? 'lively'} onChange={(e) => void patchSettings({ modelingPetMotion: e.target.value as 'gentle' | 'lively' })}><option value="lively">活泼</option><option value="gentle">轻柔</option></select></label>
+          <label>提示气泡<select className="select" value={petPreferences?.modelingPetBubble ?? 'progress'} onChange={(e) => void patchSettings({ modelingPetBubble: e.target.value as 'progress' | 'always' })}><option value="progress">有进展时显示</option><option value="always">一直显示</option></select></label>
+          <label><input type="checkbox" checked={petPreferences?.modelingPetQuiet ?? false} onChange={(e) => void patchSettings({ modelingPetQuiet: e.target.checked })} />安静模式（暂停动作和气泡）</label>
+        </div>
+      </div>
 
-      {/* ── 字体与间距 ── */}
+      {/* ── ④ 字体与间距 ── */}
       <div className="appearance-group-title">
         {tx('settings.settingsPage.appearance.typographyTitle')}
       </div>
@@ -584,9 +319,15 @@ export function AppearanceSection(): JSX.Element {
             />
           </div>
         </div>
+
+        <div className="row" style={{ justifyContent: 'flex-end', padding: '4px 2px 0' }}>
+          <button className="btn btn-sm btn-ghost" onClick={() => resetAppearance()}>
+            <span aria-hidden>↺</span>
+            {tx('settings.settingsPage.appearance.restoreDefaults')}
+          </button>
+        </div>
       </div>
 
-      {toast ? <div className="panel-toast">{toast}</div> : null}
     </section>
   );
 }
@@ -595,34 +336,4 @@ function clampNum(raw: string, min: number, max: number, fallback: number): numb
   const n = Number(raw);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.round(n)));
-}
-
-/** 色值胶囊：圆形色块（点击唤起系统取色器）+ 等宽色值文本 */
-function ColorChip({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}): JSX.Element {
-  return (
-    <span className="appearance-color-chip">
-      <span className="appearance-swatch" style={{ background: value }}>
-        <input
-          type="color"
-          value={normInput(value)}
-          aria-label={value}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
-        />
-      </span>
-      <span>{value}</span>
-    </span>
-  );
-}
-
-/** <input type=color> 只吃 #rrggbb，三位简写补全 */
-function normInput(v: string): string {
-  const s = (v || '').trim();
-  if (/^#[0-9a-fA-F]{3}$/.test(s)) return `#${s[1]}${s[1]}${s[2]}${s[2]}${s[3]}${s[3]}`;
-  return /^#[0-9a-fA-F]{6}$/.test(s) ? s : '#000000';
 }

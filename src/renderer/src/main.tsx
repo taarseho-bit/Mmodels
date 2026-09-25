@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { DesktopPetWindow } from './components/DesktopPetWindow';
 import './styles/theme.css';
+import './styles/skins.css';
 import './styles/layout.css';
 import './styles/pages.css';
 import './styles/competition-studio.css';

@@ -37,23 +37,40 @@ beforeAll(() => {
 });
 
 describe('设置页 外观 / 快捷键分区结构', () => {
-  it('AppearanceSection 渲染出主题编辑器与字体与间距', async () => {
+  it('AppearanceSection 渲染出全局皮肤网格、主题模式与字体与间距（2026-09-25 简化版）', async () => {
     const { renderToStaticMarkup } = await import('react-dom/server');
     const React = await import('react');
     const { AppearanceSection } = await import('./AppearanceSection');
     const html = renderToStaticMarkup(React.createElement(AppearanceSection));
+    // 皮肤网格：9 款全局皮肤（经典 + 4 助手色 + 4 新增），卡片带花纹预览与使用中徽标
+    expect(html).toContain('全局皮肤');
+    expect(html).toContain('skin-grid');
+    expect(html).toContain('经典');
+    expect(html).toContain('求解蓝');
+    expect(html).toContain('数据青');
+    expect(html).toContain('评审紫');
+    expect(html).toContain('图表橙');
+    expect(html).toContain('论文玫');
+    expect(html).toContain('推演森');
+    expect(html).toContain('深夜鸮');
+    expect(html).toContain('曙光金');
+    expect(html).toContain('使用中');
+    expect((html.match(/class="skin-chip( active)?"/g) ?? []).length).toBe(9);
+    // 主题模式分段控件 + 语言
     expect(html).toContain('appearance-seg');
-    expect(html).toContain('mathmodel');
-    expect(html).toContain('#0A84FF');
-    expect(html).toContain('#007AFF');
-    // node 环境里 matchMedia 返回 false → 生效主题是 light
-    expect(html).toContain('系统当前正在使用 light 主题。');
-    expect(html).toContain('系统切换到 dark 时使用。');
+    expect(html).toContain('跟随系统');
+    expect(html).toContain('简体中文');
+    // 桌面小模（8 角色）与字体组
+    expect(html).toContain('桌面小模');
+    expect(html).toContain('3D 猫头鹰教授');
+    expect(html).toContain('3D 极地熊');
     expect(html).toContain('恢复默认');
     expect(html).toContain('使用系统界面字体');
     expect(html).toContain('终端字体');
     expect(html).toContain('界面密度');
-    expect((html.match(/class="appearance-color-chip"/g) ?? []).length).toBe(6);
+    // 旧的双主题卡 / 导入导出已按用户要求移除
+    expect(html).not.toContain('appearance-color-chip');
+    expect(html).not.toContain('codex-theme-v1');
   });
 
   it('KeysSection 渲染出 4 组 14 条 + 搜索 + 文件路径', async () => {

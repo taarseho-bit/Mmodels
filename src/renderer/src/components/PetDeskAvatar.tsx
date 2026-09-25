@@ -5,6 +5,10 @@ export const PET_APPEARANCES = [
   { id: 'pixel', name: '探险家', description: '背着行囊跃过方块，举起地图寻找下一条路。' },
   { id: 'researcher', name: '漫画研究员', description: '站着翻阅笔记，用放大镜捕捉遗漏的线索。' },
   { id: 'astronaut', name: '太空建模员', description: '失重漂浮、探索星球，伸手收集宇宙中的灵感。' },
+  { id: 'owl-3d', name: '3D 猫头鹰教授', description: '圆滚滚的猫头鹰学者，羽毛有光泽，深夜推演不眨眼。' },
+  { id: 'robot-3d', name: '3D 金属助手', description: '亮面金属外壳的机器人助手，胸口荧幕滚动计算。' },
+  { id: 'fox-3d', name: '3D 数据狐', description: '暖橙渐变的灵巧狐狸，尾巴一甩就理清数据。' },
+  { id: 'bear-3d', name: '3D 极地熊', description: '绒感十足的极地熊分析师，沉稳可靠不慌张。' },
 ] as const;
 export type PetAppearance = typeof PET_APPEARANCES[number]['id'];
 export function resolvePetAppearance(value: unknown): PetAppearance {
@@ -55,8 +59,137 @@ function FieldResearcher(): JSX.Element {
   </svg>;
 }
 
-function SpaceExplorer(): JSX.Element {
-  return <svg className="pet-desk-avatar space-explorer" viewBox="0 0 220 190" role="img" aria-label="太空建模员在失重状态下漂浮探索星球">
+/** ── 写实 3D 风角色（2026-09-25）：径向渐变 + 高光 + 接地阴影，营造体积感 ── */
+
+function OwlProfessor3D(): JSX.Element {
+  return <svg className="pet-desk-avatar owl-3d" viewBox="0 0 220 190" role="img" aria-label="3D 猫头鹰教授站在书堆上思考">
+    <defs>
+      <radialGradient id="owl-body" cx="38%" cy="30%" r="80%">
+        <stop offset="0%" stopColor="#b8926b" /><stop offset="55%" stopColor="#8a6543" /><stop offset="100%" stopColor="#5d4029" />
+      </radialGradient>
+      <radialGradient id="owl-belly" cx="45%" cy="30%" r="75%">
+        <stop offset="0%" stopColor="#f4e3c6" /><stop offset="100%" stopColor="#c8a877" />
+      </radialGradient>
+    </defs>
+    <ellipse cx="110" cy="176" rx="62" ry="8" fill="#00000022" />
+    <rect x="74" y="160" width="72" height="10" rx="3" fill="#8a5a3b" />
+    <rect x="80" y="150" width="60" height="10" rx="3" fill="#a86f47" />
+    <g>
+      <ellipse cx="110" cy="104" rx="46" ry="52" fill="url(#owl-body)" />
+      <ellipse cx="110" cy="118" rx="30" ry="34" fill="url(#owl-belly)" />
+      <path d="M96 96q6 8 0 18m14-18q6 8 0 18m14-16q5 7 0 15" stroke="#b09468" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <circle cx="86" cy="66" r="26" fill="url(#owl-body)" />
+      <path d="M64 56 56 34l24 10zM156 56l8-22-24 10z" fill="#7a5836" />
+      <circle cx="98" cy="62" r="13" fill="#f8f4ea" /><circle cx="122" cy="62" r="13" fill="#f8f4ea" />
+      <circle cx="99" cy="63" r="7" fill="#2c2620" /><circle cx="121" cy="63" r="7" fill="#2c2620" />
+      <circle cx="101" cy="60" r="2.4" fill="#ffffffcc" /><circle cx="123" cy="60" r="2.4" fill="#ffffffcc" />
+      <path d="M108 72l6 9-9 2z" fill="#e8a33c" />
+      <g fill="none" stroke="#4f5b6e" strokeWidth="2.5"><circle cx="98" cy="62" r="13" /><circle cx="122" cy="62" r="13" /><path d="M111 62h-2" /></g>
+      <path d="M84 34q14-8 26-2" stroke="#ffffff55" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <ellipse cx="88" cy="160" rx="7" ry="5" fill="#e8a33c" /><ellipse cx="130" cy="160" rx="7" ry="5" fill="#e8a33c" />
+      <path d="M148 92q10 10 6 24" stroke="#ffffff30" strokeWidth="6" fill="none" strokeLinecap="round" />
+    </g>
+    <path d="M126 128q18 6 22-8" stroke="#6d4c2f" strokeWidth="9" fill="none" strokeLinecap="round" /><ellipse cx="152" cy="118" rx="8" ry="5" fill="#d9b06f" />
+  </svg>;
+}
+
+function RobotAssistant3D(): JSX.Element {
+  return <svg className="pet-desk-avatar robot-3d" viewBox="0 0 220 190" role="img" aria-label="3D 金属机器人助手在屏幕前计算">
+    <defs>
+      <linearGradient id="robot-shell" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#eef4fb" /><stop offset="45%" stopColor="#b9c9dd" /><stop offset="100%" stopColor="#7c92ad" />
+      </linearGradient>
+      <radialGradient id="robot-head" cx="36%" cy="30%" r="80%">
+        <stop offset="0%" stopColor="#f4f9ff" /><stop offset="60%" stopColor="#c4d4e6" /><stop offset="100%" stopColor="#8ba1bb" />
+      </radialGradient>
+      <linearGradient id="robot-screen" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#1c2c4e" /><stop offset="100%" stopColor="#33518f" />
+      </linearGradient>
+    </defs>
+    <ellipse cx="110" cy="176" rx="60" ry="8" fill="#00000022" />
+    <g>
+      <rect x="76" y="92" width="68" height="62" rx="20" fill="url(#robot-shell)" stroke="#6d819b" strokeWidth="2" />
+      <rect x="92" y="106" width="36" height="24" rx="6" fill="#16233f" />
+      <path d="M96 122q6-8 12 0t12-2" stroke="#54e0c8" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <circle cx="122" cy="124" r="3" fill="#ffd27d" />
+      <circle cx="110" cy="58" r="30" fill="url(#robot-head)" stroke="#6d819b" strokeWidth="2" />
+      <rect x="88" y="50" width="44" height="22" rx="11" fill="#1b2740" />
+      <circle cx="101" cy="61" r="5.5" fill="#54e0c8" /><circle cx="119" cy="61" r="5.5" fill="#54e0c8" />
+      <circle cx="102.5" cy="59" r="1.8" fill="#ffffffcc" /><circle cx="120.5" cy="59" r="1.8" fill="#ffffffcc" />
+      <path d="M110 30v-8m-6 0h12" stroke="#9fb2c9" strokeWidth="4" strokeLinecap="round" /><circle cx="110" cy="18" r="4" fill="#ffd27d" />
+      <path d="M88 46q10-12 24-10" stroke="#ffffffb0" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <path d="M144 104q16 2 18-12" stroke="#a8bccf" strokeWidth="10" fill="none" strokeLinecap="round" /><ellipse cx="164" cy="88" rx="8" ry="6" fill="#dbe6f2" />
+      <path d="M76 104q-14 4-14 18" stroke="#a8bccf" strokeWidth="10" fill="none" strokeLinecap="round" /><ellipse cx="60" cy="126" rx="8" ry="6" fill="#dbe6f2" />
+      <rect x="88" y="154" width="18" height="14" rx="6" fill="#8ba1bb" /><rect x="114" y="154" width="18" height="14" rx="6" fill="#8ba1bb" />
+    </g>
+    <rect x="30" y="120" width="34" height="26" rx="4" fill="#22345c" /><path d="M36 138l7-8 6 4 8-9" stroke="#54e0c8" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+  </svg>;
+}
+
+function DataFox3D(): JSX.Element {
+  return <svg className="pet-desk-avatar fox-3d" viewBox="0 0 220 190" role="img" aria-label="3D 数据狐狸坐着查看数据板">
+    <defs>
+      <radialGradient id="fox-body" cx="36%" cy="28%" r="85%">
+        <stop offset="0%" stopColor="#ffb877" /><stop offset="55%" stopColor="#e8833f" /><stop offset="100%" stopColor="#b85a20" />
+      </radialGradient>
+      <radialGradient id="fox-chest" cx="45%" cy="25%" r="80%">
+        <stop offset="0%" stopColor="#fff4e4" /><stop offset="100%" stopColor="#f3cf9f" />
+      </radialGradient>
+    </defs>
+    <ellipse cx="110" cy="176" rx="64" ry="8" fill="#00000022" />
+    <g>
+      <path d="M142 96q26-14 20-44 14 26-2 56z" fill="url(#fox-body)" />
+      <path d="M158 58q6 14-4 30" stroke="#ffffff44" strokeWidth="5" fill="none" strokeLinecap="round" />
+      <ellipse cx="112" cy="118" rx="44" ry="40" fill="url(#fox-body)" />
+      <ellipse cx="112" cy="130" rx="26" ry="26" fill="url(#fox-chest)" />
+      <circle cx="110" cy="66" r="30" fill="url(#fox-body)" />
+      <path d="M84 46 78 20l26 14zM136 46l6-26-26 14z" fill="#c96a2c" />
+      <path d="M88 30l-4-12 14 8zM132 30l4-12-14 8z" fill="#4c2c14" />
+      <ellipse cx="99" cy="64" rx="5" ry="6" fill="#2f1c0e" /><ellipse cx="121" cy="64" rx="5" ry="6" fill="#2f1c0e" />
+      <circle cx="100.5" cy="62" r="1.8" fill="#ffffffcc" /><circle cx="122.5" cy="62" r="1.8" fill="#ffffffcc" />
+      <path d="M108 74l4 5-7 2z" fill="#402410" />
+      <path d="M84 44q12-10 26-2" stroke="#ffffff55" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <ellipse cx="82" cy="72" rx="4" ry="2.5" fill="#e89b6b66" /><ellipse cx="138" cy="72" rx="4" ry="2.5" fill="#e89b6b66" />
+    </g>
+    <rect x="118" y="140" width="44" height="30" rx="5" fill="#243a5e" transform="rotate(-8 140 155)" />
+    <path d="M126 152q8-8 14 0t14-2" stroke="#54c8f0" strokeWidth="3" fill="none" strokeLinecap="round" transform="rotate(-8 140 155)" />
+    <path d="M96 148q-10 10-2 20" stroke="#c96a2c" strokeWidth="9" fill="none" strokeLinecap="round" /><ellipse cx="93" cy="168" rx="7" ry="5" fill="#f3cf9f" />
+  </svg>;
+}
+
+function PolarBear3D(): JSX.Element {
+  return <svg className="pet-desk-avatar bear-3d" viewBox="0 0 220 190" role="img" aria-label="3D 极地熊分析师抱着计算器端坐">
+    <defs>
+      <radialGradient id="bear-body" cx="36%" cy="28%" r="85%">
+        <stop offset="0%" stopColor="#ffffff" /><stop offset="60%" stopColor="#e9edf3" /><stop offset="100%" stopColor="#bcc8d6" />
+      </radialGradient>
+      <radialGradient id="bear-head" cx="36%" cy="30%" r="80%">
+        <stop offset="0%" stopColor="#ffffff" /><stop offset="70%" stopColor="#eef1f6" /><stop offset="100%" stopColor="#cdd7e2" />
+      </radialGradient>
+    </defs>
+    <ellipse cx="110" cy="176" rx="66" ry="8" fill="#0000001e" />
+    <g>
+      <ellipse cx="110" cy="120" rx="48" ry="42" fill="url(#bear-body)" />
+      <ellipse cx="110" cy="132" rx="28" ry="26" fill="#f7f9fc" />
+      <circle cx="110" cy="62" r="32" fill="url(#bear-head)" />
+      <circle cx="82" cy="40" r="11" fill="url(#bear-head)" /><circle cx="138" cy="40" r="11" fill="url(#bear-head)" />
+      <ellipse cx="110" cy="72" rx="12" ry="9" fill="#e6ebf2" />
+      <ellipse cx="110" cy="68" rx="5" ry="4" fill="#39424e" />
+      <circle cx="98" cy="58" r="4.5" fill="#39424e" /><circle cx="122" cy="58" r="4.5" fill="#39424e" />
+      <circle cx="99.5" cy="56.5" r="1.6" fill="#ffffffdd" /><circle cx="123.5" cy="56.5" r="1.6" fill="#ffffffdd" />
+      <path d="M84 42q12-10 26-2" stroke="#ffffffcc" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <ellipse cx="86" cy="76" rx="4" ry="2.5" fill="#d8a0a033" /><ellipse cx="134" cy="76" rx="4" ry="2.5" fill="#d8a0a033" />
+      <rect x="82" y="138" width="30" height="22" rx="5" fill="#2c3e56" />
+      <path d="M88 154h18m-18-6h18m-18-6h12" stroke="#6ee7c2" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M148 106q14 2 16-8" stroke="#d7dfe8" strokeWidth="12" fill="none" strokeLinecap="round" /><ellipse cx="166" cy="94" rx="8" ry="6" fill="#f6f8fb" />
+      <path d="M72 108q-14 4-14 18" stroke="#d7dfe8" strokeWidth="12" fill="none" strokeLinecap="round" /><ellipse cx="58" cy="130" rx="8" ry="6" fill="#f6f8fb" />
+      <rect x="90" y="158" width="17" height="12" rx="5" fill="#cdd7e2" /><rect x="112" y="158" width="17" height="12" rx="5" fill="#cdd7e2" />
+    </g>
+    <path d="M28 160q22-8 40 0" stroke="#bcd7e6" strokeWidth="4" fill="none" strokeLinecap="round" />
+  </svg>;
+}
+
+function SpaceExplorer(): JSX.Element {  return <svg className="pet-desk-avatar space-explorer" viewBox="0 0 220 190" role="img" aria-label="太空建模员在失重状态下漂浮探索星球">
     <g className="space-stars" fill="#a5afd9"><path d="m31 32 3-9 3 9 9 3-9 3-3 9-3-9-9-3zM174 91l2-6 2 6 6 2-6 2-2 6-2-6-6-2z" /><circle cx="184" cy="23" r="2" /><circle cx="20" cy="108" r="2" /><circle cx="143" cy="13" r="2" /><circle cx="201" cy="132" r="3" /></g>
     <g className="space-planet"><circle cx="176" cy="153" r="25" fill="#b5a4dc" /><path d="M161 137q16 1 26 10m-30 9q19-1 35 10" stroke="#9585c5" strokeWidth="5" fill="none" /><ellipse cx="176" cy="153" rx="39" ry="9" transform="rotate(-25 176 153)" fill="none" stroke="#d5bda0" strokeWidth="5" /></g>
     <path className="space-tether" d="M89 112Q19 173 38 127T29 63" fill="none" stroke="#a7b9d4" strokeWidth="3" strokeDasharray="5 3" />
@@ -81,6 +214,10 @@ export function PetDeskAvatar({ appearance = 'student' }: { appearance?: PetAppe
   if (appearance === 'pixel') return <PixelExplorer />;
   if (appearance === 'researcher') return <FieldResearcher />;
   if (appearance === 'astronaut') return <SpaceExplorer />;
+  if (appearance === 'owl-3d') return <OwlProfessor3D />;
+  if (appearance === 'robot-3d') return <RobotAssistant3D />;
+  if (appearance === 'fox-3d') return <DataFox3D />;
+  if (appearance === 'bear-3d') return <PolarBear3D />;
   const space = false;
   const scholar = false;
   const coat = '#9681da';
