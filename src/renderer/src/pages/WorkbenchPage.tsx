@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Project, Phase } from '../../../shared/competition-studio';
+import type { FileNode } from '@shared/types';
 import { COMPETITIONS } from '../../../shared/competitions-data';
 import { calendarCompetition, competitionDeadline, countdownFor } from '../../../shared/competition-countdown';
 import { useApp } from '../store/app';
@@ -8,9 +9,27 @@ import { friendlyError } from '../lib/friendly-error';
 
 const drafts = new Map<string, Project>();
 const contests = [...COMPETITIONS].sort((a, b) => b.year - a.year || a.name.localeCompare(b.name, 'zh-CN'));
+type DeliveryFileStats = { pdf: number; source: number; figure: number; table: number };
+function flattenFiles(nodes: FileNode[], out: FileNode[] = []): FileNode[] {
+  for (const node of nodes) { out.push(node); if (node.children) flattenFiles(node.children, out); }
+  return out;
+}
+function scanDeliveryFiles(nodes: FileNode[]): DeliveryFileStats {
+  const stats: DeliveryFileStats = { pdf: 0, source: 0, figure: 0, table: 0 };
+  for (const node of flattenFiles(nodes)) {
+    if (node.isDirectory) continue;
+    const ext = node.name.split('.').pop()?.toLowerCase() ?? '';
+    if (ext === 'pdf') stats.pdf += 1;
+    else if (['tex', 'typ', 'docx', 'md'].includes(ext)) stats.source += 1;
+    else if (['png', 'jpg', 'jpeg', 'svg', 'drawio'].includes(ext)) stats.figure += 1;
+    else if (['xlsx', 'xls', 'csv', 'tsv'].includes(ext)) stats.table += 1;
+  }
+  return stats;
+}
 export function WorkbenchPage(): JSX.Element {
   const project = useApp(s => s.currentProject);
   const [draft, setDraft] = useState<Project | null>(null);
+  const [fileStats, setFileStats] = useState<DeliveryFileStats | null>(null);
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, []);
   useEffect(() => {
@@ -20,6 +39,13 @@ export function WorkbenchPage(): JSX.Element {
     }).catch(e => live && setMessage(friendlyError(e, '比赛信息暂时没有读取成功，可以重新打开。')));
     return () => { live = false; };
   }, [project?.id]);
+  useEffect(() => {
+    let live = true;
+    setFileStats(null);
+    if (!project) return () => { live = false; };
+    void window.mathmodel.file.tree().then(nodes => { if (live) setFileStats(scanDeliveryFiles(nodes)); }).catch(() => { if (live) setFileStats({ pdf: 0, source: 0, figure: 0, table: 0 }); });
+    return () => { live = false; };
+  }, [project?.id]);
   if (!draft) return <div className="studio-page"><p>{message || '正在打开比赛工作台…'}</p></div>;
   const contest = calendarCompetition(draft), countdown = countdownFor(contest, now);
   const checkedCount = draft.checklist.filter(item => item.done).length;
@@ -27,7 +53,9 @@ export function WorkbenchPage(): JSX.Element {
   const deliveryChecks = [
     { label: '比赛信息', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛', ok: Boolean(contest) },
     { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
-    { label: '方案与依据', detail: `${draft.alternatives.length} 个方案 · ${draft.evidence.length} 条依据`, ok: draft.alternatives.length > 0 && draft.evidence.length > 0 },
+    { label: '论文文件', detail: fileStats ? `${fileStats.pdf} 个 PDF · ${fileStats.source} 个源文件` : '正在读取项目文件', ok: fileStats ? fileStats.pdf > 0 : null },
+    { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
+    { label: '图表与数据', detail: fileStats ? `${fileStats.figure} 个图表 · ${fileStats.table} 个数据文件` : '正在读取项目文件', ok: fileStats ? fileStats.figure > 0 || fileStats.table > 0 : null },
     { label: '提交清单', detail: `${checkedCount}/${draft.checklist.length} 项已核对`, ok: checkPercent === 100 },
   ];
   const patch = (value: Partial<Project>) => {
@@ -79,7 +107,7 @@ export function WorkbenchPage(): JSX.Element {
     </section>
     <section className="studio-delivery-panel" aria-label="论文交付检查">
       <header><div><span className="studio-eyebrow">提交前先看一眼</span><h2>论文交付检查</h2></div><button className="btn btn-primary" disabled={busy} onClick={() => void ask('请运行一次论文交付检查：读取当前项目的比赛信息、论文 PDF、图表和表格，核对正文页数、表格是否裁切、图片是否缺失、引用与章节结构是否完整，并区分已确认、需要修改和需要人工确认的项目。请使用 competition-audit、table-layout-audit 和 paper-page-fit 等匹配技能；不要把我的勾选视为验证结果。', 'chat')}>立即检查</button></header>
-      <div className="studio-delivery-grid">{deliveryChecks.map(item => <div className={`studio-delivery-item${item.ok ? ' is-ok' : ''}`} key={item.label}><span className="studio-delivery-dot">{item.ok ? '✓' : '!'}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div><em>{item.ok ? '已具备' : '待补充'}</em></div>)}</div>
+      <div className="studio-delivery-grid">{deliveryChecks.map(item => <div className={`studio-delivery-item${item.ok === true ? ' is-ok' : item.ok === null ? ' is-pending' : ''}`} key={item.label}><span className="studio-delivery-dot">{item.ok === true ? '✓' : item.ok === null ? '…' : '!'}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div><em>{item.ok === true ? '已具备' : item.ok === null ? '读取中' : '待补充'}</em></div>)}</div>
       <p className="studio-delivery-note">这里显示的是项目资料是否准备齐全，不代替助手对 PDF、表格和比赛规则的实际核对。</p>
     </section>
     {message && <p className="studio-notice" role="status">{message}</p>}
