@@ -53,7 +53,7 @@
  *   · 图库前 5 个模板 → 插入模板提示词（本仓 `GalleryPage.tsx:273` / `SidePanel.tsx:62`
  *     的既有语义）
  *   · 技能 → 插入 `/{name}`：`SkillMeta.name` 就是 frontmatter 里的命令名
- *     （`resources/builtin-skills/mma-paper/SKILL.md` 的 `name: mma-paper`），
+ *     （`resources/builtin-skills/write-paper/SKILL.md` 的 `name: write-paper`），
  *     而本仓"用某个技能"正是在输入框里打 `/命令`。
  *   · `manageX` / `openGallery` / `manageDatasets` → 跳页
  *     （原版 `to:"/extensions"?section=` / `/gallery` / `/database`）

@@ -1340,7 +1340,7 @@ export const en = {
     },
     paperTemplatesSection: {
       builtinBadge: "Built in",
-      builtinGroup: "Built in · mma-paper",
+      builtinGroup: "Built in · write-paper",
       closeSearch: "Close search",
       contents: "Template contents",
       customBadge: "Custom",

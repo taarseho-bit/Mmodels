@@ -784,7 +784,7 @@ export class AgentSession extends EventEmitter {
 
       // ── 技能插件 ────────────────────────────────────────────
       // 技能必须作为**完整的 Claude Code 插件**交给 SDK，否则 CLI 不注册斜杠命令，
-      // `/mma-paper` 之类的模式会静默失效（agent 侧只看得到 `Unknown command`）。
+      // `/write-paper` 之类的模式会静默失效（agent 侧只看得到 `Unknown command`）。
       // 踩过的坑：
       //   1. 传 string[]（技能目录列表）→ SDK 抛 `Unsupported plugin type: undefined`
       //      （`plugins` 只接受 `{ type: 'local', path }`，会被翻译成 `--plugin-dir <path>`）

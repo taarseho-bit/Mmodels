@@ -328,7 +328,7 @@ export function PaperSection(): JSX.Element {
         <div className="panel col" style={{ padding: 14, gap: 10 }}>
           <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.7 }}>
             {t(
-              '把任意本地目录作为论文模板源。Agent 写论文时会按 mma-paper 的规则把该目录整体复制到项目里，从入口文件开始写。不选则使用内置比赛模板。',
+              '把任意本地目录作为论文模板源。Agent 写论文时会按 write-paper 的规则把该目录整体复制到项目里，从入口文件开始写。不选则使用内置比赛模板。',
             )}
           </span>
 

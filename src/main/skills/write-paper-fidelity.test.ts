@@ -3,15 +3,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const skillPath = resolve(process.cwd(), 'resources', 'builtin-skills', 'mma-paper', 'SKILL.md');
+const skillPath = resolve(process.cwd(), 'resources', 'builtin-skills', 'write-paper', 'SKILL.md');
 const LOCAL_BLOCK = /<!-- MMODELS-LOCAL-START: [^>]+ -->\r?\n[\s\S]*?<!-- MMODELS-LOCAL-END: [^>]+ -->\r?\n?/g;
-const ORIGINAL_SHA256 = '4f547e9b3e9476da236e2396dcae4f97dd9ce2f10b91755426d2fcbd18b1d086';
+const ORIGINAL_SHA256 = '60f8a5e383365a8adbce3fda163d425539422ee4b95d7d968aecf1ab0b5285fc';
 
 function originalBodyFromCurrent(): string {
   return readFileSync(skillPath, 'utf8').replace(LOCAL_BLOCK, '').replace(/\r\n/g, '\n');
 }
 
-describe('mma-paper 原版兼容', () => {
+describe('write-paper 原版兼容', () => {
   it('去掉明确标记的本地追加后，与原版 SKILL.md 逐字一致', () => {
     const hash = createHash('sha256').update(originalBodyFromCurrent(), 'utf8').digest('hex');
     expect(hash).toBe(ORIGINAL_SHA256);

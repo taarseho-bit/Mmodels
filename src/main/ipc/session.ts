@@ -516,7 +516,7 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
  *  1. 项目根写入 `AGENTS.md` / `CLAUDE.md`（PROJECT_INSTRUCTIONS），SDK 自动读入
  *  2. 每条用户消息由 `composePrompt()` 按任务类型预置起始指令
  *  3. 技能（SKILL.md）通过 plugins 挂载 —— 由 `agent/skills-plugin.ts` 物化成
- *     完整插件目录后挂载，斜杠命令（/mma-paper 等）因此才会被注册
+ *     完整插件目录后挂载，斜杠命令（/write-paper 等）因此才会被注册
  *
  * 因此这里只注入**工作目录**与**项目配置文件路径**这类机器事实，
  * 不自创「你是某某助手」的措辞 —— 那是原版没有的东西。
@@ -575,12 +575,12 @@ export function multiAgentTriggerForPrompt(prompt: string): MultiAgentTrigger {
   if (/(启动|使用|调用|组织|开启).{0,8}(多智能体|协作组|子智能体)|(多智能体|协作组|子智能体).{0,8}(协作|分析|运行|工作)/.test(text)) {
     return 'complex';
   }
-  if (command === 'mma-review') return 'review';
+  if (command === 'review-paper') return 'review';
   if (command === 'competition-audit') return 'audit';
 
   const attachmentCount = (text.match(/^\s*-\s+(?:[A-Za-z]:[\\/]|\/)/gm) ?? []).length;
   const complexWork = /(完整|全面|系统|从头|重新).{0,16}(解题|求解|建模|论文|评审|核验)|重新运行|继续完成|解决(?:全部|这个)?问题|完成(?:整篇|一篇)?论文|建立模型并求解/;
-  if (command === 'mma-paper' && (attachmentCount > 0 || complexWork.test(text) || text.length >= 100)) {
+  if (command === 'write-paper' && (attachmentCount > 0 || complexWork.test(text) || text.length >= 100)) {
     return 'paper';
   }
   if (attachmentCount >= 2 && /(解题|求解|建模|分析|优化|论文|检查)/.test(text)) return 'multi-file';
@@ -657,7 +657,7 @@ export function buildSystemPrompt(
     '论文模板与比赛字段配置位于 `.mathmodel/paper/config.json`（早期版本可能写在 `.mmodels/paper/config.json`，两者等价，都读得到）。',
     // 技能已由插件机制注册成斜杠命令（命令描述自带说明），这里只作一句提示，
     // 不复述技能目录路径 —— 否则 agent 会再去把每个 SKILL.md 读一遍，纯属浪费。
-    '技能已挂载为插件，可直接用斜杠命令调用（/mma-paper、/mma-review、/mma-figure 等）；' +
+    '技能已挂载为插件，可直接用斜杠命令调用（/write-paper、/review-paper、/draw-figures 等）；' +
       '仅当需要查看某个技能的完整说明时，才读取它自己的 SKILL.md。',
 
     // ── 主智能体领衔角色（2026-09-21 用户需求）────────────────────
@@ -801,7 +801,7 @@ function ensureProjectInstructions(cwd: string): void {
 /** 随包资源目录（打包后是 process.resourcesPath，开发期是 <appPath>/resources） */
 function resourcesDir(): string {
   return resolveResourcesRoot(
-    ['builtin-skills', 'mma-paper', 'assets', 'template'],
+    ['builtin-skills', 'write-paper', 'assets', 'template'],
     '论文模板',
   );
 }
@@ -815,8 +815,8 @@ function resourcesDir(): string {
  *    可填的 LaTeX 字段（用户实机抱怨的原始现象）。
  *
  * 触发条件（三条都要满足，缺一不写）：
- *   1. 本次确实是一条**论文任务** —— 判定用「提示词里有 `/mma-paper` 斜杠命令」。
- *      输入区在「写论文」模式下会自动给每条消息前置 `/mma-paper`（`Composer.tsx`
+ *   1. 本次确实是一条**论文任务** —— 判定用「提示词里有 `/write-paper` 斜杠命令」。
+ *      输入区在「写论文」模式下会自动给每条消息前置 `/write-paper`（`Composer.tsx`
  *      的 `MODE_COMMAND`），用户手打命令也走同一条判定。
  *      ⚠️ 这里**不能**用 `settings.composerMode === 'paper'` —— 它的默认值就是
  *      `'paper'`，会导致任何一条普通消息都去建配置文件（过度写入）。
@@ -831,7 +831,7 @@ function ensurePaperProjectConfig(cwd: string, prompt: string): void {
     console.log('[paper-config] skipped (paperInitProjectConfig=false)');
     return;
   }
-  if (detectSlashCommand(prompt) !== 'mma-paper') return;
+  if (detectSlashCommand(prompt) !== 'write-paper') return;
   if (!cwd) return;
 
   const templates = listPaperTemplates(resourcesDir());

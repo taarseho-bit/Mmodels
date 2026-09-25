@@ -254,8 +254,8 @@ export const settingsOv: Record<string, string> = {
   // 原版把模板来源存在项目配置里（template.source='custom' + sourcePath），
   // 但从没给过「选一个本地目录当模板源」的入口；这段是补的。
   '自定义模板': 'Custom template',
-  '把任意本地目录作为论文模板源。Agent 写论文时会按 mma-paper 的规则把该目录整体复制到项目里，从入口文件开始写。不选则使用内置比赛模板。':
-    'Use any local folder as the paper template source. When writing a paper the agent copies that folder into the project per the mma-paper rules and starts from its entry file. Leave unset to use a built-in contest template.',
+  '把任意本地目录作为论文模板源。Agent 写论文时会按 write-paper 的规则把该目录整体复制到项目里，从入口文件开始写。不选则使用内置比赛模板。':
+    'Use any local folder as the paper template source. When writing a paper the agent copies that folder into the project per the write-paper rules and starts from its entry file. Leave unset to use a built-in contest template.',
   '自定义模板源': 'Custom template source',
   '内置比赛模板': 'Built-in contest template',
   '（未设置）': '(not set)',

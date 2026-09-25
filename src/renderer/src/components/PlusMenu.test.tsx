@@ -100,7 +100,7 @@ function makeDeps(over: Partial<PlusMenuDeps> = {}): PlusMenuDeps {
       { id: 'p2', name: '乙项目', root: 'C:/p2', createdAt: 1, updatedAt: 2, lastOpenedAt: 1 },
     ],
     skills: [
-      { dirName: 'mma-paper', name: 'mma-paper' },
+      { dirName: 'write-paper', name: 'write-paper' },
       { dirName: 'data-search', name: 'data-search' },
     ],
     datasets: [
@@ -648,13 +648,13 @@ describe('② 元素树：真的点到那些按钮上', () => {
     const d = makeDeps();
     const items = buildPlusSubItems('skills', d);
     expect(items.map((i) => i.id)).toEqual([
-      'mma-paper',
+      'write-paper',
       'data-search',
       'manageSkills',
       'browseSkills',
     ]);
     activatePlusSubItem(items[0], { onClose: noop });
-    expect(d.onInsertSkill).toHaveBeenCalledWith('mma-paper');
+    expect(d.onInsertSkill).toHaveBeenCalledWith('write-paper');
   });
 
   it('空态：没有项目 / 没有已启用技能时给的是**禁用**行，且点了什么都不发生', () => {

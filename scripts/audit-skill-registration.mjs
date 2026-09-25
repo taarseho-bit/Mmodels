@@ -79,7 +79,7 @@ const q = query({
 try {
   const commands = await q.supportedCommands();
   if (!commands.some(c => c.name.includes('audit-project-fixture'))) throw new Error('项目技能未注册');
-  if (!commands.some(c => c.name === 'mathmodel:mma-paper')) throw new Error('论文技能未注册');
+  if (!commands.some(c => c.name === 'mathmodel:write-paper')) throw new Error('论文技能未注册');
   if (process.argv.includes('--source-skills') && !commands.some(c => c.name === 'mathmodel:competition-audit')) throw new Error('新增比赛核验技能未注册');
   const context = await q.getContextUsage();
   if (!context.isAutoCompactEnabled || context.autoCompactThreshold > 900000) throw new Error('压缩触发线未在真实容量的90%以内');

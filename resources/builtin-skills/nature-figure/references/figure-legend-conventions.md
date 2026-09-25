@@ -15,7 +15,7 @@ source wording.**
 > caption rule.** There, `\caption{}` is a short title (≤20 characters, no
 > terminal period, no results) and every interpretation — panels, colours,
 > conclusions — belongs in the body text next to the figure. When a paper skill
-> such as `mma-paper` / `cumcm-paper` is driving the work, **its caption rule
+> such as `write-paper` / `cumcm-paper` is driving the work, **its caption rule
 > wins over this file.**
 
 ## Legend structure — the fixed skeleton
@@ -77,7 +77,7 @@ than figures.
 
 > **适用范围**：以下是投**期刊**（Nature 系）的图注约定。**中文数模竞赛论文（CUMCM /
 > `cumcmthesis.cls`）、学位论文不适用** —— 那里 `\caption{}` 只写 ≤20 字短图题（不带句号、
-> 不写结论、不逐项解释 a/b），分面说明、颜色映射和结论一律写进图旁正文。由 `mma-paper` /
+> 不写结论、不逐项解释 a/b），分面说明、颜色映射和结论一律写进图旁正文。由 `write-paper` /
 > `cumcm-paper` 驱动时，**以那边的图注规则为准**。
 
 - 结构铁律:`图 N | 加粗名词短语总题` → `a/b/c` 现在时电报式分面 → 统计(n、误差、检验)写进图注 → "Source data are provided as a Source Data file." 套语。

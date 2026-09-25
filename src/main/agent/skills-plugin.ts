@@ -2,10 +2,10 @@
  * 技能插件物化器 —— 把技能摊成一份**完整的 Claude Code 插件目录**。
  *
  * 为什么必须物化：
- *   Claude Code 的斜杠命令（`/mma-paper`、`/mma-review`…）**只由插件注册**
+ *   Claude Code 的斜杠命令（`/write-paper`、`/review-paper`…）**只由插件注册**
  *   （sdk.d.ts：*"Plugins provide custom commands, agents, skills, and hooks"*）。
  *   只把技能目录列在 systemPrompt 里，agent 侧根本不会注册命令，
- *   用户发出 `/mma-paper …` 时会得到 `Unknown command`，等于该模式什么都没触发。
+ *   用户发出 `/write-paper …` 时会得到 `Unknown command`，等于该模式什么都没触发。
  *
  * 产物布局（与原版 userData 实拍结构一致）：
  *   <userData>/skills-plugin/

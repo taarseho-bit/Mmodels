@@ -4,12 +4,12 @@
  * ⚠️ 斜杠命令名 = 目录名 = frontmatter name，被 mode-commands.test.ts 钉死，
  *    **不能**改目录 —— 改了整条命令链（模板/提示词/协作触发/测试）都会断。
  *    所以「改名」落在**显示层**：列表/菜单/详情里展示中文名，
- *    命令名（/mma-paper 等）作为辅助信息保留在副标题与 tooltip 里。
+ *    命令名（/write-paper 等）作为辅助信息保留在副标题与 tooltip 里。
  */
 export const SKILL_DISPLAY_NAMES: Record<string, string> = {
-  'mma-paper': '论文写作',
-  'mma-review': '论文评审',
-  'mma-figure': '建模绘图',
+  'write-paper': '论文写作',
+  'review-paper': '论文评审',
+  'draw-figures': '建模绘图',
   'data-search': '数据检索',
   'competition-audit': '交付审计',
   'method-selector': '方法选型',

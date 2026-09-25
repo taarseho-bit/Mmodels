@@ -1,5 +1,5 @@
 ---
-name: mma-figure
+name: draw-figures
 description: 数学建模论文配图的统一入口。用户说“画图”“画一张…图”“补几张图”“把这个数据可视化”“画技术路线图/流程图”“复刻某个绘图模板”时使用。本 skill 不直接作图，只做路由——按需求把任务分派给 nature-figure（数据图表）、mathmodel-figure-templates（内置科研绘图模板复刻）或 paper-diagram（draw.io 流程/框架图），保证图片落到当前项目 figures/ 目录，并在项目含 document.tex 时给出可直接粘贴的插图 LaTeX 片段。
 ---
 

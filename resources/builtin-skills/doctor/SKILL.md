@@ -25,7 +25,7 @@ allowed-tools: Bash(*), Read, AskUserQuestion
 | --- | --- |
 | Python 3 | 建模求解与绘图脚本 |
 | `git` | MModels 的本地项目版本存档与回合快照恢复 |
-| `xelatex` | `mma-paper` 的 CUMCM 中文 LaTeX 模板 |
+| `xelatex` | `write-paper` 的 CUMCM 中文 LaTeX 模板 |
 | `latexmk` | 论文自动多轮编译 |
 | `bibtex` | 参考文献编译 |
 | `numpy`, `scipy`, `pandas` | 数值计算、优化与数据处理 |

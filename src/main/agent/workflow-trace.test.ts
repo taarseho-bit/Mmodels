@@ -195,9 +195,9 @@ describe('真实事件工作流观察器', () => {
   });
   it('入口指令展开独立记录，不冒充 Skill 工具调用或保存全文', async () => {
     const trace = new WorkflowTrace('a', false, () => {});
-    await invoke(trace, { hook_event_name: 'UserPromptExpansion', expansion_type: 'slash_command', command_name: '/mathmodel:mma-paper', command_args: 'SECRET', prompt: 'SECRET' });
+    await invoke(trace, { hook_event_name: 'UserPromptExpansion', expansion_type: 'slash_command', command_name: '/mathmodel:write-paper', command_args: 'SECRET', prompt: 'SECRET' });
     expect(trace.run.nodes[0].tools[0].label).toBe('载入入口指令 · 论文写作');
-    expect(trace.run.nodes[0].tools[0].skill).toBe('mathmodel:mma-paper');
+    expect(trace.run.nodes[0].tools[0].skill).toBe('mathmodel:write-paper');
     expect(trace.run.nodes[0].tools[0].skillSource).toBe('entry');
     expect(JSON.stringify(trace.run)).not.toContain('SECRET');
     trace.finish('completed');

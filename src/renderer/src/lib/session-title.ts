@@ -1,6 +1,6 @@
 const MODE_LABELS: Record<string, string> = {
-  'mma-paper': '论文写作',
-  'mma-review': '论文审阅',
+  'write-paper': '论文写作',
+  'review-paper': '论文审阅',
 };
 
 /** Build a readable task title from the composed prompt instead of exposing commands or file paths. */

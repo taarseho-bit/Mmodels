@@ -12,14 +12,14 @@ import { mainAgentPersonaSection, taskKindForPrompt } from './main-agent-persona
  */
 describe('taskKindForPrompt —— 斜杠命令反推任务类型', () => {
   it('四种模式命令各自命中', () => {
-    expect(taskKindForPrompt('/mma-paper 完成一篇完整论文')).toBe('paper');
-    expect(taskKindForPrompt('/mma-review 按评审标准审读')).toBe('review');
+    expect(taskKindForPrompt('/write-paper 完成一篇完整论文')).toBe('paper');
+    expect(taskKindForPrompt('/review-paper 按评审标准审读')).toBe('review');
     expect(taskKindForPrompt('/data-search 查找并核验公开数据')).toBe('data');
-    expect(taskKindForPrompt('/mma-figure 绘制投稿级图表')).toBe('figure');
+    expect(taskKindForPrompt('/draw-figures 绘制投稿级图表')).toBe('figure');
   });
 
   it('命令在消息中部也命中（渲染层预填后用户在前面补了文字）', () => {
-    expect(taskKindForPrompt('请开始：\n/mma-review 输出评分')).toBe('review');
+    expect(taskKindForPrompt('请开始：\n/review-paper 输出评分')).toBe('review');
   });
 
   it('chat 与识别不出命令的消息 → chat（不注入角色）', () => {
@@ -31,11 +31,11 @@ describe('taskKindForPrompt —— 斜杠命令反推任务类型', () => {
 
 describe('mainAgentPersonaSection —— 注入与零漂移', () => {
   it('四种模式各含对应的领衔角色标题与技能口径', () => {
-    const paper = mainAgentPersonaSection('/mma-paper 写论文');
+    const paper = mainAgentPersonaSection('/write-paper 写论文');
     expect(paper.join('\n')).toContain('论文写作主智能体');
     expect(paper.join('\n')).toContain('paper-section-writer');
 
-    const review = mainAgentPersonaSection('/mma-review 评审');
+    const review = mainAgentPersonaSection('/review-paper 评审');
     expect(review.join('\n')).toContain('评审主智能体');
     expect(review.join('\n')).toContain('claim-evidence-audit');
 
@@ -43,7 +43,7 @@ describe('mainAgentPersonaSection —— 注入与零漂移', () => {
     expect(data.join('\n')).toContain('数据检索主智能体');
     expect(data.join('\n')).toContain('data-auditor-cleaner');
 
-    const figure = mainAgentPersonaSection('/mma-figure 绘图');
+    const figure = mainAgentPersonaSection('/draw-figures 绘图');
     expect(figure.join('\n')).toContain('图表制作主智能体');
     expect(figure.join('\n')).toContain('figure-table-planner');
   });

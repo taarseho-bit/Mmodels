@@ -17,10 +17,10 @@ import { detectSlashCommand } from './prompts';
 
 /** 斜杠命令 → 任务类型（只收录 Composer 五模式里带命令的四种） */
 const KIND_BY_COMMAND: Record<string, TaskKind> = {
-  'mma-paper': 'paper',
-  'mma-review': 'review',
+  'write-paper': 'paper',
+  'review-paper': 'review',
   'data-search': 'data',
-  'mma-figure': 'figure',
+  'draw-figures': 'figure',
 };
 
 /** 从本轮提示词反推任务类型；识别不出一律 chat（通用主智能体，不注入角色段） */

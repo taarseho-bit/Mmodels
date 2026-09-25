@@ -218,7 +218,7 @@ describe('原版核心选项对齐', () => {
       prompt = args.prompt as SessionInputQueue;
       return { supportedCommands: async () => [], close: () => { closed = true; } };
     };
-    const { events, done } = runOnce('/mma-paper 写论文');
+    const { events, done } = runOnce('/write-paper 写论文');
     await done;
     expect(closed).toBe(true);
     expect(prompt?.isClosed).toBe(true);

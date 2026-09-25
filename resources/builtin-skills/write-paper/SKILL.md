@@ -1,5 +1,5 @@
 ---
-name: mma-paper
+name: write-paper
 description: 使用内置的多赛事 LaTeX 模板完成数学建模竞赛的逐问建模求解、论文撰写、高级绘图和编译。适用于所有竞赛论文，以及包含 .tex、.cls 文件的数学建模论文项目。
 ---
 
@@ -18,7 +18,7 @@ description: 使用内置的多赛事 LaTeX 模板完成数学建模竞赛的逐
 <!-- MMODELS-LOCAL-END: legacy-config -->
 - `template.source` 为 `custom` 时，以配置中的 `template.sourcePath` 普通目录为模板源。
 - `template.source` 为 `builtin` 时，先定位本 Skill 所在目录（即包含本 `SKILL.md` 的
-  `mma-paper` 目录），再以其中的 `assets/template/<template.id>/` 为模板源，不要依赖固定的用户主目录路径。
+  `write-paper` 目录），再以其中的 `assets/template/<template.id>/` 为模板源，不要依赖固定的用户主目录路径。
 - 没有项目配置时，优先采用首条任务提示明确指定的模板源；仍判断不出来时，中文默认 `cumcm`，英文默认 `mcm`。
 
 仅当配置指定的入口 `.tex` 尚不存在时，才由你把模板源完整复制到当前工作目录；若入口已存在，直接在当前论文上继续，禁止用模板覆盖已有论文、`.mathmodel/`、`AGENTS.md` 或 `CLAUDE.md`。

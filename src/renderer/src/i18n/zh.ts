@@ -1376,7 +1376,7 @@ export const zh = {
     },
     paperTemplatesSection: {
       builtinBadge: '内置',
-      builtinGroup: '内置 · mma-paper',
+      builtinGroup: '内置 · write-paper',
       closeSearch: '关闭搜索',
       contents: '模板内容',
       customBadge: '自定义',

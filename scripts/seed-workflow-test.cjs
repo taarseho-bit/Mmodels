@@ -18,7 +18,7 @@ const tool = (id, name, label, skill, artifact) => ({ id, name, label, skill, ar
 const run = { id: randomUUID(), sessionId, startedAt: now, updatedAt: now + 1000, revision: 7,
   status: 'running', collaborationEnabled: true, truncated: false,
   nodes: [
-    node('main', '建模主助手', 'main', [tool('p', 'Skill', '论文写作', 'mathmodel:mma-paper'), tool('w', 'Write', '生成文件', undefined, 'workflow-ui-sample.md')]),
+    node('main', '建模主助手', 'main', [tool('p', 'Skill', '论文写作', 'mathmodel:write-paper'), tool('w', 'Write', '生成文件', undefined, 'workflow-ui-sample.md')]),
     node('a', '题意分析员', 'problem-analyst', [tool('r', 'Read', '阅读资料')]),
     node('b', '数据分析员', 'data-analyst', [tool('s', 'Skill', '数据检索', 'mathmodel:data-search'), tool('c', 'Bash', '运行计算或命令')]),
     node('c', '灵敏度核验员', 'general-purpose', [tool('v', 'Skill', '比赛交付核对', 'mathmodel:competition-audit')]),

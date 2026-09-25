@@ -15,7 +15,7 @@
  *
  * 所以本文件**在磁盘上真跑**：调的就是 IPC 通道体
  * `deletePaperTemplate`（`src/main/ipc/paper.ts` 的删除处理里唯一的一行逻辑），
- * 用**真实的** `resources/builtin-skills/mma-paper/assets/template` 当内置库、
+ * 用**真实的** `resources/builtin-skills/write-paper/assets/template` 当内置库、
  * 临时目录当受管库，然后逐条断言：
  *   ① fork 后「我的模板」多一条、内置**一条不少**（集合断言）
  *   ② 拿内置模板 id 删 → 被拒（403）且**磁盘上没有任何模板文件被删**

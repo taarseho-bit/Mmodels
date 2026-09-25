@@ -395,17 +395,17 @@ const STARTERS: Array<{ title: string; desc: string; tags: string[]; prompt: str
   },
   {
     title: '论文成稿', desc: '按比赛模板完成正文、图表与参考文献', tags: ['论文'],
-    prompt: '/mma-paper 请读取当前项目的题目、数据、比赛规则和已有结果，先复核关键结论再成文；不以写作代替求解，完成后报出 PDF 路径、页数与内容构成。',
+    prompt: '/write-paper 请读取当前项目的题目、数据、比赛规则和已有结果，先复核关键结论再成文；不以写作代替求解，完成后报出 PDF 路径、页数与内容构成。',
     icon: 'pen-line', tint: 'rose',
   },
   {
     title: '投稿级图表', desc: '数据图与示意图按出版标准出图', tags: ['图表'],
-    prompt: '/mma-figure 请根据当前项目的结果与数据规划一组投稿级图表（先给清单再逐张绘制），统一风格与中文标注，输出到 figures/ 并给出 LaTeX 插图片段。',
+    prompt: '/draw-figures 请根据当前项目的结果与数据规划一组投稿级图表（先给清单再逐张绘制），统一风格与中文标注，输出到 figures/ 并给出 LaTeX 插图片段。',
     icon: 'chart-column', tint: 'violet',
   },
   {
     title: '评审与打分', desc: '评委视角的评分与逐条修改清单', tags: ['评审'],
-    prompt: '/mma-review 请以数学建模竞赛评委视角审读当前论文，输出分项评分、总评与按严重程度排序的修改清单（review.md），不直接改动论文正文。',
+    prompt: '/review-paper 请以数学建模竞赛评委视角审读当前论文，输出分项评分、总评与按严重程度排序的修改清单（review.md），不直接改动论文正文。',
     icon: 'clipboard-check', tint: 'teal',
   },
 ];

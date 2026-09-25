@@ -25,11 +25,11 @@ export type TaskKind = 'chat' | 'paper' | 'figure' | 'review' | 'data';
  */
 export const TASK_TEMPLATES: Record<TaskKind, string> = {
   chat: '',
-  paper: '/mma-paper 完成一篇内容完整和图表丰富多彩，结果正确的、格式正确的、可直接提交的数学建模论文',
+  paper: '/write-paper 完成一篇内容完整和图表丰富多彩，结果正确的、格式正确的、可直接提交的数学建模论文',
   figure:
-    '/mma-figure 根据下面的需求绘制投稿级图表，图片保存到当前项目的 figures/ 目录；项目里有 document.tex 时同时给出可直接粘贴的插图 LaTeX 片段',
+    '/draw-figures 根据下面的需求绘制投稿级图表，图片保存到当前项目的 figures/ 目录；项目里有 document.tex 时同时给出可直接粘贴的插图 LaTeX 片段',
   review:
-    '/mma-review 按数学建模竞赛评审标准审读论文，输出评分与逐条修改建议（review.md），未经确认不要直接改动论文正文',
+    '/review-paper 按数学建模竞赛评审标准审读论文，输出评分与逐条修改建议（review.md），未经确认不要直接改动论文正文',
   data:
     '/data-search 查找并核验下面描述的公开数据，下载到当前项目的 data/ 目录并记录来源与许可',
 };
@@ -52,7 +52,7 @@ export function describeTemplateSource(t: PaperTemplateRef): string {
     return [
       '使用下面的自定义模板源目录：',
       t.sourcePath,
-      '由你按 mma-paper 的规则将它完整复制到当前论文项目；',
+      '由你按 write-paper 的规则将它完整复制到当前论文项目；',
     ].join('\n');
   }
   return `使用本 Skill 的 \`assets/template/${t.id}/\` 比赛模板。`;
@@ -81,8 +81,8 @@ export function detectSlashCommand(text: string): string | null {
  * 规则（逐条照搬）：
  *   - chat 直接返回用户原文，不做任何包装
  *   - 非 chat：先探测用户是否已手写斜杠命令；
- *     若已写命令且「不是 mma-paper 且带模板」→ 直接返回，不注入模板段
- *   - 已写 `/mma-paper` 且有模板 → 用户原文 + 模板来源说明（不重复注入 Rwe 模板）
+ *     若已写命令且「不是 write-paper 且带模板」→ 直接返回，不注入模板段
+ *   - 已写 `/write-paper` 且有模板 → 用户原文 + 模板来源说明（不重复注入 Rwe 模板）
  *   - 其余 → [Rwe 模板, 模板来源说明, 用户原文] 过滤空值后用换行拼接
  */
 export function composePrompt(
@@ -95,12 +95,12 @@ export function composePrompt(
   const cmd = detectSlashCommand(userText);
   const tpl = kind === 'paper' ? opts?.paperTemplate : undefined;
 
-  // 已有斜杠命令，且不是「mma-paper 且有模板」的组合 → 尊重用户写法
-  if (cmd && !(cmd === 'mma-paper' && tpl)) return userText;
+  // 已有斜杠命令，且不是「write-paper 且有模板」的组合 → 尊重用户写法
+  if (cmd && !(cmd === 'write-paper' && tpl)) return userText;
 
   const trimmed = userText.trim();
 
-  if (cmd === 'mma-paper' && tpl) {
+  if (cmd === 'write-paper' && tpl) {
     return [trimmed, describeTemplateSource(tpl)].join('\n');
   }
 
@@ -122,10 +122,10 @@ export const PROJECT_INSTRUCTIONS: string = [
   '',
   '## 论文工作约定',
   '',
-  '- 使用 `/mma-paper` 完成建模、求解、写作、绘图和编译；完整处理每个问题，不跳过子问题。',
+  '- 使用 `/write-paper` 完成建模、求解、写作、绘图和编译；完整处理每个问题，不跳过子问题。',
   '- 开始工作前先读取 `.mathmodel/paper/config.json`；其中的模板、比赛字段和队伍档案是用户数据。',
   '- 若项目里只存在旧的 `.mmodels/paper/config.json`（早期版本写下的目录名），内容与 `.mathmodel/paper/config.json` 等价，同样可以读；不要删它。',
-  '- 使用配置指定的比赛模板：`builtin` 从 `mma-paper/assets/template/<id>/` 定位，`custom` 从 `sourcePath` 定位；仅在入口文件尚不存在时完整复制到当前项目，不覆盖已有论文或项目配置。',
+  '- 使用配置指定的比赛模板：`builtin` 从 `write-paper/assets/template/<id>/` 定位，`custom` 从 `sourcePath` 定位；仅在入口文件尚不存在时完整复制到当前项目，不覆盖已有论文或项目配置。',
   '- 身份与联系方式只能写入模板明确要求的封面、承诺书或报名页，禁止出现在匿名正文、页眉、图表、代码和文件名中。',
   '- 每个问题保留可复现的独立求解脚本，数据、图表和结论必须可追溯；不得编造数据、运行结果或参考文献。',
   '- 图表保持统一风格和清晰标注，图注简短、分析写入正文；引用图表、公式和文献时保持编号一致，文章结构紧凑、逻辑清晰。',
@@ -177,7 +177,7 @@ export const RESULT_SECTIONS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────
-// 七、模型选择向导（AskUserQuestion 约束，取自 mma-paper/SKILL.md 原文）
+// 七、模型选择向导（AskUserQuestion 约束，取自 write-paper/SKILL.md 原文）
 // ─────────────────────────────────────────────────────────────
 
 export const ASK_USER_QUESTION_NOTICE = [

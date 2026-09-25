@@ -1214,7 +1214,7 @@ export interface PaperTemplate {
   dir: string;
   /**
    * 模板来源 —— 原版详情行渲染的是
-   * `{来源} · {source === 'custom' ? customSource : 'mma-paper'}`（install asar 实证）。
+   * `{来源} · {source === 'custom' ? customSource : 'write-paper'}`（install asar 实证）。
    * 内置模板恒为 `'builtin'`；「自定义模板库」里的模板为 `'custom'`。
    */
   source: 'builtin' | 'custom';

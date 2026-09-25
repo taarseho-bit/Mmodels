@@ -3,11 +3,11 @@ import { sessionTitleFromPrompt } from './session-title';
 
 describe('任务标题', () => {
   it('去掉论文命令，只保留用户真正的问题', () => {
-    expect(sessionTitleFromPrompt('/mma-paper 建立一个合理的种植策略模型')).toBe('建立一个合理的种植策略模型');
+    expect(sessionTitleFromPrompt('/write-paper 建立一个合理的种植策略模型')).toBe('建立一个合理的种植策略模型');
   });
 
   it('附件任务不显示“参考以下文件”和磁盘路径', () => {
-    expect(sessionTitleFromPrompt('/mma-paper\n参考以下文件：\n- H:\\比赛题目.pdf'))
+    expect(sessionTitleFromPrompt('/write-paper\n参考以下文件：\n- H:\\比赛题目.pdf'))
       .toBe('论文写作');
   });
 

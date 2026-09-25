@@ -52,7 +52,7 @@ import {
 /** 随包资源目录（打包后是 process.resourcesPath，开发期是 <appPath>/resources） */
 function resourcesDir(): string {
   return resolveResourcesRoot(
-    ['builtin-skills', 'mma-paper', 'assets', 'template'],
+    ['builtin-skills', 'write-paper', 'assets', 'template'],
     '论文模板',
   );
 }
@@ -107,7 +107,7 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
    * 受管模板库的**合并**列表（内置 + 我的模板）—— 原版 `PaperTemplateService.list()`
    * 返回的就是 `records()`（两个根一起扫、同 id 去重）。
    *
-   * 只有扩展页读它：那里的详情区要按 `source` 分「内置 · mma-paper」与「我的模板」两段。
+   * 只有扩展页读它：那里的详情区要按 `source` 分「内置 · write-paper」与「我的模板」两段。
    */
   ipcMain.handle(
     IPC.PAPER_TEMPLATE_LIBRARY,

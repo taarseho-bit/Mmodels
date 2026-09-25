@@ -45,10 +45,10 @@ const report = {
   scope: '离线只读审计；目录存在不等于 SDK 实际成功注册；不使用 API、不读取密钥。',
   inventories: { original: skills(path.join(original, 'builtin-skills')), current: skills(source), runtime: skills(runtime) },
   originalVsSource: compare(path.join(original, 'builtin-skills'), source),
-  paperRuntime: compare(path.join(source, 'mma-paper'), path.join(runtime, 'mma-paper')),
+  paperRuntime: compare(path.join(source, 'write-paper'), path.join(runtime, 'write-paper')),
 };
-const oldPaper = fs.readFileSync(path.join(original, 'builtin-skills/mma-paper/SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
-const newPaper = fs.readFileSync(path.join(source, 'mma-paper/SKILL.md'), 'utf8').replace(localBlocks, '').replace(/\r\n/g, '\n');
+const oldPaper = fs.readFileSync(path.join(original, 'builtin-skills/write-paper/SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
+const newPaper = fs.readFileSync(path.join(source, 'write-paper/SKILL.md'), 'utf8').replace(localBlocks, '').replace(/\r\n/g, '\n');
 report.paperOriginalBodyPreserved = oldPaper === newPaper;
 const moduleObject = { exports: {} };
 const bridgeCode = ts.transpileModule(fs.readFileSync(path.join(root, 'src/main/agent/bridge.ts'), 'utf8'), {

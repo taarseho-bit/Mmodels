@@ -96,18 +96,18 @@ describe('长时任务与多智能体协作', () => {
   });
 
   it('完整论文、评阅、多附件综合解题会自动触发协作，简单修改不会滥用', () => {
-    expect(multiAgentTriggerForPrompt('/mma-paper\n参考以下文件：\n- C:\\题目.pdf\n解决问题')).toBe('paper');
-    expect(multiAgentTriggerForPrompt('/mma-review 请完整评阅当前论文')).toBe('review');
+    expect(multiAgentTriggerForPrompt('/write-paper\n参考以下文件：\n- C:\\题目.pdf\n解决问题')).toBe('paper');
+    expect(multiAgentTriggerForPrompt('/review-paper 请完整评阅当前论文')).toBe('review');
     expect(multiAgentTriggerForPrompt('/competition-audit 检查提交材料')).toBe('audit');
     expect(multiAgentTriggerForPrompt('请启动多智能体协作，重新检查当前结果')).toBe('complex');
-    expect(multiAgentTriggerForPrompt('/mma-paper\n重新运行')).toBe('paper');
+    expect(multiAgentTriggerForPrompt('/write-paper\n重新运行')).toBe('paper');
     expect(multiAgentTriggerForPrompt('把标题改短一点')).toBeNull();
 
     const required = buildSystemPrompt(
       CWD,
       false,
       false,
-      '/mma-paper\n参考以下文件：\n- C:\\题目.pdf\n解决问题',
+      '/write-paper\n参考以下文件：\n- C:\\题目.pdf\n解决问题',
     );
     expect(required).toContain('# 本轮自动协作（已触发）');
     expect(required).toContain('必须实际调用 Agent 工具组织协作');

@@ -34,7 +34,7 @@ describe('buildSystemPrompt × 领衔角色 —— 随模式出现/缺席', () =
   const CWD = 'D:/tmp/demo-project';
 
   it('评审模式出现评审主智能体段', () => {
-    const sys = buildSystemPrompt(CWD, false, false, '/mma-review 审读论文', null);
+    const sys = buildSystemPrompt(CWD, false, false, '/review-paper 审读论文', null);
     expect(sys).toContain('# 你的领衔角色（当前任务模式）');
     expect(sys).toContain('评审主智能体');
     expect(sys).toContain('claim-evidence-audit');
@@ -47,12 +47,12 @@ describe('buildSystemPrompt × 领衔角色 —— 随模式出现/缺席', () =
   });
 
   it('写论文模式出现论文写作主智能体段', () => {
-    const sys = buildSystemPrompt(CWD, false, false, '/mma-paper 完整论文', null);
+    const sys = buildSystemPrompt(CWD, false, false, '/write-paper 完整论文', null);
     expect(sys).toContain('论文写作主智能体');
   });
 
   it('绘图模式出现图表制作主智能体段', () => {
-    const sys = buildSystemPrompt(CWD, false, false, '/mma-figure 绘制图表', null);
+    const sys = buildSystemPrompt(CWD, false, false, '/draw-figures 绘制图表', null);
     expect(sys).toContain('图表制作主智能体');
   });
 

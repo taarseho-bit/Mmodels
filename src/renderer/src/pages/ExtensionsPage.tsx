@@ -6,7 +6,7 @@
  *   │ 扩展类型 │ 条目列表      │ 详情面板                  │
  *   │ 技能     │ 已启用        │ 名称 + 开关 + 删除        │
  *   │ 模板     │  · doctor     │ 状态 / 位置 / 说明        │
- *   │ 算法     │  · mma-figure │ ─────────────────────     │
+ *   │ 算法     │  · draw-figures │ ─────────────────────     │
  *   │ 插件     │ 已停用        │ SKILL.md（渲染 / 源码）   │
  *   │ 连接器   │  · data-search│                           │
  *   │ (help)   │ 38 个技能     │                           │
@@ -630,7 +630,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
    * 我的模板（`customGroup`，即原版 `customTemplatesGroup` 在扩展页命名空间下的同一个键）。
    *
    * ⚠️ 空的自定义组**不渲染** —— 一条自定义模板都没有时，原版这一页上没有
-   *    「我的模板」这段（真机 05-extensions 截图里只有一段「内置 · mma-paper」）。
+   *    「我的模板」这段（真机 05-extensions 截图里只有一段「内置 · write-paper」）。
    */
   const builtinList = useMemo(() => list.filter((t) => t.source === 'builtin'), [list]);
   const customList = useMemo(() => list.filter((t) => t.source === 'custom'), [list]);
@@ -902,13 +902,13 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
                 <span className="ext-field-label">{tx('extensions.paperTemplatesSection.source')}</span>
                 <span className="ext-field-value">
                   {/* ⚠️ 原版实机取证（install asar @61892818 附近 / customSource 上下文）：
-                      原版这一行是 `{source} · {source === "custom" ? customSource : "mma-paper"}`，
+                      原版这一行是 `{source} · {source === "custom" ? customSource : "write-paper"}`，
                       **没有 `builtinSource` 这个键**（`builtinSource` 只存在于
                       `extensions.connectorsSection.*`，是连接器详情那边的）。早期写成
                       `paperTemplatesSection.builtinSource` 取不到值，`tx()` 会把键路径原样渲染出来。 */}
                   {current.source === 'custom'
                     ? tx('extensions.paperTemplatesSection.customSource')
-                    : 'mma-paper'}
+                    : 'write-paper'}
                 </span>
               </div>
               {current.defaultFor.length > 0 && (

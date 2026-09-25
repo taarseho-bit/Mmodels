@@ -102,9 +102,9 @@ function pageLimitFromDraft(draft: PaperPageLimitDraft): PaperPageLimit | null {
 /** 模式 → 发送时自动附加的斜杠命令（原版行为：模式本质是预设命令） */
 const MODE_COMMAND: Record<ComposerMode, string | null> = {
   chat: null,
-  paper: '/mma-paper',
-  figure: '/mma-figure',
-  review: '/mma-review',
+  paper: '/write-paper',
+  figure: '/draw-figures',
+  review: '/review-paper',
   data: '/data-search',
 };
 

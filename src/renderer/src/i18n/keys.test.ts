@@ -71,7 +71,7 @@ const EXCLUDE_DIRS = [path.join(SRC_ROOT, 'i18n')];
  * `extensions.paperTemplatesSection.builtinSource`），都已按原版 asar 实证修掉：
  *   - 前者原版是按折叠状态取 `shell.titleBarControls.expandSidebar / collapseSidebar` 一对键；
  *   - 后者**这个键根本不该存在** —— 原版那行是
- *     `{来源} · {source === "custom" ? customSource : "mma-paper"}`，
+ *     `{来源} · {source === "custom" ? customSource : "write-paper"}`，
  *     照我最初的提法「补一个 builtinSource」会凭空造出原版没有的键。
  * 用例「豁免零名单」会断言本集合为空：**放行只能靠上面两条通用规则**。
  */

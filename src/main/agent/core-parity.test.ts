@@ -122,7 +122,7 @@ describe('核心能力对齐', () => {
   });
   it('统计分开入口、Skill、Agent、连接器，超过20类仍计算总数', () => {
     const rows = [
-      { session_id: 's', role: 'user', blocks: JSON.stringify([{ kind: 'text', text: '/mma-paper 写论文' }]) },
+      { session_id: 's', role: 'user', blocks: JSON.stringify([{ kind: 'text', text: '/write-paper 写论文' }]) },
       { session_id: 's', role: 'assistant', blocks: JSON.stringify([
         { kind: 'tool_use', toolName: 'Agent', toolInput: { subagent_type: 'general-purpose' } },
         { kind: 'tool_use', toolName: 'mcp__test__search' },

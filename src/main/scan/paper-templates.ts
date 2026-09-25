@@ -2,7 +2,7 @@
  * 论文模板扫描 —— **纯 Node 逻辑，不依赖 electron / 数据库**。
  * 见 `src/main/scan/diagram.ts` 顶部关于「为什么单独一个文件」的说明。
  *
- * 数据源：`<resources>/builtin-skills/mma-paper/assets/template/<id>/template.json`
+ * 数据源：`<resources>/builtin-skills/write-paper/assets/template/<id>/template.json`
  * 每个模板自带元数据（名称、语言、入口文件、需要提前填写的字段）。
  */
 import {
@@ -43,7 +43,7 @@ import {
 //    本文件只 import，不再定义。
 
 /** 相对 resources 根目录的模板路径 */
-export const TEMPLATE_REL_DIR = 'builtin-skills/mma-paper/assets/template';
+export const TEMPLATE_REL_DIR = 'builtin-skills/write-paper/assets/template';
 
 // 文案解析统一走 `pickLocalizedText`（`@shared/types`）—— template.json 的
 // `name` / `description` / `fields[].label` 本来就是原版 `Np` 对象，

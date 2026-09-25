@@ -651,7 +651,7 @@ async function main() {
           await shot('send-immediate-check');
           ok(echoMs !== null && echoMs < 200, '新任务发送后先回显消息，不等待创建任务与完整列表刷新');
           ok(await cdp.eval('document.querySelector(".composer-input").value === "界面即时发送测试，不调用模型" && !document.querySelector(".cz-send.stop")'), '未配置模型时只恢复用户原文，不露出模式指令');
-          ok(await cdp.eval('[...document.querySelectorAll(".msg-user")].some(e=>e.innerText.includes("界面即时发送测试")&&!e.innerText.includes("/mma-paper"))'), '消息气泡只展示用户输入，不显示模式预设指令');
+          ok(await cdp.eval('[...document.querySelectorAll(".msg-user")].some(e=>e.innerText.includes("界面即时发送测试")&&!e.innerText.includes("/write-paper"))'), '消息气泡只展示用户输入，不显示模式预设指令');
         }
       }
     }

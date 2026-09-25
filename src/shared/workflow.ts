@@ -108,12 +108,12 @@ export function chineseAgentName(type: string, description = ''): string {
     ?? (/^[\u3400-\u9fff]{2,12}$/.test(type) ? type : '协作研究员');
 }
 const SKILLS: Record<string, string> = {
-  'mma-paper': '论文写作', 'mma-review': '论文审阅', 'mma-model': '建模求解',
+  'write-paper': '论文写作', 'review-paper': '论文审阅', 'mma-model': '建模求解',
   'paper-search': '文献检索', 'paper-diagram': '论文绘图', 'paper-page-fit': '正文页数优化',
   'paper-polish': '论文润色', 'nature-figure': '科研绘图', 'competition-delivery-check': '比赛交付核对',
   'competition-audit': '比赛交付核对', 'data-search': '数据检索', doctor: '环境检查',
   'mathmodel-figure-templates': '建模图表模板', 'metaheuristic-optimization': '启发式优化',
-  'mma-figure': '建模绘图', 'paper-sharing': '论文整理', 'skill-creator': '技能创建',
+  'draw-figures': '建模绘图', 'paper-sharing': '论文整理', 'skill-creator': '技能创建',
 };
 export function workflowToolLabel(name: string, skill?: string): string {
   if (skill) return SKILLS[skill.split(':').pop() ?? skill] ?? '专项技能';

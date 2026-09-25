@@ -126,7 +126,7 @@ describe('自检：这条护栏真的读到了东西（防"空集合上恒真"�
     expect(COMMANDS.length, `从 ${COMPOSER} 没读出命令，护栏形同虚设`).toBeGreaterThanOrEqual(4);
     // ★ 本次事故的命令必须在 —— 这条比数量断言更能防"正则悄悄失效"
     expect(COMMANDS).toContain('/data-search');
-    expect(COMMANDS).toContain('/mma-paper');
+    expect(COMMANDS).toContain('/write-paper');
     // 反向对照：`chat: null` 不是命令，不该被当成一个斜杠命令抓进来
     expect(COMMANDS).not.toContain('/chat');
   });
