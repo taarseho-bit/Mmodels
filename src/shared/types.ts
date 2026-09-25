@@ -353,6 +353,13 @@ export interface FilePreview {
   mtimeMs?: number;
 }
 
+/** 项目内 PDF 的轻量信息；不把整份文件传到渲染层。 */
+export interface PdfInfo {
+  relPath: string;
+  pages: number | null;
+  size: number;
+}
+
 // ─────────────────────────────────────────────────────────────
 // 设置
 // ─────────────────────────────────────────────────────────────
@@ -678,6 +685,7 @@ export const IPC = {
   /** 把一段 HTML 渲染成分享图并保存（隐藏窗口截图），对应原版 saveShareImage */
   FILE_SAVE_SHARE_IMAGE: 'file:save-share-image',
   FILE_READ_PREVIEW: 'file:read-preview',
+  FILE_PDF_INFO: 'file:pdf-info',
   FILE_TREE: 'file:tree',
   FILE_WRITE: 'file:write',
   FILE_RENAME: 'file:rename',

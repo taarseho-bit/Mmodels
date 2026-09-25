@@ -8,8 +8,9 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { join, resolve, relative, isAbsolute, extname, dirname, basename, parse } from 'node:path';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { existsSync, statSync, readdirSync, readFileSync, writeFileSync, renameSync, rmSync, unlinkSync, cpSync } from 'node:fs';
-import { IPC, type FileNode, type FilePreview } from '@shared/types';
+import { IPC, type FileNode, type FilePreview, type PdfInfo } from '@shared/types';
 import { mediaMime, mediaUrlFor } from '../media/protocol';
 import { getDb } from '../db';
 import { getSettings } from '../store/config';
@@ -201,6 +202,25 @@ function makePreview(abs: string, relPath: string): FilePreview {
   return { kind: 'binary', relPath, size };
 }
 
+/** 读取 PDF 页数，不把 PDF 内容传到渲染层。优先 pdfinfo，缺失时用目录页对象做保守回退。 */
+function readPdfInfo(abs: string, relPath: string): PdfInfo {
+  const size = statSync(abs).size;
+  let pages: number | null = null;
+  try {
+    const text = execFileSync('pdfinfo', [abs], { encoding: 'utf8', timeout: 8000, windowsHide: true });
+    const match = text.match(/^Pages:\s*(\d+)\s*$/mi);
+    if (match) pages = Number(match[1]);
+  } catch {
+    // 没有 pdfinfo 时继续用轻量回退，不把环境缺失显示成软件错误。
+    try {
+      const head = readFileSync(abs).subarray(0, Math.min(size, 20 * 1024 * 1024)).toString('latin1');
+      const matches = head.match(/\/Type\s*\/Page\b/g);
+      if (matches?.length) pages = matches.length;
+    } catch { /* 仅返回文件信息，页数显示为待核验 */ }
+  }
+  return { relPath, pages: Number.isFinite(pages) && (pages ?? 0) > 0 ? pages : null, size };
+}
+
 export function registerFileHandlers(ctx: IpcContext): void {
   ipcMain.handle(
     IPC.FILE_TREE,
@@ -218,6 +238,17 @@ export function registerFileHandlers(ctx: IpcContext): void {
       if (!existsSync(abs)) throw new Error(`文件不存在：${relPath}`);
       return makePreview(abs, relPath);
     }, '预览文件'),
+  );
+
+  ipcMain.handle(
+    IPC.FILE_PDF_INFO,
+    safeWrap((_e, relPath: string) => {
+      const root = currentProjectRoot();
+      const abs = safeJoin(root, relPath);
+      if (!existsSync(abs)) throw new Error(`文件不存在：${relPath}`);
+      if (extname(abs).toLowerCase() !== '.pdf') throw new Error('只能读取 PDF 页数');
+      return readPdfInfo(abs, relPath);
+    }, '读取 PDF 页数'),
   );
 
   ipcMain.handle(

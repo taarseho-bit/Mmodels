@@ -10,7 +10,7 @@ import { friendlyError } from '../lib/friendly-error';
 
 const drafts = new Map<string, Project>();
 const contests = [...COMPETITIONS].sort((a, b) => b.year - a.year || a.name.localeCompare(b.name, 'zh-CN'));
-type DeliveryFileStats = { pdf: number; source: number; figure: number; table: number };
+type DeliveryFileStats = { pdf: number; source: number; figure: number; table: number; pdfPaths: string[] };
 type WorkflowQualitySummary = {
   runStatus: WorkflowRun['status'];
   updatedAt: number;
@@ -21,11 +21,11 @@ function flattenFiles(nodes: FileNode[], out: FileNode[] = []): FileNode[] {
   return out;
 }
 function scanDeliveryFiles(nodes: FileNode[]): DeliveryFileStats {
-  const stats: DeliveryFileStats = { pdf: 0, source: 0, figure: 0, table: 0 };
+  const stats: DeliveryFileStats = { pdf: 0, source: 0, figure: 0, table: 0, pdfPaths: [] };
   for (const node of flattenFiles(nodes)) {
     if (node.isDirectory) continue;
     const ext = node.name.split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'pdf') stats.pdf += 1;
+    if (ext === 'pdf') { stats.pdf += 1; if (node.relPath) stats.pdfPaths.push(node.relPath); }
     else if (['tex', 'typ', 'docx', 'md'].includes(ext)) stats.source += 1;
     else if (['png', 'jpg', 'jpeg', 'svg', 'drawio'].includes(ext)) stats.figure += 1;
     else if (['xlsx', 'xls', 'csv', 'tsv'].includes(ext)) stats.table += 1;
@@ -36,6 +36,7 @@ export function WorkbenchPage(): JSX.Element {
   const project = useApp(s => s.currentProject);
   const [draft, setDraft] = useState<Project | null>(null);
   const [fileStats, setFileStats] = useState<DeliveryFileStats | null>(null);
+  const [pdfInfo, setPdfInfo] = useState<{ relPath: string; pages: number | null; size: number } | null>(null);
   const [fileScanNonce, setFileScanNonce] = useState(0);
   const [fileScannedAt, setFileScannedAt] = useState<number | null>(null);
   const [workflowSummary, setWorkflowSummary] = useState<WorkflowQualitySummary | null>(null);
@@ -50,10 +51,18 @@ export function WorkbenchPage(): JSX.Element {
   }, [project?.id]);
   useEffect(() => {
     let live = true;
-    setFileStats(null);
+    setFileStats(null); setPdfInfo(null);
     setFileScannedAt(null);
     if (!project) return () => { live = false; };
-    void window.mathmodel.file.tree().then(nodes => { if (live) { setFileStats(scanDeliveryFiles(nodes)); setFileScannedAt(Date.now()); } }).catch(() => { if (live) { setFileStats({ pdf: 0, source: 0, figure: 0, table: 0 }); setFileScannedAt(Date.now()); } });
+    void window.mathmodel.file.tree().then(async nodes => {
+      if (!live) return;
+      const stats = scanDeliveryFiles(nodes);
+      setFileStats(stats); setFileScannedAt(Date.now());
+      const firstPdf = stats.pdfPaths[0];
+      if (firstPdf) {
+        try { const info = await window.mathmodel.file.pdfInfo(firstPdf); if (live) setPdfInfo(info); } catch { if (live) setPdfInfo({ relPath: firstPdf, pages: null, size: 0 }); }
+      }
+    }).catch(() => { if (live) { setFileStats({ pdf: 0, source: 0, figure: 0, table: 0, pdfPaths: [] }); setFileScannedAt(Date.now()); } });
     return () => { live = false; };
   }, [project?.id, fileScanNonce]);
   useEffect(() => {
@@ -93,10 +102,14 @@ export function WorkbenchPage(): JSX.Element {
   const qualityMode = useApp(s => s.settings?.modelingQualityMode ?? 'balanced');
   const workflowSkillCount = workflowSummary?.skills.length ?? 0;
   const workflowSkillReviewCount = workflowSummary?.skills.filter(item => item.status === '需要复核').length ?? 0;
+  const pageLimitNumber = Number((draft.pageLimit.match(/\d+/) ?? [])[0] ?? 0);
+  const pageCheck = pdfInfo?.pages && pageLimitNumber > 0
+    ? (pdfInfo.pages <= pageLimitNumber ? '通过' : '超出')
+    : pdfInfo?.pages ? '已读取' : '待读取';
   const deliveryChecks = [
     { label: '比赛信息', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛', ok: Boolean(contest) },
-    { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
-    { label: '论文文件', detail: fileStats ? `${fileStats.pdf} 个 PDF · ${fileStats.source} 个源文件` : '正在读取项目文件', ok: fileStats ? fileStats.pdf > 0 : null },
+    { label: '页数要求', detail: pdfInfo?.pages ? `${pdfInfo.pages} 页${pageLimitNumber ? ` · 上限 ${pageLimitNumber} 页` : ''}${pageCheck === '超出' ? ' · 需要压缩' : ''}` : draft.pageLimit ? `上限 ${draft.pageLimit} · 正在读取 PDF 页数` : '还没有设置页数上限', ok: pdfInfo?.pages && pageLimitNumber > 0 ? pageCheck !== '超出' : draft.pageLimit.trim() ? null : false },
+    { label: '论文文件', detail: fileStats ? `${fileStats.pdf} 个 PDF · ${fileStats.source} 个源文件${pdfInfo?.pages ? ` · 主文档 ${pdfInfo.pages} 页` : ''}` : '正在读取项目文件', ok: fileStats ? fileStats.pdf > 0 : null },
     { label: '图表与数据', detail: fileStats ? `${fileStats.figure} 个图表 · ${fileStats.table} 个数据文件` : '正在读取项目文件', ok: fileStats ? fileStats.figure > 0 || fileStats.table > 0 : null },
     { label: '模型方案', detail: draft.alternatives.length ? `${draft.alternatives.length} 个候选方案已记录` : '还没有记录模型方案对比', ok: draft.alternatives.length > 0 },
     { label: '结论依据', detail: draft.evidence.length ? `${checkedEvidence}/${draft.evidence.length} 条依据已核对` : '还没有记录结论依据', ok: draft.evidence.length > 0 && checkedEvidence === draft.evidence.length },
@@ -130,9 +143,20 @@ export function WorkbenchPage(): JSX.Element {
     try {
       const stats = fileStats ?? scanDeliveryFiles(await window.mathmodel.file.tree());
       setFileStats(stats); setFileScannedAt(Date.now());
+      let currentPdfInfo = pdfInfo;
+      if (!currentPdfInfo && stats.pdfPaths[0]) {
+        try {
+          currentPdfInfo = await window.mathmodel.file.pdfInfo(stats.pdfPaths[0]);
+          setPdfInfo(currentPdfInfo);
+        } catch {
+          currentPdfInfo = { relPath: stats.pdfPaths[0], pages: null, size: 0 };
+          setPdfInfo(currentPdfInfo);
+        }
+      }
       const items: DeliveryAudit['items'] = [
         { id: 'contest', label: '比赛信息', status: contest ? '通过' : '待补充', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛' },
-        { id: 'paper', label: '论文文件', status: stats.pdf > 0 ? '通过' : '待补充', detail: stats.pdf > 0 ? `找到 ${stats.pdf} 个 PDF` : '项目中没有找到 PDF' },
+        { id: 'paper', label: '论文文件', status: stats.pdf > 0 ? '通过' : '待补充', detail: stats.pdf > 0 ? `找到 ${stats.pdf} 个 PDF${currentPdfInfo?.pages ? `，主文档 ${currentPdfInfo.pages} 页` : ''}` : '项目中没有找到 PDF' },
+        { id: 'page-count', label: 'PDF 页数', status: currentPdfInfo?.pages && pageLimitNumber ? (currentPdfInfo.pages <= pageLimitNumber ? '通过' : '需深度核验') : '待补充', detail: currentPdfInfo?.pages ? `${currentPdfInfo.pages} 页${pageLimitNumber ? ` · 上限 ${pageLimitNumber} 页` : ' · 尚未设置上限'}` : '还没有读到 PDF 页数' },
         { id: 'page-limit', label: '页数要求', status: draft.pageLimit.trim() ? '通过' : '待补充', detail: draft.pageLimit.trim() ? `上限 ${draft.pageLimit}` : '还没有设置页数上限' },
         { id: 'materials', label: '图表与数据', status: stats.figure > 0 || stats.table > 0 ? '通过' : '待补充', detail: `${stats.figure} 个图表 · ${stats.table} 个数据文件` },
         { id: 'model-plan', label: '模型方案', status: draft.alternatives.length > 0 ? '通过' : '待补充', detail: draft.alternatives.length > 0 ? `已记录 ${draft.alternatives.length} 个候选方案` : '还没有记录模型方案对比' },

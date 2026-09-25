@@ -28,6 +28,7 @@ import type {
   CollabTaskStatus,
   FileNode,
   FilePreview,
+  PdfInfo,
   InflightTurn,
   PaperConfigPatch,
   PaperGetConfigResult,
@@ -170,6 +171,8 @@ const api = {
       ipcRenderer.invoke(IPC.FILE_SAVE_SHARE_IMAGE, opts),
     preview: (relPath: string): Promise<FilePreview> =>
       ipcRenderer.invoke(IPC.FILE_READ_PREVIEW, relPath),
+    pdfInfo: (relPath: string): Promise<PdfInfo> =>
+      ipcRenderer.invoke(IPC.FILE_PDF_INFO, relPath),
     tree: (): Promise<FileNode[]> => ipcRenderer.invoke(IPC.FILE_TREE),
     write: (relPath: string, content: string): Promise<boolean> =>
       ipcRenderer.invoke(IPC.FILE_WRITE, relPath, content),
