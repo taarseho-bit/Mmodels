@@ -24,7 +24,7 @@
 }
 
 /* ── ① 经典（无花纹，干净） ── */
-:root[data-skin='classic'] .app-shell { background-color: #f5f3ef; }
+:root[data-skin='classic'] .app-shell { background-color: #ffffff; }
 :root[data-skin='classic'][data-theme='dark'] .app-shell { background-color: #1c1c1e; }
 
 /* ── ② 求解蓝 · 网格（网格线呼吸 + 交点光点缓移） ── */
@@ -345,7 +345,7 @@
 }
 
 /* 预览卡花纹（静态中性灰版，小尺寸下保证可辨） */
-.skin-chip-preview { background-color: var(--skin-tint, #f5f3ef); display: block; }
+.skin-chip-preview { background-color: var(--skin-tint, #ffffff); display: block; }
 .skin-chip-preview[data-pattern='grid'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cpath d='M22 0H0v22' fill='none' stroke='%23888' stroke-opacity='.18'/%3E%3C/svg%3E"); }
 .skin-chip-preview[data-pattern='dots'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='3' cy='3' r='1.6' fill='%23888' fill-opacity='.22'/%3E%3Ccircle cx='11' cy='11' r='1.6' fill='%23888' fill-opacity='.14'/%3E%3C/svg%3E"); }
 .skin-chip-preview[data-pattern='hex'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 2l6 6-6 6-6-6z' fill='none' stroke='%23888' stroke-opacity='.18'/%3E%3C/svg%3E"); }

@@ -51,7 +51,7 @@ export function AppearanceSection(): JSX.Element {
           <div className="appearance-row-main">
             <div className="appearance-row-label">主题</div>
             <div className="appearance-row-hint">
-              经典白 / 经典黑 / 跟随系统，或选一款带花纹的风格主题。全部平级，点击立即全局生效；风格主题随系统亮暗自动适配，文字始终清晰。
+              经典白 / 经典黑 / 跟随系统，或选一款带花纹的风格主题。全部平级，点击立即全局生效；风格主题为浅色底带花纹，文字始终清晰。
             </div>
           </div>
         </div>
@@ -68,7 +68,7 @@ export function AppearanceSection(): JSX.Element {
                   commit(
                     preset.kind === 'brightness'
                       ? { ...app, mode: preset.mode!, skin: 'classic' }
-                      : { ...app, mode: 'system', skin: preset.skinId! },
+                      : { ...app, mode: 'light', skin: preset.skinId! },
                   )
                 }
                 title={preset.hint}

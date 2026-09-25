@@ -31,7 +31,7 @@ export interface SkinDef {
 }
 
 export const SKINS: SkinDef[] = [
-  { id: 'classic',      name: '经典',     hint: '默认干净版面',             accent: '#007aff', accentDark: '#0a84ff', pattern: 'none',  tint: '#f5f3ef', tintDark: '#1c1c1e', patternColor: '#007aff', patternColorDark: '#0a84ff' },
+  { id: 'classic',      name: '经典',     hint: '默认干净版面',             accent: '#007aff', accentDark: '#0a84ff', pattern: 'none',  tint: '#ffffff', tintDark: '#1c1c1e', patternColor: '#007aff', patternColorDark: '#0a84ff' },
   { id: 'solver-blue',  name: '求解蓝',   hint: '网格纹 · 建模求解',         accent: '#3b62d4', accentDark: '#7d9df2', pattern: 'grid',  tint: '#eef2fc', tintDark: '#12141d', patternColor: '#3b62d4', patternColorDark: '#7d9df2' },
   { id: 'data-teal',    name: '数据青',   hint: '波点纹 · 数据分析',         accent: '#1d8a80', accentDark: '#4ecabf', pattern: 'dots',  tint: '#e9f5f2', tintDark: '#101a18', patternColor: '#1d8a80', patternColorDark: '#4ecabf' },
   { id: 'review-violet',name: '评审紫',   hint: '菱形纹 · 论文评审',         accent: '#6a4bd8', accentDark: '#a794f0', pattern: 'hex',   tint: '#f1eefc', tintDark: '#151224', patternColor: '#6a4bd8', patternColorDark: '#a794f0' },
@@ -51,7 +51,10 @@ export function skinById(id: string): SkinDef {
 // 用户心智模型：设置页只有一个「主题」选择器——
 //   经典白 / 经典黑 / 跟随系统 + 8 款风格主题，全部平级、点了就换，没有第二层概念。
 // 每个主题完全自包含（一键到位，无隐藏状态）：
-//   亮度类 → skin='classic' + 指定 mode；风格类 → 指定 skin + mode='system'（随系统亮暗）。
+//   亮度类 → skin='classic' + 指定 mode；
+//   风格类 → 指定 skin + mode='light'（锁定浅色底！）。
+// ⚠️ 风格主题曾经是 mode='system'：系统深色时 8 款全渲染近黑的深色变体，
+//    看起来都和经典黑一样（2026-09-26 用户实测报障后改为锁定浅色）。
 
 export interface ThemePreset {
   id: string;
