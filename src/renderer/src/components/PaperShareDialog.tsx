@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { COMPETITIONS, type PaperInput } from '../../../shared/competition-studio';
+import { friendlyError } from '../lib/friendly-error';
 
 export function PaperShareDialog({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
   const dialog = useRef<HTMLElement>(null);
@@ -32,13 +33,13 @@ export function PaperShareDialog({ open, onClose }: { open: boolean; onClose: ()
   const select = async () => {
     setBusy(true); setMessage('');
     try { const files = await window.mathmodel.competition.pickPapers(); if (files.length) setRows(files.map(f => ({ ticket: f.ticket, title: f.name.replace(/\.pdf$/i, ''), competition, year, problem: '', award: '', source: '' }))); }
-    catch (e) { setMessage(String(e)); } finally { setBusy(false); }
+    catch (e) { setMessage(friendlyError(e, '选择论文文件没有完成，可以重试。')); } finally { setBusy(false); }
   };
   const patch = (i: number, values: Partial<PaperInput>) => setRows(list => list.map((r, n) => n === i ? { ...r, ...values } : r));
   const submit = async () => {
     setBusy(true); setMessage('');
     try { const r = await window.mathmodel.competition.importPapers(rows, confirmed); setRows([]); setMessage(`已保存 ${r.imported} 篇，跳过 ${r.duplicates} 篇重复文件。原文件未改动。`); }
-    catch (e) { setMessage(String(e)); } finally { setBusy(false); }
+    catch (e) { setMessage(friendlyError(e, '论文没有保存成功，原文件没有改动。')); } finally { setBusy(false); }
   };
   return <div className="modal-backdrop" onClick={() => !busy && onClose()}>
     <section ref={dialog} className="modal studio-import" role="dialog" aria-modal="true" aria-labelledby="paper-import-title" onClick={e => e.stopPropagation()}>

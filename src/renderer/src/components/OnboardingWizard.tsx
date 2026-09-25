@@ -14,6 +14,7 @@ import type { PresetProvider, ProviderConfig, AppSettings } from '@shared/types'
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
 import { t, tx } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 interface EnvItem {
   id: string;
@@ -80,7 +81,7 @@ export function OnboardingWizard({
         if (ls.some((p) => p.enabled !== false)) setStep('environment');
         else setPicked(ps[0]?.key ?? '');
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '供应商列表没有读取成功，可以重试。'));
       }
     })();
   }, []);
@@ -92,7 +93,7 @@ export function OnboardingWizard({
     try {
       setEnv((await window.mathmodel.env.check()) as EnvResult);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '运行环境检查没有完成，可以重试。'));
     } finally {
       setEnvLoading(false);
     }
@@ -141,12 +142,12 @@ export function OnboardingWizard({
         const r = await window.mathmodel.llm.testProvider(id);
         setTestResult(r);
       } catch (e) {
-        setTestResult({ ok: false, detail: e instanceof Error ? e.message : String(e) });
+        setTestResult({ ok: false, detail: friendlyError(e, '连接测试没有完成，可以稍后重试。') });
       } finally {
         setTesting(false);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '供应商保存没有完成，可以重试。'));
     } finally {
       setSaving(false);
     }

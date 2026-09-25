@@ -24,6 +24,12 @@ export function WorkbenchPage(): JSX.Element {
   const contest = calendarCompetition(draft), countdown = countdownFor(contest, now);
   const checkedCount = draft.checklist.filter(item => item.done).length;
   const checkPercent = draft.checklist.length ? Math.round(checkedCount / draft.checklist.length * 100) : 0;
+  const deliveryChecks = [
+    { label: '比赛信息', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛', ok: Boolean(contest) },
+    { label: '页数要求', detail: draft.pageLimit ? `上限 ${draft.pageLimit}` : '还没有设置页数上限', ok: Boolean(draft.pageLimit.trim()) },
+    { label: '方案与依据', detail: `${draft.alternatives.length} 个方案 · ${draft.evidence.length} 条依据`, ok: draft.alternatives.length > 0 && draft.evidence.length > 0 },
+    { label: '提交清单', detail: `${checkedCount}/${draft.checklist.length} 项已核对`, ok: checkPercent === 100 },
+  ];
   const patch = (value: Partial<Project>) => {
     const next = { ...draft, ...value }; drafts.set(draft.id, next); setDraft(next); setMessage('有修改待保存'); return next;
   };
@@ -70,6 +76,11 @@ export function WorkbenchPage(): JSX.Element {
       <div><span className="studio-eyebrow">项目准备度</span><strong>{checkPercent}%</strong><small>{checkedCount}/{draft.checklist.length} 项已核对</small></div>
       <div className="studio-readiness-bar"><i style={{ width: `${checkPercent}%` }} /></div>
       <div className="studio-readiness-meta"><span>当前阶段：{draft.phase}</span><span>{draft.pageLimit ? `页数上限：${draft.pageLimit}` : '尚未设置页数上限'}</span><span>{draft.evidence.length} 条结论依据 · {draft.alternatives.length} 个候选方案</span></div>
+    </section>
+    <section className="studio-delivery-panel" aria-label="论文交付检查">
+      <header><div><span className="studio-eyebrow">提交前先看一眼</span><h2>论文交付检查</h2></div><button className="btn btn-primary" disabled={busy} onClick={() => void ask('请运行一次论文交付检查：读取当前项目的比赛信息、论文 PDF、图表和表格，核对正文页数、表格是否裁切、图片是否缺失、引用与章节结构是否完整，并区分已确认、需要修改和需要人工确认的项目。请使用 competition-audit、table-layout-audit 和 paper-page-fit 等匹配技能；不要把我的勾选视为验证结果。', 'chat')}>立即检查</button></header>
+      <div className="studio-delivery-grid">{deliveryChecks.map(item => <div className={`studio-delivery-item${item.ok ? ' is-ok' : ''}`} key={item.label}><span className="studio-delivery-dot">{item.ok ? '✓' : '!'}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div><em>{item.ok ? '已具备' : '待补充'}</em></div>)}</div>
+      <p className="studio-delivery-note">这里显示的是项目资料是否准备齐全，不代替助手对 PDF、表格和比赛规则的实际核对。</p>
     </section>
     {message && <p className="studio-notice" role="status">{message}</p>}
     <details className="studio-workbench-more"><summary>更多比赛资料与提交检查</summary>

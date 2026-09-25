@@ -15,6 +15,7 @@ import { useApp } from '../../store/app';
 import { tx, t } from '../../i18n';
 import { Icon } from '../Icon';
 import { Section, Switch } from './shared';
+import { friendlyError } from '../../lib/friendly-error';
 
 /** 模型 ID 校验 —— 原版 zod 规则：非空且不含空格 / 逗号 */
 function isValidModelId(v: string): boolean {
@@ -90,7 +91,7 @@ function AddCustomModelDialog({
       await patchSettings({ activeProviderId: provider.id, defaultModel: id });
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '模型设置没有保存成功，可以重试。'));
     } finally {
       setBusy(false);
     }
@@ -109,7 +110,7 @@ function AddCustomModelDialog({
           await patchSettings({ defaultModel: next[0] ?? null });
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '模型设置没有更新成功，可以重试。'));
       } finally {
         setBusy(false);
       }

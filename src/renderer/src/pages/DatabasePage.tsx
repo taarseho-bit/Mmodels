@@ -16,6 +16,7 @@ import { Skeleton } from '../components/Skeleton';
 import { Icon } from '../components/Icon';
 import { useApp } from '../store/app';
 import { tx } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 interface DatasetFile {
   relPath: string;
@@ -75,7 +76,7 @@ export function DatabasePage(): JSX.Element {
           : null,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    setError(friendlyError(e, '数据目录没有读取成功，可以重试。'));
     } finally {
       setLoading(false);
     }
@@ -102,7 +103,7 @@ export function DatabasePage(): JSX.Element {
           setPreview({ text: p.text ?? '', truncated: p.truncated });
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+        if (!cancelled) setError(friendlyError(e, '数据预览没有读取成功，可以重试。'));
       } finally {
         if (!cancelled) setPreviewLoading(false);
       }
@@ -127,7 +128,7 @@ export function DatabasePage(): JSX.Element {
       }
       if (r.skipped?.length) setToast(r.skipped.join('；'));
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      setToast(friendlyError(e, '数据操作没有完成，可以重试。'));
     } finally {
       setImporting(false);
     }

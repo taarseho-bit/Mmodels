@@ -21,6 +21,7 @@ import { PdfFilePreview } from './PdfFilePreview';
 import { Icon } from './Icon';
 import { useApp } from '../store/app';
 import { t, tx } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 
 /** 这些扩展名按表格渲染，而不是当纯文本 */
 const TABLE_EXT = new Set(['csv', 'tsv']);
@@ -70,7 +71,7 @@ export function ArtifactPanes({ relPath, onClose }: ArtifactPanesProps): JSX.Ele
         setPreview(p);
         setDraft(p.kind === 'text' ? (p.text ?? '') : '');
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
+        const msg = friendlyError(e, '文件操作没有完成，内容已保留。');
         // 主进程对不存在的文件会抛「找不到」一类的错 —— 单独给友好态
         if (/不存在|ENOENT|not found/i.test(msg)) setNotFound(true);
         else setError(msg);

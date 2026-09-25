@@ -24,6 +24,7 @@ import { t, tx } from '../../i18n';
 import { openRoute } from '../../lib/settings-nav';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { Icon } from '../Icon';
+import { friendlyError } from '../../lib/friendly-error';
 
 interface EnvItem {
   id: string;
@@ -304,7 +305,7 @@ export function EnvSection(): JSX.Element {
       navigated = true;
       setConfirming(false);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = friendlyError(e, '环境操作没有完成，可以重试。');
       // 正常路径下失败时**还停在运行环境分区**（跳页在 send 成功之后），页内 toast 看得见；
       // 只有 `openRoute` 派发之后那一小段（`navigated=true`，极窄）才需要 alert 兜底。
       // 两条通道都保留：绝不静默。

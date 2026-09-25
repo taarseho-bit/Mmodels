@@ -25,6 +25,7 @@ import 'katex/dist/katex.min.css';
 import { useApp } from '../store/app';
 import { t } from '../i18n';
 import { findStableSplit } from '../lib/markdown-split';
+import { friendlyError } from '../lib/friendly-error';
 
 /** 危险片段消毒 */
 function sanitize(html: string): string {
@@ -91,7 +92,7 @@ function renderMarkdown(source: string): string {
     return sanitize(raw);
   } catch (e) {
     // 渲染失败绝不能白屏 —— 退化成纯文本
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = friendlyError(e, '预览没有生成成功。');
     return `<pre>${escapeHtml(source)}\n\n（${t('Markdown 渲染失败')}：${escapeHtml(msg)}）</pre>`;
   }
 }
@@ -121,7 +122,7 @@ async function renderMermaidInHost(host: HTMLElement, theme: string, salt: numbe
       pre.replaceWith(box);
     } catch (e) {
       // 单个图渲染失败不影响其它内容
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = friendlyError(e, '预览没有生成成功。');
       code.setAttribute('data-mm-error', '1');
       code.title = `${t('Mermaid 渲染失败')}：${msg}`;
     }

@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/app';
 import { t, tx, getLang } from '../i18n';
+import { friendlyError } from '../lib/friendly-error';
 import { Icon } from '../components/Icon';
 
 export function WelcomePage(): JSX.Element {
@@ -60,7 +61,7 @@ export function WelcomePage(): JSX.Element {
         setCreateOpen(false);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '项目没有创建成功，可以重试。'));
     } finally {
       setBusy(false);
     }
@@ -72,7 +73,7 @@ export function WelcomePage(): JSX.Element {
     try {
       await openProject(id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '项目文件夹没有打开成功，可以重试。'));
     } finally {
       setBusy(false);
     }

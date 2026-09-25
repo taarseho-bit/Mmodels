@@ -29,6 +29,7 @@ import { Icon } from '../components/Icon';
 import { Markdown } from '../components/Markdown';
 import { AlgorithmsMarket } from '../components/AlgorithmsMarket';
 import { ConnectorsSection } from '../components/ConnectorsSection';
+import { friendlyError } from '../lib/friendly-error';
 import { LocalPluginsPanel } from '../components/LocalPluginsPanel';
 
 type Tab = 'skills' | 'templates' | 'algorithms' | 'plugins' | 'connectors';
@@ -184,7 +185,7 @@ function SkillsTab(): JSX.Element {
       try {
         await toggleSkill(s.dirName, !s.enabled);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(friendlyError(e, '扩展操作没有完成，可以重试。'));
       } finally {
         setBusy(null);
       }
@@ -204,7 +205,7 @@ function SkillsTab(): JSX.Element {
         useApp.setState({ skills: list });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '扩展设置没有保存成功，可以重试。'));
     } finally {
       setImporting(false);
     }
@@ -218,7 +219,7 @@ function SkillsTab(): JSX.Element {
         useApp.setState({ skills: list });
         setNotice(t('已删除 Skill「{{name}}」', { name: s.name }));
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e, '扩展检查没有完成，可以重试。'));
       }
     },
     [],
@@ -366,7 +367,7 @@ function SkillDetail({
     void window.mathmodel.skill
       .read(dirName)
       .then((raw) => alive && setDoc(raw))
-      .catch((e) => alive && setDoc(t('读取失败：{{msg}}', { msg: e instanceof Error ? e.message : String(e) })))
+      .catch((e) => alive && setDoc(t('读取失败：{{msg}}', { msg: friendlyError(e, '暂时无法读取扩展说明。') })))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
