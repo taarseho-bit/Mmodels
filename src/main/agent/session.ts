@@ -27,6 +27,7 @@ import type {
   TokenUsage,
 } from '@shared/types';
 import { MODELING_AGENTS } from './modeling-agents';
+import { DEFAULT_MAX_PARALLEL_AGENTS } from './orchestration-policy';
 import { WorkflowTrace } from './workflow-trace';
 import type { WorkflowRun } from '@shared/workflow';
 import { sdkModel, userMcpOptions, knownContextWindow, boundedContextWindow } from './runtime-options';
@@ -166,6 +167,8 @@ export interface RunOptions {
   askPolicy?: 'ask' | 'auto';
   /** 允许主智能体按任务需要调用数学建模协作组。 */
   multiAgentEnabled?: boolean;
+  /** 本轮协作预算：并行成员数和整轮新建成员数都由编排策略决定。 */
+  collaborationBudget?: { maxParallelAgents: number; maxTotalAgents: number };
   onWorkflow?: (run: WorkflowRun) => void;
 }
 
@@ -642,7 +645,15 @@ export class AgentSession extends EventEmitter {
     this.streamIndex = -1;
     this.subagentTasks.clear();
     this.workflowHadError = false;
-    this.workflow = opts.onWorkflow ? new WorkflowTrace(this.sessionId, opts.multiAgentEnabled === true, opts.onWorkflow) : undefined;
+    this.workflow = opts.onWorkflow
+      ? new WorkflowTrace(
+          this.sessionId,
+          opts.multiAgentEnabled === true,
+          opts.onWorkflow,
+          opts.collaborationBudget?.maxParallelAgents ?? DEFAULT_MAX_PARALLEL_AGENTS,
+          opts.collaborationBudget?.maxTotalAgents ?? 4,
+        )
+      : undefined;
 
     this.emitEvent({ type: 'session-start', sessionId: this.sessionId });
 

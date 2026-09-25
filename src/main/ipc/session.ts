@@ -51,6 +51,7 @@ import { getProject } from './project';
 import { extraPlugins, workspaceInstructions } from '../agent/project-plugins';
 import { saveVersion } from '../git';
 import { resolveResourcesRoot } from '../resources';
+import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS } from '../agent/orchestration-policy';
 
 /** 全局会话注册表（整个应用一份） */
 export const sessionRegistry = new SessionRegistry();
@@ -431,6 +432,7 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
   const turnTrigger = multiAgentTriggerForPrompt(prompt);
   if (turnTrigger) sessionCollabTriggers.set(sessionId, turnTrigger);
   const rememberedTrigger = turnTrigger ?? sessionCollabTriggers.get(sessionId) ?? null;
+  const collaborationPolicy = collaborationPolicyFor(rememberedTrigger);
 
   // ── A3 任务面板对账提醒 ─────────────────────────────────────
   // 会话任务清单（跨消息折叠）里还有未完成项时，在本轮提示词开头注入断点提醒——
@@ -461,6 +463,12 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
     // “先规划”只限制写文件，不应把只读研究成员整个关掉。复杂方案同样可以先让
     // 题意、数据和方法成员并行核对；各成员自己的工具边界仍由 SDK 权限模式约束。
     multiAgentEnabled: settings.multiAgentEnabled !== false,
+    ...(collaborationPolicy ? {
+      collaborationBudget: {
+        maxParallelAgents: collaborationPolicy.maxParallelAgents,
+        maxTotalAgents: collaborationPolicy.maxTotalAgents,
+      },
+    } : {}),
     onWorkflow: publishWorkflow,
     /**
      * 权限模式（复刻口径 `'full' | 'approval'`）—— **原样透传，不在这里改名**。
@@ -506,15 +514,6 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
  *    SDK 的后台完成通知已经能继续同一次运行。现在该节改为要求等待真实结果并自行汇总。
  */
 export type MultiAgentTrigger = 'paper' | 'review' | 'audit' | 'multi-file' | 'complex' | null;
-
-/**
- * 数模任务的默认协作上限。
- *
- * 真实任务里 1 位主助手 + 1～2 位专职成员通常足够；继续增加临时成员
- * 会放大上下文、重复计算和演示噪声。工作流仍会完整记录真实事件，
- * 这里限制的是模型默认派发规模，不会影响用户明确要求的单项复核。
- */
-export const DEFAULT_MAX_PARALLEL_AGENTS = 2;
 
 /**
  * 决策模式（settings.decisionMode）→ 追加到 system prompt 的执行约定。
@@ -600,6 +599,7 @@ function multiAgentTurnInstructions(prompt: string, sessionCollab: MultiAgentTri
       '- 每次派发都写成“角色名：具体中文名称；任务：一句话说明要解决的具体问题”，名称要体现研究对象，例如“附件字段核验员”“需求预测复算员”，不要使用“协作研究员”“专项研究员 1”这类泛称。',
       '- 成员的 description 必须是能给老板看懂的具体中文短名，并写清正在研究的问题；等待成员返回后，由主助手核对冲突、汇总结论并继续完成文件。',
       '- 只有 Agent 工具本身不可用或连续调用失败时才允许退回单助手，并用一句通俗中文说明“协作成员暂时没有接通，正在由主助手继续”，不要显示内部报错。',
+      ...collaborationPolicyPrompt(trigger),
     ];
   }
   if (sessionCollab) {

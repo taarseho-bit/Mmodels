@@ -53,6 +53,40 @@ describe('真实事件工作流观察器', () => {
     expect(trace.run.nodes.map(n => n.tools.length)).toEqual([0, 1, 1]);
     trace.finish('completed');
   });
+  it('并行成员达到预算后拒绝继续创建临时成员', async () => {
+    const trace = new WorkflowTrace('a', true, () => {}, 2);
+    await invoke(trace, pre('dispatch-a', undefined, 'Agent', { description: '角色名：数据核验员' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'child-a', agent_type: 'data-analyst' }, 'dispatch-a');
+    await invoke(trace, pre('dispatch-b', undefined, 'Agent', { description: '角色名：模型求解员' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'child-b', agent_type: 'model-solver' }, 'dispatch-b');
+    const denied = await invoke(trace, pre('dispatch-c', undefined, 'Agent', { description: '角色名：图表制作员' }));
+    expect(denied).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } });
+    expect(JSON.stringify(denied)).toContain('并行上限');
+    expect(trace.run.nodes.map(node => node.id)).not.toContain('child-c');
+    trace.finish('completed');
+  });
+  it('允许一层受控嵌套，但仍共享并行预算', async () => {
+    const trace = new WorkflowTrace('a', true, () => {}, 2, 4);
+    await invoke(trace, pre('dispatch-parent', undefined, 'Agent', { description: '角色名：模型求解员' }));
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'parent', agent_type: 'model-solver' }, 'dispatch-parent');
+    const nested = await invoke(trace, pre('dispatch-child', 'parent', 'Agent', { description: '角色名：灵敏度核验员' }));
+    expect(nested).toEqual({});
+    await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: 'child', agent_type: 'paper-reviewer' }, 'dispatch-child');
+    expect(trace.run.nodes.find(node => node.id === 'child')?.parentId).toBe('parent');
+    trace.finish('completed');
+  });
+  it('成员陆续完成后仍受整轮总预算约束', async () => {
+    const trace = new WorkflowTrace('a', true, () => {}, 1, 2);
+    for (const [index, name] of ['第一位', '第二位'].entries()) {
+      await invoke(trace, pre(`dispatch-${index}`, undefined, 'Agent', { description: `角色名：${name}核验员` }));
+      await invoke(trace, { hook_event_name: 'SubagentStart', agent_id: `child-${index}`, agent_type: 'general-purpose' }, `dispatch-${index}`);
+      await invoke(trace, { hook_event_name: 'SubagentStop', agent_id: `child-${index}`, agent_type: 'general-purpose' });
+    }
+    const denied = await invoke(trace, pre('dispatch-third', undefined, 'Agent', { description: '角色名：第三位核验员' }));
+    expect(denied).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } });
+    expect(JSON.stringify(denied)).toContain('预算已用完');
+    trace.finish('completed');
+  });
   it('仅凭真实调用标识关联中文临时角色名，没有标识不猜归属', async () => {
     const trace = new WorkflowTrace('a', true, () => {});
     await invoke(trace, pre('dispatch', undefined, 'Agent', { description: '角色名：灵敏度核验员；任务：复算结果', prompt: 'PRIVATE' }));

@@ -33,10 +33,16 @@ export class WorkflowTrace {
     }
     if (ids.length) this.changed();
   }
-  constructor(sessionId: string, enabled: boolean, private publish: (run: WorkflowRun) => void) {
+  constructor(
+    sessionId: string,
+    private readonly collaborationEnabled: boolean,
+    private publish: (run: WorkflowRun) => void,
+    private readonly maxParallelAgents = 2,
+    private readonly maxTotalAgents = 4,
+  ) {
     const now = Date.now();
     this.run = { id: randomUUID(), sessionId, startedAt: now, updatedAt: now, revision: 0,
-      status: 'running', collaborationEnabled: enabled, truncated: false, nodes: [] };
+      status: 'running', collaborationEnabled: this.collaborationEnabled, truncated: false, nodes: [] };
     this.node('main', 'main');
     this.flush();
   }
@@ -63,20 +69,31 @@ export class WorkflowTrace {
   }
   readonly hook: HookCallback = async (input, toolUseID) => {
     if (this.run.status !== 'running') return {};
-    try { this.observe(input, toolUseID); this.changed(); } catch { /* 观察失败不得打断工具执行 */ }
-    return {};
+    try {
+      const decision = this.observe(input, toolUseID);
+      this.changed();
+      return decision;
+    } catch {
+      /* 观察失败不得打断工具执行 */
+      return {};
+    }
   };
-  private observe(input: HookInput, toolUseID?: string): void {
+  private activeCollaboratorCount(): number {
+    const runningNodes = this.run.nodes.filter(node => node.id !== 'main' && node.status === 'running').length;
+    const pendingDispatches = [...this.requests.keys()].filter(id => !this.linkedRequests.has(id)).length;
+    return runningNodes + pendingDispatches;
+  }
+  private observe(input: HookInput, toolUseID?: string): Record<string, unknown> {
     const event = input.hook_event_name;
     if (event === 'UserPromptExpansion') {
       const node = this.node(input.agent_id || 'main', input.agent_id ? input.agent_type ?? '' : 'main');
-      if (!node) return;
-      if (this.run.nodes.reduce((n, entry) => n + entry.tools.length, 0) >= 500) { this.run.truncated = true; return; }
+      if (!node) return {};
+      if (this.run.nodes.reduce((n, entry) => n + entry.tools.length, 0) >= 500) { this.run.truncated = true; return {}; }
       const command = input.command_name.replace(/^\//, '').slice(0, 100);
       node.tools.push({ id: randomUUID(), name: command, label: `载入入口指令 · ${workflowToolLabel('Skill', command)}`,
         skill: command, skillSource: 'entry',
         status: 'completed', startedAt: Date.now(), endedAt: Date.now() });
-      return;
+      return {};
     }
     if (event === 'SubagentStart') {
       // SDK 偶尔不带 toolUseID；只有恰好一条尚未关联的派发时才补回身份，多条并行时仍不猜。
@@ -93,18 +110,36 @@ export class WorkflowTrace {
         node.assignment ??= request.assignment;
         this.linkedRequests.add(requestId!);
       }
-      return;
+      return {};
     }
     if (event === 'SubagentStop') {
       const node = this.node(input.agent_id, input.agent_type);
       if (node) { node.status = 'returned'; node.endedAt = Date.now();
         for (const tool of node.tools) if (tool.status === 'running') tool.status = 'unknown'; }
-      return;
+      return {};
     }
-    if (event !== 'PreToolUse' && event !== 'PostToolUse' && event !== 'PostToolUseFailure') return;
+    if (event !== 'PreToolUse' && event !== 'PostToolUse' && event !== 'PostToolUseFailure') return {};
+    if (event === 'PreToolUse' && /^(Agent|Task)$/.test(input.tool_name) && this.collaborationEnabled && this.activeCollaboratorCount() >= this.maxParallelAgents) {
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: `本轮已达到 ${this.maxParallelAgents} 位协作成员的并行上限，请复用已完成成员或由主助手继续。`,
+        },
+      };
+    }
+    if (event === 'PreToolUse' && /^(Agent|Task)$/.test(input.tool_name) && this.collaborationEnabled && this.requests.size >= this.maxTotalAgents) {
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: `本轮协作预算已用完（最多 ${this.maxTotalAgents} 位成员），请复用已有成员或由主助手继续。`,
+        },
+      };
+    }
     const owner = input.agent_id || 'main';
     const node = this.node(owner, owner === 'main' ? 'main' : input.agent_type ?? '');
-    if (!node) return;
+    if (!node) return {};
     if (this.toolOwners.size < 500) this.toolOwners.set(input.tool_use_id, owner);
     const dispatch = this.toolParents.get(input.tool_use_id);
     if (dispatch) this.connect(owner, dispatch);
@@ -119,7 +154,7 @@ export class WorkflowTrace {
     }
     let tool = node.tools.find(t => t.id === input.tool_use_id);
     if (!tool) {
-      if (this.run.nodes.reduce((n, entry) => n + entry.tools.length, 0) >= 500) { this.run.truncated = true; return; }
+      if (this.run.nodes.reduce((n, entry) => n + entry.tools.length, 0) >= 500) { this.run.truncated = true; return {}; }
       const skill = input.tool_name === 'Skill' && typeof data.skill === 'string' ? data.skill.slice(0, 100) : undefined;
       tool = { id: input.tool_use_id, name: input.tool_name.slice(0, 100), label: workflowToolLabel(input.tool_name, skill),
         skill, status: 'running', startedAt: Date.now() };
@@ -158,6 +193,7 @@ export class WorkflowTrace {
       }
     }
     if (event === 'PostToolUseFailure') { tool.status = input.is_interrupt ? 'stopped' : 'unsuccessful'; tool.endedAt = Date.now(); }
+    return {};
   }
   finish(status: Exclude<WorkflowStatus, 'running'>): void {
     if (this.run.status !== 'running') return;
