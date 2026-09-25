@@ -101,6 +101,39 @@ SCRIPT_MAP = {
     "spatial-attribution-summary": "make_spatial_attribution_summary.py",
 }
 
+# 面向数学建模的首选目录。脚本文件仍保留在包内，方便旧项目复现已有图表；
+# 新任务和模板面板只允许使用这组“证据图”，避免把泛科研装饰图带进论文。
+CURATED_IDS = {
+    "principal-coordinate-map",
+    "redundancy-ordination",
+    "pca-association-network",
+    "horizontal-share-bars",
+    "set-overlap-report",
+    "time-regression-matrix",
+    "regression-uncertainty-scatter",
+    "grouped-block-correlation",
+    "correlation-pairgrid",
+    "grouped-regression-marginals",
+    "attribution-matrix-summary",
+    "attribution-waterfall",
+    "attribution-intervals",
+    "multiresponse-effect-curves",
+    "spatial-attribution-maps",
+    "dual-axis-time-comparison",
+    "pca-variance-report",
+    "clustered-rank-correlation",
+    "ternary-composition",
+    "paired-raincloud",
+    "cv-roc-ci",
+    "taylor-diagram",
+    "prediction-marginal-grid",
+    "grouped-corr-split-violin",
+    "land-model-prediction-comparison",
+    "landslide-pdp-interaction-grid",
+    "esv-local-moran-scenarios",
+    "response-contour-matrix",
+}
+
 ALIASES = {
     "pcoa": "principal-coordinate-map",
     "rda": "redundancy-ordination",
@@ -351,7 +384,8 @@ def resolve_template(value: str) -> str:
         if hint.lower() in lowered:
             return template_id
     raise SystemExit(
-        f"Unknown template: {value}\nAvailable ids: " + ", ".join(sorted(SCRIPT_MAP))
+        f"未找到模板“{value}”。可用的数学建模模板："
+        + ", ".join(sorted(CURATED_IDS))
     )
 
 
@@ -453,13 +487,17 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.list:
-        for template_id in sorted(SCRIPT_MAP):
+        for template_id in sorted(CURATED_IDS):
             print(template_id)
         return
     if not args.template:
         parser.error("template is required unless --list is used")
 
     template_id = resolve_template(args.template)
+    if template_id not in CURATED_IDS:
+        raise SystemExit(
+            f"模板“{template_id}”已从数学建模首选目录下线；请先运行 --list 查看可用模板。"
+        )
     skill_root = Path(__file__).resolve().parents[1]
     src = skill_root / "scripts" / "templates" / SCRIPT_MAP[template_id]
     if not src.exists():

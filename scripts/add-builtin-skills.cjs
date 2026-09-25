@@ -105,10 +105,9 @@ function findLicense(repoDir) {
 // 复制清单：{ dst 目录名: 源路径 }
 // ─────────────────────────────────────────────────────────────
 const COPIES = {
-  // 用户点名的三个绘图技能
+  // 保留面向数据证据的绘图技能；泛科研示意图已从数学建模入口下线
   'scipilot-figure-skill': `${SRC}/scipilot-figure-skill`,
   'scientific-figure-making': `${SRC}/figures4papers/scientific-figure-making`,
-  'academic-figures': `${SRC}/academic-figures`,
   // 官方 PDF 技能（用户点名 PDF 读取）
   'pdf': `${SRC}/skills/skills/pdf`,
   // zhnnky329 数模工作流（精选 16 个）
@@ -150,7 +149,6 @@ const COPIES = {
 const REPO_OF = {
   'scipilot-figure-skill': [`${SRC}/scipilot-figure-skill`, 'https://github.com/Haojae/scipilot-figure-skill'],
   'scientific-figure-making': [`${SRC}/figures4papers`, 'https://github.com/williamli-15/figures4papers（scientific-figure-making 子目录）'],
-  'academic-figures': [`${SRC}/academic-figures`, 'https://github.com/sai-tv/academic-figures'],
   'pdf': [`${SRC}/skills`, 'https://github.com/anthropics/skills（skills/pdf）'],
   'verifying-bibliography': [`${SRC}/claude-skills-research`, 'https://github.com/chgagne/claude-skills-research（verifying-bibliography）'],
 };
@@ -167,7 +165,6 @@ function repoOf(dstName) {
 const DESCRIPTIONS = {
   'pdf': '读取、解析、生成与修复 PDF：文本和表格抽取、扫描件 OCR、表单填写、拆分合并、加水印、页数统计。任务涉及 PDF 附件阅读、论文 PDF 解析、pdftotext、pypdf 等时使用。',
   'scientific-figure-making': '为学术论文/报告制作出版级 matplotlib 数据图：分组柱状、趋势线、热力图、多面板组合，PDF/SVG 矢量与高 DPI 导出，统一字体、配色与图例风格。写论文配图时使用；不做交互式仪表盘与纯探索性画图。',
-  'academic-figures': '生成可在 Inkscape/Ipe 中编辑的出版级 SVG 示意图：多面板研究图、图形摘要（graphical abstract）、目录图（TOC）、实验流程与概念插图，按 Nature/Cell/ACS/IEEE 尺寸字体规范输出 2-3 个布局与风格不同的变体。涉及论文示意图、期刊插图、TOC graphic 时使用。',
   'problem-parser': '通读数模竞赛题目，抽取目标、对象、约束、数据、要求输出与子问题清单，产出结构化题意解析。解题第一步使用，防止答非所问。',
   'problem-classifier': '把每个子问题归类为评价、预测、优化、分类聚类、机理模拟等题型并标注依赖关系，为模型选择铺路。',
   'method-selector': '为每个子问题筛选小而可靠的方法组合：一个主候选模型、一个可用基线、至多一个带触发条件的备选，并做数据假设、退化、敏感性与规模风险预检。模型选择必用；先完成题意解析与数据画像，再生成方法卡与风险探针摘要。',

@@ -37,6 +37,14 @@ import type { SkillMeta } from '@shared/types';
 import { disabledSkillDirs, enabledSkillDirs, setSkillDisabled } from '../store/config';
 import { resolveResource } from '../resources';
 
+/**
+ * 已从数学建模工作流下线的泛科研绘图技能。
+ *
+ * 源目录暂时保留，保证旧项目可以继续复现已有产物；扫描、插件物化和技能面板
+ * 都不再把它们当作可用技能，避免新论文误选期刊装饰图或图形摘要模板。
+ */
+const RETIRED_BUILTIN_SKILLS = new Set(['academic-figures', 'nature-figure']);
+
 // ─────────────────────────────────────────────────────────────
 // 技能根目录
 // ─────────────────────────────────────────────────────────────
@@ -199,6 +207,7 @@ function scanRoot(root: string, source: 'builtin' | 'user'): SkillMeta[] {
   }
   const out: SkillMeta[] = [];
   for (const name of entries) {
+    if (source === 'builtin' && RETIRED_BUILTIN_SKILLS.has(name)) continue;
     const full = join(root, name);
     let st;
     try {

@@ -28,6 +28,7 @@ Check:
 - duplicated or conflicting macros
 - obvious syntax and compilation errors
 - placeholders and stale drafting artifacts
+- table width, wrapping, cross-page headers, and right-edge clipping; route concrete table repairs to `table-layout-audit`
 
 When compilation is available and safe, inspect the actual log. Distinguish compiler findings from source inspection.
 

@@ -40,7 +40,9 @@ python3 "<skill-directory>/scripts/render_template.py" --list
 
 ## Complete scientific layouts
 
-This skill contains 90 templates. The [complete layout guide](references/extended-chart-guide.md) lists 59 selected full chart layouts, including 15-panel effects with histograms, six-model marginal reports, and dense concentric heatmaps. The [catalog](references/figure-catalog.md) lists every id and preview. The [basic analysis guide](references/modeling-analysis.md) covers additional PCA and feature-attribution reports.
+本技能保留完整脚本以兼容旧项目，但新任务只开放数学建模首选目录（28 套）。首选目录覆盖技术路线、相关性与降维、预测检验、敏感性/贡献、方案比较、空间结果和组合图；每一张图都要回答题目中的一个建模问题，不为装饰凑图。运行 `scripts/render_template.py --list` 查看当前可用目录。
+
+旧项目中已经生成的其他图表仍可复现，但泛科研装饰、复杂环形仪表盘和与题目无关的期刊风格模板已从新任务入口下线。选择模板时优先使用首选目录；如果题目没有对应证据图，应先调整数据分析，而不是强行套模板。
 
 Bundled previews use lossless WebP at their original resolution; generated figures still export PNG/PDF/SVG.
 

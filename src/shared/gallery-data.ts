@@ -991,7 +991,53 @@ export const GALLERY: GalleryTemplate[] = [
   },
 ]
 
-/** 全部分类（原版 `v6e` 顺序，即筛选胶囊顺序） */
+/**
+ * 数学建模首选目录。
+ *
+ * 目录不是“越多越好”：演示和论文入口只展示能直接支撑建模论证的图，
+ * 其余旧模板仍留在数据文件中供历史项目读取，但不再污染新任务的选择器。
+ */
+export const MATHMODEL_GALLERY_IDS = new Set<string>([
+  'diagram-roadmap-5band',
+  'diagram-roadmap-3phase',
+  'diagram-framework-3col',
+  'diagram-stageflow-3col',
+  'diagram-taskflow-land',
+  'principal-coordinate-map',
+  'redundancy-ordination',
+  'pca-association-network',
+  'horizontal-share-bars',
+  'set-overlap-report',
+  'time-regression-matrix',
+  'regression-uncertainty-scatter',
+  'grouped-block-correlation',
+  'correlation-pairgrid',
+  'grouped-regression-marginals',
+  'attribution-matrix-summary',
+  'attribution-waterfall',
+  'attribution-intervals',
+  'multiresponse-effect-curves',
+  'spatial-attribution-maps',
+  'dual-axis-time-comparison',
+  'pca-variance-report',
+  'clustered-rank-correlation',
+  'ternary-composition',
+  'paired-raincloud',
+  'cv-roc-ci',
+  'taylor-diagram',
+  'prediction-marginal-grid',
+  'grouped-corr-split-violin',
+  'land-model-prediction-comparison',
+  'landslide-pdp-interaction-grid',
+  'esv-local-moran-scenarios',
+  'response-contour-matrix',
+]);
+
+export const MATHMODEL_GALLERY: GalleryTemplate[] = GALLERY.filter((item) =>
+  MATHMODEL_GALLERY_IDS.has(item.id),
+);
+
+/** 首选目录分类（保持稳定顺序，便于演示时快速筛选） */
 export const GALLERY_CATEGORIES: string[] = [
   '流程图',
   '相关性',
@@ -1000,7 +1046,7 @@ export const GALLERY_CATEGORIES: string[] = [
   '模型评价',
   '组合图',
   '空间分析',
-];
+].filter((category) => MATHMODEL_GALLERY.some((item) => item.category === category));
 
 /** 绘图主题（原版 `b6e`，默认 mono） */
 export const DIAGRAM_THEMES: Array<'mono' | 'color'> = ['mono', 'color'];

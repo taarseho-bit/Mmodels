@@ -1,5 +1,7 @@
 # MModels 交接报告（HANDOFF）
 
+> **最新：数学建模图表目录与表格排版审计（2026-09-25）**。新增 `table-layout-audit`，论文 Skill 在编译前扫描宽表并要求渲染复核；绘图入口只展示 28 项数据模板和 5 项技术路线图，旧脚本仅用于历史复现。`academic-figures`、`nature-figure` 不再作为内置可用技能物化。附件 `main(15).pdf` 的表 8.16—8.18 右侧裁切已作为回归问题记录。Node/Web TypeScript、模板清单和 TeX 审计均通过；本轮未跑全量测试、未打包 Portable。
+
 > **最新：SDK 真实事件驱动阶段轨（2026-09-25）**。`WorkflowRun` 增加阶段计划、当前阶段和阶段状态；`WorkflowTrace` 根据真实工具活动推进阶段，`WorkflowView` 在项目级画布前显示阶段轨。旧快照向下兼容通用四阶段。40 项定向工作流/策略测试、TypeScript、生产构建通过；本轮未跑全量、未重新打包 Portable。
 
 > **最新：分层编排与运行时协作预算（2026-09-25）**。新增 `src/main/agent/orchestration-policy.ts`，按任务类型定义阶段、质量门、并行预算和整轮总预算。`WorkflowTrace` 通过 SDK `PreToolUse` Hook 拦截超预算 Agent/Task：默认同时最多2位、复杂任务整轮最多4位；子智能体可以创建子智能体，但共享预算并保留真实父子关系。子智能体统一返回结论/证据/风险/下一步，主助手唯一汇总。41项核心编排测试、TypeScript、生产构建通过；本轮未重新打包 Portable。

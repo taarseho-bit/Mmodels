@@ -705,7 +705,7 @@ export function buildSystemPrompt(
             'literature-researcher（文献调研员：literature-search、literature-review、citation-management、reference-manager、paper-search、related-paper-analyzer、deep-research）、' +
             'model-solver（建模求解员：modeling-algorithms、method-selector、python-model-code-generator、robustness-checker）、' +
             'paper-writer（论文写作员：paper-writing、paper-section-writer、literature-positioning、citation-management、reference-manager、paper-search、paper-polisher）、' +
-            'figure-maker（图表制作员：figure-table-planner、scipilot-figure-skill、scientific-figure-making、academic-figures、nature-figure、paper-diagram、mathmodel-figure-templates）、' +
+            'figure-maker（图表制作员：figure-table-planner、scipilot-figure-skill、scientific-figure-making、paper-diagram、mathmodel-figure-templates、table-layout-audit；优先技术路线、相关性、预测检验、敏感性、方案比较和空间结果）、' +
             'paper-reviewer（论文核验员：paper-review、proof-audit、claim-evidence-audit、verifying-bibliography、quality-assurance-auditor、paper-page-fit、competition-audit）。按实际任务选择角色，不要求凑齐。',
           '- **固定角色优先**：先从上表选 subagent_type，不要编造其他未注册的类型名。注册角色确实覆盖不了某项专项工作时，由你当场设计一个**新专职角色**——这不是临时工，而是和注册角色同级的正式成员。',
           '- 新角色按「角色章程」设计，任务说明开头至少写明四行：① 角色名（中文专职名，如"微分方程推导员""图表翻译排版员"）；② 职责边界（一句话，不与注册角色重叠）；③ 必用技能（从已启用技能里挑真实匹配的 1-3 个，写出技能名）；④ 交付要求（返回什么证据、产出文件路径）。派发时仍以"角色名：X；任务：Y"开头，面板会按专职名显示。',

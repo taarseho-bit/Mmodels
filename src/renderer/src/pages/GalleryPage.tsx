@@ -18,7 +18,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  GALLERY,
+  MATHMODEL_GALLERY,
   GALLERY_CATEGORIES,
   DIAGRAM_THEMES,
   DEFAULT_DIAGRAM_THEME,
@@ -242,13 +242,13 @@ export function GalleryPage(): JSX.Element {
 
   /** 原版：`new Map([["All", Ot.length]])` + 逐条累加分类计数 */
   const counts = useMemo(() => {
-    const m = new Map<string, number>([[ALL, GALLERY.length]]);
-    for (const g of GALLERY) m.set(g.category, (m.get(g.category) ?? 0) + 1);
+    const m = new Map<string, number>([[ALL, MATHMODEL_GALLERY.length]]);
+    for (const g of MATHMODEL_GALLERY) m.set(g.category, (m.get(g.category) ?? 0) + 1);
     return m;
   }, []);
 
   const items = useMemo(
-    () => (cat === ALL ? GALLERY : GALLERY.filter((g) => g.category === cat)),
+    () => (cat === ALL ? MATHMODEL_GALLERY : MATHMODEL_GALLERY.filter((g) => g.category === cat)),
     [cat],
   );
 
