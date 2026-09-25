@@ -6,7 +6,7 @@
  * 数据链路复用 DatabasePage 的管线：
  *   dataset.list() → file.preview(relPath)（text）→ parseDelimited → 列选择。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart, PieChart, ScatterChart } from 'echarts/charts';
 import { DataZoomComponent, GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
@@ -190,7 +190,7 @@ export function DataPlotPanel({ active = true }: Props): JSX.Element {
   const exportSvg = (): void => {
     const inst = chartInst.current;
     if (!inst) return;
-    const svg = inst.renderToSVGString({ backgroundColor: '#ffffff' });
+    const svg = inst.renderToSVGString();
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     download(url, `${baseName}-${plotType}.svg`);

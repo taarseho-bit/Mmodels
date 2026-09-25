@@ -330,7 +330,7 @@ export function ProfileSection(): JSX.Element {
               </span>
             ) : (
               stats.bySkill.slice(0, 20).map((p) => {
-                const maxRuns = Math.max(1, ...stats.bySkill.map((x) => x.runs));
+                const maxRuns = Math.max(1, ...(stats.bySkill ?? []).map((x) => x.runs));
                 return (
                   <div key={p.name} className="col" style={{ gap: 3 }}>
                     <div className="row" style={{ justifyContent: 'space-between', gap: 8, fontSize: 12.5 }}>

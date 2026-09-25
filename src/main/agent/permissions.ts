@@ -100,7 +100,7 @@ export type InteractionMode = 'default' | 'plan';
 export type SdkPermissionMode = 'default' | 'plan' | 'bypassPermissions';
 
 /** 原版审批类别分类函数的值域，对应渲染层的三条 prompt 文案（`zh.ts:741-754`） */
-export type ApprovalKind = 'command' | 'file-read' | 'file-change';
+export type ApprovalKind = 'command' | 'file-read' | 'file-change' | 'plan';
 
 /** 原版工具门里 `switch(decision)` 的四个分支（原版 `case` 字面量） */
 export type ApprovalDecision = 'accept' | 'acceptForSession' | 'cancel' | 'decline';

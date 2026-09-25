@@ -220,6 +220,10 @@ export function DesktopPetWindow(): JSX.Element {
         pixel: '地图展开啦，下一条路从哪里出发？',
         researcher: '放大一点看看，说不定藏着新线索。',
         astronaut: '发现一颗小晶体，靠近看看！',
+        'owl-3d': '深夜推演，我最清醒。',
+        'robot-3d': '计算完成，结果已同步。',
+        'fox-3d': '数据线索都在这里。',
+        'bear-3d': '稳住，一步步来。',
       }[appearance]);
     }
   };

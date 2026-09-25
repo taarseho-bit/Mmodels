@@ -347,6 +347,53 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
         ]
       : [];
 
+  /** 置顶的项目（2026-09-25 用户要求）—— localStorage 持久化，置顶的排最前 */
+  const [pinnedProjects, setPinnedProjects] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('mm-projects-pinned');
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const togglePinProject = useCallback((id: string): void => {
+    setPinnedProjects((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try { localStorage.setItem('mm-projects-pinned', JSON.stringify(next)); } catch { /* 忽略 */ }
+      return next;
+    });
+  }, []);
+
+  /** 收藏的项目（与置顶独立）—— 收藏的排在置顶之后、其余之前 */
+  const [favoritedProjects, setFavoritedProjects] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('mm-projects-favorited');
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const toggleFavoriteProject = useCallback((id: string): void => {
+    setFavoritedProjects((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try { localStorage.setItem('mm-projects-favorited', JSON.stringify(next)); } catch { /* 忽略 */ }
+      return next;
+    });
+  }, []);
+
+  /** 归档的会话（2026-09-25 用户要求）—— 不删，收进「已归档」折叠区 */
+  const [archivedChats, setArchivedChats] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('mm-chats-archived');
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+
   const projectMenuItems: ContextMenuItem[] =
     ctxMenu?.kind === 'project'
       ? [
@@ -467,52 +514,6 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
     { icon: 'file-text', label: '优秀获奖论文', route: 'papers' },
   ];
 
-  /** 置顶的项目（2026-09-25 用户要求）—— localStorage 持久化，置顶的排最前 */
-  const [pinnedProjects, setPinnedProjects] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem('mm-projects-pinned');
-      const v: unknown = raw ? JSON.parse(raw) : [];
-      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
-  const togglePinProject = useCallback((id: string): void => {
-    setPinnedProjects((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      try { localStorage.setItem('mm-projects-pinned', JSON.stringify(next)); } catch { /* 忽略 */ }
-      return next;
-    });
-  }, []);
-
-  /** 收藏的项目（与置顶独立）—— 收藏的排在置顶之后、其余之前 */
-  const [favoritedProjects, setFavoritedProjects] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem('mm-projects-favorited');
-      const v: unknown = raw ? JSON.parse(raw) : [];
-      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
-  const toggleFavoriteProject = useCallback((id: string): void => {
-    setFavoritedProjects((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      try { localStorage.setItem('mm-projects-favorited', JSON.stringify(next)); } catch { /* 忽略 */ }
-      return next;
-    });
-  }, []);
-
-  /** 归档的会话（2026-09-25 用户要求）—— 不删，收进「已归档」折叠区 */
-  const [archivedChats, setArchivedChats] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem('mm-chats-archived');
-      const v: unknown = raw ? JSON.parse(raw) : [];
-      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
   const [archivedOpen, setArchivedOpen] = useState(false);
   const toggleArchiveChat = useCallback((id: string): void => {
     setArchivedChats((prev) => {

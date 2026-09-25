@@ -20,7 +20,6 @@ import {
   setAppearance,
   useApp,
   type AppearanceDensity,
-  type AppearanceMode,
 } from '../../store/app';
 
 function densityLabel(d: AppearanceDensity): string {

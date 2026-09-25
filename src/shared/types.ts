@@ -414,7 +414,7 @@ export interface AppSettings {
   maxTotalAgents?: number;
   /** 是否显示跟随真实任务状态变化的数学建模伙伴。 */
   modelingPetEnabled?: boolean;
-  modelingPetAppearance?: 'student' | 'pixel' | 'researcher' | 'astronaut';
+  modelingPetAppearance?: 'student' | 'pixel' | 'researcher' | 'astronaut' | 'owl-3d' | 'robot-3d' | 'fox-3d' | 'bear-3d';
   modelingPetQuiet?: boolean;
   modelingPetSize?: 'small' | 'normal';
   modelingPetMotion?: 'lively' | 'gentle';
