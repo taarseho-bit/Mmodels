@@ -47,6 +47,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   permissionMode: 'full',
   planMode: false,
   multiAgentEnabled: true,
+  modelingQualityMode: 'balanced',
+  skillAutoSelect: true,
+  maxParallelAgents: 2,
+  maxTotalAgents: 4,
   modelingPetEnabled: true,
   // ⚠️ 必须是 'paper'，与原版一致。
   //    原版的 zod schema 与运行时兜底都是 "paper"。

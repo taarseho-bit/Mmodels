@@ -397,6 +397,14 @@ export interface AppSettings {
   planMode?: boolean;
   /** 复杂建模任务是否允许主智能体调用专门的子智能体并行分析。 */
   multiAgentEnabled?: boolean;
+  /** 数学建模任务的质量检查强度；决定是否优先做验证、敏感性分析和交付核对。 */
+  modelingQualityMode?: 'fast' | 'balanced' | 'strict';
+  /** 是否允许智能体根据题目自动选择匹配技能。 */
+  skillAutoSelect?: boolean;
+  /** 多智能体默认并行上限。 */
+  maxParallelAgents?: number;
+  /** 多智能体默认总人数上限。 */
+  maxTotalAgents?: number;
   /** 是否显示跟随真实任务状态变化的数学建模伙伴。 */
   modelingPetEnabled?: boolean;
   modelingPetAppearance?: 'student' | 'pixel' | 'researcher' | 'astronaut';

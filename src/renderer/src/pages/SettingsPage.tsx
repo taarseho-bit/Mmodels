@@ -1,8 +1,8 @@
 /**
  * 设置页 —— 复刻原版的**分区导航**结构（左侧栏 + 右侧内容）。
  *
- * 原版侧栏：返回应用 / 搜索设置 / 个人资料 / 论文与比赛 / 对话 / 模型 / 供应商 /
- *           运行环境 / 网络 / 系统提示词 / 外观 / 键盘快捷键 / 通知 / 机器人 / 新手教程 / 关于
+ * 现在按数学建模工作流分为六组：比赛与论文 / 建模资源 / 模型与协作 /
+ *           运行环境 / 自动化与通知 / 外观与帮助。
  *
  * ⚠️ 全部本地化：
  *   - 个人资料的用量统计从本地 SQLite 聚合（stats:get），不出网
@@ -19,6 +19,7 @@ import { ResizeHandle } from '../components/ResizeHandle';
 import { onOpenSettings } from '../lib/settings-nav';
 import { ProfileSection } from '../components/settings/ProfileSection';
 import { PaperSection } from '../components/settings/PaperSection';
+import { ModelingQualitySection } from '../components/settings/ModelingQualitySection';
 import { ChatSection } from '../components/settings/ChatSection';
 import { ModelSection } from '../components/settings/ModelSection';
 import { ProvidersSection } from '../components/settings/ProvidersSection';
@@ -41,6 +42,7 @@ type SectionId =
   | 'gallery' | 'competitions' | 'datasets' | 'automation' | 'extensions'
   | 'profile'
   | 'paper'
+  | 'quality'
   | 'chat'
   | 'model'
   | 'providers'
@@ -62,7 +64,7 @@ function normalizeSection(value: string | null | undefined): SectionId | null {
   if (!value) return null;
   if (value === 'bots') return 'about';
   const ids: SectionId[] = [
-    'gallery', 'competitions', 'datasets', 'automation', 'extensions', 'profile', 'paper',
+    'gallery', 'competitions', 'datasets', 'automation', 'extensions', 'profile', 'paper', 'quality',
     'chat', 'model', 'providers', 'env', 'network', 'sysprompt', 'appearance', 'keys',
     'notify', 'tour', 'about',
   ];
@@ -109,14 +111,15 @@ export function SettingsPage({
   }, []);
 
   /**
-   * 分区导航 —— 与原版实机一致：**线性图标**（不是 emoji），
-   * 顺序即原版侧栏顺序（个人资料 → 关于）。
+   * 分区导航 —— 使用线性图标和可折叠分组；完整工作台仍保留独立页面，
+   * 只是把入口按数学建模场景重新归类。
    */
   const groups: SectionGroup[] = [
     {
       id: 'competition', label: '比赛与论文', icon: 'trophy', items: [
         { id: 'competitions', label: '竞赛日历', icon: 'calendar-days' },
         { id: 'paper', label: '论文默认规则', icon: 'file-text' },
+        { id: 'quality', label: '建模质量与交付', icon: 'clipboard-check' },
       ],
     },
     {
@@ -243,6 +246,7 @@ export function SettingsPage({
             {section === 'extensions' && <ExtensionsPage requestedTab={requestedExtensionTab} onNavigate={onNavigate} />}
             {section === 'profile' && <ProfileSection />}
             {section === 'paper' && <PaperSection />}
+            {section === 'quality' && <ModelingQualitySection />}
             {section === 'chat' && <ChatSection />}
             {section === 'model' && <ModelSection />}
             {section === 'providers' && <ProvidersSection />}
