@@ -15,6 +15,12 @@ const projectSchema = z.object({
   checklist: z.array(z.object({ id, text: short, done: z.boolean() })).max(100),
   alternatives: z.array(z.object({ id, name: short, score: short, risks: short })).max(100),
   evidence: z.array(z.object({ id, claim: short, source: short, checked: z.boolean() })).max(100),
+  deliveryAudit: z.object({
+    checkedAt: z.string().max(40).refine(v => Number.isFinite(new Date(v).getTime())),
+    status: z.enum(['准备较好', '仍需处理']),
+    items: z.array(z.object({ id, label: short, status: z.enum(['通过', '待补充', '需深度核验']), detail: short })).max(20),
+    note: short,
+  }).optional(),
 });
 
 export function validateProject(value: unknown): Project {

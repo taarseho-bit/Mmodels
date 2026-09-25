@@ -1,11 +1,16 @@
 export const COMPETITIONS = ['全国大学生数学建模竞赛', '美国大学生数学建模竞赛 MCM/ICM', '中国研究生数学建模竞赛', '其他竞赛 / 自主练习'];
 export type Phase = '读题' | '求解' | '写作' | '核验' | '提交';
+export type DeliveryAuditItemStatus = '通过' | '待补充' | '需深度核验';
+export interface DeliveryAuditItem { id: string; label: string; status: DeliveryAuditItemStatus; detail: string }
+export interface DeliveryAudit { checkedAt: string; status: '准备较好' | '仍需处理'; items: DeliveryAuditItem[]; note: string }
 export interface Project {
   calendarId?: string;
   id: string; name: string; competition: string; year: number; problem: string; deadline: string;
   pageLimit: string; phase: Phase; rules: string; checklist: { id: string; text: string; done: boolean }[];
   alternatives: { id: string; name: string; score: string; risks: string }[];
   evidence: { id: string; claim: string; source: string; checked: boolean }[];
+  /** 最近一次项目级交付预检查；不冒充 PDF 深度审阅结果。 */
+  deliveryAudit?: DeliveryAudit;
 }
 export interface Paper {
   id: string; title: string; competition: string; year: number; problem: string; award: string;

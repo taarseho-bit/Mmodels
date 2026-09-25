@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Project, Phase } from '../../../shared/competition-studio';
+import type { DeliveryAudit, Project, Phase } from '../../../shared/competition-studio';
 import type { FileNode } from '@shared/types';
 import { COMPETITIONS } from '../../../shared/competitions-data';
 import { calendarCompetition, competitionDeadline, countdownFor } from '../../../shared/competition-countdown';
@@ -75,11 +75,33 @@ export function WorkbenchPage(): JSX.Element {
     } catch (e) { if (useApp.getState().currentProject?.id === value.id) setMessage(friendlyError(e, '比赛信息没有保存成功，内容已保留。')); return false; }
     finally { setBusy(false); }
   };
-  const ask = async (prompt: string, mode: 'paper' | 'chat' = 'paper') => {
-    if (!await save() || useApp.getState().currentProject?.id !== draft.id) return;
+  const ask = async (prompt: string, mode: 'paper' | 'chat' = 'paper', value = draft) => {
+    if (!await save(value) || useApp.getState().currentProject?.id !== draft.id) return;
     await useApp.getState().patchSettings({ composerMode: mode });
     if (useApp.getState().currentProject?.id !== draft.id) return;
     useApp.getState().beginNewChat(); useApp.getState().fillPrompt(prompt); openRoute('chat');
+  };
+  const runDeliveryAudit = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      const stats = fileStats ?? scanDeliveryFiles(await window.mathmodel.file.tree());
+      setFileStats(stats); setFileScannedAt(Date.now());
+      const items: DeliveryAudit['items'] = [
+        { id: 'contest', label: '比赛信息', status: contest ? '通过' : '待补充', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛' },
+        { id: 'paper', label: '论文文件', status: stats.pdf > 0 ? '通过' : '待补充', detail: stats.pdf > 0 ? `找到 ${stats.pdf} 个 PDF` : '项目中没有找到 PDF' },
+        { id: 'page-limit', label: '页数要求', status: draft.pageLimit.trim() ? '通过' : '待补充', detail: draft.pageLimit.trim() ? `上限 ${draft.pageLimit}` : '还没有设置页数上限' },
+        { id: 'materials', label: '图表与数据', status: stats.figure > 0 || stats.table > 0 ? '通过' : '待补充', detail: `${stats.figure} 个图表 · ${stats.table} 个数据文件` },
+        { id: 'checklist', label: '提交清单', status: checkPercent === 100 ? '通过' : '待补充', detail: `${checkedCount}/${draft.checklist.length} 项已核对` },
+        { id: 'deep-review', label: 'PDF 深度核验', status: '需深度核验', detail: '需要助手实际读取 PDF、表格和图表后确认' },
+      ];
+      const ready = items.filter(item => item.status === '待补充').length === 0;
+      const audit: DeliveryAudit = { checkedAt: new Date().toISOString(), status: ready ? '准备较好' : '仍需处理', items, note: '这是项目级预检查；PDF 页数、表格裁切、公式和引用仍需助手深度核验。' };
+      const next = { ...draft, deliveryAudit: audit };
+      setDraft(next); drafts.set(next.id, next); setMessage('预检查结果已保存，正在让助手继续核对 PDF…');
+      await ask('请继续完成论文交付深度核验：读取当前项目的论文 PDF、图表和表格，检查正文页数、表格是否裁切、图片是否缺失、引用与章节结构是否完整。请使用 competition-audit、table-layout-audit 和 paper-page-fit 等匹配技能；把已确认、需要修改和需要人工确认的项目分开说明，不把项目预检查结果当成最终结论。', 'chat', next);
+    } catch (e) {
+      setMessage(friendlyError(e, '交付预检查没有完成，内容已保留，可以重试。'));
+    } finally { setBusy(false); }
   };
   return <div className="studio-page studio-workbench">
     <header className="studio-page-heading"><div><h1>比赛工作台</h1><p>{project?.name}</p></div>
@@ -108,9 +130,10 @@ export function WorkbenchPage(): JSX.Element {
       <div className="studio-readiness-meta"><span>当前阶段：{draft.phase}</span><span>{draft.pageLimit ? `页数上限：${draft.pageLimit}` : '尚未设置页数上限'}</span><span>{draft.evidence.length} 条结论依据 · {draft.alternatives.length} 个候选方案</span></div>
     </section>
     <section className="studio-delivery-panel" aria-label="论文交付检查">
-      <header><div><span className="studio-eyebrow">提交前先看一眼</span><h2>论文交付检查</h2></div><div className="studio-delivery-actions"><button className="btn btn-ghost" onClick={() => setFileScanNonce(value => value + 1)}>重新读取</button><button className="btn btn-primary" disabled={busy} onClick={() => void ask('请运行一次论文交付检查：读取当前项目的比赛信息、论文 PDF、图表和表格，核对正文页数、表格是否裁切、图片是否缺失、引用与章节结构是否完整，并区分已确认、需要修改和需要人工确认的项目。请使用 competition-audit、table-layout-audit 和 paper-page-fit 等匹配技能；不要把我的勾选视为验证结果。', 'chat')}>立即检查</button></div></header>
+      <header><div><span className="studio-eyebrow">提交前先看一眼</span><h2>论文交付检查</h2><p className="studio-delivery-last">{draft.deliveryAudit ? `上次预检查：${new Date(draft.deliveryAudit.checkedAt).toLocaleString('zh-CN')} · ${draft.deliveryAudit.status}` : '还没有保存过项目级预检查'}</p></div><div className="studio-delivery-actions"><button className="btn btn-ghost" onClick={() => setFileScanNonce(value => value + 1)}>重新读取</button><button className="btn btn-primary" disabled={busy} onClick={() => void runDeliveryAudit()}>预检查并深度核验</button></div></header>
       <div className="studio-delivery-grid">{deliveryChecks.map(item => <div className={`studio-delivery-item${item.ok === true ? ' is-ok' : item.ok === null ? ' is-pending' : ''}`} key={item.label}><span className="studio-delivery-dot">{item.ok === true ? '✓' : item.ok === null ? '…' : '!'}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div><em>{item.ok === true ? '已具备' : item.ok === null ? '读取中' : '待补充'}</em></div>)}</div>
       <p className="studio-delivery-note">这里显示的是项目资料是否准备齐全，不代替助手对 PDF、表格和比赛规则的实际核对。{fileScannedAt ? ` 文件目录最近读取于 ${new Date(fileScannedAt).toLocaleTimeString('zh-CN')}` : ''}</p>
+      {draft.deliveryAudit && <div className="studio-audit-history"><strong>最近一次预检查</strong>{draft.deliveryAudit.items.filter(item => item.status !== '通过').map(item => <span key={item.id} className={item.status === '需深度核验' ? 'is-review' : 'is-pending'}>{item.label}：{item.detail}</span>)}{draft.deliveryAudit.items.every(item => item.status === '通过') && <span className="is-ok">项目资料已基本齐全，等待 PDF 深度核验。</span>}</div>}
     </section>
     {message && <p className="studio-notice" role="status">{message}</p>}
     <details className="studio-workbench-more"><summary>更多比赛资料与提交检查</summary>
