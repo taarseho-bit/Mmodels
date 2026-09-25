@@ -81,7 +81,8 @@ describe('长时任务与多智能体协作', () => {
     expect(text).toContain('等全部结果回来后再汇总');
     expect(text).toContain('不要让用户额外回复“继续”');
     expect(text).toContain('# 数学建模协作组');
-    expect(text).toContain('一次最多并行 3 个');
+    expect(text).toContain('一次最多并行 2 个');
+    expect(text).toContain('主助手始终是唯一汇总人');
     expect(text).toContain('正式代码、图表和论文文件由主智能体统一写入');
   });
 
@@ -110,7 +111,7 @@ describe('长时任务与多智能体协作', () => {
     );
     expect(required).toContain('# 本轮自动协作（已触发）');
     expect(required).toContain('必须实际调用 Agent 工具组织协作');
-    expect(required).toContain('先并行派发 2 至 3 个最有价值');
+    expect(required).toContain('默认只派发 2 个以内最有价值');
     expect(required).toContain('绝不为展示效果凑人数');
     expect(required).toContain('不要使用“协作研究员”');
     expect(buildSystemPrompt(CWD, false, false, '把标题改短一点')).not.toContain('# 本轮自动协作（已触发）');

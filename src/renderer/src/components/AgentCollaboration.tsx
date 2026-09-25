@@ -1,6 +1,6 @@
 import type { AgentActivity } from '@shared/types';
 import { Icon } from './Icon';
-import { visibleAgentText } from '../lib/modeling-activity';
+import { visibleAgentActivities, visibleAgentText } from '../lib/modeling-activity';
 import { chineseAgentName } from '@shared/workflow';
 
 function statusIcon(status: AgentActivity['status']): string {
@@ -19,7 +19,8 @@ export function AgentCollaboration({
 }): JSX.Element | null {
   if (!active || activities.length === 0) return null;
   const running = activities.filter((activity) => activity.status === 'running' || activity.status === 'pending').length;
-  const names = activities.map(activity => chineseAgentName(activity.agentType, activity.description));
+  const visible = visibleAgentActivities(activities);
+  const hiddenCount = Math.max(0, activities.length - visible.length);
 
   return (
     <section className="agent-collab" aria-label="数学建模协作组">
@@ -29,7 +30,7 @@ export function AgentCollaboration({
         <span>{running > 0 ? `${running} 位正在分头核对` : '正在汇总结果'}</span>
       </div>
       <div className="agent-collab-list">
-        {activities.map((activity, index) => (
+        {visible.map((activity) => (
           <div key={activity.taskId} className={`agent-collab-item is-${activity.status}`}>
             <span className="agent-collab-icon">
               <Icon
@@ -39,7 +40,7 @@ export function AgentCollaboration({
               />
             </span>
             <span className="agent-collab-copy">
-              <strong>{names[index]}{names.slice(0, index).includes(names[index]) ? ` · ${names.slice(0, index + 1).filter(name => name === names[index]).length}` : ''}</strong>
+              <strong>{chineseAgentName(activity.agentType, activity.description)}</strong>
               <span>{visibleAgentText(activity)}</span>
             </span>
             {activity.durationMs && activity.durationMs > 0 ? (
@@ -47,6 +48,9 @@ export function AgentCollaboration({
             ) : null}
           </div>
         ))}
+        {hiddenCount > 0 && (
+          <div className="agent-collab-more">其余 {hiddenCount} 位成员已收进工作流，完成后统一汇总</div>
+        )}
       </div>
     </section>
   );

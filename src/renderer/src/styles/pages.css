@@ -6622,6 +6622,12 @@ audio.ap-media {
 .agent-collab-copy strong { color: var(--fg-primary); font-weight: 600; }
 .agent-collab-copy span { overflow: hidden; color: var(--fg-muted); text-overflow: ellipsis; white-space: nowrap; }
 .agent-collab-item time { padding-top: 1px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.agent-collab-more {
+  grid-column: 1 / -1;
+  padding-top: 3px;
+  color: var(--fg-muted);
+  font-size: 10px;
+}
 
 /*
  * 小模运行壳：动作只由当前工具和子智能体事件驱动。角色图集准备好后可直接把

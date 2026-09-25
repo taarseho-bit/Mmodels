@@ -72,3 +72,15 @@ export function visibleAgentText(activity: AgentActivity): string {
     ? activity.description
     : '正在独立核对这一部分';
 }
+
+/**
+ * 演示用成员窗口：优先显示正在工作的成员，最多保留两张卡片。
+ * 完整成员列表仍由工作流快照保存，避免为了界面清爽丢掉审计信息。
+ */
+export function visibleAgentActivities(activities: AgentActivity[], max = 2): AgentActivity[] {
+  const limit = Math.max(1, Math.floor(max));
+  return [
+    ...activities.filter((activity) => activity.status === 'running' || activity.status === 'pending'),
+    ...activities.filter((activity) => activity.status !== 'running' && activity.status !== 'pending'),
+  ].slice(0, limit);
+}

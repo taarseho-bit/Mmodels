@@ -106,16 +106,16 @@ export function TaskProgressPanel({ state, agents, lastActivityAt }: {
         <div className="task-panel-body" data-task-body="1">
           {runningAgents.length > 0 && (
             <div className="task-panel-collab" data-task-collab="1">
-              {runningAgents.slice(0, 3).map((a) => (
+              {runningAgents.slice(0, 2).map((a) => (
                 <div key={a.taskId} className="task-collab-row">
                   <Icon name="loader-circle" size={12} className="task-item-spin" />
                   <span>{a.description || a.agentType}</span>
                   {a.summary && <small>{a.summary}</small>}
                 </div>
               ))}
-              {runningAgents.length > 3 && (
+              {runningAgents.length > 2 && (
                 <div className="task-collab-row">
-                  <small>{t('还有 {{count}} 位成员在工作中', { count: runningAgents.length - 3 })}</small>
+                  <small>{t('还有 {{count}} 位成员在工作中', { count: runningAgents.length - 2 })}</small>
                 </div>
               )}
             </div>
