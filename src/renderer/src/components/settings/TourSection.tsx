@@ -152,6 +152,20 @@ export function TourSection(): JSX.Element {
         </span>
       </div>
 
+      <div className="tour-route" aria-label="新版数学建模使用路线">
+        <div className="tour-route-title"><Icon name="workflow" size={15} /> <strong>新版数学建模使用路线</strong><span className="muted">从题目到交付，一条线走完</span></div>
+        <div className="tour-route-steps">
+          {[
+            ['01', '新建项目', '每个项目独立保存一套比赛信息和资料'],
+            ['02', '录入比赛信息', '选择赛事和模板，系统自动记住页数与截止时间'],
+            ['03', '导入题目与数据', '拖入 PDF、表格或数据文件，先让助手读懂材料'],
+            ['04', '拆题与建模', '需要时打开协作，让不同成员负责数据、模型和验证'],
+            ['05', '图表与论文', '从数据与图表选择合适参考，再生成中文论文图表'],
+            ['06', '提交前检查', '检查复算、页数、引用、图表和最终文件'],
+          ].map(([no, title, desc]) => <div className="tour-route-step" key={no}><b>{no}</b><strong>{title}</strong><span>{desc}</span></div>)}
+        </div>
+      </div>
+
       <div className="tour-grid">
         {CARDS.map((c) => {
           const isDone = isCardDone(c.id);

@@ -1,7 +1,7 @@
 /**
- * 科研绘图模板库 —— 复刻原版 `GalleryPage`（asar: `GalleryPage-B-E_SWbt.js`）。
+ * 数学建模图表参考库 —— 保留熟悉的卡片交互，但目录和提示词已经独立整理。
  *
- * 原版结构（tailwind → 本项目 `.gallery-*` CSS）：
+ * 页面结构：
  *   <PageShell title description>                    ← 页头无 action
  *     <div flex h-full flex-col>
  *       <div flex flex-wrap items-center gap-1.5 px-5 pb-3 pt-1>   ← 胶囊 + 计数
@@ -13,8 +13,7 @@
  *         右 aside w-72：标题 / 分类胶囊 / 描述 / 配色主题(仅流程图) / 分隔线 /
  *                        来源·绘图库·模板日期 / 使用此模板
  *
- * 提示词分派（原版 `_i` / `uM`）：流程图走 `/paper-diagram` 灰白论文版·彩色演示版双主题，
- * 其余走 `/mathmodel-figure-templates`。
+ * 所有参考图都走数学建模绘图技能；图表标题、说明和生成约束均使用简体中文。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {

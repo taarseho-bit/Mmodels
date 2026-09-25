@@ -186,6 +186,8 @@ const EFFORT_HINT: Record<EffortLevel, string> = {
 interface ModelOption {
   /** 所属服务商 id（内置目录为空串） */
   providerId: string;
+  /** 显示给用户的服务商名称，便于多个供应商同名模型的区分 */
+  providerName?: string;
   id: string;
   /** 右侧的上下文窗口徽标（原版：1M / 200K） */
   badge?: string;
@@ -501,6 +503,8 @@ export function Composer({
     settings?.decisionMode ?? (settings?.planMode === true ? 'plan' : 'manual');
   const planMode = decisionMode === 'plan';
   const multiAgentEnabled = settings?.multiAgentEnabled !== false;
+  const qualityMode = settings?.modelingQualityMode ?? 'balanced';
+  const qualityLabel = qualityMode === 'fast' ? '快速检查' : qualityMode === 'strict' ? '严格交付' : '标准检查';
 
   // ── 决策模式切换（统一入口）──
   /** 从 plan 切走时回到的模式（Shift+Tab 来回切换用） */
@@ -1019,7 +1023,7 @@ export function Composer({
     const fromProviders: ModelOption[] = [];
     for (const p of providers) {
       for (const m of p.models ?? []) {
-        fromProviders.push({ providerId: p.id, id: m, badge: badgeOf(m) });
+        fromProviders.push({ providerId: p.id, providerName: p.name, id: m, badge: badgeOf(m) });
       }
     }
     return fromProviders.length > 0 ? fromProviders : BUILTIN_MODELS;
@@ -1414,6 +1418,33 @@ export function Composer({
         </div>
         <div className="cz-slot">
           <button
+            type="button"
+            className="cz-btn ghost"
+            title="控制本次建模任务要检查到什么程度"
+            onClick={() => setOpenMenu(openMenu === 'options' ? null : 'options')}
+          >
+            <Icon name="circle-check" size={13} />
+            <span>{qualityLabel}</span>
+            <Icon name="chevron-down" size={11} />
+          </button>
+          <Popover open={openMenu === 'options'} onClose={close} align="right">
+            <div className="cz-pop-label">本次检查强度</div>
+            {([
+              ['fast', '快速检查', '先给出可用思路，适合探索'],
+              ['balanced', '标准检查', '核对主要数据、模型和结论'],
+              ['strict', '严格交付', '增加复算、敏感性和提交前检查'],
+            ] as const).map(([value, label, hint]) => (
+              <button key={value} className={`cz-pop-item${qualityMode === value ? ' selected' : ''}`} onClick={() => { void patchSettings({ modelingQualityMode: value }); close(); }}>
+                <Icon name="circle-check" size={13} />
+                <span className="col" style={{ gap: 1 }}><span>{label}</span><span className="muted" style={{ fontSize: 10 }}>{hint}</span></span>
+                <span className="grow" />
+                {qualityMode === value ? <Icon name="check" size={13} className="cz-pop-check" /> : null}
+              </button>
+            ))}
+          </Popover>
+        </div>
+        <div className="cz-slot">
+          <button
             className="cz-btn ghost"
             title={
               perm === 'full'
@@ -1528,7 +1559,10 @@ export function Composer({
                 }}
               >
                 <Icon name="bot" size={13} />
-                <span className="truncate">{o.id}</span>
+                <span className="col" style={{ gap: 1, minWidth: 0 }}>
+                  <span className="truncate">{o.id}</span>
+                  {o.providerName ? <span className="muted" style={{ fontSize: 10 }}>{o.providerName}</span> : null}
+                </span>
                 <span className="grow" />
                 {o.badge ? <span className="cz-pop-badge">{o.badge}</span> : null}
                 {o.id === model ? <Icon name="check" size={13} className="cz-pop-check" /> : null}

@@ -1,7 +1,7 @@
 /**
- * 右侧面板 —— 对齐原版 `dock.rightPanel.*`：7 个标签 + 多标签开合。
+ * 右侧面板 —— 文件、终端、浏览器与本地图表参考等标签。
  *
- * 原版标签与顺序：文件 / 终端 / 浏览器 / 更改 / 项目版本 / 科研绘图 / 流程图
+ * 常用标签：文件 / 终端 / 浏览器 / 更改 / 项目版本 / 科研绘图。
  * 原版另有 `addTab:"添加标签页"`、`closeTab:"关闭标签页"` → 标签可关可加
  * （已打开的标签持久化到 localStorage，刷新后恢复）。
  *
@@ -32,8 +32,7 @@ const THUMBS = {
 /**
  * 科研绘图标签 —— 紧凑版模板列表。
  * 数据源与行为都复用 GalleryPage：同一份 `GALLERY` 目录（含「流程图」分类）、
- * 点击后经 `templatePrompt` 分派提示词（流程图走 `/paper-diagram`，其余走
- * `/mathmodel-figure-templates`，主题默认「灰白论文版」），再填进输入框。
+ * 点击后经 `templatePrompt` 生成中文数学建模绘图提示，再填进输入框。
  */
 function GalleryPanel(): JSX.Element {
   const fillPrompt = useApp((s) => s.fillPrompt);
