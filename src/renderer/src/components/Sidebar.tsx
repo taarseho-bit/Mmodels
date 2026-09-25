@@ -491,14 +491,25 @@ export function Sidebar({ route, setRoute }: Props): JSX.Element {
         </button>
       </div>
 
-      <div className="rail-create-strip" aria-label="当前项目中的任务">
+      <div className="rail-create-strip" aria-label="创建项目或任务">
         <button
+          className="rail-create-project"
+          type="button"
+          aria-label="新建项目"
+          onClick={() => void handleNewProject()}
+          title="新建项目：创建一个独立的数学建模工作流"
+        >
+          <Icon name="folder-plus" size={14} />
+          <span>新建项目</span>
+        </button>
+        <button
+          className="rail-create-task"
           id="tour-new-thread"
           type="button"
           aria-label="新任务"
           disabled={!current}
           onClick={handleNewChat}
-          title={current ? `在“${current.name}”中开始新任务` : '请先选择一个项目'}
+          title={current ? `在“${current.name}”中继续这个工作流` : '请先选择一个项目'}
         >
           <Icon name="message-square-plus" size={14} />
           <span>新任务</span>

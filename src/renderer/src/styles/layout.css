@@ -473,13 +473,14 @@
   font-size: 12px;
   font-weight: 600;
 }
-.rail-create-strip button:last-child {
+.rail-create-strip .rail-create-project {
   border-color: var(--accent);
   background: var(--accent);
   color: #fff;
 }
 .rail-create-strip button:hover:not(:disabled) { border-color: var(--accent-hover); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 20%, transparent); }
-.rail-create-strip button:last-child:hover:not(:disabled) { background: var(--accent-hover); color: #fff; }
+.rail-create-strip .rail-create-project:hover:not(:disabled) { background: var(--accent-hover); color: #fff; }
+.rail-create-strip .rail-create-task { background: var(--bg-panel); color: var(--fg-primary); }
 .rail-create-strip button:disabled { opacity: .38; }
 
 .sidebar-head {

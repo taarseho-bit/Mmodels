@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react';
 import { workflowAgentDisplayName, type WorkflowRun, type WorkflowTool } from '@shared/workflow';
-import { mergeWorkflowRuns, workflowArtifactPath } from '../lib/workflow';
+import { buildProjectWorkflow, mergeProjectWorkflowRuns, workflowArtifactPath } from '../lib/workflow';
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
 import { WorkflowCanvas } from './WorkflowCanvas';
@@ -11,9 +11,8 @@ const runLabel = { running: '正在工作', completed: '本轮已结束', stoppe
 const nodeLabel = { running: '正在工作', returned: '已返回', stopped: '已停止', unknown: '未收到结束确认' };
 const toolLabel = { running: '进行中', completed: '已返回', unsuccessful: '本次未完成', stopped: '已停止', unknown: '未确认' };
 
-export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: { sessionId: string | null; onReturn: () => void }): JSX.Element {
+export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: { projectId: string | null; onReturn: () => void }): JSX.Element {
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
-  const [selectedRun, setSelectedRun] = useState('');
   const [selectedNode, setSelectedNode] = useState('main');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [privateView, setPrivateView] = useState(true);
@@ -23,20 +22,20 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
   const project = useApp(s => s.currentProject);
   const openArtifact = useApp(s => s.openArtifact);
   useEffect(() => {
-    setRuns([]); setSelectedRun(''); setSelectedNode('main'); setDetailsOpen(false); setNotice('');
-    if (!sessionId) { setLoading(false); return; }
+    setRuns([]); setSelectedNode('main'); setDetailsOpen(false); setNotice('');
+    if (!projectId) { setLoading(false); return; }
     setLoading(true);
     let alive = true;
     const off = window.mathmodel.workflow.onChanged(run => {
-      if (alive && run.sessionId === sessionId) setRuns(old => mergeWorkflowRuns(old, [run], sessionId));
+      if (alive && (!run.projectId || run.projectId === projectId)) setRuns(old => mergeProjectWorkflowRuns(old, [run], projectId));
     });
-    void window.mathmodel.workflow.list(sessionId).then(rows => {
-      if (alive) setRuns(old => mergeWorkflowRuns(old, rows, sessionId));
+    void window.mathmodel.workflow.listProject(projectId).then(rows => {
+      if (alive) setRuns(old => mergeProjectWorkflowRuns(old, rows, projectId));
     }).catch(() => { if (alive) setNotice('暂时没有读到工作流记录，可以重新读取；对话不受影响。'); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; off(); };
-  }, [sessionId, retry]);
-  const run = runs.find(r => r.id === selectedRun) ?? runs[0];
+  }, [projectId, retry]);
+  const run = buildProjectWorkflow(projectId ?? '', runs);
   const node = run?.nodes.find(n => n.id === selectedNode) ?? run?.nodes[0];
   const tools = run?.nodes.flatMap(n => n.tools) ?? [];
   const workingCount = run?.nodes.filter(n => n.status === 'running').length ?? 0;
@@ -52,7 +51,7 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
   });
   return <section className="workflow-view" aria-label="任务工作流">
     <div className="workflow-heading">
-      <div><h2>任务工作流</h2></div>
+      <div><h2>项目工作流</h2><p className="workflow-heading-subtitle">同一项目里的多个任务，会汇总在这张工作图中。</p></div>
       <button className="btn btn-ghost" aria-pressed={privateView} onClick={() => setPrivateView(v => !v)}>{privateView ? '演示保护已开' : '开启演示保护'}</button>
     </div>
     <p className="workflow-note">看看谁在做什么，用了哪些方法，交回了什么成果。</p>
@@ -61,9 +60,7 @@ export const WorkflowView = memo(function WorkflowView({ sessionId, onReturn }: 
       <p>旧对话没有完整的成员与技能关联记录，不会补造工作流。复杂任务按需协作，简单任务可由主助手独立完成。</p>
       <button className="btn btn-primary" onClick={onReturn}>回到对话，开始任务</button></div> : <>
       <div className="workflow-summary">
-        <label>运行轮次 <select aria-label="工作流运行轮次" value={selectedRun} onChange={e => { setSelectedRun(e.target.value); setSelectedNode('main'); setDetailsOpen(false); }}>
-          <option value="">跟随最新一轮</option>{runs.map(r => <option key={r.id} value={r.id}>{new Date(r.startedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · {runLabel[r.status]}</option>)}
-        </select></label>
+        <span>{runs.length} 个项目任务</span>
         <span className={`workflow-status is-${run.status}`}>{runLabel[run.status]}</span>
         <span>{workingCount} 位正在工作</span><span>{finishedCount} 位已收起</span><span>{skillCount} 项技能与流程</span><span>{fileCount} 份文件成果</span>
       </div>

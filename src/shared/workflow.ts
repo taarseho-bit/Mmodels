@@ -28,6 +28,9 @@ export interface WorkflowNode {
 export interface WorkflowRun {
   id: string;
   sessionId: string;
+  /** 项目级工作流字段；旧记录没有时仍按 sessionId 兼容读取。 */
+  projectId?: string;
+  sessionTitle?: string;
   startedAt: number;
   updatedAt: number;
   revision: number;
@@ -37,9 +40,10 @@ export interface WorkflowRun {
   truncated: boolean;
   exchanges?: { id: string; source: string; target: string }[];
 }
-export const WORKFLOW_IPC = { list: 'workflow:list', changed: 'workflow:changed' } as const;
+export const WORKFLOW_IPC = { list: 'workflow:list', listProject: 'workflow:list-project', changed: 'workflow:changed' } as const;
 export interface WorkflowApi {
   list(sessionId: string): Promise<WorkflowRun[]>;
+  listProject(projectId: string): Promise<WorkflowRun[]>;
   onChanged(cb: (run: WorkflowRun) => void): () => void;
 }
 export const AGENT_NAMES: Record<string, string> = {

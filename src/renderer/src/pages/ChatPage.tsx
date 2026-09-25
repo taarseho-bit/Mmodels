@@ -1211,7 +1211,7 @@ export function ChatPage(): JSX.Element {
 
   return (
     <div className="chat-page">
-      {taskView === 'workflow' && <WorkflowView key={activeSessionId ?? 'new'} sessionId={activeSessionId} onReturn={returnToChat} />}
+      {taskView === 'workflow' && <WorkflowView key={currentProject.id} projectId={currentProject.id} onReturn={returnToChat} />}
       <div className="chat-scroll" style={taskView === 'workflow' ? { display: 'none' } : undefined} ref={scrollRef} onScroll={onScroll}>
         <div className={`chat-inner${isEmpty ? ' is-empty' : ''}`}>
           {findOpen ? (

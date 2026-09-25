@@ -435,7 +435,7 @@ export function Composer({
 
   // ── 下拉开关 ──
   const [openMenu, setOpenMenu] = useState<
-    null | 'project' | 'mode' | 'template' | 'perm' | 'model' | 'plus' | 'options'
+    null | 'project' | 'mode' | 'decision' | 'template' | 'perm' | 'model' | 'plus' | 'options'
   >(null);
   // ── 「＋」菜单（原版 `data-tour="composer-plus"` 那个 Popover）──
   /**

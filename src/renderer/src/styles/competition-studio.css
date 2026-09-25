@@ -7,6 +7,9 @@
 .competition-shell .sidebar .rail-item:hover,.competition-shell .sidebar .rail-item.active { background: var(--bg-hover); color: var(--fg-primary); border-radius: 7px; box-shadow: none; }
 .competition-shell .sidebar .rail-item { min-height: 38px; margin-bottom: 3px; }
 .competition-shell .rail-create-strip button { background: var(--bg-panel); color: var(--fg-primary); border: 1px solid var(--border-weak); border-radius: 8px; min-height: 38px; font-weight: 500; }
+.competition-shell .rail-create-strip .rail-create-project { background: var(--accent); color: #fff; border-color: var(--accent); }
+.competition-shell .rail-create-strip .rail-create-project:hover:not(:disabled) { background: var(--accent-hover); color: #fff; }
+.competition-shell .rail-create-strip .rail-create-task { background: var(--bg-panel); color: var(--fg-primary); }
 .competition-shell .rail-top { justify-content: flex-end; margin: 2px 0 10px; }
 .competition-shell .rail-nav { padding-bottom: 18px; border-bottom: 1px solid var(--studio-line); }
 .competition-shell .rail-sec-head { margin-top: 14px; letter-spacing: 0; font-size: 11px; }

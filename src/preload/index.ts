@@ -106,6 +106,7 @@ const competition: CompetitionLibraryApi = {
 const api = {
   workflow: {
     list: sessionId => ipcRenderer.invoke(WORKFLOW_IPC.list, sessionId),
+    listProject: projectId => ipcRenderer.invoke(WORKFLOW_IPC.listProject, projectId),
     onChanged: cb => subscribe(WORKFLOW_IPC.changed, cb),
   } satisfies WorkflowApi,
   competition,
