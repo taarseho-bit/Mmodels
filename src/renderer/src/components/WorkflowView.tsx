@@ -45,6 +45,29 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
   const fileCount = new Set(tools.flatMap(t => t.artifact ? [t.artifact] : [])).size;
   const activeNodeId = run?.nodes.find(item => item.status === 'running')?.id ?? run?.nodes.find(item => item.id === 'main')?.id ?? null;
   const detailAction = (tool: WorkflowTool) => privateView ? tool.label : tool.action ?? tool.label;
+  const skillOverview = (() => {
+    const bySkill = new Map<string, { label: string; calls: number; running: number; failed: number; members: Set<string>; nodeId: string }>();
+    for (const owner of run?.nodes ?? []) {
+      for (const tool of owner.tools) {
+        if (!tool.skill) continue;
+        const current = bySkill.get(tool.skill) ?? { label: tool.label.replace(/^(载入入口指令|参考技能) · /, ''), calls: 0, running: 0, failed: 0, members: new Set<string>(), nodeId: owner.id };
+        current.calls += 1;
+        if (tool.status === 'running') current.running += 1;
+        if (tool.status === 'unsuccessful' || tool.status === 'stopped') current.failed += 1;
+        current.members.add(owner.id);
+        if (tool.status === 'running') current.nodeId = owner.id;
+        bySkill.set(tool.skill, current);
+      }
+    }
+    return [...bySkill.entries()].map(([id, value]) => ({
+      id,
+      label: value.label,
+      calls: value.calls,
+      members: value.members.size,
+      nodeId: value.nodeId,
+      status: value.running > 0 ? '进行中' : value.failed > 0 ? '需要复核' : '已完成',
+    })).sort((a, b) => (a.status === '进行中' ? -1 : b.status === '进行中' ? 1 : b.calls - a.calls));
+  })();
   const skills = [...new Set(node?.tools.flatMap(t => t.skill ? [t.skill] : []) ?? [])].map(id => {
     const calls = node!.tools.filter(t => t.skill === id);
     const status = calls.some(t => t.status === 'running') ? '进行中' : toolLabel[calls[calls.length - 1].status];
@@ -69,6 +92,17 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
         <span className={`workflow-status is-${run.status}`}>{runLabel[run.status]}</span>
         <span>{workingCount} 位正在工作</span><span>{finishedCount} 位已收起</span><span>{skillCount} 项技能与流程</span><span>{fileCount} 份文件成果</span>
       </div>
+      {skillOverview.length > 0 && <section className="workflow-skill-overview" aria-label="本轮技能调用概览">
+        <div className="workflow-skill-overview-head"><strong>本轮调用的技能</strong><span>点击查看负责成员和工作记录</span></div>
+        <div className="workflow-skill-overview-list">
+          {skillOverview.slice(0, 10).map(skill => <button key={skill.id} className={`workflow-skill-chip is-${skill.status === '进行中' ? 'running' : skill.status === '需要复核' ? 'review' : 'done'}`} onClick={() => { setSelectedNode(skill.nodeId); setDetailsOpen(true); }}>
+            <span className="workflow-skill-chip-dot" />
+            <strong>{skill.label}</strong>
+            <small>{skill.status} · {skill.calls} 次 · {skill.members} 位成员</small>
+          </button>)}
+        </div>
+        {skillOverview.length > 10 && <span className="workflow-skill-overview-more">还有 {skillOverview.length - 10} 项技能，点击成员后可查看全部</span>}
+      </section>}
       {(() => {
         const stages = run.workflowStages?.length ? run.workflowStages : ['了解问题', '研究与计算', '核对结果', '整理交付'];
         const current = Math.min(Math.max(run.currentStage ?? 0, 0), stages.length - 1);
