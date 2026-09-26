@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#080b12" />
+  <meta name="theme-color" content="#070a12" />
   <meta name="description" content="MModels 数学建模工作台：从题目解析、数据图表、智能体协作到比赛论文交付，把每一步都沉淀为可复盘的证据。" />
   <title>MModels · 数学建模工作台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -36,7 +39,7 @@
     <main class="product-main">
       <header class="topbar">
         <div class="topbar-path"><span class="path-dot"></span><span>MModels / Product tour</span><span class="path-separator">/</span><strong id="view-title">总览</strong></div>
-        <div class="topbar-actions"><span class="system-state"><i></i> PRODUCT EVIDENCE</span><a class="topbar-github" href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">GitHub <span>↗</span></a></div>
+        <div class="topbar-actions"><span class="view-count">VIEW <b id="view-counter">01 / 06</b></span><span class="system-state"><i></i> PRODUCT EVIDENCE</span><a class="topbar-github" href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">GitHub <span>↗</span></a></div>
       </header>
 
       <div class="view-stack">
@@ -47,7 +50,7 @@
               <h1>把题目拆成结构，<br /><em>把结果交付成证据。</em></h1>
               <p class="hero-lede">MModels 不是把答案丢给你的聊天窗口，而是一套围绕数学建模项目组织起来的工作台：项目、题意、数据、方法、实验、图表和论文始终在同一条可复盘链路上。</p>
               <div class="hero-actions"><button class="button button-primary" data-go="workflow">沿着真实工作流看一遍 <span>→</span></button><button class="button button-quiet" data-go="data">看数据与图表能力 <span>↘</span></button></div>
-              <div class="hero-proof-line"><span>已展示真实软件截图</span><i></i><span>可替换为你的正式产品素材</span></div>
+              <div class="hero-proof-line"><span>每一张截图都来自真实软件界面</span><i></i><span>点击任意截图可放大查看</span></div>
             </div>
             <figure class="hero-shot reveal reveal-delay-1" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
               <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="MModels 建模对话工作台，展示项目侧栏、任务流和题目附件" />
@@ -68,7 +71,7 @@
             <div><span class="evidence-num">C</span><div><strong>最后交付</strong><p>根据比赛模板检查正文、图表、引用、页数和提交清单。</p></div></div>
           </div>
 
-          <div class="workspace-preview reveal reveal-delay-2" data-capture-slot="workspace">
+          <div class="workspace-preview reveal reveal-delay-2">
             <div class="preview-caption"><div><span class="eyebrow">PRODUCT MAP / 01</span><h2>你看到的是一个项目，不是一次孤立的问答</h2></div><span class="preview-chip">华为杯D题 · 真实截图已接入</span></div>
             <div class="product-map-grid">
               <article class="map-card"><span class="map-index">01</span><h3>建模对话</h3><p>题目与附件进入项目后，所有后续分析都能回到同一个上下文。</p><button data-go="workflow">看题意如何进入工作流 →</button></article>
@@ -83,7 +86,7 @@
           <div class="section-heading reveal"><div><span class="eyebrow">02 / MODELING WORKFLOW</span><h2>从一段原题，走到一份<br /><em>可以交付的答案。</em></h2></div><p>真实截图显示，MModels 已经把“题目—数据—模型—图表—论文”拆成可以追踪的任务节点。网页用同样的顺序解释每一步产生什么。</p></div>
           <div class="workflow-evidence reveal">
             <div class="workflow-evidence-copy"><span class="step-label">实际工作台里的任务入口</span><h3>不是从空白聊天开始，而是先选择任务目标</h3><p>截图中的模式菜单包含自由对话、写论文、画图、评审和找数据。用户可以根据当前阶段切换任务，避免每次都重新解释项目背景。</p><ul class="detail-list"><li><b>写论文</b><span>从题目出发组织完整建模论文</span></li><li><b>画图</b><span>从数据和实验结果生成论文图表</span></li><li><b>评审</b><span>按照竞赛标准检查并给出修改建议</span></li><li><b>找数据</b><span>查找、核验并下载公开数据集</span></li></ul></div>
-            <figure class="evidence-shot"><img src="./assets/screenshots/01-workspace/task-mode-menu.png" alt="MModels 任务模式菜单，包含自由对话、写论文、画图、评审和找数据" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu.png" /><figcaption>从一个入口切换不同的建模任务</figcaption></figure>
+            <figure class="evidence-shot" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu.png"><img src="./assets/screenshots/01-workspace/task-mode-menu.png" alt="MModels 任务模式菜单，包含自由对话、写论文、画图、评审和找数据" /><figcaption>从一个入口切换不同的建模任务</figcaption></figure>
           </div>
           <div class="workflow-track">
             <article class="workflow-node reveal"><span class="node-number">01</span><span class="node-tag">FRAME</span><h3>题意解析与假设</h3><p>把自然语言拆成目标函数、约束条件、决策变量和评价指标，生成可讨论的建模地图。</p><div class="tag-row"><span>题意解析</span><span>假设清单</span><span>变量关系</span></div><div class="node-proof">真实界面：项目附件、题目上下文、已整理思路</div></article>
@@ -97,7 +100,7 @@
         <section class="view" data-panel="agents" id="agents">
           <div class="section-heading reveal"><div><span class="eyebrow">03 / AGENT COLLABORATION</span><h2>一支围绕同一项目<br /><em>并行推进的建模小组。</em></h2></div><p>截图里的协作图不是抽象概念：项目主助手负责汇总，题意解析员、计算实验员、资料核验员等角色沿着任务树接收和回传结果。</p></div>
           <div class="agent-evidence reveal">
-            <figure class="agent-shot"><img src="./assets/screenshots/03-agents/agent-workflow-graph.png" alt="MModels 多智能体协作工作流图，展示项目主助手、任务节点和多个专业角色" data-lightbox="./assets/screenshots/03-agents/agent-workflow-graph.png" /><figcaption>一个任务拆成多个角色后，状态和派发关系仍然可见</figcaption></figure>
+            <figure class="agent-shot" data-lightbox="./assets/screenshots/03-agents/agent-workflow-graph.png"><img src="./assets/screenshots/03-agents/agent-workflow-graph.png" alt="MModels 多智能体协作工作流图，展示项目主助手、任务节点和多个专业角色" /><figcaption>一个任务拆成多个角色后，状态和派发关系仍然可见</figcaption></figure>
             <div class="agent-evidence-copy"><span class="step-label">COLLABORATION GRAPH</span><h3>每个角色都有责任边界和回传路径</h3><p>从截图可以看到，协作工作流包含项目主助手、任务节点、计算实验员、资料核验员、题意解析员以及已经交回结果的成员。用户可以沿着连线理解：谁在做什么，结果回到哪里。</p><div class="agent-stats"><div><strong>1</strong><span>项目主助手</span></div><div><strong>多角色</strong><span>并行处理</span></div><div><strong>可追踪</strong><span>成员详情与技能调用</span></div></div></div>
           </div>
           <div class="agent-grid">
@@ -106,12 +109,16 @@
             <article class="agent-card reveal"><div class="agent-orb gold">文</div><span class="agent-role">RESEARCH & REVIEW</span><h3>资料核验员</h3><p>检索内容、阅读资料、核对来源，让论文里的方法和数据都有可解释的出处。</p><div class="agent-status"><i></i> 等待技能调用</div></article>
           </div>
           <div class="collab-detail reveal"><div><span class="step-label">MEMBER DETAIL</span><h3>协作不是黑盒，成员详情会留下责任和技能记录</h3><p>真实界面可以查看成员负责人、任务描述、使用的方法以及每项技能的调用次数。对于比赛复盘和论文核验，这些记录比一句“AI 已完成”更有价值。</p></div><figure><img src="./assets/screenshots/03-agents/agent-member-detail.png" alt="MModels 智能体成员详情，展示负责人、使用的方法和技能调用记录" data-lightbox="./assets/screenshots/03-agents/agent-member-detail.png" /><figcaption>成员详情：负责人、方法、技能调用与交付状态</figcaption></figure></div>
+          <div class="view-pager reveal">
+            <span class="pager-hint">← 上一板块 · 建模工作流</span>
+            <div class="pager-actions"><button class="button button-quiet" data-pager="-1">← 上一板块</button><button class="button button-primary" data-pager="1">数据与图表 <span>→</span></button></div>
+          </div>
         </section>
 
         <section class="view" data-panel="data" id="data">
           <div class="section-heading reveal"><div><span class="eyebrow">04 / DATA & CHARTS</span><h2>让数据先说清楚，<br /><em>再让模型开始推理。</em></h2></div><p>截图展示的是实际的数据与图表模块：左侧保留项目中的 CSV 文件，右侧根据字段选择绘图，并支持 PNG、SVG 和复制结果。</p></div>
           <div class="data-evidence reveal">
-            <div class="data-evidence-copy"><span class="step-label">DATA WORKBENCH</span><h3>从文件选择到图表导出，过程都在同一页完成</h3><p>真实截图里可以看到多个 q1 数据文件和边界数据文件，用户选择折线图、X/Y 字段和指标后，图表立即反映当前项目数据。这个界面适合强调“数据和模型实验不会散落在不同工具里”。</p><div class="tool-pill-row"><span>CSV / TSV</span><span>字段选择</span><span>折线图</span><span>PNG</span><span>SVG</span><span>复制</span></div></div><figure class="data-shot"><img src="./assets/screenshots/04-data/data-chart-workbench.png" alt="MModels 数据与图表工作台，展示 CSV 文件、字段选择和折线图结果" data-lightbox="./assets/screenshots/04-data/data-chart-workbench.png" /><figcaption>真实图表工作台：文件、字段、图例和导出操作同屏</figcaption></figure>
+            <div class="data-evidence-copy"><span class="step-label">DATA WORKBENCH</span><h3>从文件选择到图表导出，过程都在同一页完成</h3><p>真实截图里可以看到多个 q1 数据文件和边界数据文件，用户选择折线图、X/Y 字段和指标后，图表立即反映当前项目数据。这个界面适合强调“数据和模型实验不会散落在不同工具里”。</p><div class="tool-pill-row"><span>CSV / TSV</span><span>字段选择</span><span>折线图</span><span>PNG</span><span>SVG</span><span>复制</span></div></div><figure class="data-shot" data-lightbox="./assets/screenshots/04-data/data-chart-workbench.png"><img src="./assets/screenshots/04-data/data-chart-workbench.png" alt="MModels 数据与图表工作台，展示 CSV 文件、字段选择和折线图结果" /><figcaption>真实图表工作台：文件、字段、图例和导出操作同屏</figcaption></figure>
           </div>
           <div class="chart-proof-grid reveal">
             <figure><img src="./assets/screenshots/04-data/chart-gallery-flow-network.png" alt="流程和网络关系图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-flow-network.png" /><figcaption><strong>网络与资源流向</strong><span>适合路径、分配和关系结构</span></figcaption></figure>
@@ -125,7 +132,7 @@
         <section class="view" data-panel="paper" id="paper">
           <div class="section-heading reveal"><div><span class="eyebrow">05 / PAPER DELIVERY</span><h2>结果不是终点，<br /><em>交付才算完成。</em></h2></div><p>比赛工作台的真实截图已经把“论文交付”拆成了可检查的项目：比赛信息、页数要求、论文文件、图表与数据、模型方案、结论依据、复现材料、技能执行和提交清单。</p></div>
           <div class="paper-evidence reveal">
-            <figure><img src="./assets/screenshots/06-competition/competition-workbench-readiness.png" alt="MModels 比赛工作台，展示项目准备度和论文交付检查项" data-lightbox="./assets/screenshots/06-competition/competition-workbench-readiness.png" /><figcaption>比赛工作台：准备度、论文交付检查项和待补齐内容</figcaption></figure>
+            <figure class="paper-shot" data-lightbox="./assets/screenshots/06-competition/competition-workbench-readiness.png"><img src="./assets/screenshots/06-competition/competition-workbench-readiness.png" alt="MModels 比赛工作台，展示项目准备度和论文交付检查项" /><figcaption>比赛工作台：准备度、论文交付检查项和待补齐内容</figcaption></figure>
             <div class="paper-evidence-copy"><span class="step-label">SUBMISSION READINESS</span><h3>把“论文写完了吗”变成逐项可检查的问题</h3><p>截图中的检查卡片把交付拆成多个具体状态：已具备、待补充、待复核。这样用户可以先找到缺口，再继续回到建模、数据或论文环节补齐证据。</p><div class="check-grid"><span>比赛信息</span><span class="warn">页数要求</span><span>论文文件</span><span>图表与数据</span><span class="warn">模型方案</span><span class="warn">结论依据</span><span>复现材料</span><span>技能执行</span><span class="warn">提交清单</span></div></div>
           </div>
           <div class="paper-flow reveal"><div class="pipeline-step"><span>01</span><strong>确定赛事模板</strong><small>队伍、页数、正文范围</small></div><div class="pipeline-step"><span>02</span><strong>沉淀模型证据</strong><small>结果、图表、复现材料</small></div><div class="pipeline-step"><span>03</span><strong>生成论文内容</strong><small>摘要、正文、图表说明</small></div><div class="pipeline-step active"><span>04</span><strong>提交前复核</strong><small>格式、引用、清单</small></div></div>
