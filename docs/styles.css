@@ -20,8 +20,8 @@
   --radius-sm: 9px;
   --shadow-lg: 0 18px 44px rgba(30, 20, 10, 0.12);
   --shadow: 0 6px 20px rgba(30, 20, 10, 0.08);
-  --serif: "Noto Serif SC", "Songti SC", serif;
-  --sans: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --sans: "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -86,7 +86,7 @@ body {
   font-size: 17px;
   transform: translateY(6px);
 }
-.brand b { font-family: var(--serif); font-size: 17px; letter-spacing: 0.02em; }
+.brand b { font-family: var(--serif); font-size: 17px; font-weight: 700; letter-spacing: 0.04em; }
 .brand small { color: var(--ink-3); font-size: 11px; }
 .site-nav {
   margin-left: auto;
@@ -165,8 +165,9 @@ body {
   margin: 0 0 20px;
   font-family: var(--serif);
   font-size: clamp(34px, 6vw, 60px);
+  font-weight: 900;
   line-height: 1.24;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   color: var(--ink);
 }
 .hero h1 em {
@@ -234,7 +235,9 @@ body {
   margin: 2px 0 8px;
   font-family: var(--serif);
   font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
   line-height: 1.35;
+  letter-spacing: 0.02em;
 }
 .chapter-head p { margin: 0; max-width: 860px; color: var(--ink-2); }
 
@@ -297,7 +300,7 @@ body {
   padding: clamp(40px, 7vh, 72px) 20px;
   border-top: 1px solid var(--line);
 }
-.ending h2 { font-family: var(--serif); font-size: clamp(26px, 4vw, 40px); margin: 0 0 14px; line-height: 1.4; }
+.ending h2 { font-family: var(--serif); font-size: clamp(26px, 4vw, 40px); font-weight: 900; margin: 0 0 14px; line-height: 1.4; letter-spacing: 0.02em; }
 .ending p { color: var(--ink-2); margin: 0 0 26px; font-size: 16px; }
 
 /* ── 页脚 ── */
