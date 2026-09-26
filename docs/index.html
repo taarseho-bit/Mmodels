@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#080b12" />
-  <meta name="description" content="MModels 数学建模智能工作台：从题意解析、数据体检、方法选型到论文交付，所有关键步骤都在一个本地项目里完成。" />
-  <meta property="og:title" content="MModels · 数学建模工作台" />
-  <meta property="og:description" content="把题目拆成结构，把模型跑成证据，把结果交付成论文。" />
+  <meta name="description" content="MModels 数学建模工作台：从题目解析、数据图表、智能体协作到比赛论文交付，把每一步都沉淀为可复盘的证据。" />
   <title>MModels · 数学建模工作台</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -38,59 +36,115 @@
     <main class="product-main">
       <header class="topbar">
         <div class="topbar-path"><span class="path-dot"></span><span>MModels / Product tour</span><span class="path-separator">/</span><strong id="view-title">总览</strong></div>
-        <div class="topbar-actions"><span class="system-state"><i></i> SYSTEM READY</span><a class="topbar-github" href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">GitHub <span>↗</span></a></div>
+        <div class="topbar-actions"><span class="system-state"><i></i> PRODUCT EVIDENCE</span><a class="topbar-github" href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">GitHub <span>↗</span></a></div>
       </header>
 
       <div class="view-stack">
         <section class="view is-active" data-panel="overview" id="overview">
-          <div class="view-hero reveal"><div class="eyebrow"><span class="pulse-dot"></span> 数学建模智能工作台</div><h1>把题目拆成结构，<br /><em>把结果交付成证据。</em></h1><p class="hero-lede">MModels 把题意解析、项目文件、模型实验、智能体协作、图表生成与论文写作放进同一条可复盘链路。你始终知道模型为什么这样选，结论凭什么成立。</p><div class="hero-actions"><button class="button button-primary" data-go="workflow">查看完整工作流 <span>→</span></button><a class="button button-quiet" href="#data" data-go="data">看真实能力 <span>↘</span></a></div></div>
-          <div class="metric-grid reveal reveal-delay-1"><div class="metric-card"><span class="metric-label">题意 → 结构</span><strong>01</strong><small>问题拆解与假设清单</small></div><div class="metric-card"><span class="metric-label">数据 → 证据</span><strong>02</strong><small>体检、绘图与敏感性分析</small></div><div class="metric-card"><span class="metric-label">模型 → 论文</span><strong>03</strong><small>图表、引用与交付检查</small></div><div class="metric-card accent"><span class="metric-label">LOCAL-FIRST</span><strong>100%</strong><small>项目资料保存在本机</small></div></div>
-          <div class="workspace-preview reveal reveal-delay-2" id="proof" data-capture-slot="workspace">
-            <div class="preview-caption"><div><span class="eyebrow">WORKSPACE PREVIEW / 01</span><h2>一个项目，承载完整建模上下文</h2></div><span class="preview-chip">华为杯D题2 · 建模对话</span></div>
-            <div class="mock-workspace">
-              <aside class="mock-rail"><div class="mock-logo">模</div><div class="mock-rail-item active">⌂<span>建模对话</span></div><div class="mock-rail-item">▦<span>比赛工作台</span></div><div class="mock-rail-item">文<span>获奖论文</span></div><div class="mock-rail-sep"></div><div class="mock-rail-label">项目</div><div class="mock-project active"><i></i> 华为杯D题2</div><div class="mock-project"><i></i> 国赛测试6</div><div class="mock-project"><i></i> 论文写作C题</div></aside>
-              <div class="mock-content"><div class="mock-topline"><span>华为杯D题2</span><span class="mock-mode">写论文</span><span class="mock-mode dim">多智能体协作 ON</span></div><div class="mock-empty"><span class="mock-sigma">∑</span><h3>添加题目或文件，开始新的建模任务。</h3><p>粘贴题目，或拖入题目 PDF / 附件，MModels 会先帮你厘清问题结构。</p><div class="mock-prompt">粘贴题目，或拖入题目 PDF / 附件… <span>⌘ ↵</span></div><div class="quick-actions"><span>⌕ 找公开数据</span><span>◌ 数据体检</span><span>⌁ 方法选型</span><span>↗ 论文成稿</span></div></div></div>
+          <div class="view-hero reveal">
+            <div>
+              <div class="eyebrow"><span class="pulse-dot"></span> 基于真实软件界面的产品演示</div>
+              <h1>把题目拆成结构，<br /><em>把结果交付成证据。</em></h1>
+              <p class="hero-lede">MModels 不是把答案丢给你的聊天窗口，而是一套围绕数学建模项目组织起来的工作台：项目、题意、数据、方法、实验、图表和论文始终在同一条可复盘链路上。</p>
+              <div class="hero-actions"><button class="button button-primary" data-go="workflow">沿着真实工作流看一遍 <span>→</span></button><button class="button button-quiet" data-go="data">看数据与图表能力 <span>↘</span></button></div>
+              <div class="hero-proof-line"><span>已展示真实软件截图</span><i></i><span>可替换为你的正式产品素材</span></div>
+            </div>
+            <figure class="hero-shot reveal reveal-delay-1" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
+              <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="MModels 建模对话工作台，展示项目侧栏、任务流和题目附件" />
+              <figcaption><span>01 / 建模对话</span><strong>题目、附件、任务流和模型运行状态在一个项目里</strong></figcaption>
+            </figure>
+          </div>
+
+          <div class="metric-grid reveal reveal-delay-1">
+            <div class="metric-card"><span class="metric-label">项目上下文</span><strong>01</strong><small>从当前赛题、附件到任务记录</small></div>
+            <div class="metric-card"><span class="metric-label">工作模式</span><strong>03</strong><small>自由对话 · 写论文 · 画图 · 评审</small></div>
+            <div class="metric-card"><span class="metric-label">图表资产</span><strong>157+</strong><small>按建模表达方式组织的图表模板</small></div>
+            <div class="metric-card accent"><span class="metric-label">LOCAL-FIRST</span><strong>100%</strong><small>项目资料优先保存在本机</small></div>
+          </div>
+
+          <div class="evidence-strip reveal">
+            <div><span class="evidence-num">A</span><div><strong>先整理问题</strong><p>从题目和附件中提取变量、约束、目标与待验证假设。</p></div></div>
+            <div><span class="evidence-num">B</span><div><strong>再组织证据</strong><p>用数据体检、图表、实验记录和复现材料支撑结论。</p></div></div>
+            <div><span class="evidence-num">C</span><div><strong>最后交付</strong><p>根据比赛模板检查正文、图表、引用、页数和提交清单。</p></div></div>
+          </div>
+
+          <div class="workspace-preview reveal reveal-delay-2" data-capture-slot="workspace">
+            <div class="preview-caption"><div><span class="eyebrow">PRODUCT MAP / 01</span><h2>你看到的是一个项目，不是一次孤立的问答</h2></div><span class="preview-chip">华为杯D题 · 真实截图已接入</span></div>
+            <div class="product-map-grid">
+              <article class="map-card"><span class="map-index">01</span><h3>建模对话</h3><p>题目与附件进入项目后，所有后续分析都能回到同一个上下文。</p><button data-go="workflow">看题意如何进入工作流 →</button></article>
+              <article class="map-card"><span class="map-index">02</span><h3>比赛工作台</h3><p>赛题模板、准备度、论文文件、图表数据和提交检查集中管理。</p><button data-go="calendar">看比赛准备如何被拆解 →</button></article>
+              <article class="map-card"><span class="map-index">03</span><h3>数据与图表</h3><p>从数据文件到投稿级图表，探索结果可以直接被论文复用。</p><button data-go="data">看图表资产如何沉淀 →</button></article>
+              <article class="map-card"><span class="map-index">04</span><h3>智能体协作</h3><p>项目主助手负责汇总，题意解析员、计算实验员和资料核验员分工推进。</p><button data-go="agents">看角色如何一起工作 →</button></article>
             </div>
           </div>
-          <div class="proof-grid reveal"><div><span class="proof-icon">⌁</span><div><strong>问题结构化</strong><p>从原题提取目标、约束、变量与待验证假设。</p></div></div><div><span class="proof-icon">∫</span><div><strong>证据链可追溯</strong><p>数据、代码、图表、运行日志和结论放在同一项目。</p></div></div><div><span class="proof-icon">文</span><div><strong>比赛交付就绪</strong><p>按赛事模板整理正文、参考文献与最终文件。</p></div></div></div>
         </section>
 
         <section class="view" data-panel="workflow" id="workflow">
-          <div class="section-heading reveal"><div><span class="eyebrow">02 / MODELING WORKFLOW</span><h2>从一段原题，走到一份<br /><em>可以交付的答案。</em></h2></div><p>每一步都留下可复盘的中间产物，下一次遇到类似问题，可以从已有方法继续迭代。</p></div>
-          <div class="workflow-track"><div class="workflow-node reveal"><span class="node-number">01</span><div><span class="node-tag">FRAME</span><h3>题意解析与假设</h3><p>把自然语言拆成目标函数、约束条件、决策变量和评价指标，生成可讨论的建模地图。</p><div class="tag-row"><span>题意解析</span><span>假设清单</span><span>变量关系</span></div></div><div class="node-art frame-art"><div class="relation-node one">目标函数</div><div class="relation-node two">约束条件</div><div class="relation-node three">决策变量</div><svg viewBox="0 0 320 120"><path d="M75 29L160 59L245 29M75 91L160 59L245 91"/></svg></div></div><div class="workflow-node reveal"><span class="node-number">02</span><div><span class="node-tag">SOLVE</span><h3>方法选型与求解复现</h3><p>根据题目和数据推荐候选模型，连接项目代码，记录运行参数并校验复现结果。</p><div class="tag-row"><span>Python / R</span><span>候选模型</span><span>运行验证</span></div></div><div class="node-art terminal-art"><code><span>› inspect dataset / demand.csv</span><span>› select <b>gradient_boosting</b></span><span>› run validation --folds 5</span><span class="ok">✓ experiment #18 saved</span></code></div></div><div class="workflow-node reveal"><span class="node-number">03</span><div><span class="node-tag">CHECK</span><h3>灵敏度分析与稳健性</h3><p>扰动关键参数，检查结论是否稳定；把模型的边界、风险和适用范围写进证据链。</p><div class="tag-row"><span>参数扰动</span><span>误差区间</span><span>稳健性检查</span></div></div><div class="node-art sensitivity-art"><div class="sensitivity-grid"><i style="--h:36%"></i><i style="--h:72%"></i><i style="--h:50%"></i><i style="--h:86%"></i><i style="--h:64%"></i><i style="--h:43%"></i></div><strong>结论稳定区间<br /><em>0.82 — 0.94</em></strong></div></div><div class="workflow-node reveal"><span class="node-number">04</span><div><span class="node-tag">DELIVER</span><h3>论文成稿与评审修改</h3><p>把模型解释、图表、结果和参考文献收拢进比赛模板，再用评审视角生成修改清单。</p><div class="tag-row"><span>正文与图表</span><span>引用核对</span><span>评审与打分</span></div></div><div class="node-art paper-art"><div class="paper-mini"><span>03 · 模型建立与求解</span><i></i><i></i><div></div><i></i></div><b>READY TO EXPORT</b></div></div></div>
-          <div class="workflow-summary reveal"><div><span class="summary-kicker">PROJECT OUTPUT</span><strong>问题地图 · 候选模型 · 实验记录 · 结果图表 · 论文草稿</strong></div><button class="button button-primary" data-go="agents">看多智能体如何协作 <span>→</span></button></div>
+          <div class="section-heading reveal"><div><span class="eyebrow">02 / MODELING WORKFLOW</span><h2>从一段原题，走到一份<br /><em>可以交付的答案。</em></h2></div><p>真实截图显示，MModels 已经把“题目—数据—模型—图表—论文”拆成可以追踪的任务节点。网页用同样的顺序解释每一步产生什么。</p></div>
+          <div class="workflow-evidence reveal">
+            <div class="workflow-evidence-copy"><span class="step-label">实际工作台里的任务入口</span><h3>不是从空白聊天开始，而是先选择任务目标</h3><p>截图中的模式菜单包含自由对话、写论文、画图、评审和找数据。用户可以根据当前阶段切换任务，避免每次都重新解释项目背景。</p><ul class="detail-list"><li><b>写论文</b><span>从题目出发组织完整建模论文</span></li><li><b>画图</b><span>从数据和实验结果生成论文图表</span></li><li><b>评审</b><span>按照竞赛标准检查并给出修改建议</span></li><li><b>找数据</b><span>查找、核验并下载公开数据集</span></li></ul></div>
+            <figure class="evidence-shot"><img src="./assets/screenshots/01-workspace/task-mode-menu.png" alt="MModels 任务模式菜单，包含自由对话、写论文、画图、评审和找数据" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu.png" /><figcaption>从一个入口切换不同的建模任务</figcaption></figure>
+          </div>
+          <div class="workflow-track">
+            <article class="workflow-node reveal"><span class="node-number">01</span><span class="node-tag">FRAME</span><h3>题意解析与假设</h3><p>把自然语言拆成目标函数、约束条件、决策变量和评价指标，生成可讨论的建模地图。</p><div class="tag-row"><span>题意解析</span><span>假设清单</span><span>变量关系</span></div><div class="node-proof">真实界面：项目附件、题目上下文、已整理思路</div></article>
+            <article class="workflow-node reveal"><span class="node-number">02</span><span class="node-tag">SOLVE</span><h3>方法选型与求解复现</h3><p>从技能库和算法模板中寻找适合的方法，记录运行参数、实验结果和可复现材料。</p><div class="tag-row"><span>算法技能</span><span>实验记录</span><span>运行验证</span></div><div class="node-proof">真实界面：技能、算法与模板中可见 58 项技能</div></article>
+            <article class="workflow-node reveal"><span class="node-number">03</span><span class="node-tag">CHECK</span><h3>数据检查与稳健性</h3><p>先识别数据问题，再用图表和参数扰动检查结论是否稳定，把边界写进论文。</p><div class="tag-row"><span>数据体检</span><span>误差区间</span><span>敏感性分析</span></div><div class="node-proof">真实界面：CSV 文件、字段选择、图表类型与导出按钮</div></article>
+            <article class="workflow-node reveal"><span class="node-number">04</span><span class="node-tag">DELIVER</span><h3>论文成稿与提交检查</h3><p>把模型、图表、引用和复现材料收拢进竞赛模板，再根据提交清单逐项复核。</p><div class="tag-row"><span>论文模板</span><span>评审修改</span><span>提交检查</span></div><div class="node-proof">真实界面：比赛准备度、页数、论文文件、结论依据和提交清单</div></article>
+          </div>
+          <div class="workflow-summary reveal"><div><span class="summary-kicker">每一步都留下可继续使用的产物</span><strong>题目结构 · 候选方法 · 数据证据 · 图表资产 · 论文草稿 · 提交状态</strong></div><button class="button button-primary" data-go="agents">看多智能体如何分工 <span>→</span></button></div>
         </section>
 
         <section class="view" data-panel="agents" id="agents">
-          <div class="section-heading reveal"><div><span class="eyebrow">03 / AGENT COLLABORATION</span><h2>一支围绕同一项目<br /><em>并行推进的建模小组。</em></h2></div><p>复杂任务可以拆给不同角色。每个角色使用同一个项目上下文，完成后回到总工作流汇总。</p></div>
-          <div class="agent-grid"><article class="agent-card lead reveal"><div class="agent-orb">M</div><span class="agent-role">MODEL SOLVER</span><h3>建模手</h3><p>从目标与约束出发，提出模型假设，比较候选方法并解释适用边界。</p><div class="agent-status"><i></i> 正在校验约束条件</div></article><article class="agent-card reveal"><div class="agent-orb violet">∫</div><span class="agent-role">DATA ANALYST</span><h3>数据手</h3><p>检查缺失、异常、口径与分布，生成可以直接进入论文的探索图表。</p><div class="agent-status"><i></i> 已完成数据体检</div></article><article class="agent-card reveal"><div class="agent-orb gold">文</div><span class="agent-role">PAPER REVIEWER</span><h3>论文手</h3><p>把实验结果写成清晰段落，核对引用、图表编号与比赛格式要求。</p><div class="agent-status"><i></i> 等待模型结果</div></article></div>
-          <div class="collab-console reveal" data-capture-slot="collaboration"><div class="console-top"><span><i class="status-dot"></i> WORKFLOW / RUNNING</span><span>华为杯D题2 · round 04</span><span>78%</span></div><div class="console-body"><div class="console-event"><span class="event-time">14:32:08</span><span class="event-icon teal">✓</span><div><strong>数据手</strong><p>完成缺失值与异常值扫描，发现 2 个待确认口径。</p></div><b class="event-done">DONE</b></div><div class="console-event"><span class="event-time">14:32:24</span><span class="event-icon violet">↗</span><div><strong>建模手</strong><p>比较 MILP、遗传算法与贪心基线，准备敏感性分析。</p></div><b class="event-live">RUNNING</b></div><div class="console-event"><span class="event-time">14:32:41</span><span class="event-icon gold">文</span><div><strong>论文手</strong><p>已建立“模型假设”章节骨架，等待最终参数说明。</p></div><b class="event-queue">QUEUED</b></div></div></div>
-          <div class="quote-card reveal"><span>“</span><p>每一个建议都回到数据与假设。你可以接受、修改，也可以把整段过程留作下一次复盘。</p><strong>— MModels 的协作原则</strong></div>
+          <div class="section-heading reveal"><div><span class="eyebrow">03 / AGENT COLLABORATION</span><h2>一支围绕同一项目<br /><em>并行推进的建模小组。</em></h2></div><p>截图里的协作图不是抽象概念：项目主助手负责汇总，题意解析员、计算实验员、资料核验员等角色沿着任务树接收和回传结果。</p></div>
+          <div class="agent-evidence reveal">
+            <figure class="agent-shot"><img src="./assets/screenshots/03-agents/agent-workflow-graph.png" alt="MModels 多智能体协作工作流图，展示项目主助手、任务节点和多个专业角色" data-lightbox="./assets/screenshots/03-agents/agent-workflow-graph.png" /><figcaption>一个任务拆成多个角色后，状态和派发关系仍然可见</figcaption></figure>
+            <div class="agent-evidence-copy"><span class="step-label">COLLABORATION GRAPH</span><h3>每个角色都有责任边界和回传路径</h3><p>从截图可以看到，协作工作流包含项目主助手、任务节点、计算实验员、资料核验员、题意解析员以及已经交回结果的成员。用户可以沿着连线理解：谁在做什么，结果回到哪里。</p><div class="agent-stats"><div><strong>1</strong><span>项目主助手</span></div><div><strong>多角色</strong><span>并行处理</span></div><div><strong>可追踪</strong><span>成员详情与技能调用</span></div></div></div>
+          </div>
+          <div class="agent-grid">
+            <article class="agent-card lead reveal"><div class="agent-orb">M</div><span class="agent-role">PROJECT ORCHESTRATOR</span><h3>项目主助手</h3><p>统筹本轮目标与最终结果，把题意、数据、实验和论文任务串成一条主线。</p><div class="agent-status"><i></i> 汇总项目上下文</div></article>
+            <article class="agent-card reveal"><div class="agent-orb violet">∫</div><span class="agent-role">MODEL & EXPERIMENT</span><h3>计算实验员</h3><p>接收具体分工，运行计算或命令，保存实验结果并把可复现材料回传给项目。</p><div class="agent-status"><i></i> 正在运行计算命令</div></article>
+            <article class="agent-card reveal"><div class="agent-orb gold">文</div><span class="agent-role">RESEARCH & REVIEW</span><h3>资料核验员</h3><p>检索内容、阅读资料、核对来源，让论文里的方法和数据都有可解释的出处。</p><div class="agent-status"><i></i> 等待技能调用</div></article>
+          </div>
+          <div class="collab-detail reveal"><div><span class="step-label">MEMBER DETAIL</span><h3>协作不是黑盒，成员详情会留下责任和技能记录</h3><p>真实界面可以查看成员负责人、任务描述、使用的方法以及每项技能的调用次数。对于比赛复盘和论文核验，这些记录比一句“AI 已完成”更有价值。</p></div><figure><img src="./assets/screenshots/03-agents/agent-member-detail.png" alt="MModels 智能体成员详情，展示负责人、使用的方法和技能调用记录" data-lightbox="./assets/screenshots/03-agents/agent-member-detail.png" /><figcaption>成员详情：负责人、方法、技能调用与交付状态</figcaption></figure></div>
         </section>
 
         <section class="view" data-panel="data" id="data">
-          <div class="section-heading reveal"><div><span class="eyebrow">04 / DATA & CHARTS</span><h2>让数据先说清楚，<br /><em>再让模型开始推理。</em></h2></div><p>项目数据、预览、绘图和导出放在同一页。支持 CSV / TSV，折线、散点、柱状与饼图，并可导出 PNG / SVG。</p></div>
-          <div class="data-showcase reveal"><div class="data-controls"><div class="control-label">CURRENT DATASET</div><div class="file-row active"><span class="file-type">CSV</span><div><strong>demand.csv</strong><small>2,403 rows · 8 columns</small></div><span class="file-check">✓</span></div><div class="file-row"><span class="file-type">CSV</span><div><strong>weather_2025.csv</strong><small>18,920 rows · 12 columns</small></div></div><div class="control-label space-top">VISUAL TYPE</div><div class="plot-picker"><button class="active">折线图</button><button>散点图</button><button>热力图</button><button>3D 曲面</button></div><div class="data-note"><span>⌁</span> 图表与数据文件一起保存在项目中，方便论文复用。</div></div><div class="chart-stage"><div class="chart-stage-head"><div><span class="chart-overline">EXPERIMENT #18 / OBJECTIVE VALUE</span><h3>目标函数收敛与参数敏感性</h3></div><div class="chart-actions"><span>PNG</span><span>SVG</span><span>复制图表</span></div></div><div class="chart-image-wrap"><img src="./assets/gallery/mpl-contours_in_optimization_demo.png" alt="优化问题等高线示例图" /><div class="chart-overlay-label">MODEL SURFACE<br /><strong>VALIDATED</strong></div></div><div class="chart-foot"><span>数据体检 ✓</span><span>敏感性分析 ✓</span><span>导出就绪 ✓</span></div></div></div>
-          <div class="gallery-strip reveal"><div><span class="strip-kicker">PUBLISHED-READY FIGURES</span><h3>从探索图到投稿级图表</h3><p>同一份实验结果，可以在工作台里继续调整风格、标注和导出规格。</p></div><img src="./assets/gallery/echarts-scatter-linear-regression.png" alt="线性回归散点图" /><img src="./assets/gallery/echarts-heatmap-large.png" alt="数据热力图" /><img src="./assets/gallery/mpl-surface3d.png" alt="三维曲面图" /></div>
+          <div class="section-heading reveal"><div><span class="eyebrow">04 / DATA & CHARTS</span><h2>让数据先说清楚，<br /><em>再让模型开始推理。</em></h2></div><p>截图展示的是实际的数据与图表模块：左侧保留项目中的 CSV 文件，右侧根据字段选择绘图，并支持 PNG、SVG 和复制结果。</p></div>
+          <div class="data-evidence reveal">
+            <div class="data-evidence-copy"><span class="step-label">DATA WORKBENCH</span><h3>从文件选择到图表导出，过程都在同一页完成</h3><p>真实截图里可以看到多个 q1 数据文件和边界数据文件，用户选择折线图、X/Y 字段和指标后，图表立即反映当前项目数据。这个界面适合强调“数据和模型实验不会散落在不同工具里”。</p><div class="tool-pill-row"><span>CSV / TSV</span><span>字段选择</span><span>折线图</span><span>PNG</span><span>SVG</span><span>复制</span></div></div><figure class="data-shot"><img src="./assets/screenshots/04-data/data-chart-workbench.png" alt="MModels 数据与图表工作台，展示 CSV 文件、字段选择和折线图结果" data-lightbox="./assets/screenshots/04-data/data-chart-workbench.png" /><figcaption>真实图表工作台：文件、字段、图例和导出操作同屏</figcaption></figure>
+          </div>
+          <div class="chart-proof-grid reveal">
+            <figure><img src="./assets/screenshots/04-data/chart-gallery-flow-network.png" alt="流程和网络关系图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-flow-network.png" /><figcaption><strong>网络与资源流向</strong><span>适合路径、分配和关系结构</span></figcaption></figure>
+            <figure><img src="./assets/screenshots/04-data/chart-gallery-distribution.png" alt="分布和统计图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-distribution.png" /><figcaption><strong>数据探索与分布</strong><span>直方图、箱线图、累积分布</span></figcaption></figure>
+            <figure><img src="./assets/screenshots/04-data/chart-gallery-regression.png" alt="回归和变量关系图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-regression.png" /><figcaption><strong>变量关系与拟合</strong><span>散点、回归、相关性和误差</span></figcaption></figure>
+            <figure><img src="./assets/screenshots/04-data/chart-gallery-contour-3d.png" alt="等高线和三维图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-contour-3d.png" /><figcaption><strong>等高线与三维表达</strong><span>优化路径、曲面、场与三维结构</span></figcaption></figure>
+          </div>
+          <div class="data-note-panel reveal"><strong>图表不是装饰，而是论文中的证据单元。</strong><span>同一份实验数据可以继续被用于模型解释、结果对比、敏感性分析和正文插图。</span><button class="button button-primary" data-go="paper">看图表如何进入论文 <span>→</span></button></div>
         </section>
 
         <section class="view" data-panel="paper" id="paper">
-          <div class="section-heading reveal"><div><span class="eyebrow">05 / PAPER DELIVERY</span><h2>结果不是终点，<br /><em>交付才算完成。</em></h2></div><p>从优秀论文资料库到比赛工作台，MModels 帮你把每个结论放进正确的位置，并在提交前做最后一轮检查。</p></div>
-          <div class="paper-pipeline reveal"><div class="pipeline-line"></div><div class="pipeline-step"><span>01</span><strong>模型输出</strong><small>参数、指标、边界</small></div><div class="pipeline-step"><span>02</span><strong>图表沉淀</strong><small>编号、说明、来源</small></div><div class="pipeline-step"><span>03</span><strong>正文组织</strong><small>模型、结果、讨论</small></div><div class="pipeline-step active"><span>04</span><strong>投稿检查</strong><small>页数、格式、引用</small></div></div>
-          <div class="paper-layout reveal"><div class="paper-browser"><div class="browser-top"><span class="window-dots"><i></i><i></i><i></i></span><span>paper-library / 2025</span><span class="browser-lock">LOCAL</span></div><div class="paper-list"><div class="paper-list-item active"><span>2025</span><div><strong>城市配送优化策略研究</strong><small>全国赛 · 一等奖 · A题</small></div><b>PDF</b></div><div class="paper-list-item"><span>2024</span><div><strong>多目标库存控制模型</strong><small>MathorCup · 优秀论文 · C题</small></div><b>PDF</b></div><div class="paper-list-item"><span>2024</span><div><strong>复杂网络传播预测</strong><small>美赛 · Finalist · M题</small></div><b>PDF</b></div></div></div><div class="paper-checklist"><span class="chart-overline">SUBMISSION CHECK / HUAWEI CUP D</span><h3>提交前检查清单</h3><label><i>✓</i><span>竞赛信息与队伍档案</span><b>通过</b></label><label><i>✓</i><span>模型假设与变量定义</span><b>通过</b></label><label><i>✓</i><span>图表编号与正文引用</span><b>通过</b></label><label class="warn"><i>!</i><span>PDF 页数限制</span><b>需要复核</b></label><button class="button button-primary">打开比赛工作台 <span>→</span></button></div></div>
+          <div class="section-heading reveal"><div><span class="eyebrow">05 / PAPER DELIVERY</span><h2>结果不是终点，<br /><em>交付才算完成。</em></h2></div><p>比赛工作台的真实截图已经把“论文交付”拆成了可检查的项目：比赛信息、页数要求、论文文件、图表与数据、模型方案、结论依据、复现材料、技能执行和提交清单。</p></div>
+          <div class="paper-evidence reveal">
+            <figure><img src="./assets/screenshots/06-competition/competition-workbench-readiness.png" alt="MModels 比赛工作台，展示项目准备度和论文交付检查项" data-lightbox="./assets/screenshots/06-competition/competition-workbench-readiness.png" /><figcaption>比赛工作台：准备度、论文交付检查项和待补齐内容</figcaption></figure>
+            <div class="paper-evidence-copy"><span class="step-label">SUBMISSION READINESS</span><h3>把“论文写完了吗”变成逐项可检查的问题</h3><p>截图中的检查卡片把交付拆成多个具体状态：已具备、待补充、待复核。这样用户可以先找到缺口，再继续回到建模、数据或论文环节补齐证据。</p><div class="check-grid"><span>比赛信息</span><span class="warn">页数要求</span><span>论文文件</span><span>图表与数据</span><span class="warn">模型方案</span><span class="warn">结论依据</span><span>复现材料</span><span>技能执行</span><span class="warn">提交清单</span></div></div>
+          </div>
+          <div class="paper-flow reveal"><div class="pipeline-step"><span>01</span><strong>确定赛事模板</strong><small>队伍、页数、正文范围</small></div><div class="pipeline-step"><span>02</span><strong>沉淀模型证据</strong><small>结果、图表、复现材料</small></div><div class="pipeline-step"><span>03</span><strong>生成论文内容</strong><small>摘要、正文、图表说明</small></div><div class="pipeline-step active"><span>04</span><strong>提交前复核</strong><small>格式、引用、清单</small></div></div>
+          <div class="paper-two-up reveal"><figure><img src="./assets/screenshots/06-competition/competition-info-modal.png" alt="MModels 比赛信息设置窗口，展示论文模板、参赛队号和页数要求" data-lightbox="./assets/screenshots/06-competition/competition-info-modal.png" /><figcaption><strong>赛事信息先设定，后续检查才有依据</strong><span>论文模板、参赛队号、页数与正文范围</span></figcaption></figure><figure><img src="./assets/screenshots/07-misc/skills-algorithms-templates.png" alt="MModels 技能、算法与模板页面，展示 abstract-writer 和数据审计技能" data-lightbox="./assets/screenshots/07-misc/skills-algorithms-templates.png" /><figcaption><strong>技能库把复杂方法变成可调用的项目能力</strong><span>摘要写作、数据审计、引用管理、竞赛检查</span></figcaption></figure></div>
         </section>
 
         <section class="view" data-panel="calendar" id="calendar">
-          <div class="section-heading reveal"><div><span class="eyebrow">06 / COMPETITION RHYTHM</span><h2>把全年比赛，<br /><em>排成一条可执行的节奏。</em></h2></div><p>竞赛日历、截止时间、队伍档案和论文收藏放在一个入口。具体时间以官方通知为准。</p></div>
-          <div class="calendar-ribbon reveal"><div class="calendar-now"><span class="status-dot"></span><strong>NOW PLANNING</strong><small>2026 全国大学生数学建模竞赛</small></div><div class="countdown"><span>距离报名节点</span><strong>42 <small>DAYS</small></strong></div><div class="calendar-action">打开比赛工作台 <span>→</span></div></div>
-          <div class="event-grid reveal"><article class="event-card past"><div class="event-month">FEB <strong>02</strong></div><div><span class="event-type">国际 · 全英文</span><h3>美国大学生数学建模竞赛</h3><p>适合训练英文论文和快速建模。</p></div><span class="event-state">已结束</span></article><article class="event-card"><div class="event-month">APR <strong>04</strong></div><div><span class="event-type">高校热门</span><h3>MathorCup 高校数学建模挑战赛</h3><p>适合积累数据分析与优化题经验。</p></div><span class="event-state">准备中</span></article><article class="event-card active"><div class="event-month">SEP <strong>09</strong></div><div><span class="event-type">本科主战场</span><h3>全国大学生数学建模竞赛</h3><p>建立队伍模板、论文资产和复盘习惯。</p></div><span class="event-state">重点</span></article><article class="event-card"><div class="event-month">NOV <strong>11</strong></div><div><span class="event-type">金融建模</span><h3>大湾区杯粤港澳数学建模竞赛</h3><p>用一套工作流快速切换题型。</p></div><span class="event-state">待规划</span></article></div>
-          <div class="calendar-foot reveal"><span>比赛前 7 天</span><strong>数据体检 · 论文模板 · 队伍档案 · 任务分工</strong><span>比赛后 3 天</span><strong>结果归档 · 复盘笔记 · 优秀论文收藏</strong></div>
+          <div class="section-heading reveal"><div><span class="eyebrow">06 / COMPETITION RHYTHM</span><h2>把全年比赛，<br /><em>排成一条可执行的节奏。</em></h2></div><p>真实产品里已经有比赛工作台和新手教程。营销页面要把它们解释为一条完整的备赛路径，而不是单独的日历功能。</p></div>
+          <div class="calendar-evidence reveal"><figure><img src="./assets/screenshots/01-workspace/onboarding-tutorials.png" alt="MModels 新手教程，展示从新建项目到提交前检查的完整路线" data-lightbox="./assets/screenshots/01-workspace/onboarding-tutorials.png" /><figcaption>新手路线：新建项目、录入比赛信息、导入题目与数据、拆题建模、图表论文、提交前检查</figcaption></figure><div class="calendar-evidence-copy"><span class="step-label">FROM FIRST OPEN TO COMPETITION DELIVERY</span><h3>让第一次使用也有一条清晰的路线</h3><p>截图里的新手教程已经把产品使用过程拆成 7 个入口：快速开始、选择任务模式、使用比赛模板、使用科研绘图模板、使用 Skills、多智能体和管理本地论文库。</p><ol class="route-list"><li><b>建立项目</b><span>保存比赛信息和附件</span></li><li><b>进入工作流</b><span>选择写论文、画图、评审或找数据</span></li><li><b>积累资产</b><span>把图表、论文和复盘留在本地项目里</span></li></ol></div></div>
+          <div class="event-grid reveal"><article class="event-card past"><div class="event-month">01</div><div><span class="event-type">准备</span><h3>确定比赛模板</h3><p>队伍信息、页数要求、论文范围和交付标准。</p></div><span class="event-state">项目建立</span></article><article class="event-card"><div class="event-month">02</div><div><span class="event-type">拆题</span><h3>导入题目与数据</h3><p>把附件、数据、假设和任务分工放进同一上下文。</p></div><span class="event-state">工作流启动</span></article><article class="event-card active"><div class="event-month">03</div><div><span class="event-type">建模</span><h3>实验、图表与复现</h3><p>用候选方法、数据图表和实验记录支撑结论。</p></div><span class="event-state">证据沉淀</span></article><article class="event-card"><div class="event-month">04</div><div><span class="event-type">交付</span><h3>论文检查与复盘</h3><p>按提交清单补齐缺口，再把项目留下供下一次复用。</p></div><span class="event-state">准备提交</span></article></div>
+          <div class="settings-note reveal"><div><span class="step-label">YOUR WORKSPACE, YOUR RHYTHM</span><h3>从外观到任务深度，都可以按自己的建模习惯调整</h3><p>软件还提供任务深度、技能自动选择、协作规模、主题和桌面小模等设置。营销页面会把这些放在“可持续使用”的产品能力里，而不是当成孤立的设置项。</p></div><div class="settings-thumbs"><img src="./assets/screenshots/07-misc/quality-delivery-settings.png" alt="建模质量与交付设置" data-lightbox="./assets/screenshots/07-misc/quality-delivery-settings.png" /><img src="./assets/screenshots/07-misc/appearance-desktop-widget.png" alt="界面与桌面小模设置" data-lightbox="./assets/screenshots/07-misc/appearance-desktop-widget.png" /></div></div>
         </section>
       </div>
 
       <footer class="product-footer"><span>© 2026 MModels · Built for modelers</span><span>本地数学建模智能工作台</span><a href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">GitHub ↗</a></footer>
     </main>
   </div>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true"><button class="lightbox-close" aria-label="关闭图片">×</button><img alt="" /><p></p></div>
   <script src="./main.js"></script>
 </body>
 </html>

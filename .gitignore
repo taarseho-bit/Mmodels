@@ -44,3 +44,6 @@ resources/elevate.exe
 Thumbs.db
 .idea/
 .vscode/
+
+# Raw product screenshots waiting for review
+docs/assets/screenshots/00-inbox/

@@ -126,3 +126,31 @@
     if (next >= 0 && next < navItems.length) setView(navItems[next].dataset.view);
   });
 })();
+
+(() => {
+  const lightbox = document.getElementById("lightbox");
+  if (!lightbox) return;
+  const image = lightbox.querySelector("img");
+  const caption = lightbox.querySelector("p");
+  const close = () => {
+    lightbox.classList.remove("is-open");
+    lightbox.setAttribute("aria-hidden", "true");
+    image.removeAttribute("src");
+  };
+  document.querySelectorAll("[data-lightbox]").forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      const source = trigger.dataset.lightbox;
+      image.src = source;
+      image.alt = trigger.querySelector("img")?.alt || trigger.alt || "";
+      caption.textContent = image.alt;
+      lightbox.classList.add("is-open");
+      lightbox.setAttribute("aria-hidden", "false");
+    });
+  });
+  lightbox.addEventListener("click", (event) => {
+    if (event.target === lightbox || event.target === close) close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") close();
+  });
+})();
