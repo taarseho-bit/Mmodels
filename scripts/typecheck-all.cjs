@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = 'D:\\mathmodel-desktop';
-const NODE = 'C:\\Users\\xh\\.workbuddy\\binaries\\node\\versions\\22.22.2-3\\node.exe';
+const NODE = process.env.MM_NODE || process.execPath;
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 const configs = ['tsconfig.node.json', 'tsconfig.web.json', 'tsconfig.tools.json'];
 

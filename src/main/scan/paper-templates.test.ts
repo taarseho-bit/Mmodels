@@ -1,15 +1,15 @@
 /**
  * 「初始化论文项目配置」+ 比赛信息 schema 的回归测试 —— 设置里那个开关不该是摆设。
  *
- * 背景（用户实机抱怨的原始现象）：
+ * 背景（用户运行测试抱怨的原始现象）：
  *   `.mathmodel/paper/config.json` 在项目里**永远不存在**，于是 agent 读不到比赛字段、
  *   也定不出模板来源，用户拿不到可粘贴的 LaTeX 字段。
  *   根因是 `paperInitProjectConfig` 只有默认值 / 类型 / 界面开关，全仓没有消费方。
  *
- * 为什么这层要单独测（而不是只靠实机 E2E）：
- *   实机跑一次要构建、要抢 GUI；而"写文件"的语义本身（创建 / 不覆盖 / 路径安全 /
+ * 为什么这层要单独测（而不是只靠运行测试 E2E）：
+ *   运行测试跑一次要构建、要抢 GUI；而"写文件"的语义本身（创建 / 不覆盖 / 路径安全 /
  *   老结构兼容）是**纯 Node 逻辑**，可以在这里逐条钉死。
- *   实机 E2E 负责另外两件事：这条链路在真 IPC + 真 UI 上确实被触发。
+ *   运行测试 E2E 负责另外两件事：这条链路在真 IPC + 真 UI 上确实被触发。
  *
  * ⚠️ 本文件还承担**老数据兼容**的判据（B9 目录名迁移 / B19 用户手写文件不覆盖）：
  *   这两条的失效形态都只在"老项目"上才出现 —— 用全新的空目录测**永远测不出来**，
@@ -123,8 +123,8 @@ describe('initPaperProjectConfig（自动初始化）', () => {
     expect(t.source).toBe('builtin');
     expect(t.sourcePath).toBe(null);
     expect(t.entryFile).toBe('document.tex');
-    // `name` 必须是**原版 `Np` 对象**（两个键都非空），**不是**字符串 ——
-    // 原版 zod 是 `z.object({ 'zh-CN': min(1), en: min(1) })`，字符串过不了 schema。
+    // `name` 必须是**项目契约 `Np` 对象**（两个键都非空），**不是**字符串 ——
+    // 项目契约 zod 是 `z.object({ 'zh-CN': min(1), en: min(1) })`，字符串过不了 schema。
     expect(typeof t.name).toBe('object');
     expect(t.name).not.toBeNull();
     expect(pickLocalizedText(t.name, 'zh-CN')).toBe('CUMCM');
@@ -182,7 +182,7 @@ describe('initPaperProjectConfig（自动初始化）', () => {
     expect(cfg.contestFields.map((f) => f.id)).toEqual(['school', 'members', 'advisor']);
     expect(cfg.contestFields.find((f) => f.id === 'members')!.value).toBe('甲、乙、丙');
     // 档案预填出来的字段名只有中文 → `en` 用原文兜底；但**形状必须是对象、两键都非空**
-    // （原版 `Np` 的 `min(1)`，塞空串或写字符串都会被原版判非法）。
+    // （项目契约 `Np` 的 `min(1)`，塞空串或写字符串都会被项目契约判非法）。
     for (const f of cfg.contestFields) {
       expect(typeof f.label).toBe('object');
       expect(pickLocalizedText(f.label, 'zh-CN')).not.toBe('');
@@ -207,7 +207,7 @@ describe('initPaperProjectConfig（自动初始化）', () => {
     expect(existsSync(paperConfigPath(root))).toBe(false);
   });
 
-  it('`.mathmodel` 是符号链接 → 拒绝写入（原版 paperConfigUnsafePath 同义）', () => {
+  it('`.mathmodel` 是符号链接 → 拒绝写入（项目契约 paperConfigUnsafePath 同义）', () => {
     const outside = mkdtempSync(join(tmpdir(), 'mm-paper-outside-'));
     try {
       try {
@@ -239,7 +239,7 @@ describe('initPaperProjectConfig（自动初始化）', () => {
 });
 
 describe('normalizePaperConfig（老结构兼容）', () => {
-  it('本项目早期结构 { templateId, fields:{k:v} } → 换算成原版新结构', () => {
+  it('本项目早期结构 { templateId, fields:{k:v} } → 换算成项目契约新结构', () => {
     const cfg = normalizePaperConfig(
       {
         templateId: 'cumcm',
@@ -257,7 +257,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
     expect(cfg.contestFields.map((f) => pickLocalizedText(f.label))).toEqual(['problemNumber', 'teamNumber']);
   });
 
-  it('原版新结构原样保留（含 custom / sourcePath / 自定义字段 label）', () => {
+  it('项目契约新结构原样保留（含 custom / sourcePath / 自定义字段 label）', () => {
     const cfg = normalizePaperConfig(
       {
         schemaVersion: 1,
@@ -265,7 +265,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
         template: { id: 'my-tpl', name: '我的模板', entryFile: 'main.tex', source: 'custom', sourcePath: 'D:/tpl' },
         contestFields: [
           { id: 'problemNumber', label: '题号', value: 'A' },
-          // 自定义字段的 id 要满足原版 schema `^[a-z][A-Za-z0-9]*$`（不能带下划线）
+          // 自定义字段的 id 要满足项目契约 schema `^[a-z][A-Za-z0-9]*$`（不能带下划线）
           { id: 'customAbc1', label: '组别', value: '研究生组' },
         ],
         teamProfile: { id: 'tp1', name: '队' },
@@ -283,7 +283,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
     expect(pickLocalizedText(custom.label, 'en')).not.toBe('');
   });
 
-  it('原版 `Np` 对象形态（原版写下的配置）读回来 en 不被中文化', () => {
+  it('项目契约 `Np` 对象形态（项目契约写下的配置）读回来 en 不被中文化', () => {
     const cfg = normalizePaperConfig(
       {
         schemaVersion: 1,
@@ -331,7 +331,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
 
 /**
  * ── 老数据兼容（硬纪律一族）────────────────────────────────────
- * `MM_DIR` 曾经是 `.mmodels`（本项目早期自造），现已对齐原版的 `.mathmodel`。
+ * `MM_DIR` 曾经是 `.mmodels`（本项目早期自造），现已对齐项目契约的 `.mathmodel`。
  * 下面每条都**先手工造出"老项目"的样子**再跑 —— 全新空目录测不出这类 bug。
  */
 describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', () => {
@@ -359,8 +359,8 @@ describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', (
     return p;
   }
 
-  it('目录常量就是原版那个字符串（不是别的写法）', () => {
-    // 原版 decoded main @47903480 `Li='.mathmodel/paper/config.json'`
+  it('目录常量就是项目契约那个字符串（不是别的写法）', () => {
+    // 项目契约 协议实现 `Li='.mathmodel/paper/config.json'`
     expect(MM_DIR).toBe('.mathmodel');
     expect(paperConfigPath('/p')).toBe(join('/p', '.mathmodel', 'paper', 'config.json'));
     expect(legacyPaperConfigPath('/p')).toBe(join('/p', '.mmodels', 'paper', 'config.json'));
@@ -373,7 +373,7 @@ describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', (
     expect(hit?.legacy).toBe(true);
     expect(hit?.path).toBe(lp);
 
-    // 反向对照：读出来的内容就是老文件里那份（模板 source=custom / sourcePath 没丢）
+    // 回归护栏：读出来的内容就是老文件里那份（模板 source=custom / sourcePath 没丢）
     const cfg = readPaperConfig(root, TEMPLATES)!;
     expect(cfg.template.id).toBe('mcm');
     expect(cfg.template.source).toBe('custom');
@@ -424,7 +424,7 @@ describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', (
 
     const hit = resolvePaperConfigFile(root);
     expect(hit?.legacy).toBe(false);
-    // 反向对照：如果读的是旧文件，这里会是 'mcm'
+    // 回归护栏：如果读的是旧文件，这里会是 'mcm'
     expect(readPaperConfig(root, TEMPLATES)!.template.id).toBe('cumcm');
   });
 
@@ -445,11 +445,11 @@ describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', (
 });
 
 /**
- * ── B19：用户手写的配置**不许覆盖**（原版 `project_config_conflict`）──
+ * ── B19：用户手写的配置**不许覆盖**（项目契约 `project_config_conflict`）──
  */
 describe('B19：论文配置归属判定与保存决策', () => {
   function userConfig(): Record<string, unknown> {
-    // 用户手抄的：有原版的键，但**没有** `managedBy`（原版 zod 是 literal('mathmodel')）
+    // 用户手抄的：有项目契约的键，但**没有** `managedBy`（项目契约 zod 是 literal('mathmodel')）
     return {
       template: { id: 'cumcm', name: '我自己的模板', entryFile: 'paper.tex' },
       contestFields: [{ id: 'problemNumber', label: '题号', value: 'C' }],
@@ -458,7 +458,7 @@ describe('B19：论文配置归属判定与保存决策', () => {
 
   it('paperConfigOwnership：有 managedBy=mathmodel 才算我们的', () => {
     expect(paperConfigOwnership('{"managedBy":"mathmodel"}')).toBe('ours');
-    // 反向对照：缺键 / 别的值 / 不是对象 → 都不是我们的
+    // 回归护栏：缺键 / 别的值 / 不是对象 → 都不是我们的
     expect(paperConfigOwnership('{"template":{}}')).toBe('foreign');
     expect(paperConfigOwnership('{"managedBy":"someone-else"}')).toBe('foreign');
     expect(paperConfigOwnership('null')).toBe('foreign');
@@ -488,7 +488,7 @@ describe('B19：论文配置归属判定与保存决策', () => {
 
     const plan = planPaperConfigSave(root);
     expect(plan.action).toBe('conflict');
-    // 反向对照：内容换成"我们的"（补上 managedBy）→ 立刻变成可迁移
+    // 回归护栏：内容换成"我们的"（补上 managedBy）→ 立刻变成可迁移
     writeFileSync(lp, JSON.stringify({ ...userConfig(), managedBy: 'mathmodel' }, null, 2), 'utf8');
     const plan2 = planPaperConfigSave(root);
     expect(plan2.action).toBe('merge');
@@ -610,7 +610,7 @@ describe('listPaperTemplates（template.json → 模板元数据）', () => {
 
 /**
  * 真实内置模板目录的回归 —— 判据盯的是「模板数据 + 解析器」合起来的结果，
- * 不是各自单独的样子：`options` 在 template.json 里**本来就有**（原版有、我们丢过）。
+ * 不是各自单独的样子：`options` 在 template.json 里**本来就有**（项目契约有、我们丢过）。
  */
 describe('listPaperTemplates（真实内置模板目录 · 字段 options）', () => {
   const res = join(process.cwd(), 'resources');

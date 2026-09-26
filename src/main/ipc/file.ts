@@ -36,13 +36,9 @@ const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm', '.mkv', '.avi']);
 const SKIP_DIRS = new Set(['node_modules', '.git', '__pycache__', '.venv', 'venv', '.idea', '.vscode']);
 
 /**
- * 保存对话框的扩展名过滤器 —— 逐字对齐原版 `LA` 表（decoded main @1761180 段）。
- * ⚠️ 那张表的**逐字原文**已搬到
- *    `.workbuddy/ui-audit/verify/original-code-dumps.md §5`
- *    （搬出去的理由见 `WRITE-RULES.md §8`：注释里逐字引用的原文会被 `grep -c`
- *    一起数上，给出看起来像样的错数字）。这里只留**语义**：
+ * 保存对话框的扩展名过滤器：只保留当前产品支持的文件类型和筛选语义：
  *
- * 原版按**默认文件名的扩展名**挑过滤器，所以用户看到的是「JSON 文件」而不是「所有文件」；
+ * 项目契约按**默认文件名的扩展名**挑过滤器，所以用户看到的是「JSON 文件」而不是「所有文件」；
  * 不认识就退成 `All Files`。
  */
 const SAVE_FILTERS: Record<string, { name: string; extensions: string[] }> = {
@@ -51,7 +47,7 @@ const SAVE_FILTERS: Record<string, { name: string; extensions: string[] }> = {
   '.zip': { name: 'ZIP', extensions: ['zip'] },
 };
 
-/** 按默认文件名的扩展名挑过滤器；不认识就退成原版的 All Files */
+/** 按默认文件名的扩展名挑过滤器；不认识就退成项目契约的 All Files */
 function saveFiltersFor(defaultPath: string): Array<{ name: string; extensions: string[] }> {
   return [SAVE_FILTERS[extname(defaultPath).toLowerCase()] ?? { name: 'All Files', extensions: ['*'] }];
 }
@@ -96,7 +92,7 @@ function buildTree(dirAbs: string, rootAbs: string, depth: number, counter: { n:
   for (const name of entries) {
     if (counter.n >= TREE_MAX_NODES) break;
     // 隐藏目录一律不展示，但**我们的配置目录要露出来**：
-    // `.mathmodel` 是合法名（与原版一致），`.mmodels` 是早期版本的遗留名 ——
+    // `.mathmodel` 是合法名（与项目契约一致），`.mmodels` 是早期版本的遗留名 ——
     // 它只读兼容、迁移时也不删，所以也得让用户看得见（否则用户以为数据没了）。
     if (name.startsWith('.') && name !== '.mathmodel' && name !== '.mmodels') continue;
     if (SKIP_DIRS.has(name)) continue;
@@ -334,7 +330,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
       const result = await dialog.showSaveDialog(ctx.getMainWindow() ?? undefined!, {
         title: '保存文件',
         defaultPath: defaultName,
-        // 对齐原版：按扩展名挑过滤器（导出 .json 时显示「JSON」而不是「所有文件」）
+        // 对齐项目契约：按扩展名挑过滤器（导出 .json 时显示「JSON」而不是「所有文件」）
         filters: saveFiltersFor(defaultName),
       });
       if (result.canceled || !result.filePath) return null;
@@ -380,9 +376,9 @@ export function registerFileHandlers(ctx: IpcContext): void {
   );
 
   /**
-   * 把一段 HTML 渲染成分享图（PNG）并保存 —— 对应原版 `saveShareImage`。
+   * 把一段 HTML 渲染成分享图（PNG）并保存 —— 对应项目契约 `saveShareImage`。
    *
-   * 原版做法（逐位复刻）：
+   * 项目契约做法（逐位当前实现）：
    *   1. HTML 落到临时文件，起一个**隐藏** BrowserWindow（1640×800，2 倍缩放）
    *   2. 量出文档实际高度，把窗口撑成 1640 × min(2×scrollHeight, 16000)
    *      —— 这样整页一次截完，不会只截到可视区
@@ -394,7 +390,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
   ipcMain.handle(
     IPC.FILE_SAVE_SHARE_IMAGE,
     safeWrap(async (_e, payload: { defaultName?: string; html?: string; e2eAutoPath?: string } | string) => {
-      // 兼容两种调用形态：对象（原版语义）或单字符串（html）
+      // 兼容两种调用形态：对象（项目契约语义）或单字符串（html）
       const opts = typeof payload === 'string' ? { html: payload } : (payload ?? {});
       const defaultName = typeof opts.defaultName === 'string' ? opts.defaultName : 'share.png';
       const html = typeof opts.html === 'string' ? opts.html : '';

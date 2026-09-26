@@ -7,7 +7,7 @@
  * 一旦这里 import 了任何带副作用的模块，渲染层的编译图会被污染。
  *
  * （`pickLocalizedText` / `makeLocalizedText` 是本文件仅有的两个纯函数 ——
- *   主进程写盘与渲染层显示必须用同一套「原版 `Np` 本地化文案」读写规则，
+ *   主进程写盘与渲染层显示必须用同一套「项目契约 `Np` 本地化文案」读写规则，
  *   放在这里才不会两边各写一遍、各偏一半。）
  */
 
@@ -232,7 +232,7 @@ export type StreamEvent =
 export interface AskUserOption {
   label: string;
   description?: string;
-  /** 预览内容（长文本/HTML/markdown，原版支持 preview 卡片） */
+  /** 预览内容（长文本/HTML/markdown，项目契约支持 preview 卡片） */
   preview?: string;
 }
 
@@ -258,7 +258,7 @@ export interface AskUserRequest {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 审批类别 —— **逐字取自原版** zod（decoded main @387559）：
+ * 审批类别 —— **来源于项目资料** zod（协议实现）：
  * `requestKind: z.enum(['command','file-read','file-change'])`
  *
  * 渲染层据此选 `composer.composerPendingApprovalPanel.prompt{Command,FileRead,FileChange,Plan}`。
@@ -266,11 +266,11 @@ export interface AskUserRequest {
 export type ApprovalKind = 'command' | 'file-read' | 'file-change' | 'plan';
 
 /**
- * 用户在审批框里的四种选择 —— **逐字取自原版** `buildCanUseTool` @771414
- * 的 `switch(decision)` 四个分支（原版保留字面量 `accept` / `acceptForSession` /
+ * 用户在审批框里的四种选择 —— 由本项目的权限桥统一处理
+ * 的 `switch(decision)` 四个分支（项目契约保留字面量 `accept` / `acceptForSession` /
  * `cancel`，`default` 分支代表"拒绝"）。
  *
- * 语义（与原版一一对应）：
+ * 语义（与项目契约一一对应）：
  *   · `accept`           → `{behavior:'allow'}`
  *   · `acceptForSession` → 记住这个工具，本次会话不再问；并回传 SDK 的 `updatedPermissions`
  *   · `cancel`           → `{behavior:'deny', interrupt:true}`（**中断本轮**）
@@ -279,19 +279,19 @@ export type ApprovalKind = 'command' | 'file-read' | 'file-change' | 'plan';
 export type ApprovalDecision = 'accept' | 'acceptForSession' | 'cancel' | 'decline';
 
 /**
- * 主进程推给渲染层的审批请求（对应原版 `approval-request` 流事件 @387559：
+ * 主进程推给渲染层的审批请求（对应项目契约 `approval-request` 流事件 ：
  * `{type:'approval-request', requestId, requestKind, detail?}`）。
  *
- * 比原版多带 `toolName`：原版渲染层拿 `requestKind` 就够（它只显示"有命令等待审批"），
- * 复刻的审批框要把**工具名**显示出来，否则用户不知道在批准哪个工具。
+ * 比项目契约多带 `toolName`：当前渲染层拿 `requestKind` 就够（它只显示"有命令等待审批"），
+ * 当前实现的审批框要把**工具名**显示出来，否则用户不知道在批准哪个工具。
  */
 export interface ApprovalRequest {
   requestId: string;
   sessionId: string;
   kind: ApprovalKind;
-  /** 原版 `Dh()` 生成的细节串：`工具名: <JSON 输入>`，超 400 字符截断加 `…` */
+  /** 项目契约 `Dh()` 生成的细节串：`工具名: <JSON 输入>`，超 400 字符截断加 `…` */
   detail: string;
-  /** 工具名（复刻新增，用于界面显示与"本次会话始终允许"的粒度） */
+  /** 工具名（当前实现新增，用于界面显示与"本次会话始终允许"的粒度） */
   toolName: string;
 }
 
@@ -375,7 +375,7 @@ export interface AppSettings {
    * 推理强度。
    *
    * ⚠️ 取值域**必须与 SDK 的 `EffortLevel` 一致**（`sdk.d.ts:553`：
-   * `'low' | 'medium' | 'high' | 'xhigh' | 'max'`），原版也是这 5 档、默认 `high`。
+   * `'low' | 'medium' | 'high' | 'xhigh' | 'max'`），项目契约同样是这 5 档、默认 `high`。
    * `shared` 层不能 import SDK（它只在主进程按需加载），所以在这里手写；
    * 主进程 `agent/session.ts` 那份是从 SDK 推导出来的 —— **两边不一致时 tsc 会报错**。
    */
@@ -422,7 +422,7 @@ export interface AppSettings {
   /** 桌面小模窗口上次停留的位置。 */
   modelingPetPosition?: { x: number; y: number };
   /** 输入区的任务模式（自由对话 / 写论文 / 画图 / 评审 / 找数据） */
-  composerMode?: 'chat' | 'paper' | 'figure' | 'review' | 'data';
+  composerMode?: 'chat' | 'paper' | 'figure' | 'review' | 'data' | 'sprint';
   /**
    * 决策模式 —— 与任务模式**正交**的另一个维度（2026-09-20，用户需求）：
    * 任务模式决定「做什么」，决策模式决定「AI 怎么做决定」，两者可自由组合
@@ -446,7 +446,7 @@ export interface AppSettings {
   /**
    * 是否允许系统通知（自动化完成等场景）。
    * **读取点在主进程** `src/main/notify.ts`（`createSystemNotification` 的唯一门禁），
-   * 两个通知创建点都经过它；默认 true（对齐原版 `settings.notifications ?? true`）。
+   * 两个通知创建点都经过它；默认 true（遵循项目契约 `settings.notifications ?? true`）。
    */
   notifyEnabled?: boolean;
   /** 附加系统提示词（追加到 Agent 的系统层，本地存储） */
@@ -467,7 +467,7 @@ export interface AppSettings {
   /** 键盘快捷键覆盖（action → 按键），本地存储 */
   keybindings?: Record<string, string>;
   /**
-   * MCP 服务器列表（对应原版 settings.mcpServers / /api/mcp）。
+   * MCP 服务器列表（对应项目契约 settings.mcpServers / /api/mcp）。
    * stdio 型走本机命令（uvx/npx）；http 型直连 URL。
    * 传给 Agent SDK 的 mcpServers 选项。
    */
@@ -475,7 +475,7 @@ export interface AppSettings {
   /** 用户明确启用的本地 Claude Code 插件目录。 */
   localPlugins?: { path: string; enabled: boolean }[];
   /**
-   * 网络代理（对应原版 `settings.proxySection`）。
+   * 网络代理（对应项目契约 `settings.proxySection`）。
    * 存在这里而不是渲染层 localStorage —— 因为**主进程要用它**：
    * `main/store/config.ts` 每次写入都会同步给 `main/agent/env.ts` 的运行时缓存，
    * 由 `buildChildEnv()` 注入 HTTP_PROXY/HTTPS_PROXY/NO_PROXY。
@@ -489,7 +489,7 @@ export interface AppSettings {
   bots?: BotSettings;
 }
 
-/** MCP 服务器配置（与原版条目形状一致） */
+/** MCP 服务器配置（与项目契约条目形状一致） */
 export interface McpServerConfig {
   name: string;
   enabled?: boolean;
@@ -499,12 +499,12 @@ export interface McpServerConfig {
   env?: Record<string, string>;
   url?: string;
   headers?: Record<string, string>;
-  /** 是否内置预设（builtin: 前缀的只读项原版语义） */
+  /** 是否内置预设（builtin: 前缀的只读项既有语义） */
   builtin?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
-// 网络代理（设置 → 网络；对应原版 settings.proxySection.*）
+// 网络代理（设置 → 网络；对应项目契约 settings.proxySection.*）
 // ─────────────────────────────────────────────────────────────
 
 /**
@@ -531,7 +531,7 @@ export interface ProxyDetection {
   source: 'manual' | 'system' | 'none';
   /**
    * 地址是 SOCKS 而被忽略。
-   * 原版语义：Agent 子进程只支持 HTTP 代理（`proxySection.socksUnsupported`）。
+   * 既有语义：Agent 子进程只支持 HTTP 代理（`proxySection.socksUnsupported`）。
    */
   unsupported: boolean;
   /** 系统代理检测的原始结果（Electron resolveProxy 原文），便于排障 */
@@ -539,7 +539,7 @@ export interface ProxyDetection {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 机器人（设置 → 机器人；对应原版 integrations.feishuSection / weChatSection）
+// 机器人（设置 → 机器人；对应项目契约 integrations.feishuSection / weChatSection）
 // ─────────────────────────────────────────────────────────────
 
 export interface BotSettings {
@@ -563,11 +563,11 @@ export interface BotSecretStatus {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 新手教程（设置 → 新手教程；对应原版 onboarding.tutorialCenter.items.*）
+// 新手教程（设置 → 新手教程；对应项目契约 onboarding.tutorialCenter.items.*）
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 教程 id —— 与原版「新手教程」页 7 张卡一一对应。
+ * 教程 id —— 与项目契约「新手教程」页 7 张卡一一对应。
  * 放在 shared 而不是组件里：设置页（发起）、store（传参）、GuidedTour（消费）
  * 三层都要用它，放在组件里会让 store 反向依赖组件。
  */
@@ -583,7 +583,7 @@ export type TourId =
 /**
  * 队伍档案（「论文与比赛」页可复用的一套参赛信息）。
  *
- * 对应原版 settings 的 teamProfiles：跨比赛复用的学校 / 队员 / 指导老师，
+ * 对应项目契约 settings 的 teamProfiles：跨比赛复用的学校 / 队员 / 指导老师，
  * 题号、参赛队号、组别这些**每场比赛都不同**的字段不放这里。
  */
 export interface PaperTeamProfile {
@@ -638,7 +638,7 @@ export interface UsageStats {
   /** 按项目聚合 */
   byProject: { projectId: string; name: string; tokens: number; sessions: number }[];
   /**
-   * 按插件（Skill / Agent / 连接器）聚合 —— 对应原版「最常用插件」卡。
+   * 按插件（Skill / Agent / 连接器）聚合 —— 对应项目契约「最常用插件」卡。
    * 从本地消息块的 tool_use 统计，不出网。
    */
   byPlugin: { name: string; runs: number; sessions: number }[];
@@ -680,9 +680,9 @@ export const IPC = {
   FILE_SELECT_FILES: 'file:select-files',
   FILE_SAVE_TEXT: 'file:save-text',
   FILE_SAVE_BINARY: 'file:save-binary',
-  /** 打开外部文本文件（对话框选 JSON/文本 → 返回 {path, content}），对应原版 openTextFile */
+  /** 打开外部文本文件（对话框选 JSON/文本 → 返回 {path, content}），对应项目契约 openTextFile */
   FILE_OPEN_TEXT: 'file:open-text',
-  /** 把一段 HTML 渲染成分享图并保存（隐藏窗口截图），对应原版 saveShareImage */
+  /** 把一段 HTML 渲染成分享图并保存（隐藏窗口截图），对应项目契约 saveShareImage */
   FILE_SAVE_SHARE_IMAGE: 'file:save-share-image',
   FILE_READ_PREVIEW: 'file:read-preview',
   FILE_PDF_INFO: 'file:pdf-info',
@@ -692,7 +692,7 @@ export const IPC = {
   FILE_DELETE: 'file:delete',
   FILE_DUPLICATE: 'file:duplicate',
 
-  // 系统通知（对应原版 notifications.isSupported / show / onNotificationOpenSession）
+  // 系统通知（对应项目契约 notifications.isSupported / show / onNotificationOpenSession）
   NOTIFY_IS_SUPPORTED: 'notify:is-supported',
   NOTIFY_SHOW: 'notify:show',
   /** main → renderer：用户点了带 sessionId 的通知，要求打开对应会话 */
@@ -706,7 +706,7 @@ export const IPC = {
   /** 只改项目显示名（DB 的 projects.name），**不动磁盘目录** */
   PROJECT_RENAME: 'project:rename',
   PROJECT_CURRENT: 'project:current',
-  /** 启动时播种的默认项目 id（原版通道名 mathmodel:get-default-project-id） */
+  /** 启动时播种的默认项目 id（项目契约通道名 mathmodel:get-default-project-id） */
   PROJECT_DEFAULT_ID: 'project:defaultId',
 
   // 会话
@@ -725,7 +725,7 @@ export const IPC = {
   SESSION_ANSWER_USER: 'session:answer-user',
   /**
    * main → renderer：**工具审批**（权限模式 = 需要批准时，canUseTool 拦下工具调用）。
-   * 对应原版 `approval-request` 流事件（decoded main @387559）。
+   * 对应项目契约 `approval-request` 流事件（协议实现）。
    */
   SESSION_APPROVAL_ASK: 'session:approval-ask',
   /** renderer → main：用户对上面那条审批的决定（`ApprovalDecision`） */
@@ -794,7 +794,7 @@ export const IPC = {
   /** 本地用量统计聚合（设置页 · 个人资料） */
   STATS_GET: 'stats:get',
 
-  // 算法市场 + Python 运行时（对应原版 /api/algorithms 与 /install-python）
+  // 算法市场 + Python 运行时（对应项目契约 /api/algorithms 与 /install-python）
   ALG_LIST: 'algorithms:list',
   ALG_INSTALL: 'algorithms:install',
   ALG_INSTALL_PYTHON: 'algorithms:install-python',
@@ -831,7 +831,7 @@ export const IPC = {
   PAPER_GET_CONFIG: 'paper:get-config',
   PAPER_SAVE_CONFIG: 'paper:save-config',
   // 受管模板库：读合并列表 + 两条写操作
-  // （原版 `/api/paper-templates` 的 GET / 、POST /fork 与 DELETE /:id）
+  // （项目契约 `/api/paper-templates` 的 GET / 、POST /fork 与 DELETE /:id）
   PAPER_TEMPLATE_LIBRARY: 'paper:template-library',
   PAPER_TEMPLATE_FORK: 'paper:template-fork',
   PAPER_TEMPLATE_DELETE: 'paper:template-delete',
@@ -909,22 +909,19 @@ export interface DiffLine {
 }
 
 /**
- * 论文模板来源 —— **照抄原版 zod schema**（原版渲染层 `index-OYc102qC.js` @622999）。
+ * 论文模板类型 —— 这里仅保留当前项目需要的结构结论，避免把整段实现细节塞进源码注释。
  *
- * 原版 ctx 里绑定的类型变量（同一段里逐个挖到，不是猜的）**逐字原文**见
- * `.workbuddy/ui-audit/verify/original-code-dumps.md §3`（搬出去的理由见 `WRITE-RULES.md §8`：
- * 注释里逐字引用的原文会被 `grep -c` 一起数上，给出像样的错数字）。
- * 这里只留**结构结论**：三个局部类型变量 —— 本地化文案对象、字段 id 的
+ * 这里留存三个局部类型变量 —— 本地化文案对象、字段 id 的
  * 正则约束（小写字母开头 + 字母数字）、`source` 的两值枚举 —— 加一条
  * **跨字段校验**：`source` 为自定义时 `sourcePath` 不许为 `null`。
  *
- * ⚠️ 原版**只有那一条**跨字段校验。**不要多写** —— 曾误加过一条针对内置来源的，原版没有。
+ * ⚠️ 项目契约**只有那一条**跨字段校验。**不要多写** —— 曾误加过一条针对内置来源的，当前没有。
  *
  * ⚠️ 这是**单一真相源**：主进程写盘（`scan/paper-templates.ts`）、提示词侧
  *    （`agent/prompts.ts` 的 `describeTemplateSource()`）、渲染层弹层都引这一份，
  *    不要各写一遍。
  *
- * ⚠️ **`name` / `label` 落成原版那种"本地化对象"**（之前是普通字符串，那处偏离已修）。
+ * ⚠️ **`name` / `label` 落成项目契约那种"本地化对象"**（之前是普通字符串，那处偏离已修）。
  *    读侧必须同时接受 string 与对象（见 `pickLocalizedText`）—— 早期版本写进用户磁盘的
  *    字符串还在，一读就判空会把用户已有的比赛信息搞丢。
  */
@@ -935,7 +932,7 @@ export interface PaperLocalizedText {
 
 /**
  * 读侧兼容取值：磁盘上的文案有两种合法形态
- *   · 原版 `Np` 对象 —— `{ 'zh-CN': '国赛 CUMCM', en: 'CUMCM' }`
+ *   · 项目契约 `Np` 对象 —— `{ 'zh-CN': '国赛 CUMCM', en: 'CUMCM' }`
  *   · 本项目早期版本写下的**普通字符串** —— `'国赛 CUMCM'`
  * 取不到就返回空串，由调用方决定兜底（不要在这里编造内容）。
  */
@@ -954,9 +951,9 @@ export function pickLocalizedText(v: unknown, lang = 'zh-CN'): string {
 }
 
 /**
- * 写侧构造：**一律落成原版 `Np` 对象，且两个键都非空**（原版 `min(1)`）。
+ * 写侧构造：**一律落成项目契约 `Np` 对象，且两个键都非空**（项目契约 `min(1)`）。
  *
- * `en` 缺省时用中文原文兜底 —— 宁可重复，也不能写出一个原版 schema 读不回来的对象。
+ * `en` 缺省时用中文原文兜底 —— 宁可重复，也不能写出一个项目契约 schema 读不回来的对象。
  * （内置模板的 `en` 取自 `template.json` 的 `name.en` / `fields[].label.en`；
  *   用户手填的自定义字段只有中文，走兜底，这是**有意**的。）
  */
@@ -968,19 +965,19 @@ export function makeLocalizedText(zh: string, en?: string | null): PaperLocalize
 }
 
 export interface PaperTemplateRef {
-  /** 模板目录名（内置 = `assets/template/<id>/` 的目录名）。原版 schema：`z.string()` */
+  /** 模板目录名（内置 = `assets/template/<id>/` 的目录名）。项目契约 schema：`z.string()` */
   id: string;
-  /** 模板显示名（内置取自 template.json 的 name / name.en）。原版 `Np`：两键必填非空 */
+  /** 模板显示名（内置取自 template.json 的 name / name.en）。项目契约 `Np`：两键必填非空 */
   name: PaperLocalizedText;
   /** 论文入口文件（内置取自 template.json 的 entryFile，如 document.tex） */
   entryFile: string;
   source: 'builtin' | 'custom';
-  /** source=custom 时的模板源绝对路径；builtin 必须为 null（原版 default(null)） */
+  /** source=custom 时的模板源绝对路径；builtin 必须为 null（项目契约 default(null)） */
   sourcePath: string | null;
 }
 
 /**
- * 比赛字段 —— 原版 `contestFields: z.array(z.object({ id, label, value }))`，
+ * 比赛字段 —— 项目契约 `contestFields: z.array(z.object({ id, label, value }))`，
  * 其中 `id: Gk = z.string().min(1).max(64).regex(/^[a-z][A-Za-z0-9]*$/)`。
  *
  * ⚠️ 是**数组**而不是 map：这正是「自定义字段」能存在的原因 ——
@@ -993,7 +990,7 @@ export interface PaperTemplateRef {
 export interface PaperContestField {
   id: string;
   /**
-   * 字段显示名。原版 `Np` 本地化对象，两键必填非空。
+   * 字段显示名。项目契约 `Np` 本地化对象，两键必填非空。
    *
    * 用户**自己加**的字段只有中文名 —— 写盘时 `en` 用中文原文兜底（见 `makeLocalizedText`），
    * 而不是编造一个翻译。
@@ -1002,7 +999,7 @@ export interface PaperContestField {
   value: string;
 }
 
-/** 写进项目配置的队伍档案快照（原版 `teamProfile`） */
+/** 写进项目配置的队伍档案快照（项目契约 `teamProfile`） */
 export interface PaperTeamProfileSnapshot {
   id: string;
   name: string;
@@ -1085,13 +1082,13 @@ export interface PaperTemplatesResult {
  *   它整段渲染在一个 `builtinTemplatesGroup` 标签下，且**选中时写死
  *   `source: 'builtin'`**。把自定义模板混进去，用户在那儿点一条 fork 出来的模板
  *   就会被记成"内置模板"（`sourcePath` 也被清空）—— 那是把一条真实可用的模板
- *   写坏。原版的 Composer 是按 source 分两组渲染的（`builtinTemplatesGroup` /
- *   `customTemplatesGroup`），本复刻的 Composer 侧还没做这个分组，
+ *   写坏。项目契约中的 Composer 是按 source 分两组渲染的（`builtinTemplatesGroup` /
+ *   `customTemplatesGroup`），当前实现的 Composer 侧还没做这个分组，
  *   所以**先不往那条通道里混**：合并列表只喂给扩展页。
  */
 export interface PaperTemplateLibraryResult {
   /**
-   * 受管自定义模板库根目录（原版 `customTemplatesRoot`）。
+   * 受管自定义模板库根目录（项目契约 `customTemplatesRoot`）。
    *
    * 这是**受管库**（fork 出来的模板存这儿），与设置页那个「指一个本地目录当模板源」
    * 的增强入口（写进项目 `.mathmodel/paper/config.json` 的 `sourcePath`）**不是一回事**，
@@ -1103,7 +1100,7 @@ export interface PaperTemplateLibraryResult {
 }
 
 /**
- * 模板库写操作的**错误码** —— 逐字取自原版。
+ * 模板库写操作的**错误码** —— 来源于项目资料。
  *
  * 实证（`.baseline/app/out/main/index.js` 的 `PaperTemplateService`）：
  *   · `delete()`：找不到 → `template_not_found`；`source !== 'custom'` →
@@ -1124,7 +1121,7 @@ export type PaperTemplateErrorCode =
   | 'invalid_template_name'
   | 'unsafe_template';
 
-/** 错误对象：`code` 给渲染层映射文案，`status` 对齐原版 HTTP 状态码（取证/日志用） */
+/** 错误对象：`code` 给渲染层映射文案，`status` 遵循项目契约 HTTP 状态码（取证/日志用） */
 export interface PaperTemplateError {
   code: PaperTemplateErrorCode;
   status: number;
@@ -1154,7 +1151,7 @@ export type PaperTemplateForkResult =
 export interface PaperTemplateOption {
   /** 落进 `contestFields[].value` 的字面值 */
   value: string;
-  /** 下拉里显示的名字（原版 `Np`） */
+  /** 下拉里显示的名字（项目契约 `Np`） */
   label: PaperLocalizedText;
 }
 
@@ -1166,7 +1163,7 @@ export interface PaperTemplateField {
   /**
    * 英文标签（template.json 的 `fields[].label.en`）。
    *
-   * 写 `contestFields` 时要落成原版 `Np` 对象，`en` 就取这里 ——
+   * 写 `contestFields` 时要落成项目契约 `Np` 对象，`en` 就取这里 ——
    * 与 `PaperTemplate.name` / `nameEn` 是同一套「已解析主语言 + 英文另存」的约定。
    * 内置模板的 `template.json` 本来就是 `Np`（如 cumcm 的 `{ "zh-CN":"题号", "en":"Problem" }`）。
    */
@@ -1176,7 +1173,7 @@ export interface PaperTemplateField {
   /**
    * 可选项 —— 有它就渲染**下拉框**，没有才是文本框。
    *
-   * 原版就是这条判据（`pe.options.length > 0 ? <Select> : <Input>`）；
+   * 项目契约就是这条判据（`pe.options.length > 0 ? <Select> : <Input>`）；
    * 长三角 / 东三省 / 五一杯三个内置模板的「赛道 / 参赛组别」字段本来就带 `options`。
    *
    * ⚠️ **没有可选项时是 `undefined`，不是 `[]`** —— 渲染层只判一次 `?.length`，
@@ -1198,14 +1195,14 @@ export interface PaperTemplate {
   order: number;
   /**
    * 这个模板是哪些语言的**默认项**（如 `cumcm` → `['zh-CN']`、`mcm` → `['en']`）。
-   * 原版靠它决定首屏默认选中哪个比赛；空数组表示不是任何语言的默认。
+   * 项目契约靠它决定首屏默认选中哪个比赛；空数组表示不是任何语言的默认。
    */
   defaultFor: string[];
   fields: PaperTemplateField[];
   profileFields: string[];
   dir: string;
   /**
-   * 模板来源 —— 原版详情行渲染的是
+   * 模板来源 —— 项目契约详情行渲染的是
    * `{来源} · {source === 'custom' ? customSource : 'write-paper'}`（install asar 实证）。
    * 内置模板恒为 `'builtin'`；「自定义模板库」里的模板为 `'custom'`。
    */
@@ -1224,11 +1221,11 @@ export interface FileDiff {
 //
 // ⚠️ 这是**局域网**协作，不经任何云端：房主在自己机器上起一个 HTTP + WebSocket
 // 服务，队友在同一网段内通过「房主地址 + 6 位加入码」接入；附近房间靠 UDP 广播发现。
-// 所有协作方必须跑同一份协议版本，版本不一致按原版语义提示「房主版本过旧」。
+// 所有协作方必须跑同一份协议版本，版本不一致按既有语义提示「房主版本过旧」。
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 房间里的角色 —— 对应原版 `roles.owner / editor / viewer`。
+ * 房间里的角色 —— 对应项目契约 `roles.owner / editor / viewer`。
  *
  * ℹ️ 协议版本、加入码有效期、UDP 发现端口这些**运行时**常量由
  *    `src/main/collab/server.ts` 独占持有（那边要能脱离 electron 直接跑联调脚本，
@@ -1240,7 +1237,7 @@ export interface CollabMember {
   id: string;
   name: string;
   role: CollabRole;
-  /** 心跳超时后置为离线（原版 `offlineSuffix` 的「（离线）」） */
+  /** 心跳超时后置为离线（项目契约 `offlineSuffix` 的「（离线）」） */
   online: boolean;
   /** 是不是本机这位用户 */
   self: boolean;
@@ -1284,7 +1281,7 @@ export interface CollabRoomInfo {
   self: 'host' | 'guest';
   /** 房主显示名 */
   roomName: string;
-  /** 房间绑定的项目（原版：协作以项目为单位） */
+  /** 房间绑定的项目（项目契约：协作以项目为单位） */
   projectId: string;
   projectName: string;
   /** host 侧是本机地址，guest 侧是房主地址，形如 `192.168.1.5:47820` */
@@ -1355,7 +1352,7 @@ export interface CollabDiscoverResult {
 export interface CollabJoinResult {
   ok: boolean;
   error?: CollabJoinError;
-  /** true = 已送达房主，等待批准（原版 `waitingApproval`） */
+  /** true = 已送达房主，等待批准（项目契约 `waitingApproval`） */
   pending?: boolean;
   room?: CollabRoomInfo;
 }

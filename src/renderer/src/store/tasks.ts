@@ -1,8 +1,7 @@
 /**
  * 任务进度面板的数据层 —— 从**工具调用流**里还原 agent 自己拆出的子任务。
  *
- * 事实来源（实机抓取，非猜测）：
- *   `.workbuddy/ui-audit/real-ds-t5b/mmodels.db` 的 messages.blocks 里有真实一轮：
+ * 事实来源：消息块中记录了工具调用和任务状态变化：
  *     tool_use { toolName: 'TaskCreate', toolInput: {subject, description, activeForm} }
  *     tool_result "Task #1 created successfully: 修复并跑通 problem3/problem4 求解脚本"
  *     tool_use { toolName: 'TaskUpdate', toolInput: {taskId: '1', status: 'in_progress'} }
@@ -58,8 +57,8 @@ export const EMPTY_TASK_STATE: TaskState = { list: [], idToKey: new Map(), seq: 
 
 /**
  * 工具名简短化：`mcp__server__TaskCreate` → `TaskCreate`。
- * 认的三个名字：TaskCreate / TaskUpdate（实机长跑里的真名）
- * 与 TodoWrite（原版字符串表 `scripts/string-table.tsv` 里也有这一条）。
+ * 认的三个名字：TaskCreate / TaskUpdate（运行测试里的真名）
+ * 与 TodoWrite（项目契约字符串表 `scripts/string-table.tsv` 里也有这一条）。
  */
 function shortToolName(name: string): string {
   return name.split('__').pop() ?? name;
@@ -81,7 +80,7 @@ function asString(v: unknown): string | undefined {
 
 /**
  * 从 TaskCreate 的工具结果里抠出 Tool 侧 task id。
- * 实机格式：`Task #1 created successfully: <subject>`
+ * 运行测试格式：`Task #1 created successfully: <subject>`
  * 拿不到就返回 null —— 调用方走兜底键。
  */
 function parseCreatedId(result: unknown): string | null {

@@ -2,17 +2,17 @@
  * `AgentSession.run()` 层面的判据 —— 卡在**缺陷真正发生的那一层**。
  *
  * `session-loop.test.ts` 验的是收尾判定的纯逻辑；本文件验的是 `run()` 真的把它接上了：
- *   · A 组（护栏）：一轮里没有后台任务时，**事件序列与改造前逐字一致**
+ *   · A 组（护栏）：一轮里没有后台任务时，**事件序列与修复前字段一致**
  *     （一个文本块、一次 session-end、运行会结束、result 只被消费一次）。
- *     反向对照：把 `query({ prompt: input })` 改回字符串 → 本组**必须仍然通过**
+ *     回归护栏：把 `query({ prompt: input })` 改回字符串 → 本组**必须仍然通过**
  *     —— 它是「默认路径不变」的护栏，不是新功能的判据。
  *   · B 组（新功能）：后台任务在跑时本轮**不结束**、输入队列**不关**；
  *     直到「集合清空之后又来一个 result」才收尾，且唤醒回合的内容**一条不丢**。
- *     反向对照：把 `shouldConcludeTurn` 改回 `return state.sawResult` → 本组真红。
+ *     回归护栏：把 `shouldConcludeTurn` 改回 `return state.sawResult` → 本组真红。
  *
  * ⚠️ 证伪边界：这里跑的是**假 SDK**（真 SDK 要拉起 285MB 的 CLI 子进程）。
  *    所以本文件证明的是"宿主侧的调度与判定接对了"，**不**证明"CLI 一定会发这些帧"。
- *    后者只能靠实机 e2e。
+ *    后者只能靠运行测试 e2e。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContentBlock, ProviderConfig, StreamEvent } from '@shared/types';
@@ -67,7 +67,7 @@ interface FakeSdk {
  *   · stdin 一关（SDK 的 `streamInput()` 走到 `transport.endInput()`）→ 立刻收尾、stdout 结束，
  *     **不会再有下一帧**；
  *   · `prompt` 是字符串时按 SDK 的 `isSingleUserTurn` 语义，**首个 `result` 之后就等于关了 stdin**
- *     —— 这正好把改造前的缺陷原样复现出来，让 B 组的反向对照有意义。
+ *     —— 这正好把修复前的缺陷原样复现出来，让 B 组的回归护栏有意义。
  */
 function installFakeQuery(script: unknown[]): FakeSdk {
   const sdk: FakeSdk = {
@@ -146,7 +146,7 @@ function installFakeQuery(script: unknown[]): FakeSdk {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 帧样式（字段名逐字对齐 sdk.d.ts）
+// 帧样式（字段名按字段对齐 sdk.d.ts）
 // ─────────────────────────────────────────────────────────────
 
 const assistant = (text: string) => ({
@@ -201,12 +201,12 @@ const PROVIDER: ProviderConfig = {
   enabled: true,
 };
 
-describe('原版核心选项对齐', () => {
+describe('项目契约核心选项对齐', () => {
   it('保留基础系统提示，追加中文约定和工作区说明，额外插件不丢失', async () => {
     const sdk = installFakeQuery([assistant('完成'), result()]);
-    const { done } = runOnce('任务', { systemPrompt: '中文交流', workspaceInstructions: '项目约定', extraPluginPaths: ['/tmp/project-plugin'], effort: 'max' });
+    const { done } = runOnce('任务', { systemPrompt: '中文交流', workspaceInstructions: '项目契约', extraPluginPaths: ['/tmp/project-plugin'], effort: 'max' });
     await done;
-    expect(sdk.options?.systemPrompt).toEqual({ type: 'preset', preset: 'claude_code', append: '项目约定\n\n中文交流' });
+    expect(sdk.options?.systemPrompt).toEqual({ type: 'preset', preset: 'claude_code', append: '项目契约\n\n中文交流' });
     expect(sdk.options?.plugins).toEqual([{ type: 'local', path: '/tmp/skills-plugin' }, { type: 'local', path: '/tmp/project-plugin' }]);
     expect(sdk.options?.thinking).toEqual({ type: 'enabled', display: 'summarized' });
     expect(sdk.options?.effort).toBe('max');
@@ -268,7 +268,7 @@ afterEach(() => {
 // A 组护栏：默认路径不变（没有后台任务）
 // ─────────────────────────────────────────────────────────────
 
-describe('A 组护栏 —— 没有后台任务的一轮，行为与改造前一致', () => {
+describe('A 组护栏 —— 没有后台任务的一轮，行为与修复前一致', () => {
   it('一次运行 → 恰好一条 assistant 内容 → 运行结束；事件序列固定', async () => {
     const sdk = installFakeQuery([assistant('你好'), result()]);
     const { events, done } = runOnce('打个招呼');
@@ -530,11 +530,11 @@ describe('立即停止后同一会话可重新运行', () => {
 // ─────────────────────────────────────────────────────────────
 
 describe('B 组 —— 后台任务在跑时，本轮不结束（这正是唤醒能发生的前提）', () => {
-  /** 实机时序：result#1（后台任务还在跑）→ 集合清空 → 通知 → 唤醒回合 → result#2 */
+  /** 运行测试时序：result#1（后台任务还在跑）→ 集合清空 → 通知 → 唤醒回合 → result#2 */
   const WAKEUP_SCRIPT = [
     bgChanged(['bg1']),
     assistant('我先交还，等它跑完再接着做'),
-    result(), // ← 改造前 / 改回收尾条件后，就在这一帧结束，CLI 被关掉
+    result(), // ← 修复前 / 改回收尾条件后，就在这一帧结束，CLI 被关掉
     bgChanged([]),
     taskNotification('bg1'),
     assistant('它跑完了，我接着做'),
@@ -547,7 +547,7 @@ describe('B 组 —— 后台任务在跑时，本轮不结束（这正是唤醒
 
     await expect(done).resolves.toBeUndefined();
 
-    // ⚠️ 反向对照锚点：改回「收到 result 就结束」后，这里只剩第 1 条，本断言真红
+    // ⚠️ 回归护栏锚点：改回「收到 result 就结束」后，这里只剩第 1 条，本断言真红
     expect(textDeltas(events)).toEqual(['我先交还，等它跑完再接着做', '它跑完了，我接着做']);
     expect(events.filter((e) => e.type === 'session-end')).toHaveLength(1);
     expect(sdk.calls).toBe(1);

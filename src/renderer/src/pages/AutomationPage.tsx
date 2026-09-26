@@ -1,7 +1,7 @@
 /**
  * 自动化页 —— 定时自动跑 agent。
  *
- * 使用场景（原版的核心卖点之一）：
+ * 使用场景（项目契约中的核心卖点之一）：
  *   「每天早上 8 点用最新数据重跑一次预测模型，把结果写进 report.md」
  *
  * ⚠️ 关键约束：任务不会重叠执行
@@ -12,7 +12,7 @@
  *   不引入 cron 库，主进程手写了 80 行解析（见 main/ipc/automation.ts）。
  *   这里提供常用模板，避免用户去查语法。
  *
- * 页面文案全部走原版 `automation.automationPage.*` 键（空态标题/描述/主按钮）。
+ * 页面文案全部走项目契约 `automation.automationPage.*` 键（空态标题/描述/主按钮）。
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../store/app';
@@ -89,7 +89,7 @@ const MODELING_PRESETS: Array<{ label: string; name: string; prompt: string; cro
   },
 ];
 
-/** 空态图标 —— 原版是圆角容器内的线性 SVG（两个错位圆角方块），不是 emoji */
+/** 空态图标 —— 项目契约规定的是圆角容器内的线性 SVG（两个错位圆角方块），不是 emoji */
 function TasksIcon(): JSX.Element {
   return (
     <svg
@@ -419,8 +419,8 @@ export function AutomationPage(): JSX.Element {
   }
 
   // ── 列表态 ──
-  // 原版：页头只有 `自动化 / 定时任务`，空态内自带主按钮「＋ 创建定时任务」；
-  // 非空时才在页头放「刷新 / 新建」。没有「调度说明」面板（那是复刻自创的）。
+  // 项目契约：页头只有 `自动化 / 定时任务`，空态内自带主按钮「＋ 创建定时任务」；
+  // 非空时才在页头放「刷新 / 新建」。没有「调度说明」面板（那是当前实现自创的）。
   return (
     <PageShell
       title={tx('automation.automationPage.title')}

@@ -1,9 +1,9 @@
 /**
- * 设置页 ① 个人资料（本地统计，对应原版账号页）
+ * 设置页 ① 个人资料（本地统计，对应项目契约账号页）
  *
- * 对齐原版 s00-profile：
+ * 资料卡交互规则：
  *   - 头部为**静态**头像 + 名字 + `@handle · org`，不直接内联输入框；
- *     名字/句柄的编辑收进右上角「编辑」按钮（原版同位置的入口）。
+ *     名字/句柄的编辑收进右上角「编辑」按钮（项目契约同位置的入口）。
  *   - 「分享」属云端分享 → 按既定决策保留骨架并置灰。
  *   - 「活跃度洞察」7 个字段与「最常用插件」卡左右并排。
  */
@@ -31,8 +31,9 @@ export function ProfileSection(): JSX.Element {
     void window.mathmodel.stats.get().then(setStats).catch(() => setStats(null));
   }, []);
 
-  const name = settings?.profileName?.trim() || 'Xh';
-  const handle = settings?.profileHandle?.trim() || 'xh';
+  // 默认值使用产品内的中性身份，避免把开发环境中的个人账号带进新安装。
+  const name = settings?.profileName?.trim() || '建模小组';
+  const handle = settings?.profileHandle?.trim() || 'model-team';
   const initials = name.slice(0, 2).toUpperCase();
 
   // 活跃度热力图：把 300 天折成按周的列
@@ -93,7 +94,7 @@ export function ProfileSection(): JSX.Element {
     : null;
   const topProject = stats?.byProject[0];
 
-  /** 空值统一显示为原版的占位符 `—` */
+  /** 空值统一显示为项目契约的占位符 `—` */
   const dash = (v: string | null | undefined): string => (v && v.trim() ? v : '—');
 
   return (
@@ -180,7 +181,7 @@ export function ProfileSection(): JSX.Element {
           ) : (
             <div className="heat-scroll">
               <div style={{ width: 'max-content' }}>
-                {/* 月份刻度（原版在热力图上方标 12月–9月） */}
+                {/* 月份刻度（项目契约在热力图上方标 12月–9月） */}
                 <div className="row" style={{ gap: 3, marginBottom: 5 }}>
                   {heatCols.map((col, ci) => {
                     const first = col.find((d) => d.day);

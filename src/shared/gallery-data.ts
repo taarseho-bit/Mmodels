@@ -244,7 +244,7 @@ export const DIAGRAM_THEMES: Array<'mono' | 'color'> = ['mono', 'color'];
 export const DEFAULT_DIAGRAM_THEME: 'mono' | 'color' = 'mono';
 
 export function galleryPrompt(title: string): string {
-  return `/mathmodel-figure-templates 在 LaTeX sandbox 中绘制「${title}」。请根据当前数学建模题目的真实数据选择变量、坐标和标注，不要照搬示例数据，保证图例、标题、刻度和注释使用简体中文，避免遮挡，输出 PNG/PDF/SVG，并返回脚本和图片路径。`;
+  return `/mathmodel-figure-templates 在 LaTeX sandbox 中绘制「${title}」。请根据当前数学建模题目的真实数据选择变量、坐标和标注，示例数据仅用于说明绘图结构，最终结果必须使用项目数据，保证图例、标题、刻度和注释使用简体中文，避免遮挡，输出 PNG/PDF/SVG，并返回脚本和图片路径。`;
 }
 
 export function paperDiagramPrompt(templateKey: string, topic: string, theme: 'mono' | 'color' = DEFAULT_DIAGRAM_THEME): string {

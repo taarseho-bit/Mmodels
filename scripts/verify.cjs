@@ -10,7 +10,7 @@ const path = require('node:path');
 const os = require('node:os');
 
 const ROOT = 'D:\\mathmodel-desktop';
-const NODE = 'C:\\Users\\xh\\.workbuddy\\binaries\\node\\versions\\22.22.2-3\\node.exe';
+const NODE = process.env.MM_NODE || process.execPath;
 const entry = process.argv[2] || 'smoke';
 const outName = process.argv[3] || 'mm-verify';
 

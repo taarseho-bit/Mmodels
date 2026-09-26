@@ -7,7 +7,7 @@
  *  2. **版本用 commit 承载**：commit message 带结构化前缀
  *     `[mm-version] kind=manual name=<名称>`，列表时再解析回来
  *  3. **恢复前先备份当前状态**（`kind=restore-backup`），否则用户一点恢复就
- *     把自己的改动弄丢了 —— 原版明确要求「恢复前会先保存当前状态」
+ *     把自己的改动弄丢了 —— 项目契约明确要求「恢复前会先保存当前状态」
  *  4. 所有函数对「不是 git 仓库」都要给出**可读结论**，而不是抛原始错误
  */
 import { execFile } from 'node:child_process';

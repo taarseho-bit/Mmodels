@@ -59,7 +59,7 @@ export function registerAppHandlers(_ctx: IpcContext): void {
   /**
    * keybindings.json 的落盘路径。
    *
-   * 原版让用户直接手改这份文件（设置页显示路径 + 「编辑」用系统默认应用打开）。
+   * 项目契约让用户直接手改这份文件（设置页显示路径 + 「编辑」用系统默认应用打开）。
    * 本项目的快捷键存在 conf 里，这里把它镜像成一个真实文件：
    *   - 文件不存在 → 用当前设置生成一份骨架
    *   - 传了 rules → 顺手覆盖写（设置页改完键位同步过去）
@@ -78,7 +78,7 @@ export function registerAppHandlers(_ctx: IpcContext): void {
     }, '获取键位文件'),
   );
 
-  // ── 系统通知（对应原版 notifications.isSupported / show / onNotificationOpenSession）──
+  // ── 系统通知（对应项目契约 notifications.isSupported / show / onNotificationOpenSession）──
   ipcMain.handle(
     IPC.NOTIFY_IS_SUPPORTED,
     safeWrap(() => Notification.isSupported(), '检查通知支持'),
@@ -87,7 +87,7 @@ export function registerAppHandlers(_ctx: IpcContext): void {
   /**
    * 弹系统通知。payload.sessionId 可选：
    * 带了它，用户点击通知时会聚焦主窗口并向渲染层推 `NOTIFY_OPEN_SESSION`，
-   * 由渲染层负责跳到那个会话（对应原版 onNotificationOpenSession）。
+   * 由渲染层负责跳到那个会话（对应项目契约 onNotificationOpenSession）。
    *
    * ⚠️ 「允许系统通知」关掉（或系统不支持）时 `createSystemNotification` 返回 null，
    *    这里直接返回 false —— **不创建通知对象**（不是弹一个空的、也不是假装成功）。

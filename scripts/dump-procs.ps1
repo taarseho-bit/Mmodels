@@ -1,4 +1,4 @@
-$out = "D:/mathmodel-desktop/.workbuddy/ui-audit/procs.txt"
+$out = "D:/mathmodel-desktop/.mmodels-audit/procs.txt"
 $procs = Get-CimInstance Win32_Process -Filter "Name='mathmodel.exe' OR Name='MModels.exe'"
 $lines = @()
 foreach ($p in $procs) {

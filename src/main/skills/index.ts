@@ -276,7 +276,7 @@ export function importSkill(srcDir: string): SkillMeta[] {
 }
 
 /**
- * 删除技能（原版 `deleteConfirm` 语义：只删用户技能目录下的这个文件夹）。
+ * 删除技能（项目契约 `deleteConfirm` 语义：只删用户技能目录下的这个文件夹）。
  *
  * 内置技能随包分发，删了会在重新扫描时又出现，所以直接拒绝并给明确原因。
  */

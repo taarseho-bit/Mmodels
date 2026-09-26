@@ -7,16 +7,18 @@
  */
 const { execFileSync } = require('node:child_process');
 
-const PNPM = 'C:/Users/xh/.workbuddy/corepack-cache/v1/pnpm/10.18.0/bin/pnpm.cjs';
-const NODE = 'C:/Users/xh/.workbuddy/binaries/node/versions/22.22.2-3/node.exe';
+const PNPM = process.env.MM_PNPM || process.env.npm_execpath || 'pnpm';
+const NODE = process.env.MM_NODE || process.execPath;
 const ROOT = 'D:/mathmodel-desktop';
 
 const env = { ...process.env };
 // 清掉宿主注入的 fs.rm 钩子与 ELECTRON_RUN_AS_NODE（见 electron-rebuild-package 技能）
 env.NODE_OPTIONS = '';
 delete env.ELECTRON_RUN_AS_NODE;
-delete env.CODEBUDDY_SAFE_DELETE_BULK_GUARD;
-env.CODEBUDDY_SAFE_DELETE_ENABLED = '0';
+for (const key of Object.keys(env)) {
+  if (/SAFE_DELETE_BULK_GUARD$/i.test(key)) delete env[key];
+  if (/SAFE_DELETE_ENABLED$/i.test(key)) env[key] = '0';
+}
 
 const args = process.argv.slice(2);
 console.log('pnpm ' + args.join(' '));

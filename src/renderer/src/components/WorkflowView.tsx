@@ -76,10 +76,16 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
   });
   return <section className={`workflow-view is-${presentation}`} aria-label="任务工作流">
     <div className="workflow-heading">
-      <div><h2>项目工作流</h2><p className="workflow-heading-subtitle">同一项目里的多个任务，会汇总在这张工作图中。</p></div>
-      <div className="workflow-view-switch" role="group" aria-label="工作流视图">
-        <button className={`btn btn-ghost${presentation === 'demo' ? ' active' : ''}`} aria-pressed={presentation === 'demo'} onClick={() => { setPresentation('demo'); setPrivateView(true); }}>演示视图</button>
-        <button className={`btn btn-ghost${presentation === 'analysis' ? ' active' : ''}`} aria-pressed={presentation === 'analysis'} onClick={() => { setPresentation('analysis'); setPrivateView(false); }}>分析视图</button>
+      {/* 2026-09-26 用户钦定：演示/分析切换从右侧挪到「项目工作流」标题文字旁边 */}
+      <div>
+        <div className="workflow-heading-row">
+          <h2>项目工作流</h2>
+          <div className="workflow-view-switch" role="group" aria-label="工作流视图">
+            <button className={`btn btn-ghost${presentation === 'demo' ? ' active' : ''}`} aria-pressed={presentation === 'demo'} onClick={() => { setPresentation('demo'); setPrivateView(true); }}>演示视图</button>
+            <button className={`btn btn-ghost${presentation === 'analysis' ? ' active' : ''}`} aria-pressed={presentation === 'analysis'} onClick={() => { setPresentation('analysis'); setPrivateView(false); }}>分析视图</button>
+          </div>
+        </div>
+        <p className="workflow-heading-subtitle">同一项目里的多个任务，会汇总在这张工作图中。</p>
       </div>
     </div>
     <p className="workflow-note">看看谁在做什么，用了哪些方法，交回了什么成果。</p>

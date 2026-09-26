@@ -1,7 +1,7 @@
 /**
  * 常驻会话的**输入队列** + **收尾判定** + **消费循环** —— 从 `agent/session.ts` 抽出的纯逻辑。
  *
- * ## 这个文件要防的是什么（实机观察到两次的缺陷）
+ * ## 这个文件要防的是什么（运行测试观察到两次的缺陷）
  *
  * 模型在真正干活的中途把回合交还，等一个「后台任务跑完唤醒我」，而那个唤醒**永远不来**。
  *
@@ -33,7 +33,7 @@
  * 所以判定挂在 `result` 上：**只有「本轮最后一个 result 到达时集合已经是空的」才算这一轮结束**。
  *
  * 两种典型时序下的结果：
- *   · 没有后台任务：首个 result 时集合为空 ⇒ 立即收尾（**与改造前逐字一致**，见
+ *   · 没有后台任务：首个 result 时集合为空 ⇒ 立即收尾（**与修复前字段一致**，见
  *     `session.test.ts` 的「默认路径不变」护栏）。
  *   · 有后台任务：result#1 时集合非空 ⇒ 不收尾；集合变空**不触发**收尾；
  *     唤醒回合的 result#2 时集合为空 ⇒ 收尾。
@@ -66,7 +66,7 @@ export interface QueuedUserMessage {
  *
  * 收尾靠 `close()`：把挂着的 `next()` 以 `done` 松开 ⇒ SDK 的 `streamInput()` 走完
  * `for await` ⇒ 调 `transport.endInput()` 关 stdin ⇒ CLI 正常退出。
- * （这就是改造前单轮模式下 SDK 自己走的那条路，不是新发明的退出方式。）
+ * （这就是修复前单轮模式下 SDK 自己走的那条路，不是新发明的退出方式。）
  */
 export class SessionInputQueue implements AsyncIterable<QueuedUserMessage> {
   private readonly backlog: QueuedUserMessage[] = [];
@@ -143,7 +143,7 @@ export const BACKGROUND_WAIT_CAP_MS = 30 * 60 * 1000;
  * 判定收尾之后，**排空事件流**的宽限。
  *
  * 为什么判定收尾后还要继续消费：收尾只是关掉我们的输入队列，CLI 还要把 stdout 收干净
- * 才退出（改造前单轮模式同样是"一直消费到流结束"，这里保持同一形态）。
+ * 才退出（修复前单轮模式同样是"一直消费到流结束"，这里保持同一形态）。
  * 宽限只用来兜住"CLI 不退出"这种异常，不参与任何内容判定。
  */
 export const DRAIN_GRACE_MS = 10_000;

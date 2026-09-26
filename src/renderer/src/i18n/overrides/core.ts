@@ -1,4 +1,4 @@
-/** 应用外壳 / 对话 / 自动化 / 欢迎页等新增界面的英文覆盖 —— 无原版键的文案 */
+/** 应用外壳 / 对话 / 自动化 / 欢迎页等新增界面的英文覆盖 —— 无项目契约键的文案 */
 export const coreOv: Record<string, string> = {
   // ── App.tsx ──
   '正在启动 MModels…': 'Starting MModels…',
@@ -105,7 +105,7 @@ export const coreOv: Record<string, string> = {
   '下次运行：': 'Next run: ',
   '还没有运行记录。': 'No runs yet.',
 
-  // ── CompetitionsPage.tsx（原版无对应键的少量界面文案） ──
+  // ── CompetitionsPage.tsx（项目契约无对应键的少量界面文案） ──
   '展开': 'Expand',
   '收起': 'Collapse',
   '{{year}}年{{month}}月': '{{month}}/{{year}}',
@@ -195,7 +195,7 @@ export const coreOv: Record<string, string> = {
   '未检测到 Git。项目版本需要 Git 才能使用。': 'Git not detected — project versions require Git.',
 
   // ── TopBar.tsx ──
-  '（本复刻暂未实现）': ' (not implemented in this build)',
+  '（当前版本暂未实现）': ' (not implemented in this build)',
   '界面引导': 'Interface tour',
   '切换到浅色': 'Switch to light',
   '切换到深色': 'Switch to dark',
@@ -204,12 +204,12 @@ export const coreOv: Record<string, string> = {
   '产物': 'Artifacts',
 
   // ── TaskProgress.tsx（任务进度面板，用户点名新增）──
-  // 面板本身的文案用原版已有的 composer.composerTaskListCard.*（见 zh.ts/en.ts），
-  // 这里只登记原版没有的两条。
+  // 面板本身的文案用项目契约已有的 composer.composerTaskListCard.*（见 zh.ts/en.ts），
+  // 这里只登记当前没有的两条。
   '全部任务已完成': 'All tasks completed',
   '未命名任务': 'Untitled task',
 
-  // ── Sidebar.tsx 右键上下文菜单（原版没有，用户点名新增）──
+  // ── Sidebar.tsx 右键上下文菜单（当前没有，用户点名新增）──
   '打开文件夹目录': 'Open folder',
   '打开会话所在文件夹': 'Open chat folder',
   '复制会话标题': 'Copy chat title',

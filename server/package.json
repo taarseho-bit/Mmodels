@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MathModel Desktop 诊断/遥测接收服务（自建）",
+  "description": "MModels Desktop 诊断/遥测接收服务（自建）",
   "engines": {
     "node": ">=22.18"
   },

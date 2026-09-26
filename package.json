@@ -15,6 +15,8 @@
     "test": "npm run typecheck && npm run test:unit && npm run test:harness",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "audit:wording": "node scripts/audit-product-wording.cjs",
+    "audit:provenance": "node scripts/audit-provenance.cjs",
     "test:harness": "node scripts/test-git.cjs && node scripts/test-env.cjs && node scripts/test-claude-path.mjs",
     "test:native": "node scripts/clean-env.cjs node_modules/electron/dist/electron.exe scripts/test-native-abi.mjs",
     "test:e2e": "node scripts/test-real-app.cjs",

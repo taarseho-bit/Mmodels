@@ -8,11 +8,11 @@
  *
  * ⚠️ 本文件**不跑任何真实命令**（`execFile` 是假的），因此**永远不会安装任何东西**。
  *
- * 真实机器状态的覆盖在隔壁 `environment.real.test.ts` —— 两个文件分开是**必须的**：
+ * 真运行测试器状态的覆盖在隔壁 `environment.real.test.ts` —— 两个文件分开是**必须的**：
  * `vi.mock` 会被提升到整个文件，混在一起会把真实探测也一起打桩，
  * 那样 `environment.ts` 的价值（"能反映本机真实探测结果"）就没了。
  *
- * ── 本文件里每条用例都写了一句「反向对照」──
+ * ── 本文件里每条用例都写了一句「回归护栏」──
  *    回答总纲：**"如果这段逻辑是坏的，这个观测值会不一样吗？"**
  *    答不出来的用例就是装饰，不要写。
  *
@@ -20,7 +20,7 @@
  *   这份文件之前有 **三条"现状固化"用例**（把已报告的缺陷锁住，等修好那天变红提醒后来人）。
  *   `B1`（Python 回退不可达）/ `B2`（PDF 转图 `firstAvailable` 的外层死逻辑）/
  *   `B3`（latexmk / bibtex 恒无 version）修完之后，它们**如期变红**了 ——
- *   已按修复后的判据重写，并各补了反向对照。这正说明那三条不是装饰。
+ *   已按修复后的判据重写，并各补了回归护栏。这正说明那三条不是装饰。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -142,11 +142,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('版本号解析：非标准版本串（原版只显示前三段）', () => {
+describe('版本号解析：非标准版本串（项目契约只显示前三段）', () => {
   it('git 的 `2.55.0.windows.3` → 只取 `2.55.0`（这是本机真实版本串）', async () => {
     present('git', 'git version 2.55.0.windows.3');
     const r = await checkEnvironment();
-    // 反向对照：若实现改成"整串照抄"，观测值会变成 `2.55.0.windows.3` → 立刻红。
+    // 回归护栏：若实现改成"整串直接采用"，观测值会变成 `2.55.0.windows.3` → 立刻红。
     expect(item(r, 'git').version).toBe('2.55.0');
     // 而**原始首行**必须完整保留在 detail（界面要能看全）
     expect(item(r, 'git').detail).toBe('git version 2.55.0.windows.3');
@@ -155,14 +155,14 @@ describe('版本号解析：非标准版本串（原版只显示前三段）', (
   it('git 的单段版本 `git version 2` → undefined（口径：至少两段数字）', async () => {
     present('git', 'git version 2');
     const r = await checkEnvironment();
-    // 反向对照：若正则放宽成 `\d+`，观测值会从 undefined 变成 `2`。
+    // 回归护栏：若正则放宽成 `\d+`，观测值会从 undefined 变成 `2`。
     expect(item(r, 'git').version).toBeUndefined();
   });
 
   it('xelatex 优先取括号里的 `TeX Live 2024`，**不是** XeTeX 引擎号', async () => {
     present('xelatex', 'XeTeX 3.141592653-2.6-0.999996 (TeX Live 2024)');
     const r = await checkEnvironment();
-    // 反向对照：若 `(...TeX...)` 那段提取坏掉，会回落到 numericVersion → 变成 `3.141592653`。
+    // 回归护栏：若 `(...TeX...)` 那段提取坏掉，会回落到 numericVersion → 变成 `3.141592653`。
     expect(item(r, 'xelatex').version).toBe('TeX Live 2024');
     expect(item(r, 'xelatex').version).not.toBe('3.141592653');
   });
@@ -179,8 +179,8 @@ describe('版本号解析：非标准版本串（原版只显示前三段）', (
     present('bibtex', 'BibTeX 0.99d (TeX Live 2024)');
     const r = await checkEnvironment();
     expect(item(r, 'xelatex').version).toBe('TeX Live 2024');
-    // 反向对照：若 `id === 'xelatex'` 那个分支把 else 吞了（旧实现就是这样），
-    // 这两条会回到 undefined → 红。字段注释说 version 是"原版会显示的那一段"，
+    // 回归护栏：若 `id === 'xelatex'` 那个分支把 else 吞了（早期实现就是这样），
+    // 这两条会回到 undefined → 红。字段注释说 version 是"项目契约会显示的那一段"，
     // 而它们的输出里明摆着有版本号 —— 恒缺一半是没道理的。
     expect(item(r, 'latexmk').version).toBe('4.86'); // 注意**不是** `2024`（那年月日也在串里）
     expect(item(r, 'bibtex').version).toBe('0.99');
@@ -200,7 +200,7 @@ describe('toolLine：latexmk 的版本行在第 3 行（首行是代码页通知
       stderr: 'perl: warning: Setting locale failed.\n',
     }));
     const r = await checkEnvironment();
-    // 反向对照：若退回 `firstLine(stdout)`，detail 会变成 `Initial Win CP for (console …)`
+    // 回归护栏：若退回 `firstLine(stdout)`，detail 会变成 `Initial Win CP for (console …)`
     // 并且 version 变成 `936`（那串 CP936 里的数字）→ 两条同时红。
     // 本机实测就是这个形状（`_tmp/env-b123-probe.txt` [A]），所以这不是编出来的极端输入。
     expect(item(r, 'latexmk').detail).toBe('Latexmk, John Collins, 27 Dec. 2024. Version 4.86a');
@@ -208,7 +208,7 @@ describe('toolLine：latexmk 的版本行在第 3 行（首行是代码页通知
     expect(String(item(r, 'latexmk').detail)).not.toContain('CP936');
   });
 
-  it('★ 反向对照：bibtex 不许把 `kpathsea version 6.4.0` 当成自己的版本', async () => {
+  it('★ 回归护栏：bibtex 不许把 `kpathsea version 6.4.0` 当成自己的版本', async () => {
     // 这是"不能简单改成『取含版本号的第一行』"的原因：TeX 系的输出里紧跟着
     // kpathsea（**路径搜索库**，不是 bibtex 本身）的版本 —— 一个**看起来合理但是错的**数字。
     shell.script.set('bibtex', () => ({
@@ -226,7 +226,7 @@ describe('toolLine：latexmk 的版本行在第 3 行（首行是代码页通知
     present('xelatex', 'XeTeX 3.141592653-2.6-0.999996 (TeX Live 2024)');
     const r = await checkEnvironment();
     // 它的首行写的是引擎名 `XeTeX`（不含 `xelatex`）⇒ 匹配不到"自己那行"，必须能退回首行。
-    // 反向对照：若 toolLine 在匹配失败时返回空串，detail 会变 undefined → 红。
+    // 回归护栏：若 toolLine 在匹配失败时返回空串，detail 会变 undefined → 红。
     expect(item(r, 'xelatex').detail).toBe('XeTeX 3.141592653-2.6-0.999996 (TeX Live 2024)');
   });
 
@@ -238,7 +238,7 @@ describe('toolLine：latexmk 的版本行在第 3 行（首行是代码页通知
     }));
     const r = await checkEnvironment();
     expect(item(r, 'bibtex').detail).toBe('BibTeX 0.99d (TeX Live 2024)');
-    // 反向对照：若实现改成 `firstLine(stdout + stderr)`（拼接），latexmk 那种
+    // 回归护栏：若实现改成 `firstLine(stdout + stderr)`（拼接），latexmk 那种
     // "stderr 全是 perl locale 警告"的工具会把警告放到第一位 → 上一条用例红。
     // 这条则钉住另一半：stdout 真的为空时，兜底必须还在（否则 detail 变 undefined）。
   });
@@ -261,7 +261,7 @@ describe('"找不到工具"的返回形状（不抛、如实报 missing）', () 
     shell.script.set('which', () => ({ err: null, stdout: '\n\n', stderr: '' }));
     const r = await checkEnvironment();
     expect(item(r, 'git').status).toBe('ok');
-    // 反向对照：若去掉 `|| null` 兜底，这里会变成空字符串（而不是 undefined）。
+    // 回归护栏：若去掉 `|| null` 兜底，这里会变成空字符串（而不是 undefined）。
     expect(item(r, 'git').path).toBeUndefined();
   });
 
@@ -280,7 +280,7 @@ describe('Python 判定：3 / 非 3 / 缺失 三种分支', () => {
     const r = await checkEnvironment();
     const py = item(r, 'python');
     expect(py.status).toBe('missing');
-    // 反向对照：若把 `/python\s+3/i` 放宽成"有输出就算 ok"，这两条都会变。
+    // 回归护栏：若把 `/python\s+3/i` 放宽成"有输出就算 ok"，这两条都会变。
     expect(py.detail).toBe('Python 2.7.18');
     expect(py.version).toBe('2.7.18');
     // ★ 这条是 B1 修完之后**新加**的：`findPython` 会跳过"不是 3"的候选并返回 null，
@@ -295,7 +295,7 @@ describe('Python 判定：3 / 非 3 / 缺失 三种分支', () => {
     expect(item(r, 'python').status).toBe('missing');
     const pkgs = r.items.filter((i) => i.id.startsWith('py:'));
     expect(pkgs).toHaveLength(6);
-    // 反向对照：若降级分支写错（比如也用 missing），这 6 条会变成 missing → 红。
+    // 回归护栏：若降级分支写错（比如也用 missing），这 6 条会变成 missing → 红。
     // 为什么要用 unknown：**没装 Python 时我们并不知道包在不在**，说 missing 是撒谎。
     expect(pkgs.every((p) => p.status === 'unknown')).toBe(true);
   });
@@ -306,7 +306,7 @@ describe('Python 判定：3 / 非 3 / 缺失 三种分支', () => {
     const unknown = r.items.filter((i) => i.status === 'unknown');
     const missingOnly = r.items.filter((i) => i.level === 'required' && i.status === 'missing').length;
     expect(unknown).toHaveLength(6);
-    // 反向对照：若统计只认 `status === 'missing'`，missingRequired 会等于 missingOnly（少 6）→ 红。
+    // 回归护栏：若统计只认 `status === 'missing'`，missingRequired 会等于 missingOnly（少 6）→ 红。
     // 为什么要算进去：界面拿它决定"要不要提示一键装环境"；没装 Python 时包在不在是**未知**，
     // 当作"已知没问题"会让用户以为环境是好的。
     expect(r.missingRequired).toBe(missingOnly + unknown.length);
@@ -317,7 +317,7 @@ describe('Python 判定：3 / 非 3 / 缺失 三种分支', () => {
     scriptPython({ version: 'Python 3.13.14', exe: 'C:\\real\\python.exe' });
     locate(['C:\\misleading\\python.exe']); // where 给的是另一个
     const r = await checkEnvironment();
-    // 反向对照：若哪天改成直接用 which() 的结果，这里会变成 C:\misleading\python.exe → 红。
+    // 回归护栏：若哪天改成直接用 which() 的结果，这里会变成 C:\misleading\python.exe → 红。
     // 这正是注释里写的坑：venv / Microsoft Store 别名会让 `where python` 给出误导性结果。
     expect(item(r, 'python').path).toBe('C:\\real\\python.exe');
   });
@@ -342,7 +342,7 @@ describe('Python 包版本：一次调用批量问，且只认最后一行 JSON'
     const r = await checkEnvironment();
     expect(item(r, 'py:numpy').status).toBe('ok');
     expect(item(r, 'py:numpy').detail).toBe('2.5.3');
-    // 反向对照：若改成 `JSON.parse(stdout.trim())`（整段解析），warning 会让它抛 → 全部 null → 红。
+    // 回归护栏：若改成 `JSON.parse(stdout.trim())`（整段解析），warning 会让它抛 → 全部 null → 红。
     expect(item(r, 'py:pandas').status).toBe('missing');
   });
 
@@ -369,7 +369,7 @@ describe('Python 包版本：一次调用批量问，且只认最后一行 JSON'
     scriptPython({ pkgs: { numpy: '2.5.3' } });
     await checkEnvironment();
     const pkgCalls = shell.calls.filter((c) => (c.args[1] ?? '').includes('importlib.metadata'));
-    // 反向对照：若实现改成循环里逐个 probe，这里会变成 6 → 红（6 次进程 ≈ 拖慢界面）。
+    // 回归护栏：若实现改成循环里逐个 probe，这里会变成 6 → 红（6 次进程 ≈ 拖慢界面）。
     expect(pkgCalls).toHaveLength(1);
   });
 });
@@ -380,7 +380,7 @@ describe('PDF 转图：任一可用即可（firstAvailable）', () => {
     const r = await checkEnvironment();
     const it2 = item(r, 'pdftoimage');
     expect(it2.status).toBe('ok');
-    // 反向对照：若 firstAvailable 里 `return c` 写错（比如总返回第一个），会是 pdftoppm。
+    // 回归护栏：若 firstAvailable 里 `return c` 写错（比如总返回第一个），会是 pdftoppm。
     expect(it2.detail).toBe('mutool');
   });
 
@@ -401,12 +401,12 @@ describe('PDF 转图：任一可用即可（firstAvailable）', () => {
     shell.script.set('mutool', () => ({ err: exited(1), stdout: '', stderr: 'mutool version 1.24.9\n' }));
     const r = await checkEnvironment();
     expect(item(r, 'pdftoimage').status).toBe('ok');
-    // 反向对照：把 `!r.notFound && numericVersion(...)` 这半边删掉（退回只看 `r.ok`），
+    // 回归护栏：把 `!r.notFound && numericVersion(...)` 这半边删掉（退回只看 `r.ok`），
     // 这里会变回 missing → 红。也就是说这条真的能区分两种实现。
     expect(item(r, 'pdftoimage').detail).toBe('mutool');
   });
 
-  it('★ 反向对照：命令存在但**起不来**（有 stderr、无版本号）→ 仍判缺失', async () => {
+  it('★ 回归护栏：命令存在但**起不来**（有 stderr、无版本号）→ 仍判缺失', async () => {
     // 这一半很关键：不能简化成"有输出就算装好了"。缺动态库之类的启动失败会打 stderr 并非 0 退出。
     shell.script.set('pdftoppm', () => ({
       err: exited(127),
@@ -416,13 +416,13 @@ describe('PDF 转图：任一可用即可（firstAvailable）', () => {
     shell.script.set('mutool', () => NOT_FOUND);
     shell.script.set('magick', () => NOT_FOUND);
     const r = await checkEnvironment();
-    // 反向对照：若判据退化成 `firstLine(...) !== ''`（"有输出就算"），这条会变 ok → 红。
+    // 回归护栏：若判据退化成 `firstLine(...) !== ''`（"有输出就算"），这条会变 ok → 红。
     expect(item(r, 'pdftoimage').status).toBe('missing');
     expect(item(r, 'pdftoimage').detail).toBeUndefined();
   });
 
   it('★ notFound 判据：ENOENT 不许因为"有输出"被当成可用', async () => {
-    // ⚠️ 这是**构造**出来的形状：真实机器上 ENOENT 的 stdout / stderr 一定是空串
+    // ⚠️ 这是**构造**出来的形状：真运行测试器上 ENOENT 的 stdout / stderr 一定是空串
     //    （实测 `_tmp/env-b123-probe.txt` [F]），所以只有构造输入才能把 `!r.notFound` 这半边单独打红。
     //    没有这条，"命令根本不存在"和"跑起来了"就又会混成一个布尔。
     shell.script.set('pdftoppm', () => ({ err: spawnError(), stdout: 'pdftoppm version 24.02.0\n', stderr: '' }));
@@ -433,7 +433,7 @@ describe('PDF 转图：任一可用即可（firstAvailable）', () => {
   });
 });
 
-describe('uv：随包优先于 PATH（原版把 uv 随包分发）', () => {
+describe('uv：随包优先于 PATH（项目契约把 uv 随包分发）', () => {
   it('resourcesDir 里有 `bin/uv` → ok，且 detail 标明"随包"，path 指向随包那份', async () => {
     const res = mkdtempSync(join(tmpdir(), 'mm-env-res-'));
     mkdirSync(join(res, 'bin'), { recursive: true });
@@ -444,7 +444,7 @@ describe('uv：随包优先于 PATH（原版把 uv 随包分发）', () => {
     const uv = item(r, 'uv');
     expect(uv.status).toBe('ok');
     expect(uv.path).toBe(bundled);
-    // 反向对照：若漏了"随包"分支只看 PATH，本机 PATH 上没有 uv（真实探测已实测）→ status 会是 missing。
+    // 回归护栏：若漏了"随包"分支只看 PATH，本机 PATH 上没有 uv（真实探测已实测）→ status 会是 missing。
     expect(String(uv.detail)).toContain('随包');
   });
 
@@ -456,7 +456,7 @@ describe('uv：随包优先于 PATH（原版把 uv 随包分发）', () => {
     shell.reset();
     locate(['C:\\bin\\tool.exe']);
     await checkEnvironment(undefined, res);
-    // 反向对照：若实现是"先问 PATH 再看随包"，这里会多出 which('uv') → 红。
+    // 回归护栏：若实现是"先问 PATH 再看随包"，这里会多出 which('uv') → 红。
     const askedPath = shell.calls.some((c) => c.cmd === 'uv' || (c.cmd === 'where' && c.args[0] === 'uv'));
     expect(askedPath).toBe(false);
   });
@@ -481,7 +481,7 @@ describe('中文字体：只认文件名，不把整条路径塞进 detail', () 
         Object.defineProperty(process, 'platform', { value: fake, configurable: true });
         try {
           const r = await checkEnvironment();
-          // 反向对照：若 hasCjkFont 在某分支里写成了"总是返回某个名字"（漏判 existsSync），
+          // 回归护栏：若 hasCjkFont 在某分支里写成了"总是返回某个名字"（漏判 existsSync），
           // 这里就会变成 ok → 红。这条钉的是"负分支真的存在"。
           expect(item(r, 'cjkfont').status, `platform=${fake}`).toBe('missing');
           expect(item(r, 'cjkfont').detail).toBeUndefined();
@@ -497,7 +497,7 @@ describe('中文字体：只认文件名，不把整条路径塞进 detail', () 
     process.env.WINDIR = 'C:\\definitely-no-such-windows-fonts-dir-xyz';
     try {
       const r = await checkEnvironment();
-      // 反向对照：若 win32 分支漏了 `existsSync`（写成"总是返回第一个候选名"），
+      // 回归护栏：若 win32 分支漏了 `existsSync`（写成"总是返回第一个候选名"），
       // 这里会变成 ok + detail='simsun.ttc' → 红。
       // 没有这条，win32 那条"找到时是文件名"的用例在**任何**机器上都会过 —— 等于没验负分支。
       expect(item(r, 'cjkfont').status).toBe('missing');
@@ -512,7 +512,7 @@ describe('中文字体：只认文件名，不把整条路径塞进 detail', () 
     const r = await checkEnvironment();
     const f = item(r, 'cjkfont');
     if (f.status === 'ok') {
-      // 反向对照：若哪天改成返回完整路径，detail 会带上 `C:\Windows\Fonts\` → 红。
+      // 回归护栏：若哪天改成返回完整路径，detail 会带上 `C:\Windows\Fonts\` → 红。
       // 为什么要钉：detail 是给用户看的"是哪一款字体"，塞全路径没信息量。
       expect(String(f.detail)).not.toMatch(/[\\/]/);
       expect(String(f.detail)).toMatch(/\.(ttc|ttf|otf)$/i);
@@ -533,7 +533,7 @@ describe('聚合口径（界面用它决定"要不要提示一键装环境"）',
 
     const reqBad = r.items.filter((i) => i.level === 'required' && i.status !== 'ok').length;
     const recBad = r.items.filter((i) => i.level === 'recommended' && i.status !== 'ok').length;
-    // 反向对照：若统计换成了 `status === 'missing'`（漏掉 unknown），Python 缺失场景下就会不一致。
+    // 回归护栏：若统计换成了 `status === 'missing'`（漏掉 unknown），Python 缺失场景下就会不一致。
     expect(r.missingRequired).toBe(reqBad);
     expect(r.missingRecommended).toBe(recBad);
     // 建议项缺失**不影响** ok —— 反向：若把 recBad 也算进去，这里会是 false。
@@ -597,7 +597,7 @@ describe('item 契约（界面按 id 分组，改 id 会让分组错位）', () 
       'pdftoimage',
       'cjkfont',
     ]);
-    // 反向对照：id 改名/顺序变化会直接让设置页分组错位 → 这条会红。
+    // 回归护栏：id 改名/顺序变化会直接让设置页分组错位 → 这条会红。
     const required = r.items.filter((i) => i.level === 'required').map((i) => i.id);
     expect(required).toContain('xelatex');
     expect(required).not.toContain('uv');
@@ -630,18 +630,18 @@ describe('findPython：逐个候选试到第一个可用', () => {
     present('python', 'Python 3.12.10');
 
     const py = await findPython(root);
-    // 反向对照：若丢了 venv 分支，返回值会是 `python`（相对命令名）→ 红。
+    // 回归护栏：若丢了 venv 分支，返回值会是 `python`（相对命令名）→ 红。
     expect(py?.cmd).toBe('python');
     expect(shell.calls.some((c) => c.cmd.startsWith(root))).toBe(false);
     expect(py?.prefixArgs).toEqual([]);
   });
 
-  it('★ 已修复：没有 `python` 时回退到 `python3`（旧实现恒返回 `candidates[0]`，这条永远走不到）', async () => {
+  it('★ 已修复：没有 `python` 时回退到 `python3`（早期实现恒返回 `candidates[0]`，这条永远走不到）', async () => {
     // 复现 Linux / macOS 的常态：**只有 `python3`，没有 `python`**。
     shell.script.set('python', () => NOT_FOUND);
     shell.script.set('python3', () => ({ err: null, stdout: 'Python 3.13.14\n', stderr: '' }));
     const py = await findPython();
-    // 反向对照：旧实现（组好候选表就取 `[0]`）在这里返回 `null`：
+    // 回归护栏：早期实现（组好候选表就取 `[0]`）在这里返回 `null`：
     //   candidates[0] 恒为 `python` ⇒ ENOENT ⇒ 直接返回 ⇒ Python 判 missing
     //   ⇒ 6 个 py:* 降级 unknown ⇒ missingRequired=7 ⇒ 设置页引导用户去装一个**已经装好**的 Python。
     //   这是本模块最靠前的一次误判（python 是第一个必需项）。
@@ -649,7 +649,7 @@ describe('findPython：逐个候选试到第一个可用', () => {
     expect(py?.prefixArgs).toEqual([]);
   });
 
-  it('★ 反向对照：`python` 在但是 Microsoft Store 存根（非 0 退出）→ 继续试下一个', async () => {
+  it('★ 回归护栏：`python` 在但是 Microsoft Store 存根（非 0 退出）→ 继续试下一个', async () => {
     // 只看输出会误收：能跑起来但退出码非 0 的 `python` 不是可用的解释器。
     shell.script.set('python', () => ({ err: exited(9009) }));
     shell.script.set('python3', () => ({ err: null, stdout: 'Python 3.13.14\n', stderr: '' }));
@@ -657,23 +657,23 @@ describe('findPython：逐个候选试到第一个可用', () => {
     expect(py?.cmd).toBe('python3');
   });
 
-  it('★ 反向对照：`python` 是 Python 2 → 不许被当成 Python 3', async () => {
+  it('★ 回归护栏：`python` 是 Python 2 → 不许被当成 Python 3', async () => {
     // 只看退出码也不行：Python 2 会以 0 退出。
     shell.script.set('python', () => ({ err: null, stdout: 'Python 2.7.18\n', stderr: '' }));
     shell.script.set('python3', () => ({ err: null, stdout: 'Python 3.13.14\n', stderr: '' }));
     const py = await findPython();
-    // 反向对照：若判据只剩 `r.ok`，这里会返回 `python`（Python 2）→ 红。
+    // 回归护栏：若判据只剩 `r.ok`，这里会返回 `python`（Python 2）→ 红。
     expect(py?.cmd).toBe('python3');
   });
 
   it('三个候选都不可用 → null（不抛、也不返回一个跑不起来的）', async () => {
     const py = await findPython();
-    // 反向对照：若最后没有那个 `return null`（或写成了 `?? candidates[0]`），
+    // 回归护栏：若最后没有那个 `return null`（或写成了 `?? candidates[0]`），
     // 这里会返回 `{cmd:'python'}`，而它刚刚才 ENOENT —— 调用方拿去 execFile 会抛。
     expect(py).toBeNull();
   });
 
-  it('★ 反向对照：`python` 是"会打印 Python 3 字样的假壳"（退出码非 0）→ 不许选它', async () => {
+  it('★ 回归护栏：`python` 是"会打印 Python 3 字样的假壳"（退出码非 0）→ 不许选它', async () => {
     // ⚠️ 这一条是**变异探针逼出来的覆盖缺口**：把 `if (r.ok && /python\s+3/i.test(v))` 的 `r.ok`
     //    去掉（只判输出），原来那一组用例**全都还是绿的** —— 说明没人盯着"退出码"这一半。
     //    形状很真实：PATH 上某个 `python.bat` 壳子会提示"Python 3 was not found"然后非 0 退出，
@@ -685,7 +685,7 @@ describe('findPython：逐个候选试到第一个可用', () => {
     }));
     shell.script.set('python3', () => ({ err: null, stdout: 'Python 3.13.14\n', stderr: '' }));
     const py = await findPython();
-    // 反向对照：去掉 `r.ok` ⇒ 返回 `python`（那个壳子）⇒ 红。判据注释里写着"只看输出也不够"，
+    // 回归护栏：去掉 `r.ok` ⇒ 返回 `python`（那个壳子）⇒ 红。判据注释里写着"只看输出也不够"，
     // 这条就是那句话的可执行版本。
     expect(py?.cmd).toBe('python3');
   });
@@ -699,7 +699,7 @@ describe('findPython：逐个候选试到第一个可用', () => {
     shell.script.set(winExe, () => ({ err: exited(1) }));
     shell.script.set('python', () => ({ err: null, stdout: 'Python 3.13.14\n', stderr: '' }));
     const py = await findPython(root);
-    // 反向对照：若实现改成"`existsSync` 命中就直接 return"（不做探测），
+    // 回归护栏：若实现改成"`existsSync` 命中就直接 return"（不做探测），
     // 这里会返回那个坏的 venv 解释器 → 红。
     // 本机走不到这条分支（本机没有 .venv），由打桩覆盖 —— 如实标注。
     expect(py?.cmd).toBe('python');

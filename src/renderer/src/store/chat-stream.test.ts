@@ -6,11 +6,11 @@
  *
  * 所以断言不是"函数返回了个东西"，而是三条可证伪的性质：
  *   ① 切走再切回，块序列**逐块相等**（顺序、条数、每块的关键字段）；
- *   ② 非当前会话的事件**不会丢**（旧实现在这里 `return` 掉了）；
+ *   ② 非当前会话的事件**不会丢**（早期实现在这里 `return` 掉了）；
  *   ③ 超容量时淘汰**最旧**的会话，且新写入的不被误删。
  *
- * ⚠️ 本文件还负责"反向对照"：把 `ChatStreamStore.snapshot()` 改成恒返回空窗口
- *    （= 旧实现的"切走就清空"），下面标了 `[反向对照]` 的那条必须立刻变红。
+ * ⚠️ 本文件还负责"回归护栏"：把 `ChatStreamStore.snapshot()` 改成恒返回空窗口
+ *    （= 早期实现的"切走就清空"），下面标了 `[回归护栏]` 的那条必须立刻变红。
  *    做法与证据见 `verify/` 里的汇报，不写在代码里（避免注释与实现漂移）。
  */
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -134,7 +134,7 @@ describe('chat-stream —— 同一会话写入后读取，块序列逐块相等
 // ─────────────────────────────────────────────────────────────
 
 describe('chat-stream —— 切到别的会话再切回来，内容原样', () => {
-  it('[反向对照] 会话 A 写入 → 切到 B 写入 → 读 A，A 逐块等于切走前的那份', () => {
+  it('[回归护栏] 会话 A 写入 → 切到 B 写入 → 读 A，A 逐块等于切走前的那份', () => {
     // A 这一轮：思考 + 正文 + 一个工具调用
     feed(store, 'A', [
       { type: 'session-start', sessionId: 'A' },
@@ -192,7 +192,7 @@ describe('chat-stream —— 切到别的会话再切回来，内容原样', () 
     onEvent('A', toolUse('Bash', 'a1', { command: 'a' }), 103);
     onEvent('A', toolUse('Bash', 'a2', { command: 'a2' }), 104);
 
-    // ① A 的槽位真的多出了两块（旧实现这里直接被 return 丢掉）
+    // ① A 的槽位真的多出了两块（早期实现这里直接被 return 丢掉）
     expect(store.get('A')?.blocks.map((b) => b.toolUseId)).toEqual(['a1', 'a2']);
     // ② B 的视图没有被 A 的事件污染（也没被清零）
     expect(viewBlocks).toHaveLength(bBefore);
@@ -285,7 +285,7 @@ const subjects = (s: { list: Array<{ subject: string }> }): string[] => s.list.m
 const checks = (s: { list: Array<{ subject: string; status: string }> }): string[] =>
   s.list.map((t) => `${t.subject}:${t.status}`);
 
-/** TaskCreate / TaskUpdate 的真实事件序列（tool_result 文本逐字照实机格式） */
+/** TaskCreate / TaskUpdate 的真实事件序列（tool_result 文本逐字照运行测试格式） */
 function taskEvents(): StreamEvent[] {
   return [
     toolUse('TaskCreate', 'c1', { subject: '跑数据', activeForm: '正在跑数据' }),
@@ -302,7 +302,7 @@ function taskEvents(): StreamEvent[] {
 }
 
 describe('chat-stream —— 任务清单随会话隔离（文本集合 + 勾选集合逐条相等）', () => {
-  it('[反向对照] 切走再切回，子任务文本集合与勾选集合逐一相等', () => {
+  it('[回归护栏] 切走再切回，子任务文本集合与勾选集合逐一相等', () => {
     store.apply('A', { type: 'session-start', sessionId: 'A' }, 1);
     taskEvents().forEach((ev, i) => store.apply('A', ev, 2 + i));
 
@@ -557,7 +557,7 @@ function inflightOf(over: Partial<InflightTurn> = {}): InflightTurn {
 }
 
 describe('chat-stream —— inflight 快照灌进槽位（切回正在跑的会话能看见过程）', () => {
-  it('[反向对照] 带 inflight → 槽位里有那批块，phase = running', () => {
+  it('[回归护栏] 带 inflight → 槽位里有那批块，phase = running', () => {
     const snap = inflightOf();
     const adopted = store.adoptInflight('A', snap, []);
 

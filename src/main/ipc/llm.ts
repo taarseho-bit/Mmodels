@@ -1,7 +1,7 @@
 /**
  * 模型供应商 IPC。
  *
- * 包含「测试连通性」—— 这是原版也有、而且极其实用的功能：
+ * 包含「测试连通性」—— 这是项目契约也有、而且极其实用的功能：
  * 用户填完密钥点一下就知道通不通，而不是跑一次完整任务才发现配错。
  */
 import { ipcMain } from 'electron';
@@ -108,7 +108,7 @@ export function registerLlmHandlers(_ctx: IpcContext): void {
   ipcMain.handle(
     IPC.LLM_LIST_MODELS,
     // 2026-09-25：第三个参数支持**未保存**的内联配置 —— 用户刚填完 baseUrl + apiKey
-    // 就能立刻拉模型列表，不用先保存再回头点（实机反馈「自动分析有哪些模型可用」）。
+    // 就能立刻拉模型列表，不用先保存再回头点（运行测试反馈「自动分析有哪些模型可用」）。
     safeWrap(async (_e, id: string, refresh = false, inline?: ProviderConfig) => {
       const p = findProvider(id) ?? (inline?.baseUrl ? inline : null);
       if (!p) throw new Error('供应商不存在');

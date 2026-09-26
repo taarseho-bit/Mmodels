@@ -1,5 +1,5 @@
 /**
- * 常驻会话循环（`session-loop.ts`）的判据 —— 直接对着**实机复现过两次**的缺陷写。
+ * 常驻会话循环（`session-loop.ts`）的判据 —— 直接对着**运行测试复现过两次**的缺陷写。
  *
  * ## 缺陷回顾（判定为什么长这样）
  *
@@ -11,15 +11,15 @@
  *
  * ## A 组是护栏（默认路径不许变）
  *
- * 没有后台任务的一轮：首个 result 到达即可收尾，帧数、收尾次数、事件条数全与改造前一致。
+ * 没有后台任务的一轮：首个 result 到达即可收尾，帧数、收尾次数、事件条数全与修复前一致。
  * 把 prompt 改回字符串（或把 `shouldConcludeTurn` 改回 `sawResult`）**不影响**这组 ——
  * 它是"默认路径不变"的护栏，不是新功能的判据。
  *
- * ## B 组才是新功能的判据，并且做了**反向对照**
+ * ## B 组才是新功能的判据，并且做了**回归护栏**
  *
  * 断言「后台任务集合非空时收尾被推迟、集合清空+新 result 才收尾」。
  * 把 `shouldConcludeTurn` 改成 `return state.sawResult`，B 组必须真红
- * （红证据见汇报；本文件里那条断言的措辞就是为这个反向对照写的）。
+ * （红证据见汇报；本文件里那条断言的措辞就是为这个回归护栏写的）。
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -81,7 +81,7 @@ async function drive(
   outcome: SessionLoopOutcome;
   delivered: unknown[];
   concludeCalls: number;
-  /** 收尾那一刻「已经交付了几帧」——反向对照就卡在这个数上 */
+  /** 收尾那一刻「已经交付了几帧」——回归护栏就卡在这个数上 */
   concludedAfterFrame: number;
   state: TurnState;
 }> {
@@ -116,7 +116,7 @@ async function drive(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 帧样式（逐字对齐 sdk.d.ts 的字段名）
+// 帧样式（按字段对齐 sdk.d.ts 的字段名）
 // ─────────────────────────────────────────────────────────────
 
 const bgChanged = (ids: string[]) => ({
@@ -285,7 +285,7 @@ describe('shouldConcludeTurn / applyTurnFrame', () => {
 // 2. A 组护栏：默认路径（没有后台任务）行为不变
 // ─────────────────────────────────────────────────────────────
 
-describe('A 组护栏 —— 一轮里没有后台任务时，收尾条件与改造前等价', () => {
+describe('A 组护栏 —— 一轮里没有后台任务时，收尾条件与修复前等价', () => {
   it('首个 result 到达即收尾；帧照单全收；收尾只发生一次', async () => {
     const r = await drive([assistant('你好'), result()]);
     expect(r.outcome).toEqual({ kind: 'settled' });
@@ -333,13 +333,13 @@ describe('A 组护栏 —— 一轮里没有后台任务时，收尾条件与改
 
 describe('B 组 —— 后台任务未清空时，本轮不结束（唤醒才有机会发生）', () => {
   /**
-   * 实机时序（与 `sdk.d.ts:3054` 的注释一致：level 常常**先于** bookend 到）：
+   * 运行测试时序（与 `sdk.d.ts:3054` 的注释一致：level 常常**先于** bookend 到）：
    *   result#1（后台任务还在跑）→ 集合清空 → task_notification → 唤醒回合 → result#2
    */
   const WAKEUP_SCRIPT = [
     bgChanged(['bg1']), // 后台任务开始
     assistant('我先交还，等它跑完'),
-    result(), // ← 改造前就在这里被收尾（缺陷）
+    result(), // ← 修复前就在这里被收尾（缺陷）
     bgChanged([]), // ← 集合变空；**不能**在这一帧收尾，否则掐掉下面的唤醒
     taskNotification('bg1'),
     assistant('它跑完了，我接着做'),
@@ -352,7 +352,7 @@ describe('B 组 —— 后台任务未清空时，本轮不结束（唤醒才有
     // 全部 7 帧都被交付 —— 收尾没有把唤醒回合吃掉
     expect(r.delivered).toHaveLength(7);
     expect(r.concludeCalls).toBe(1);
-    // ⚠️ 反向对照的锚点：把 shouldConcludeTurn 改回 `return state.sawResult`，
+    // ⚠️ 回归护栏的锚点：把 shouldConcludeTurn 改回 `return state.sawResult`，
     //    这个数会变成 3（在第 3 帧 result#1 上就收尾），本断言随即变红。
     expect(r.concludedAfterFrame).toBe(7);
     // 唤醒回合的文本确实走到了调用方

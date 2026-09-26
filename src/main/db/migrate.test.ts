@@ -86,7 +86,7 @@ describe('migrate —— 老库补列', () => {
     expect(f.execd).toHaveLength(2); // 仍然只有第一次那两条
   });
 
-  it('新库（建表语句已经带列）→ 一条都不执行（反向对照）', () => {
+  it('新库（建表语句已经带列）→ 一条都不执行（回归护栏）', () => {
     const f = fakeHost({ messages: [...OLD_MESSAGES, ...NEW_COLUMNS] });
 
     expect(migrate(f.host)).toEqual([]);

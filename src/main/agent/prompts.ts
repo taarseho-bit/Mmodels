@@ -1,26 +1,20 @@
 /**
- * 提示词与工作区指令 —— 逐字取自原版 MathModel 0.0.20。
+ * 提示词与工作区指令 —— 数学建模任务的统一入口。
  *
- * 来源：
- *  1. 渲染层 `out/renderer/assets/index-OYc102qC.js` 的提示词组装函数
- *     （`Rwe` 任务模板表 / `fA` 模板来源 / `Awe` 组装逻辑），原文未混淆，逐字抄录。
- *  2. 主进程字符串表（6135 项，`_0x4e7d` 数组 + `_0x627a` 解码器，索引偏移 266）
- *     还原出的 `PROJECT_INSTRUCTIONS` 条款。
- *
- * ⚠️ 本文件是「复刻保真」的单一真相源，改动前请先对照原版。
- *    用户的既定要求是：先做 1:1 一致，改进留到后续单独进行。
+ * 任务模式、模板说明、项目规则和模型选择提示集中维护，主进程、工作流
+ * 与输入框因此共享同一套可读规则。修改时请保持模式边界清楚，并补充测试。
  */
 import type { PaperTemplateRef } from '@shared/types';
 
 // ─────────────────────────────────────────────────────────────
-// 一、任务模板（原版 Rwe 表，逐字）
+// 一、任务模板
 // ─────────────────────────────────────────────────────────────
 
 /** 任务类型 —— 决定注入哪条起始指令 */
-export type TaskKind = 'chat' | 'paper' | 'figure' | 'review' | 'data';
+export type TaskKind = 'chat' | 'paper' | 'figure' | 'review' | 'data' | 'sprint';
 
 /**
- * 原版 `Rwe` 常量：输入框为空时按任务类型自动填入的起始提示词。
+ * 输入框为空时按任务类型自动填入的起始提示词。
  * `chat` 为空串（不预填）。
  */
 export const TASK_TEMPLATES: Record<TaskKind, string> = {
@@ -32,21 +26,23 @@ export const TASK_TEMPLATES: Record<TaskKind, string> = {
     '/review-paper 按数学建模竞赛评审标准审读论文，输出评分与逐条修改建议（review.md），未经确认不要直接改动论文正文',
   data:
     '/data-search 查找并核验下面描述的公开数据，下载到当前项目的 data/ 目录并记录来源与许可',
+  sprint:
+    '/competition-sprint 按 72 小时竞赛节奏，从审题、数据、建模、图表到论文成稿全流程冲刺：先给出分段排程与每阶段验收标准，再逐段推进，最终交付可直接提交的论文与附件清单',
 };
 
 // ─────────────────────────────────────────────────────────────
-// 二、模板来源说明（原版 fA 函数，逐字）
+// 二、模板来源说明
 // ─────────────────────────────────────────────────────────────
 
 /**
- * ⚠️ 类型定义搬到了 `@shared/types`（单一真相源）—— 原版里这个结构同时是
+ * ⚠️ 类型定义搬到了 `@shared/types`（单一真相源）—— 项目契约里这个结构同时是
  *    **项目配置文件的字段**（`template: {id,name,entryFile,source,sourcePath}`），
  *    主进程写盘、提示词组装、渲染层弹层三处都要引同一份，放在 main 里会让
  *    渲染层无法复用。这里只做一次 re-export，保持既有 import 路径不变。
  */
 export type { PaperTemplateRef };
 
-/** 原版 `fA(t)`：把论文模板来源写成给模型看的一段说明 */
+/** 把论文模板来源写成给模型看的一段说明。 */
 export function describeTemplateSource(t: PaperTemplateRef): string {
   if (t.source === 'custom' && t.sourcePath) {
     return [
@@ -59,23 +55,23 @@ export function describeTemplateSource(t: PaperTemplateRef): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 三、斜杠命令探测（原版 Mwe 正则 + bU 函数，逐字）
+// 三、斜杠命令探测
 // ─────────────────────────────────────────────────────────────
 
-/** 原版 `Mwe` 正则：匹配文本里的 `/xxx` 斜杠命令 */
+/** 匹配文本里的 `/xxx` 斜杠命令。 */
 export const SLASH_COMMAND_RE = /(?:^|\s)\/([A-Za-z][\w-]*)(?=\s|$)/;
 
-/** 原版 `bU(t)`：取出文本中的斜杠命令名，无则 null */
+/** 取出文本中的斜杠命令名，无则 null。 */
 export function detectSlashCommand(text: string): string | null {
   return SLASH_COMMAND_RE.exec(text)?.[1] ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────
-// 四、提示词组装（原版 Awe 函数，逐字逻辑）
+// 四、提示词组装
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 原版 `Awe(t, e, n)`：
+ * 组装规则：
  *   t = 任务类型，e = 用户输入文本，n = { paperTemplate }
  *
  * 规则（逐条照搬）：
@@ -110,12 +106,12 @@ export function composePrompt(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 五、项目工作区指令（原版主进程字符串表还原，逐字）
+// 五、项目工作区指令
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 原版主进程写入项目根 `AGENTS.md` / `CLAUDE.md` 的约定。
- * 各条来自字符串表还原，顺序按原版出现次序排列。
+ * 主进程写入项目根 `AGENTS.md` / `CLAUDE.md` 的约定。
+ * 各条按数学建模任务顺序排列，便于维护和审阅。
  */
 export const PROJECT_INSTRUCTIONS: string = [
   '# MModels 数学建模项目',
@@ -132,10 +128,10 @@ export const PROJECT_INSTRUCTIONS: string = [
 ].join('\n');
 
 // ─────────────────────────────────────────────────────────────
-// 六、模型选择引导卡（原版主进程字符串表还原，逐字）
+// 六、模型选择引导卡
 // ─────────────────────────────────────────────────────────────
 
-/** 方法名（原版字符串表原文） */
+/** 方法名。 */
 export const METHOD_NAMES = {
   arima: 'ARIMA 时间序列预测',
   randomForest: '随机森林回归',
@@ -145,7 +141,7 @@ export const METHOD_NAMES = {
   geometry: '几何计算',
 } as const;
 
-/** 选用理由（原版字符串表原文，逐条对应） */
+/** 选用理由。 */
 export const METHOD_RATIONALE = {
   arima: '利用序列自身的滞后与误差结构预测未来，适合单变量时间序列基线。',
   randomForest: '用多棵决策树拟合非线性关系，对表格数据和复杂特征交互较稳健。',
@@ -153,7 +149,7 @@ export const METHOD_RATIONALE = {
   topsis: '根据各方案到正、负理想解的距离，对多指标方案进行综合排序。',
 } as const;
 
-/** 方法选择引导的四类判断（原版字符串表原文） */
+/** 方法选择引导的四类判断。 */
 export const METHOD_SELECTION_HINTS = {
   singleTarget: '只有一个目标或需要唯一解',
   conflictNoWeights: '目标冲突且不能预先确定权重',
@@ -168,7 +164,7 @@ export const METHOD_SELECTION_HINTS = {
   metricWeights: '指标权重与正负方向',
 } as const;
 
-/** 结果呈现要求（原版字符串表原文） */
+/** 结果呈现要求。 */
 export const RESULT_SECTIONS = {
   optimization: '最优解、目标值与求解状态',
   pareto: 'Pareto 解集、前沿图与权衡分析',
@@ -177,7 +173,7 @@ export const RESULT_SECTIONS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────
-// 七、模型选择向导（AskUserQuestion 约束，取自 write-paper/SKILL.md 原文）
+// 七、模型选择向导（AskUserQuestion 约束）
 // ─────────────────────────────────────────────────────────────
 
 export const ASK_USER_QUESTION_NOTICE = [
@@ -185,7 +181,7 @@ export const ASK_USER_QUESTION_NOTICE = [
 ].join('\n');
 
 // ─────────────────────────────────────────────────────────────
-// 八、界面固定文案（原版字符串表还原，逐字）
+// 八、界面固定文案
 // ─────────────────────────────────────────────────────────────
 
 export const UI_TEXT = {

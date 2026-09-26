@@ -3,12 +3,12 @@
  *
  * ## 为什么这层要单独真测
  *
- * 用户实机抱怨的是「模板只能浏览，不能用它开新会话、不能派生、不能删」——
+ * 用户运行测试抱怨的是「模板只能浏览，不能用它开新会话、不能派生、不能删」——
  * 那部分是 UI；但**真正会出事**的是下面这条：
  *
  *   ★ 内置模板的"删除"必须是**拒绝**，不是"UI 上不渲染按钮"。
  *
- * 原版把它做成了服务端错误码 `builtin_template_readonly`(403)，意思就是
+ * 项目契约把它做成了服务端错误码 `builtin_template_readonly`(403)，意思就是
  * 「这条约束在**服务端**成立，界面藏按钮只是顺带」。如果只在渲染层不渲染按钮，
  * 从别处直接调通道仍然能删掉内置模板（本仓的模板目录就是 `resources/` 下的
  * 真实文件，删了要重装才能回来）。
@@ -21,7 +21,7 @@
  *   ② 拿内置模板 id 删 → 被拒（403）且**磁盘上没有任何模板文件被删**
  *   ③ 删掉一条自定义模板后，内置列表**不能跟着少**
  *
- * ## 反向对照（真跑过）
+ * ## 回归护栏（真跑过）
  *
  * 把 `deletePaperTemplate` 里那行 `if (rec.source !== 'custom') return ...403`
  * 去掉 → 第 2 组用例**必须真红**（而且会真的把 `resources/.../cumcm/` 删掉）。
@@ -31,10 +31,10 @@
  *
  * · **点一下按钮**这条交互盖不住：`node_modules` 里没有 jsdom / happy-dom，
  *   vitest 只跑 `environment: 'node'`，渲染层点不动。按钮在不在、
- *   点下去有没有反应，只能靠实机 e2e（或将来装 jsdom）。
+ *   点下去有没有反应，只能靠运行测试 e2e（或将来装 jsdom）。
  * · **通道有没有被注册**也盖不住「真 IPC 往返」：本文件只能做**结构断言**
  *   （读 `src/main/ipc/paper.ts` 源码，确认它把这条通道接上了、且没有另写一套
- *   绕过围栏的删除逻辑）。真正的端到端要靠实机。
+ *   绕过围栏的删除逻辑）。真正的端到端要靠运行测试。
  * · 「内置模板目录不可写」这种**环境**失败不在覆盖范围内（本机可写）。
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -64,7 +64,7 @@ import {
 /**
  * 仓库里的真实资源目录（开发期 `resourcesDir()` 就是 <appPath>/resources）。
  *
- * `MM_TEST_RESOURCES` 是给**反向对照**用的：把"内置模板拒绝删除"那道闸摘掉之后，
+ * `MM_TEST_RESOURCES` 是给**回归护栏**用的：把"内置模板拒绝删除"那道闸摘掉之后，
  * 这组用例里的删除会被真的执行 —— 若不换根，它删的就是仓库里那份**真实模板资源**
  * （重装才能回来）。换成一份临时副本，红一样红，仓库不受损。
  * 平时不设这个变量，测的就是真资源目录。
@@ -193,7 +193,7 @@ describe('① fork 模板', () => {
     expect(r.template.id.startsWith(CUSTOM_TEMPLATE_PREFIX)).toBe(true);
     expect(r.template.source).toBe('custom');
 
-    // 派生出来的元数据对齐原版 fork：名字用用户输入、order 1000、defaultFor 空
+    // 派生出来的元数据对齐项目契约 fork：名字用用户输入、order 1000、defaultFor 空
     expect(r.template.name).toBe('我的国赛模板');
     expect(r.template.order).toBe(1000);
     expect(r.template.defaultFor).toEqual([]);
@@ -221,7 +221,7 @@ describe('① fork 模板', () => {
     expect(meta.order).toBe(1000);
     expect(meta.name).toEqual({ 'zh-CN': '复制检查', en: '复制检查' });
 
-    // 目录名可读：以「清洗后的名字-id 后 8 位」结尾（原版就是这么起名的）
+    // 目录名可读：以「清洗后的名字-id 后 8 位」结尾（项目契约就是这么起名的）
     expect(basename(r.template.dir)).toBe(
       `${sanitizeTemplateDirName('复制检查')}-${r.template.id.slice(-8)}`,
     );
@@ -333,7 +333,7 @@ describe('② 内置模板删除必须被拒绝（通道体这一层，不是 UI
     expect(builtinDiskSnapshot()).toEqual(beforeDisk);
   });
 
-  it('即使受管库不可用，内置模板仍是 403 而不是 503（顺序与原版一致）', () => {
+  it('即使受管库不可用，内置模板仍是 403 而不是 503（顺序与项目契约一致）', () => {
     const r = deletePaperTemplate({
       resourcesDir: RESOURCES_DIR,
       customRoot: null,
@@ -363,7 +363,7 @@ describe('② 内置模板删除必须被拒绝（通道体这一层，不是 UI
    * （`dirname(dir) === root`）**会通过** —— 也就是说，能拦住这次删除的
    * 只剩"来源必须是 custom"这一条判断。
    *
-   * 反向对照实跑记录：把 `deletePaperTemplate` 里这行判断摘掉 →
+   * 回归护栏实跑记录：把 `deletePaperTemplate` 里这行判断摘掉 →
    * 本条用例红，而且**临时副本里的内置模板目录被真的删掉了**（`existsSync` 变 false）。
    * 所以它证明的不是"恰好没删成"，而是"这道闸就是承重墙"。
    */
@@ -498,7 +498,7 @@ describe('⑤ 防回归：`paper:templates`（输入区用）仍是只报内置'
 // ④ 结构断言：通道真的接上了（**证伪边界见文件头**）
 //
 // 这一组只保证"接线还在"（channel 注册 + 走的是同一个被围栏保护的函数），
-// **不保证**真 IPC 往返、更不保证界面点得动 —— 那要靠实机 e2e。
+// **不保证**真 IPC 往返、更不保证界面点得动 —— 那要靠运行测试 e2e。
 // ─────────────────────────────────────────────────────────────
 
 describe('④ 结构断言（通道接线，真 IPC 往返不在此覆盖范围）', () => {
@@ -536,7 +536,7 @@ describe('④ 结构断言（通道接线，真 IPC 往返不在此覆盖范围�
     expect(src).toContain('window.mathmodel.paper.forkTemplate(');
     expect(src).toContain('window.mathmodel.paper.deleteTemplate(');
     expect(src).toContain('window.mathmodel.paper.saveConfig({ template: ref })');
-    // 文案键来自原版那一族，且都是已存在的键（i18n 的零豁免名单会另测一遍）
+    // 文案键来自项目契约那一族，且都是已存在的键（i18n 的零豁免名单会另测一遍）
     expect(src).toContain('extensions.paperTemplatesSection.useTemplate');
     expect(src).toContain('extensions.paperTemplatesSection.forkTemplate');
     expect(src).toContain('extensions.paperTemplatesSection.customGroup');

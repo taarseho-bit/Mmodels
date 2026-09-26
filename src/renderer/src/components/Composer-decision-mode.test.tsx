@@ -1,14 +1,15 @@
 /**
- * Composer 决策模式 / 协作开关的静态渲染冒烟（2026-09-20）。
+ * Composer 决策模式 / 协作开关的静态渲染冒烟（2026-09-20；2026-09-26 随布局改版更新）。
  *
- * 用户需求的两处 UI 落点：
- *   ① 决策模式 chip —— 与任务模式正交的「怎么做决定」选择器（先规划/精细/AI 自动），
- *      落在任务模式 chip 旁边（cz-bar）；
- *   ② 多智能体协作 —— 从「选项」菜单拎出来，变成底部栏常驻显眼开关。
+ * 2026-09-26 布局改版（用户钦定）：
+ *   ① 决策模式 chip 从顶部上下文栏（cz-bar）**移到底部栏（cz-foot）**，
+ *      放在「多智能体协作」旁边；命名改为 人工精细建模 / AI 全流程自动 / 先规划；
+ *   ② 多智能体协作 —— 底部栏常驻显眼开关（2026-09-20 原需求不变）；
+ *   ③ 任务深度（快速/标准/深度）chip 从左侧移到右侧模型选择旁（另一测试不覆盖，运行测试验证）。
  *
  * node 环境（无 DOM）：zustand 只能读到初始 state（settings 未设 ⇒ decisionMode
- * 显示默认「精细」），Popover 关闭态不渲染菜单内容 —— 所以只断言 chip/按钮本身，
- * 菜单内部留给实机验证。
+ * 显示默认「人工精细」），Popover 关闭态不渲染菜单内容 —— 所以只断言 chip/按钮本身，
+ * 菜单内部留给运行测试验证。
  */
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -23,11 +24,11 @@ function renderComposer(): string {
 }
 
 describe('Composer 决策模式与协作开关（静态冒烟）', () => {
-  it('决策模式 chip 常驻渲染，默认决策方式是「精细」', () => {
+  it('决策模式 chip 常驻渲染（现居底部栏），默认决策方式是「人工精细」', () => {
     const html = renderComposer();
     // title 是 tx() 的译文（不是键名），断言译文片段
     expect(html).toContain('决策方式');
-    expect(html).toContain('精细');
+    expect(html).toContain('人工精细');
   });
 
   it('多智能体协作是底部栏常驻按钮（不再藏在「选项」菜单里）', () => {

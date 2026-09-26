@@ -1,10 +1,10 @@
 /**
  * 在「干净环境」里执行命令。
  *
- * 起因：宿主（WorkBuddy）会在环境里注入
+ * 起因：桌面宿主可能会在环境里注入
  *   - NODE_OPTIONS=--require=…safe-delete-shim.cjs   → 把 fs.rmSync 换成走回收站的实现
  *   - ELECTRON_RUN_AS_NODE=1                          → 让 electron.exe 退化成纯 Node
- *   - CODEBUDDY_SAFE_DELETE_*                         → 删除代理开关
+ *   - *_SAFE_DELETE_*                                 → 删除代理开关
  *
  * 这会带来两个假故障：
  *   1. 打包时 vite 的 emptyDir() 清空 out/ 被判定为「批量删除」直接抛错，
@@ -22,8 +22,8 @@ const { spawnSync } = require('node:child_process');
 const PATTERNS = [
   /^NODE_OPTIONS$/i,
   /^ELECTRON_RUN_AS_NODE$/i,
-  /^CODEBUDDY_SAFE_DELETE_/i,
-  /^WORKBUDDY_FS_PROTECTION_ROLE$/i,
+  /^.*SAFE_DELETE_/i,
+  /^.*FS_PROTECTION_ROLE$/i,
 ];
 
 const env = {};

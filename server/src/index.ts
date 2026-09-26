@@ -1,5 +1,5 @@
 /**
- * MathModel Desktop 诊断/遥测接收服务。
+ * MModels Desktop 诊断/遥测接收服务。
  *
  * 零构建步骤：Node ≥22.18 能直接执行 .ts（内置类型剥离），
  * 所以 `node src/index.ts` 就是生产启动命令，Docker 里也不需要 tsc。
@@ -260,7 +260,7 @@ admin.use('*', async (c, next) => {
 function basicChallenge(): Response {
   return new Response('需要登录', {
     status: 401,
-    headers: { 'WWW-Authenticate': 'Basic realm="MathModel Diagnostics", charset="UTF-8"' },
+    headers: { 'WWW-Authenticate': 'Basic realm="MModels Diagnostics", charset="UTF-8"' },
   });
 }
 
@@ -286,7 +286,7 @@ app.route('/admin', admin);
 // 根路径给个指引，避免访问到的人以为是坏掉的
 app.get('/', (c) =>
   c.text(
-    'MathModel 诊断接收服务已运行。\n' +
+    'MModels 诊断接收服务已运行。\n' +
       '探活：GET /health\n' +
       '查看台：GET /admin（Basic 登录，用户名 admin，密码为 DIAG_TOKEN）\n',
   ),
@@ -298,7 +298,7 @@ app.get('/', (c) =>
 
 serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
   console.log('──────────────────────────────────────────');
-  console.log(' MathModel 诊断服务 v' + VERSION);
+  console.log(' MModels 诊断服务 v' + VERSION);
   console.log(' 监听     : http://0.0.0.0:' + info.port);
   console.log(' 数据目录 : ' + DATA_DIR);
   console.log(' 保留期   : ' + RETENTION_DAYS + ' 天');

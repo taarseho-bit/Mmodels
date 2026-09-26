@@ -1,7 +1,7 @@
 /**
  * 驱动打包后的 MModels.exe，进入「设置 → 个人资料」截图。
  *
- * 用途：与原版设置页截图做双开对照（原版截图由用户提供）。
+ * 用途：与项目契约设置页截图做双开对照（界面样例由用户提供）。
  * 用法：node scripts/shoot-settings.cjs
  */
 const { spawn } = require('node:child_process');

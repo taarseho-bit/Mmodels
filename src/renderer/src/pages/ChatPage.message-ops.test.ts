@@ -14,7 +14,7 @@
  *      **不直接**发请求 —— 这是渲染层的安全闸；
  *   ③ `POST /api/checkpoint/revert` 只允许从 `runRevert` 发出，且请求体里带 `confirm: true`；
  *   ④ 全文件里 `runRevert(` 只有**两处**：定义 + 确认弹窗的 `onConfirm`。
- *      多出第三处 = 有人绕过弹窗直接回滚（反向对照里第 2 条就是这个改法）；
+ *      多出第三处 = 有人绕过弹窗直接回滚（回归护栏里第 2 条就是这个改法）；
  *   ⑤ 弹窗的 `onCancel` 里**没有**任何 `http.request`（取消 = 什么都不发）；
  *   ⑥ 「编辑后重发」的提交走的是同一个确认弹窗（不是"改了就直接发"）；
  *   ⑦ 分叉成功后 `refreshSessions()` **先于** `selectSession(newId)`；
@@ -25,11 +25,11 @@
  * **不能**证明：点击真的能走通、弹窗真的弹出来、请求真的到达主进程、文件真的回滚了。
  * 那一层由两部分承担，本文件替代不了：
  *   · 主进程的行为判据 → `src/main/server/message-ops.test.ts`（真 git、真文件）；
- *   · 界面与交互 → 实机点击。
+ *   · 界面与交互 → 运行测试点击。
  *
  * ## 反橡皮图章
  *
- * 末尾 8 条**反向对照**用同一套检查器跑故意改坏的源码，每条断言都必须被抓出来。
+ * 末尾 8 条**回归护栏**用同一套检查器跑故意改坏的源码，每条断言都必须被抓出来。
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -37,7 +37,7 @@ import { describe, expect, it } from 'vitest';
 
 const SRC_PATH = fileURLToPath(new URL('./ChatPage.tsx', import.meta.url));
 // ⚠️ 必须归一化行尾（2026-09-25）：编辑器把源码重写成 CRLF 后，下面所有
-// `\n` 手术串会静默落空 → 反向对照假绿。这里统一成 LF 再做文本手术。
+// `\n` 手术串会静默落空 → 回归护栏假绿。这里统一成 LF 再做文本手术。
 const RAW = readFileSync(SRC_PATH, 'utf8').replace(/\r\n/g, '\n');
 
 /** 去掉注释：注释里出现 `confirm: true` 这类"说明性文字"不算接线 */
@@ -205,7 +205,7 @@ function checkMsgOps(raw: string): string[] {
     problems.push(`forkFromMessage 读不出来：${(e as Error).message}`);
   }
 
-  // ⑧ 回合运行中禁用（原版 `ie` 门槛）
+  // ⑧ 回合运行中禁用（项目契约 `ie` 门槛）
   if (!src.includes('disabled={isRunning || opsBusy}')) {
     problems.push('操作按钮没有 `disabled={isRunning || opsBusy}`：回合跑着也能点，会和 agent 抢工作区');
   }
@@ -236,9 +236,9 @@ describe('ChatPage 消息级操作接线（结构断言）', () => {
     expect(src.split('runRevert(').length - 1).toBe(1);
   });
 
-  // ── 反向对照：每种改法对应上面一条断言，必须被抓出来 ──────────
+  // ── 回归护栏：每种改法对应上面一条断言，必须被抓出来 ──────────
 
-  it('反向对照 ①②：回滚按钮直接调 runRevert（绕过确认弹窗）必须报红', () => {
+  it('回归护栏 ①②：回滚按钮直接调 runRevert（绕过确认弹窗）必须报红', () => {
     const broken = RAW.replace(
       'onClick={() => setRevertAsk({ messageId: m.id })}',
       'onClick={() => void runRevert({ messageId: m.id })}',
@@ -246,11 +246,11 @@ describe('ChatPage 消息级操作接线（结构断言）', () => {
     const found = checkMsgOps(broken);
     expect(found.some((p) => p.includes('setRevertAsk({ messageId: m.id })'))).toBe(true);
     // ⚠️ 这里必须与 checkMsgOps 里那句文案**逐字**一致（第一版写成"绕过二次确认"
-    //    而文案是"绕过了二次确认"，漏了个「了」→ 反向对照假绿，白测了一轮）
+    //    而文案是"绕过了二次确认"，漏了个「了」→ 回归护栏假绿，白测了一轮）
     expect(found.some((p) => p.includes('多出来的那处绕过了二次确认'))).toBe(true);
   });
 
-  it('反向对照 ③：请求体里去掉 confirm: true 必须报红', () => {
+  it('回归护栏 ③：请求体里去掉 confirm: true 必须报红', () => {
     const broken = RAW.replace(
       'body: { sessionId: sid, messageId: ask.messageId, confirm: true },',
       'body: { sessionId: sid, messageId: ask.messageId },',
@@ -258,7 +258,7 @@ describe('ChatPage 消息级操作接线（结构断言）', () => {
     expect(checkMsgOps(broken).some((p) => p.includes('confirm: true'))).toBe(true);
   });
 
-  it('反向对照 ⑤：onCancel 里也发请求必须报红', () => {
+  it('回归护栏 ⑤：onCancel 里也发请求必须报红', () => {
     const broken = RAW.replace(
       'onCancel={() => setRevertAsk(null)}',
       'onCancel={() => { void window.mathmodel.http.request("/api/checkpoint/revert"); setRevertAsk(null); }}',
@@ -266,9 +266,9 @@ describe('ChatPage 消息级操作接线（结构断言）', () => {
     expect(checkMsgOps(broken).some((p) => p.includes('取消/关闭路径可能也在发请求'))).toBe(true);
   });
 
-  it('反向对照 ⑥：编辑提交直接发送（不经确认）必须报红', () => {
+  it('回归护栏 ⑥：编辑提交直接发送（不经确认）必须报红', () => {
     // ⚠️ 用 replaceAll：这句在源码里出现**两次**（textarea 的 Enter 与按钮的 onClick），
-    //    只换第一处的话第二处还在，检查器照样能找到它 —— 那条反向对照就成了假绿。
+    //    只换第一处的话第二处还在，检查器照样能找到它 —— 那条回归护栏就成了假绿。
     const broken = RAW.replaceAll(
       'if (text) setRevertAsk({ messageId: m.id, editedText: text });',
       'if (text) void dispatch(text);',
@@ -279,24 +279,24 @@ describe('ChatPage 消息级操作接线（结构断言）', () => {
     ).toBe(true);
   });
 
-  it('反向对照 ⑥b：编辑按钮不按 lastUserId 收口必须报红', () => {
+  it('回归护栏 ⑥b：编辑按钮不按 lastUserId 收口必须报红', () => {
     const broken = RAW.replaceAll('m.id === lastUserId', 'true');
     expect(checkMsgOps(broken).some((p) => p.includes('m.id === lastUserId'))).toBe(true);
   });
 
-  it('反向对照 ⑦：分叉后不刷新会话列表必须报红', () => {
+  it('回归护栏 ⑦：分叉后不刷新会话列表必须报红', () => {
     const broken = RAW.replace('        await refreshSessions();\n        selectSession(newId);', '        selectSession(newId);');
     const found = checkMsgOps(broken);
     // 至少命中"切过去时列表里还没有这条会话"或"没有 refreshSessions()"
     expect(found.some((p) => p.includes('refreshSessions'))).toBe(true);
   });
 
-  it('反向对照 ⑧：去掉 disabled 门槛必须报红', () => {
+  it('回归护栏 ⑧：去掉 disabled 门槛必须报红', () => {
     const broken = RAW.replaceAll('disabled={isRunning || opsBusy}', 'disabled={false}');
     expect(checkMsgOps(broken).some((p) => p.includes('isRunning || opsBusy'))).toBe(true);
   });
 
-  it('反向对照 ⑨：换会话不清 revertAsk 必须报红', () => {
+  it('回归护栏 ⑨：换会话不清 revertAsk 必须报红', () => {
     const broken = RAW.replace(
       '    setEditing(null);\n    setRevertAsk(null);\n    setOpsNotice(null);\n    void loadHistory(activeSessionId);',
       '    void loadHistory(activeSessionId);',
@@ -307,7 +307,7 @@ describe('ChatPage 消息级操作接线（结构断言）', () => {
     );
   });
 
-  it('反向对照 ⑩：失败文案直接弹 e.message 必须报红', () => {
+  it('回归护栏 ⑩：失败文案直接弹 e.message 必须报红', () => {
     const broken = RAW.replace('text: revertErrorText(e)', 'text: e instanceof Error ? e.message : String(e)');
     expect(checkMsgOps(broken).some((p) => p.includes('revertErrorText(e)'))).toBe(true);
   });

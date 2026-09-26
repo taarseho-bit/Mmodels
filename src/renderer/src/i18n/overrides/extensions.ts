@@ -1,4 +1,4 @@
-/** 扩展页 / 算法市场 / 连接器 / whatsnew 新增界面的英文覆盖 —— 无原版键的文案 */
+/** 扩展页 / 算法市场 / 连接器 / whatsnew 新增界面的英文覆盖 —— 无项目契约键的文案 */
 export const extensionsOv: Record<string, string> = {
   // ── ExtensionsPage（技能管理）──
   '算法市场': 'Algorithms Market',
@@ -166,21 +166,21 @@ export const extensionsOv: Record<string, string> = {
     'Browser panel: new DevTools toggle and drag-to-resize width',
   '环境「一键修复」：缺失项自动交给 Agent 配置':
     'Environment "one-click repair": missing items are handed to the Agent automatically',
-  '输入区对齐原版：项目 / 模式 / 比赛模板选择器、比赛信息、附件 chips、权限与模型选择器':
-    'Input area aligned with the original: project / mode / competition template pickers, competition info, attachment chips, permission and model selectors',
+  '输入区遵循项目契约：项目 / 模式 / 比赛模板选择器、比赛信息、附件 chips、权限与模型选择器':
+    'Input area includes project / mode / competition template pickers, competition info, attachment chips, permission and model selectors',
 
-  // ── ExtensionsPage 三栏重构新增文案（原版无对应键的部分）──
+  // ── ExtensionsPage 三栏重构新增文案（项目契约无对应键的部分）──
   '已删除 Skill「{{name}}」': 'Deleted skill "{{name}}"',
   '选择左侧的技能查看详情': 'Select a skill on the left to see its details',
   '内置技能不可删除': 'Built-in skills cannot be deleted',
   '{{n}} 个模板': '{{n}} templates',
-  '按既定决策排除的在线服务，本地版不提供。':
+  '按既定决策排除的在线服务，当前版本不提供。':
     'Excluded by decision: this online service is not available in the local edition.',
   '微信机器人': 'WeChat Bot',
   '未连接': 'Not connected',
   '接收微信消息，并由 Agent 回复。': 'Receive WeChat messages and let the Agent reply.',
   '更新': 'Updates',
   '前往「设置 → 运行环境」': 'Open Settings → Environment',
-  '本地版不接远端技能市场。': 'The local edition does not connect to the remote skill market.',
+  '当前版本不接远端技能市场。': 'The local edition does not connect to the remote skill market.',
   '选择左侧的插件查看详情': 'Select a plugin on the left to see its details',
 };

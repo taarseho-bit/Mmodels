@@ -1,13 +1,13 @@
 /**
- * 首次运行向导 —— 复刻原版 `OnboardingWizard`。
+ * 首次运行向导 —— 当前实现项目契约 `OnboardingWizard`。
  *
- * 三步（文案逐字取自 `onboarding.wizard.*`）：
+ * 三步（文案来源于项目资料 `onboarding.wizard.*`）：
  *   1. 连接模型   —— 选供应商 + 填 API Key + 测试连接
  *   2. 检查运行环境 —— 展示 env:check 结果，可交给 Agent 安装
  *   3. 开始使用
  *
- * ⚠️ 与原版的差异：原版第一步内嵌了账号登录与「DeepSeek 官方充值」入口，
- *    本复刻按既定要求**去掉账号与计费**，只保留「选供应商 + 填 Key」这条纯 API Key 路径。
+ * ⚠️ 与项目契约的差异：项目契约第一步内嵌了账号登录与「DeepSeek 官方充值」入口，
+ *    当前实现按既定要求**去掉账号与计费**，只保留「选供应商 + 填 Key」这条纯 API Key 路径。
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { PresetProvider, ProviderConfig, AppSettings } from '@shared/types';
@@ -153,7 +153,7 @@ export function OnboardingWizard({
     }
   };
 
-  /** 把「让 Agent 装环境」的指令填进输入框（原版行为） */
+  /** 把「让 Agent 装环境」的指令填进输入框（项目契约行为） */
   const askAgentToFix = (): void => {
     const missing = (env?.items ?? []).filter((i) => i.status !== 'ok');
     const text =
@@ -206,7 +206,7 @@ export function OnboardingWizard({
                 >
                   <span className="ob-preset-name">
                     {p.name}
-                    {/* 原版对首个预设标「推荐」 */}
+                    {/* 项目契约对首个预设标「推荐」 */}
                     {p.key === presets[0]?.key ? (
                       <span className="ob-rec">{tx('onboarding.wizard.model.recommended')}</span>
                     ) : null}

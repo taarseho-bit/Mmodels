@@ -1,7 +1,7 @@
 /**
- * 骨架屏 —— 逐字对应原版 `Skeleton` chunk。
+ * 骨架屏 —— 按语义对应项目契约 `Skeleton` chunk。
  *
- * 原版实现（`Skeleton-C3dMNXDK.js`）：
+ * 项目契约实现（`Skeleton-C3dMNXDK.js`）：
  *   <div className="animate-pulse rounded-md bg-muted" />
  * 这里用等价的 CSS 类 `.skeleton` 实现（本项目不用 tailwind）。
  */

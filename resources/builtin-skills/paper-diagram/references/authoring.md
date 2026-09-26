@@ -1,7 +1,7 @@
 # 从零手写 .drawio
 
 模板套不上时走这条路：**直接写 XML**，坐标全部显式给定，然后靠"导出 PNG → 看图 → 改 XML"迭代。
-下面的样式串都是在中文示意图上实测可用的，照抄即可。
+下面的样式串都是在中文示意图上实测可用的，直接采用即可。
 
 - [1. 骨架](#1-骨架)
 - [2. 先排栅格，再写图元](#2-先排栅格再写图元)
@@ -121,7 +121,7 @@ python3 scripts/check_layout.py fig.drawio
 
 ## 5. 连接器
 
-- **固定坐标**（`sourcePoint`/`targetPoint`）比 `source`/`target` 引用更可控，复刻类图一律用固定坐标；需要拖动后自动跟随时才用引用。
+- **固定坐标**（`sourcePoint`/`targetPoint`）比 `source`/`target` 引用更可控，当前实现类图一律用固定坐标；需要拖动后自动跟随时才用引用。
 - 折线拐点放进 `<Array as="points">`，配 `edgeStyle=orthogonalEdgeStyle`。
 - 平滑曲线：`edgeStyle=none;curved=1` + 2–3 个拐点（正交样式下加 `curved=1` 只会把直角磨圆，不会变成弧）。
 - 箭头：实心 `endArrow=block;endFill=1;endSize=5`；空心 `endFill=0;endSize=14`；无箭头 `endArrow=none`（母线段用）。
@@ -189,5 +189,5 @@ python3 scripts/export_figure.py fig.drawio         # 出 1:1 PNG + 矢量 PDF
 ## 与其他参考文件的分工
 
 本文件是**中文示意图的手写速查**。图标与特殊图元看 `icons.md`；静态检查的规则与规避看
-`preflight-rules.md`；看图自检的九区盘点、红队与评分卡看 `self-check.md`；**高保真复刻参考图**
+`preflight-rules.md`；看图自检的九区盘点、红队与评分卡看 `self-check.md`；**高保真当前实现参考图**
 （像素标定、四件产物、逐轮比对）走 `replication.md`。XML 写法各处一致，产物可互相接着改。

@@ -75,7 +75,10 @@
 .studio-task-menu > button:disabled { opacity: .45; cursor: default; }
 .studio-menu-label { padding: 9px 10px 5px; font-size: 10px; color: var(--fg-muted); }
 .studio-menu-label:not(:first-child) { border-top: 1px solid var(--border-weak); margin-top: 5px; }
-.competition-shell .newchat-hero { margin-bottom: 24px; }
+.competition-shell .newchat-hero { margin-bottom: 14px; gap: 12px; }
+/* 2026-09-26：顶栏浮动后主内容上抬，标题区再压缩一档 —— 给 # 任务面板腾出弹出空间 */
+.competition-shell .newchat-title { font-size: 22px; }
+.competition-shell .newchat-title small { margin-top: 5px; font-size: 13px; }
 .competition-shell .newchat-hero svg { display: none!important; }
 .competition-shell .composer-box { box-shadow: none; border-radius: 16px; }
 .competition-shell .composer-box:focus-within { box-shadow: none; }

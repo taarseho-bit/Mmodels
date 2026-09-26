@@ -2,11 +2,11 @@
  * 导出 JSON 的回归测试（P1）。
  *
  * 判据的两条主线：
- *   1. **形状逐字对齐原版** —— `gS()`（decoded main @1531620）产出的顶层与逐条消息
- *      的字段名/顺序/`null` 用法都要一样。原版那边是 zod `cs` 校验的（@389695），
- *      我们自己多一个键、少一个键，用户拿着文件去原版导入就会失败 —— 而这种错
+ *   1. **形状按字段对齐项目契约** —— `gS()`（协议实现）产出的顶层与逐条消息
+ *      的字段名/顺序/`null` 用法都要一样。项目契约那边是 zod `cs` 校验的（），
+ *      我们自己多一个键、少一个键，用户拿着文件去项目契约导入就会失败 —— 而这种错
  *      只有真的去导一次才发现，所以必须在这里钉死。
- *   2. **反向对照** —— 空字符串必须落成 `null`（不是 `''`）、缺失的 usage 落成 `null`
+ *   2. **回归护栏** —— 空字符串必须落成 `null`（不是 `''`）、缺失的 usage 落成 `null`
  *      （不是 `0`）、没结果的工具**不许**塞一个空 result。只看"导出没报错"是测不出这些的。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -42,13 +42,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('buildExportPayload —— 顶层形状逐字对齐原版 gS()', () => {
+describe('buildExportPayload —— 顶层形状按字段对齐项目契约 gS()', () => {
   it('顶层键与顺序 = format / version / exportedAt / session / messages', () => {
     const p = buildExportPayload(meta(), [], 123);
 
     expect(Object.keys(p)).toEqual(['format', 'version', 'exportedAt', 'session', 'messages']);
-    expect(p.format).toBe('mathmodel-session'); // 原版 literal('mathmodel-session')
-    expect(p.version).toBe(1); // 原版 literal(1)
+    expect(p.format).toBe('mathmodel-session'); // 项目契约 literal('mathmodel-session')
+    expect(p.version).toBe(1); // 项目契约 literal(1)
     expect(p.exportedAt).toBe(123);
   });
 
@@ -67,7 +67,7 @@ describe('buildExportPayload —— 顶层形状逐字对齐原版 gS()', () => 
     expect(p.session.updatedAt).toBe(1_700_000_100_000);
   });
 
-  it('每条消息的键与顺序 = 原版 ls 的 10 个字段', () => {
+  it('每条消息的键与顺序 = 项目契约 ls 的 10 个字段', () => {
     const p = buildExportPayload(meta(), [msg([{ kind: 'text', text: 'hi' }])], 0);
 
     expect(p.messages).toHaveLength(1);
@@ -85,12 +85,12 @@ describe('buildExportPayload —— 顶层形状逐字对齐原版 gS()', () => 
     ]);
   });
 
-  it('复刻没有的列一律填 null（不是 0、不是空串、不是省略键）', () => {
+  it('当前实现没有的列一律填 null（不是 0、不是空串、不是省略键）', () => {
     const p = buildExportPayload(meta(), [msg([{ kind: 'text', text: 'hi' }])], 0);
     const m = p.messages[0];
 
-    // 这三个键必须**存在**且为 null —— 原版 zod 里是 `number().nullable().optional()`，
-    // 省略也算合法，但"键在、值为 null"更接近原版自己的产出，且 diff 更稳定。
+    // 这三个键必须**存在**且为 null —— 项目契约 zod 里是 `number().nullable().optional()`，
+    // 省略也算合法，但"键在、值为 null"更接近项目契约自己的产出，且 diff 更稳定。
     expect(m.durationMs).toBeNull();
     expect(m.effort).toBeNull();
     expect(m.costUsd).toBeNull();
@@ -99,15 +99,15 @@ describe('buildExportPayload —— 顶层形状逐字对齐原版 gS()', () => 
     expect('costUsd' in m).toBe(true);
   });
 
-  it('反向对照：usage 缺失 → inputTokens 是 null，不是 0', () => {
+  it('回归护栏：usage 缺失 → inputTokens 是 null，不是 0', () => {
     const p = buildExportPayload(meta(), [msg([{ kind: 'text', text: 'hi' }])], 0);
 
-    // 0 与 null 在原版语义里不同（"没统计" vs "统计到 0"），不能混
+    // 0 与 null 在项目契约语义里不同（"没统计" vs "统计到 0"），不能混
     expect(p.messages[0].inputTokens).toBeNull();
     expect(p.messages[0].outputTokens).toBeNull();
   });
 
-  it('反向对照：空的 providerId / model → null，不是空字符串', () => {
+  it('回归护栏：空的 providerId / model → null，不是空字符串', () => {
     const p = buildExportPayload(meta({ providerId: '', model: '' }), [], 0);
 
     expect(p.session.providerId).toBeNull();
@@ -125,7 +125,7 @@ describe('buildExportPayload —— 顶层形状逐字对齐原版 gS()', () => 
     expect(p.messages[0].outputTokens).toBe(34);
   });
 
-  it('role 只输出 user / assistant（复刻多一个 system 也要收敛）', () => {
+  it('role 只输出 user / assistant（当前实现多一个 system 也要收敛）', () => {
     const p = buildExportPayload(
       meta(),
       [msg([{ kind: 'text', text: 'a' }]), msg([{ kind: 'text', text: 'b' }], { role: 'system' })],
@@ -169,7 +169,7 @@ describe('blocksToContent / blocksToParts —— blocks → parts 映射', () =>
     ]);
   });
 
-  it('反向对照：工具**没有结果**时不许塞空 result（否则"没返回"与"返回空"混淆）', () => {
+  it('回归护栏：工具**没有结果**时不许塞空 result（否则"没返回"与"返回空"混淆）', () => {
     const parts = blocksToParts([
       { kind: 'tool_use', toolName: 'Bash', toolUseId: 'tu_1', toolInput: {} },
     ]);
@@ -178,7 +178,7 @@ describe('blocksToContent / blocksToParts —— blocks → parts 映射', () =>
     expect('result' in toolUse).toBe(false);
   });
 
-  it('工具**有结果**时把 SDK 的 content 数组压平成原版的 {text}', () => {
+  it('工具**有结果**时把 SDK 的 content 数组压平成项目契约的 {text}', () => {
     const parts = blocksToParts([
       {
         kind: 'tool_use',
@@ -193,13 +193,13 @@ describe('blocksToContent / blocksToParts —— blocks → parts 映射', () =>
     expect(toolUse.result).toEqual({ text: 'a.txt\nb.txt' });
   });
 
-  it('error block → 原版的 turn-end{state:failed}（借原版已有的语义，不新造类型）', () => {
+  it('error block → 项目契约的 turn-end{state:failed}（借项目契约已有的语义，不新造类型）', () => {
     const parts = blocksToParts([{ kind: 'error', text: '模型连接中断' }]);
 
     expect(parts).toEqual([{ type: 'turn-end', state: 'failed', errorMessage: '模型连接中断' }]);
   });
 
-  it('tool_result block 降级成 text（原版没有这种 part；**内容不丢**）', () => {
+  it('tool_result block 降级成 text（项目契约没有这种 part；**内容不丢**）', () => {
     const parts = blocksToParts([{ kind: 'tool_result', toolResult: '输出' }]);
 
     expect(parts).toEqual([{ type: 'text', text: '输出' }]);
@@ -210,7 +210,7 @@ describe('blocksToContent / blocksToParts —— blocks → parts 映射', () =>
     expect(blocksToContent([])).toBe('');
   });
 
-  it('导出的 part 类型一定落在原版 Zn 的 7 个变体里', () => {
+  it('导出的 part 类型一定落在项目契约 Zn 的 7 个变体里', () => {
     const allowed = new Set([
       'text',
       'thinking',
@@ -232,7 +232,7 @@ describe('blocksToContent / blocksToParts —— blocks → parts 映射', () =>
   });
 });
 
-describe('flattenToolResult —— 原始结果 → 原版要求的 string', () => {
+describe('flattenToolResult —— 原始结果 → 项目契约要求的 string', () => {
   it('字符串原样返回', () => {
     expect(flattenToolResult('abc')).toBe('abc');
   });
@@ -241,12 +241,12 @@ describe('flattenToolResult —— 原始结果 → 原版要求的 string', () 
     expect(flattenToolResult([{ type: 'text', text: 'a' }, { type: 'text', text: 'b' }])).toBe('a\nb');
   });
 
-  it('对象带 text 字段时取它（导入回来的是原版的 {text} 形状）', () => {
+  it('对象带 text 字段时取它（导入回来的是项目契约的 {text} 形状）', () => {
     expect(flattenToolResult({ text: 'x' })).toBe('x');
   });
 
   it('不认识的结构退成 JSON 文本 —— **绝不返回 undefined/object**', () => {
-    // 原版 Vn.text 是必填 string，返回非字符串会让原版 zod 直接拒收整个文件
+    // 项目契约 Vn.text 是必填 string，返回非字符串会让项目契约 zod 直接拒收整个文件
     expect(typeof flattenToolResult({ a: 1 })).toBe('string');
     expect(flattenToolResult({ a: 1 })).toBe('{"a":1}');
     expect(flattenToolResult(null)).toBe('');

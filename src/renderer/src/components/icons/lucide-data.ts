@@ -1,14 +1,14 @@
 /**
- * Lucide 图标数据 —— 逐字取自原版 MathModel 0.0.20 渲染层 chunk。
+ * Lucide 图标数据 —— 来源于项目资料中的渲染层资源。
  *
- * 原版用 `lucide-react`。这里把 160 个图标的**路径数据原样提取**，
- * 零依赖渲染，视觉与原版一致，且不必引入 lucide-react。
+ * 项目契约用 `lucide-react`。这里把 160 个图标的**路径数据本地提取**，
+ * 零依赖渲染，视觉与项目契约一致，且不必引入 lucide-react。
  *
  * ⚠️ 多数图标被 vite 内联进主 index chunk（只有少数拆成独立文件），
  *    所以生成脚本是全量扫描。
  * ⚠️ 属性里的 `key` 是 React 内部用的，已剔除。
  *
- * 重新生成：`node scripts/gen-icons.cjs`
+ * 这份数据随应用源码维护；新增图标时请在此文件补充路径并运行图标单测。
  */
 
 export type IconNode = Array<[string, Record<string, string>]>;

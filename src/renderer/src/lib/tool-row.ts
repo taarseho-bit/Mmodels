@@ -1,12 +1,11 @@
 /**
  * 工具调用行的**可读动作文案** + **连续工具组折叠**。
  *
- * 规格：`.workbuddy/ui-audit/verify/BACKLOG.md` §3-30（#25）。
- * 原版依据：`chat.toolUseRow.*` 与 `chat.toolCallGroup.*` 两族键
- * （逐字取自 `i18n/zh.ts:415-463`，**键值本身就是功能规格**，本文件按它反推映射，
+ * 规格：`chat.toolUseRow.*` 与 `chat.toolCallGroup.*` 两族键
+ * （来源于项目资料 `i18n/zh.ts:415-463`，**键值本身就是功能规格**，本文件按它反推映射，
  * 不自己编文案）。
  *
- * 复刻侧的旧行为是 `ChatPage.tsx` 里 `block.toolName?.split('__').pop()` —— 把
+ * 早期实现曾在 `ChatPage.tsx` 里直接调用 `block.toolName?.split('__').pop()` —— 把
  * 原始工具名（`mcp__xxx__yyy` 去掉前缀）**直接当行文案渲染**，用户看到的是
  * `list_projects` 这种内部标识符，不是「使用了工具」。
  *
@@ -46,8 +45,8 @@
  * `subtask` 的文案里都带 `{{value}}`，按 `valueFields` 顺序去 `toolInput` 里取
  * 第一个非空字符串。**取不到不是回落到工具名**，而是换用同族的通用键
  * （`ranGeneric` / `searchedGeneric` / `searchedWebGeneric` / `fetchedGeneric` /
- * `subtaskGeneric`）；`read` / `edited` / `wrote` 这三条**原版没给通用键**，
- * 取不到值时落 `genericTool`。这是本文件唯一一处"原版没有明文、由我定的"口径，
+ * `subtaskGeneric`）；`read` / `edited` / `wrote` 这三条**项目契约没给通用键**，
+ * 取不到值时落 `genericTool`。这是本文件唯一一处"当前没有明文、由我定的"口径，
  * 理由：宁可显示「使用工具」，也不能把 `Read` 这种内部名或空串给用户看。
  */
 import type { ContentBlock } from '@shared/types';
@@ -94,8 +93,8 @@ const GROUP_KEY: Record<ToolKind, string> = {
 };
 
 /** 行文案里 `{{value}}` 的展示上限（超出截断加 `…`）。
- *  ⚠️ 这是**展示口径**，不是原版明文：`toolInput.command` 可能是几百字符的
- *  一行命令，不截断会把整行撑爆。取不到原版证据，所以单测把它钉住，
+ *  ⚠️ 这是**展示口径**，不是项目契约明文：`toolInput.command` 可能是几百字符的
+ *  一行命令，不截断会把整行撑爆。取不到项目契约证据，所以单测把它钉住，
  *  免得日后有人"顺手改大"而没人发现。 */
 export const ROW_VALUE_MAX = 80;
 
@@ -118,7 +117,7 @@ const TOOL_SPECS: Readonly<Record<string, ToolSpec>> = {
   KillShell: { kind: 'command', rowKey: 'ran', fallbackKey: 'ranGeneric', valueFields: ['shell_id'] },
 
   // ── 读 ────────────────────────────────────────────────
-  // 原版没给 read 的通用键 ⇒ 取不到路径时落 genericTool（见文件头口径说明）
+  // 项目契约没给 read 的通用键 ⇒ 取不到路径时落 genericTool（见文件头口径说明）
   Read: { kind: 'read', rowKey: 'read', fallbackKey: 'genericTool', valueFields: ['file_path', 'path', 'filePath', 'notebook_path'] },
   NotebookRead: { kind: 'read', rowKey: 'read', fallbackKey: 'genericTool', valueFields: ['notebook_path', 'file_path', 'path'] },
 
@@ -154,10 +153,10 @@ const TOOL_SPECS: Readonly<Record<string, ToolSpec>> = {
 };
 
 /**
- * 取短名 —— **保留原版口径**（`store/tasks.ts:64` 的 `shortToolName` 逐字同形）。
+ * 取短名 —— **保留项目契约口径**（`store/tasks.ts:64` 的 `shortToolName` 逐字同形）。
  *
  * `mcp__server__tool` → `tool`；不带 `__` 的名字 `'Bash'` → `'Bash'`（原样，
- * 正是原版那条回退的行为）。**短名只用来查表，不作为文案**。
+ * 正是项目契约那条回退的行为）。**短名只用来查表，不作为文案**。
  */
 export function shortToolName(name: string): string {
   return name.split('__').pop() ?? name;
@@ -219,7 +218,7 @@ export function toolRowLabel(block: Pick<ContentBlock, 'toolName' | 'toolInput' 
 
 /** 一行工具 → 折叠用的一行描述 */
 export interface ToolRow {
-  /** `toolUseId` 优先，缺失时用下标（与原版 key 的生成口径一致） */
+  /** `toolUseId` 优先，缺失时用下标（与项目契约 key 的生成口径一致） */
   id: string;
   label: string;
   kind: ToolKind;

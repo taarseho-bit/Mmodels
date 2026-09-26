@@ -325,7 +325,7 @@ export const zh = {
       editMessage: '编辑消息',
       editResend: '编辑后重发',
       /**
-       * ⚠️ 这一条**不是**原版文案，是复刻自己加的（原版只有一个 `revertDialogBody`）。
+       * ⚠️ 这一条**不是**项目契约文案，是当前实现自己加的（项目契约只有一个 `revertDialogBody`）。
        *    「编辑后重发」的破坏面和普通回滚一样（回滚工作区 + 删掉这条之后的对话），
        *    但多了一步"用改好的内容重发"，用户必须在点确认前就知道这一点。
        */
@@ -334,15 +334,15 @@ export const zh = {
       forkFromUserMessage: '从这里分叉（新会话继承之前的对话，这条原文会预填到输入框）',
       revertConfirm: '回滚',
       /**
-       * ⚠️ 这一条**与原文案（照抄自原版）不一致，是有意改的 —— 别当成抄错**。
+       * ⚠️ 这一条**与现有文案不一致，是基于当前数据结构做的安全调整**。
        *
-       * 原版那句是「…此后新建的文件会被删除」，因为原版的 checkpoint 存在自己的
+       * 项目契约那句是「…此后新建的文件会被删除」，因为项目契约中的 checkpoint 存在自己的
        * `project_versions` 表里、快照的是**整棵文件树**，所以它确实能删。
-       * 复刻的 `checkpoint_ref` 是 git commit sha，回滚走 `restoreVersion()`：
+       * 当前实现的 `checkpoint_ref` 是 git commit sha，回滚走 `restoreVersion()`：
        * 它**刻意不删"从未被版本化过"的文件**（那是用户自己下的数据、临时笔记 ——
        * 见 `git/index.ts:330-334` 的第 3 条注释）。
        *
-       * 所以照抄原句会变成**一句假话，而且是在一个会改用户文件的确认框里**。
+       * 所以直接沿用那句会变成**一句假话，而且是在一个会改用户文件的确认框里**。
        * 用户据它判断"我那张刚下载的图会不会没" —— 判断反了就再也找不回来。
        */
       revertDialogBody: '工作区里已纳入版本管理的文件会恢复到发送这条消息前的快照；此后新建、从未进过快照的文件会保留下来。这条消息及之后的对话也会一并移除。此操作不可撤销。',
@@ -694,38 +694,42 @@ export const zh = {
       modes: {
         chat: '自由对话',
         chatDescription: '不预设任务，按你的输入开始',
-        data: '找数据',
+        data: '数据勘探',
         dataDescription: '查找、核验并下载公开数据集',
-        figure: '画图',
+        figure: '图表工坊',
         figureDescription: '投稿级图表、科研绘图模板与流程图',
-        paper: '写论文',
-        paperDescription: '从题目出发完成一篇完整的建模论文',
-        review: '评审',
+        paper: '论文写作',
+        paperDescription: '从审题、建模到 LaTeX 成稿的一站式论文写作',
+        review: '评阅诊断',
         reviewDescription: '按竞赛标准打分并给出逐条修改建议',
+        sprint: '参赛冲刺',
+        sprintDescription: '从题目到可提交论文的全流程冲刺，自动排程 72 小时赛程',
       },
       /**
        * 决策模式（与任务模式正交）：
        * 决定 AI 执行任务时「怎么做决定」—— 先规划 / 精细人工 / AI 自动。
        */
       decisionModes: {
-        auto: 'AI 自动',
-        autoDescription: 'AI 自主完成全部决策，一次问完直接交付，不打扰你',
-        manual: '精细人工',
-        manualDescription: '模型选型、假设、论文结构等关键决策逐项弹窗征求你的选择',
+        auto: 'AI 全流程自动',
+        autoDescription: 'AI 全程自主决策，一次问完直接交付到底，中途不打扰你',
+        manual: '人工精细建模',
+        manualDescription: '模型选型、假设、论文结构等关键决策逐项弹窗，由你精细把关',
         plan: '先规划',
         planDescription: '先给出完整方案，不修改任何文件，确认后再动手',
       },
+      hashHint: '提示：在输入框打 # 可选择建模任务',
       modeTooltip: '选择对话或任务模式',
-      decisionModeTooltip: '选择 AI 的决策方式：先规划 / 精细人工 / AI 自动',
+      decisionModeTooltip: '选择 AI 的决策方式：先规划 / 人工精细建模 / AI 全流程自动',
       newProject: '新建项目…',
       noTemplates: '暂无模板',
       paperSetup: '比赛信息',
       placeholders: {
-        chat: '输入问题或任务…',
+        chat: '输入问题或任务…（打 # 可选择建模任务）',
         data: '描述需要的数据：主题、地区、年份、粒度…',
         figure: '描述要画的图，或拖入数据文件 / 现有图片…',
-        paper: '粘贴题目，或拖入题目 PDF / 附件…',
+        paper: '粘贴题目，或拖入题目 PDF / 附件…（打 # 可换任务）',
         review: '拖入论文 PDF / .tex，或直接评审当前项目的 document.tex…',
+        sprint: '粘贴竞赛题目（或选择已打开的题目项目），我会排定 72 小时冲刺计划…',
       },
       projectsGroup: '项目',
       projectTooltip: '工作目录——Agent 在这里读写文件',
@@ -734,6 +738,56 @@ export const zh = {
       templateTooltip: '比赛模板——决定写论文时使用哪套 LaTeX 文件',
       workspaceDefault: '默认工作区',
       workspaceDefaultHint: '文件写入全局工作区',
+    },
+    hashPalette: {
+      title: '选择任务（输入 # 唤起）',
+      hint: '↑↓ 选择 · Enter 确认 · Esc 关闭',
+      items: {
+        paper: '全流程论文写作',
+        paperDescription: '从审题、建模到 LaTeX 成稿的一站式写作',
+        sprint: '参赛冲刺',
+        sprintDescription: '按 72 小时节奏排程并交付可提交论文',
+        figure: '图表工坊',
+        figureDescription: '投稿级图表、科研绘图模板与流程图',
+        review: '评阅诊断',
+        reviewDescription: '按竞赛标准打分并给出逐条修改建议',
+        data: '数据勘探',
+        dataDescription: '查找、核验并下载公开数据集',
+        chat: '自由对话',
+        chatDescription: '不预设任务，按你的输入开始',
+        abstract: '摘要写作',
+        abstractDescription: '撰写并润色竞赛摘要（abstract-writer）',
+        problem: '题目解析',
+        problemDescription: '拆出目标、约束、决策变量与数据需求（problem-parser）',
+        method: '方法选型',
+        methodDescription: '对比候选建模方法，给出选型依据（method-selector）',
+        literature: '文献检索',
+        literatureDescription: '检索真实文献并核验可得性（literature-search）',
+        litReview: '文献综述',
+        litReviewDescription: '围绕题目梳理已有研究（literature-review）',
+        citation: '引用管理',
+        citationDescription: '整理文中引用与参考文献（citation-management）',
+        bibVerify: '参考文献核真',
+        bibVerifyDescription: '逐条核验参考文献真实性（verifying-bibliography）',
+        dataAudit: '数据审计清洗',
+        dataAuditDescription: '缺失、异常与口径检查（data-auditor-cleaner）',
+        robust: '灵敏度与稳健性',
+        robustDescription: '参数扰动与稳定性检验（robustness-checker）',
+        proof: '推导审计',
+        proofDescription: '逐条审查推导与公式（proof-audit）',
+        pagefit: '页数核验',
+        pagefitDescription: '核验页数并压缩到比赛上限（paper-page-fit）',
+        table: '表格审计',
+        tableDescription: '表格宽度、裁切与分页检查（table-layout-audit）',
+        diagram: '求解流程图',
+        diagramDescription: '问题求解流程与模型结构图（paper-diagram）',
+        figureTpl: '建模图表模板',
+        figureTplDescription: '按论文场景选择图表模板（mathmodel-figure-templates）',
+        submission: '提交包检查',
+        submissionDescription: '按竞赛要求逐项核对提交材料（submission-package-audit）',
+        defense: '答辩准备',
+        defenseDescription: '答辩提纲与幻灯片（defense-ppt）',
+      },
     },
     composerFileReference: {
       remove: '移除文件',
@@ -1104,7 +1158,7 @@ export const zh = {
     },
     galleryPanel: {
       clickHint: '选择模板后会自动填入提示词',
-      description: '从投稿级图表模板开始，让 Agent 使用项目数据复刻。',
+      description: '从投稿级图表模板开始，让 Agent 使用项目数据当前实现。',
       fillPrompt: '使用“{{title}}”模板',
       title: '科研绘图模板',
     },
@@ -1505,7 +1559,7 @@ export const zh = {
         currentProvider: '当前供应商',
         drawioLinuxCommand: '用发行版包管理器或 draw.io Desktop 官方 AppImage / deb 安装',
         drawioMissing: '- 未安装 draw.io 桌面版（paper-diagram 技能把建模流程图导出成 PNG/PDF 需要它的命令行；安装命令：{{command}}）',
-        gitMissing: '- 未安装 Git（MModels 的本地版本存档与恢复需要）',
+        gitMissing: '- 未安装 Git（MModels 的版本存档与恢复需要）',
         intro: '我的 MModels 运行环境检测有问题，请帮我修复：',
         latexMissing: '- 未安装 LaTeX（论文编译需要）',
         optionalIntro: '以下是可选项，缺了不影响基本使用，但建议一并装上：',
@@ -1593,7 +1647,7 @@ export const zh = {
       checking: '正在检查更新…',
       downloading: '正在下载更新…',
       downloadingPercent: '正在下载更新… {{percent}}%',
-      joinBetaDescription: '提前收到下一版，用你现在的应用和数据测试升级。测试版可能不稳定。关闭后不会安装旧版本；下一个正式版发布后会回到稳定更新。',
+      joinBetaDescription: '提前收到下一版，用你现在的应用和数据测试升级。测试版可能不稳定。关闭后不会安装历史版本；下一个正式版发布后会回到稳定更新。',
       joinBetaTitle: '参加测试版',
       manualDownload: '手动下载',
       openReleasesPage: '打开版本发布页面',
@@ -1868,7 +1922,7 @@ export const zh = {
           title: '一道题建一个项目',
         },
         providers: {
-          description: '推荐 <b>DeepSeek</b>——完整数模任务通常只需几元。用<b>中转站</b>的话选「Anthropic Third-party API」（中转站需支持 <b>Anthropic 格式</b>接口），把中转站给你的接口地址和 API Key 原样填进去就行。之后随时可以回来添加或切换。',
+          description: '推荐 <b>DeepSeek</b>——模型能力强、国内直连稳定。用<b>中转站</b>的话选「Anthropic Third-party API」（中转站需支持 <b>Anthropic 格式</b>接口），把中转站给你的接口地址和 API Key 原样填进去就行。之后随时可以回来添加或切换。',
           title: '在这里连接供应商',
         },
         settings: {
@@ -2284,7 +2338,7 @@ export const zh = {
       anthropicOfficial: 'Anthropic 官方 API',
       anthropicThirdparty: '中转站选这个——填中转站提供的接口地址和密钥',
       bailian: '阿里云百炼编程套餐：通义千问、GLM、Kimi、MiniMax',
-      deepseek: 'DeepSeek 官方 API，完整数模任务通常只需几元',
+      deepseek: 'DeepSeek 官方 API，国内直连稳定、适合完整数模任务',
       glmCn: '智谱 GLM 编程套餐，中国区',
       glmGlobal: '智谱 GLM 编程套餐，国际区',
       kimi: 'Kimi 编程套餐 API：K3、K2.7 Code',
@@ -2502,7 +2556,7 @@ export const zh = {
     galleryPage: {
       all: '全部',
       closePreview: '关闭预览',
-      description: '选择模板，让 Agent 根据项目数据复刻并导出投稿级图表',
+      description: '选择模板，让 Agent 根据项目数据当前实现并导出投稿级图表',
       diagramTheme: '配色主题',
       diagramThemeColor: '彩色演示版',
       diagramThemeMono: '灰白论文版',

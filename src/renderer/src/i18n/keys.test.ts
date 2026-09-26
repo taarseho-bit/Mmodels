@@ -9,7 +9,7 @@
  *
  * 这个坑本仓库已经真踩过：任务进度面板第一版把命名空间猜成
  * `chat.composerTaskListCard.*`（真实是 `composer.composerTaskListCard.*`），
- * 单测、typecheck、构建全绿，直到**实机截图里看到那一行路径字符串**才发现。
+ * 单测、typecheck、构建全绿，直到**界面样例里看到那一行路径字符串**才发现。
  *
  * ## v1 → v2 修的是什么
  *
@@ -68,11 +68,11 @@ const EXCLUDE_DIRS = [path.join(SRC_ROOT, 'i18n')];
  * 按键名的白名单 —— **必须保持为空**。
  *
  * 历史：v1 时代这里放过 2 个真缺陷（`shell.sidebar.collapseSidebar`、
- * `extensions.paperTemplatesSection.builtinSource`），都已按原版 asar 实证修掉：
- *   - 前者原版是按折叠状态取 `shell.titleBarControls.expandSidebar / collapseSidebar` 一对键；
- *   - 后者**这个键根本不该存在** —— 原版那行是
+ * `extensions.paperTemplatesSection.builtinSource`），都已按项目资源包 实证修掉：
+ *   - 前者项目契约规定的是按折叠状态取 `shell.titleBarControls.expandSidebar / collapseSidebar` 一对键；
+ *   - 后者**这个键根本不该存在** —— 项目契约那行是
  *     `{来源} · {source === "custom" ? customSource : "write-paper"}`，
- *     照我最初的提法「补一个 builtinSource」会凭空造出原版没有的键。
+ *     照我最初的提法「补一个 builtinSource」会凭空造出当前没有的键。
  * 用例「豁免零名单」会断言本集合为空：**放行只能靠上面两条通用规则**。
  */
 const KNOWN_BAD = new Set<string>();

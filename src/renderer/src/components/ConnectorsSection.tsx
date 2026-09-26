@@ -1,13 +1,13 @@
 /**
- * 连接器（MCP 服务器管理）—— 对应原版 ExtensionsPage 的 connectorsSection。
+ * 连接器（MCP 服务器管理）—— 对应项目契约 ExtensionsPage 的 connectorsSection。
  *
- * 原版语义（从 chunk 还原）：
+ * 项目契约语义（从 chunk 还原）：
  *   - 条目形状：{ name, transport: 'stdio'|'http', command, args, env, url, headers }
  *   - 预设表（key/displayName/group/description/capabilities/server/credentials）：
  *     arxiv(uvx arxiv-mcp-server)、zotero(uvx zotero-mcp + env 凭据)、
  *     fetch(uvx mcp-server-fetch)、context7(http) … 按 group 分组展示
  *   - 内置（builtin: 前缀）只读；自定义可增删；凭据写进 server.env
- *   - 持久化：原版走 /api/mcp；本地版存 settings.mcpServers（本地优化，形态一致）
+ *   - 持久化：项目契约走 /api/mcp；当前版本存 settings.mcpServers（本地优化，形态一致）
  *
  * 注入点：agent/session.ts 把 mcpServers 映射为 SDK 的 mcpServers 选项。
  */
@@ -27,7 +27,7 @@ interface Preset {
   credentials: Array<{ key: string; label: string; placeholder: string }>;
 }
 
-/** 预设连接器表（对齐原版 mt=[...]；命令用 uvx —— 随包 bin/ 里带 uv 运行时） */
+/** 预设连接器表（对齐项目契约 mt=[...]；命令用 uvx —— 随包 bin/ 里带 uv 运行时） */
 const PRESETS: Preset[] = [
   {
     key: 'arxiv',
@@ -148,7 +148,7 @@ export function ConnectorsSection(): JSX.Element {
     [servers, save],
   );
 
-  // 按 group 分组展示（原版语义）
+  // 按 group 分组展示（项目契约语义）
   const groups = new Map<string, McpServerConfig[]>();
   for (const s of servers) {
     const g = PRESETS.find((p) => p.key === s.name)?.group ?? tx('extensions.connectorsSection.groupCustom');

@@ -1,9 +1,9 @@
 /**
  * 局域网协作服务 —— 房主侧与加入方侧都在这里。
  *
- * 原版的「局域网协作」不是云端功能：房主在自己机器上起一个服务，队友在**同一网段**
+ * 项目契约的「局域网协作」不是云端功能：房主在自己机器上起一个服务，队友在**同一网段**
  * 里用「房主地址 + 6 位加入码」接入，成员、审批、Agent 任务共享全在局域网内流转。
- * 这里复刻同一套语义：
+ * 这里当前实现同一套语义：
  *
  *   房主：`http.createServer` 绑 `0.0.0.0` + 随机端口，暴露 REST（加入/心跳/离开/任务）
  *         与 WebSocket 推送（`/collab/ws`）；另外挂一个 UDP socket 监听固定发现端口，
@@ -40,10 +40,10 @@ import type {
   CollabTaskStatus,
 } from '../../shared/types';
 
-/** 协作协议版本 —— 两端必须一致；不一致时新端按原版提示「房主版本过旧」 */
+/** 协作协议版本 —— 两端必须一致；不一致时新端按项目契约提示「房主版本过旧」 */
 export const COLLAB_PROTOCOL = 1;
 
-/** 加入码有效期（原版文案：10 分钟有效） */
+/** 加入码有效期（项目契约文案：10 分钟有效） */
 export const COLLAB_CODE_TTL_MS = 10 * 60 * 1000;
 
 /** UDP 发现端口 —— 固定端口才能被同网段的队友广播找到 */
@@ -806,7 +806,7 @@ export class CollabService extends EventEmitter {
     const hello = await this.reqJson(`${base}/collab/hello`, 'GET');
     if (hello === null) return { ok: false, error: 'joinFailed' };
     if (hello.ok !== true) {
-      // 地址上确实有个 HTTP 服务，但它不认识 /collab/hello → 老版本房主（或根本不是 MModels）
+      // 地址上确实有个 HTTP 服务，但它不认识 /collab/hello → 其他版本房主（或根本不是 MModels）
       return {
         ok: false,
         error: hello.error === 'not-found' ? 'joinIncompatibleRoom' : 'joinRoomClosed',
@@ -1466,7 +1466,7 @@ export class CollabService extends EventEmitter {
       const text = await res.text();
       const parsed = safeParse(Buffer.from(text));
       if (parsed) return parsed;
-      // 有 HTTP 响应但不是本协议的 JSON —— 老版本房主或不是 MModels 的地址
+      // 有 HTTP 响应但不是本协议的 JSON —— 其他版本房主或不是 MModels 的地址
       return { ok: false, error: 'not-found' };
     } catch {
       return null;

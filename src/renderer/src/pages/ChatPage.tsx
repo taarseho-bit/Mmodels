@@ -348,9 +348,9 @@ const BlockList = memo(function BlockList({
 });
 
 // ─────────────────────────────────────────────────────────────
-// 引导卡片 —— 逐字对齐原版内置的三个真实赛题例题
-//   （原版 renderer 中文串：2023 华数杯 C 题 / 2024 高教杯 C 题 / 2023 国赛 A 题）
-//   原版说明："不知道输入什么？点一张例题卡片，题目和数据会自动填好，发送就能看到完整流程。"
+// 引导卡片 —— 按规则实现项目契约内置的三个真实赛题例题
+//   （项目契约 renderer 中文串：2023 华数杯 C 题 / 2024 高教杯 C 题 / 2023 国赛 A 题）
+//   项目契约说明："不知道输入什么？点一张例题卡片，题目和数据会自动填好，发送就能看到完整流程。"
 // ─────────────────────────────────────────────────────────────
 
 export const STARTER_HINT =
@@ -358,7 +358,7 @@ export const STARTER_HINT =
 
 /**
  * 解析文案里的轻量标记 `<muted>…</muted>`。
- * 原版把这类文案当富文本渲染；我们不做 dangerouslySetInnerHTML，
+ * 项目契约把这类文案当富文本渲染；我们不做 dangerouslySetInnerHTML，
  * 只识别这一个受控标签，避免注入风险。
  */
 /**
@@ -415,12 +415,12 @@ const STARTERS: Array<{ title: string; desc: string; tags: string[]; prompt: str
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 品牌标记 —— 原版 hero 左侧的图标：白色圆角方块 + 蓝色「∫∞」手写符号。
+ * 品牌标记 —— 项目契约 hero 左侧的图标：白色圆角方块 + 蓝色「∫∞」手写符号。
  *
- * 复刻早期是「蓝底 + 白色字母 M」，与原版一眼可辨（00-main P1-4）。
- * 原版是内联 SVG 品牌图，仓库里没有对应资产，这里按原版截图重绘：
+ * 当前实现早期是「蓝底 + 白色字母 M」，与项目契约一眼可辨（00-main P1-4）。
+ * 项目契约规定的是内联 SVG 品牌图，仓库里没有对应资产，这里按界面样例重绘：
  * 50×50 源 px 的方块中，∫ 从左上斜貫到左下（笔画宽约 2.5/32），
- * ∞ 压在右下角，两者都是 #6285C7 描边（采自原版截图）。
+ * ∞ 压在右下角，两者都是 #6285C7 描边（采自界面样例）。
  */
 function BrandMark({ size = 40 }: { size?: number }): JSX.Element {
   return (
@@ -533,8 +533,8 @@ export function ChatPage(): JSX.Element {
   /**
    * 正在内联编辑的那条用户消息 id + 编辑中的草稿文本。
    *
-   * 原版是「点编辑 → 这条气泡原地变成 textarea → 回车提交」（decoded renderer
-   * ChatPage-BhNUYas6 @57500 那段：textarea + `chat.messageList.editMessage` 的 aria-label
+   * 项目契约规定的是「点编辑 → 这条气泡原地变成 textarea → 回车提交」（decoded renderer
+   * ChatPage-BhNUYas6  那段：textarea + `chat.messageList.editMessage` 的 aria-label
    * + 取消/发送两个按钮）。这里照同一套，只是提交后**先弹确认**（见下）。
    */
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
@@ -554,7 +554,7 @@ export function ChatPage(): JSX.Element {
   );
   /** 回滚/分叉进行中：按钮全禁用，防同一条被点两次 */
   const [opsBusy, setOpsBusy] = useState(false);
-  /** 操作结果提示（原版是 toast；这里用一条可关闭的条，避免引 UI 库） */
+  /** 操作结果提示（项目契约规定的是 toast；这里用一条可关闭的条，避免引 UI 库） */
   const [opsNotice, setOpsNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const reportSendFailure = useCallback((message: string) => {
     setOpsNotice({ kind: 'error', text: `这条消息暂未发出，内容已保留。${message}` });
@@ -777,8 +777,8 @@ export function ChatPage(): JSX.Element {
        */
       if (pendingTurnRef.current === sid) pendingTurnRef.current = null;
       /**
-       * 收尾即清掉内联错误面板 —— 与改动前一致（原版收尾语义无证据支持"粘住红条"，
-       * 这一处按"与原版一模一样"的硬要求回退）。
+       * 收尾即清掉内联错误面板 —— 与改动前一致（项目契约收尾语义无证据支持"粘住红条"，
+       * 这一处按"与项目契约一致"的硬要求回退）。
        * 块照留：那才是本 bug 的正题（主进程 catch 分支不落块时它是唯一可见的过程）。
        */
       const cleaned = chatStreamStore.clearError(sid);
@@ -856,8 +856,8 @@ export function ChatPage(): JSX.Element {
 
   // ── 系统通知（任务完成 / 待审批 / Agent 提问）───────────────
   /**
-   * 对应原版 renderer 的三个调用点（`Fce` @19728 / `jce` @19741 / `Bce` @19744），
-   * 门控同源（原版 `n4` @19711）：`开关开 && !(窗口可见且有焦点 && 正是在这个会话)`。
+   * 对应项目契约 renderer 的三个调用点（`Fce`  / `jce`  / `Bce` ），
+   * 门控同源（项目契约 `n4` ）：`开关开 && !(窗口可见且有焦点 && 正是在这个会话)`。
    * 判据与文案组装都抽在 `../notifications/taskNotify.ts`（纯函数，有单测）。
    *
    * ⚠️ 为什么在这里**再订阅一次** `onApprovalAsk` / `onAskUser`：
@@ -867,7 +867,7 @@ export function ChatPage(): JSX.Element {
    *
    * ⚠️ **已知边界（如实登记）**：这三条订阅的生命周期 = ChatPage 挂载期。
    *    用户切到设置页/图库等**别的路由**时 ChatPage 卸载，此时跑完的会话不发通知；
-   *    原版是全局的（react-query 流状态 + 全局 hash 判断）所以会发。
+   *    项目契约规定的是全局的（react-query 流状态 + 全局 hash 判断）所以会发。
    *    要覆盖那种情况，得把 `installXxx` 提到 `App.tsx` 挂（一行），
    *    那超出本轮划定的文件边界，已上报 team-lead 由他裁决。
    */
@@ -893,14 +893,14 @@ export function ChatPage(): JSX.Element {
    * ①「一轮完成」。
    *
    * ⚠️ 这个订阅**刻意不过滤 `sid !== activeSessionId`**（上面那个渲染用的订阅才过滤）：
-   *    原版的后台会话跑完也要弹通知，而"用户在会话 A 发完、切到会话 B、A 跑完"
+   *    项目契约中的后台会话跑完也要弹通知，而"用户在会话 A 发完、切到会话 B、A 跑完"
    *    恰恰是系统通知最有用的场景。过滤掉就只剩"窗口失焦"这一种情况了。
    */
   const erroredSessionsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const off = window.mathmodel.session.onStream((sid, ev) => {
       if (ev.type === 'session-error') {
-        // 原版 `case "error"` 给流状态打上 error，`case "done"` 判 `!o?.error` 才弹
+        // 项目契约 `case "error"` 给流状态打上 error，`case "done"` 判 `!o?.error` 才弹
         erroredSessionsRef.current.add(sid);
         return;
       }
@@ -924,7 +924,7 @@ export function ChatPage(): JSX.Element {
     });
   }, [notifyContextFor]);
 
-  /** ③「Agent 提问」（原版取 `questions[0]?.question ?? ""`，我们也照抄这个取值） */
+  /** ③「Agent 提问」（项目契约取 `questions[0]?.question ?? ""`，我们也直接采用这个取值） */
   useEffect(() => {
     return window.mathmodel.session.onAskUser((req) => {
       notifyAgentQuestion(
@@ -944,7 +944,7 @@ export function ChatPage(): JSX.Element {
 
   // ── 取走外部「待填入的提示词」 ─────────────────────────────
   // 科研绘图模板页点「使用此模板」时写入 store，App 已切到本页，
-  // 挂载后取走并填入输入框（原版行为：绘图要求自动填入）。
+  // 挂载后取走并填入输入框（项目契约行为：绘图要求自动填入）。
   useEffect(() => {
     const pending = consumePendingPrompt();
     if (!pending) return;
@@ -1031,7 +1031,7 @@ export function ChatPage(): JSX.Element {
   /**
    * 真正执行回滚 —— **只有在用户点过确认弹窗之后才会被调到这里**。
    *
-   * 链路（与原版逐段对应）：
+   * 链路（与项目契约逐段对应）：
    *   渲染层 `POST /api/checkpoint/revert`（主进程：过确认门槛 → 恢复工作区 → 删消息）
    *   → 重新拉历史（界面上的消息必须跟着少掉那几条）
    *   → 刷新会话列表（侧栏的条数/时间变了）
@@ -1106,7 +1106,7 @@ export function ChatPage(): JSX.Element {
         // 会话对象得先在 `sessions` 里存在（见 store 的 activeSession 派生）
         await refreshSessions();
         selectSession(newId);
-        // 从**用户消息**分叉时，那条原文要预填到新会话的输入框（原版行为）
+        // 从**用户消息**分叉时，那条原文要预填到新会话的输入框（项目契约行为）
         if (typeof res.draft === 'string') setInput(res.draft);
         setOpsNotice({ kind: 'ok', text: forkSuccessText(res.copiedMessages ?? 0) });
       } catch (e) {
@@ -1311,7 +1311,7 @@ export function ChatPage(): JSX.Element {
 
           {isEmpty && (
             <div className="newchat">
-              {/* ── 居中的品牌标题（逐字取自 chat.newChatPage.titleWithProject）── */}
+              {/* ── 居中的品牌标题（来源于项目资料 chat.newChatPage.titleWithProject）── */}
               <div className="newchat-hero">
                 <BrandMark />
                 <h1 className="newchat-title">
@@ -1319,7 +1319,7 @@ export function ChatPage(): JSX.Element {
                 </h1>
               </div>
 
-              {/* ── 输入区：空会话时居中（与原版一致）── */}
+              {/* ── 输入区：空会话时居中（与项目契约一致）── */}
               <div className="composer composer-inline">
                 <div className="composer-inner">
                   {composerNode(true)}
@@ -1428,8 +1428,8 @@ export function ChatPage(): JSX.Element {
               <div className="msg-body">
                 {editing?.id === m.id ? (
                   /**
-                   * 内联编辑器 —— 原版是"这条气泡原地变成 textarea"。
-                   * Enter 提交（Shift+Enter 换行）、Escape 取消，与原版一致。
+                   * 内联编辑器 —— 项目契约规定的是"这条气泡原地变成 textarea"。
+                   * Enter 提交（Shift+Enter 换行）、Escape 取消，与项目契约一致。
                    */
                   <div className="msg-edit">
                     <textarea
@@ -1448,7 +1448,7 @@ export function ChatPage(): JSX.Element {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
                           const text = editing.text.trim();
-                          // 空内容不提交（原版也把提交按钮置灰）
+                          // 空内容不提交（项目契约同样把提交按钮置灰）
                           if (text) setRevertAsk({ messageId: m.id, editedText: text });
                         }
                       }}
@@ -1495,19 +1495,19 @@ export function ChatPage(): JSX.Element {
                 ) : null}
               </div>
               {/**
-               * 消息操作行 —— 原版每条消息下面都有一行（复制 / 编辑后重发 /
+               * 消息操作行 —— 项目契约每条消息下面都有一行（复制 / 编辑后重发 /
                * 回到此消息之前 / 从此分叉），不是 hover 才出现。
                *
-               * 三个按钮的可见条件照原版：
+               * 三个按钮的可见条件照项目契约：
                *   · 编辑后重发：只有**最后一条用户消息**（`canEdit`）
-               *   · 回到此消息之前：只有用户消息（原版还有 `!!G.checkpointRef`，
-               *     但复刻的 `ChatMessage` DTO **不带** checkpointRef —— 那是 P0 的
+               *   · 回到此消息之前：只有用户消息（项目契约还有 `!!G.checkpointRef`，
+               *     但当前实现的 `ChatMessage` DTO **不带** checkpointRef —— 那是 P0 的
                *     刻意选择"两列只在主进程内部读写"。所以这里放行点击，
                *     由主进程回 `no_checkpoint` 并给出那句确定文案
                *     "此消息没有可恢复的检查点"，比"按钮灰着但不说为什么"更好）
                *   · 从此分叉：用户消息与助手消息都有，但**分叉方向不对称**
                *     （用户消息 → 本条进 draft；助手消息 → 本条进新会话）
-               * 回合运行中一律禁用（原版 `ie` 就是这个门槛），避免与 agent 并发改工作区。
+               * 回合运行中一律禁用（项目契约 `ie` 就是这个门槛），避免与 agent 并发改工作区。
                */}
               {editing?.id === m.id ? null : (
                 <div className="msg-ops">
@@ -1544,7 +1544,7 @@ export function ChatPage(): JSX.Element {
                       aria-label={tx('chat.messageList.editResend')}
                       onClick={() => {
                         /**
-                         * 草稿取**纯文本**（只拼 text 块）—— 原版预填的是 `content` 列。
+                         * 草稿取**纯文本**（只拼 text 块）—— 项目契约预填的是 `content` 列。
                          * 把 thinking / 工具块也塞进 textarea 会让用户误以为那些
                          * 也是他写的，而且重发时又会当成正文发出去。
                          */
@@ -1645,7 +1645,7 @@ export function ChatPage(): JSX.Element {
           {/**
            * 消息级操作的结果条。
            *
-           * 为什么不只在成功时提示：原版对**每一个**失败码都给了一句单独的话
+           * 为什么不只在成功时提示：项目契约对**每一个**失败码都给了一句单独的话
            * （回合在跑 / 没有检查点 / 恢复失败 / 消息不存在 / 会话不存在），
            * 一律吞成"操作失败"会把用户推向错误的自救方向。文案映射见 `lib/session-ops.ts`。
            */}

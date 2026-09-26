@@ -236,7 +236,7 @@ export function materializeSkillsPlugin(): string {
       // 物化副本已不是我们播种时的内容 → 用户改过，尊重用户，不覆盖
       continue;
     } else {
-      // 副本还是原样的旧版本，源已更新 → 刷新
+      // 副本还是历史版本的原样，源已更新 → 刷新
       replaceDir(skill.path, target);
       seeded[skill.dirName] = source;
     }

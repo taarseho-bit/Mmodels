@@ -1,12 +1,12 @@
 /**
  * 设置页 ⑤ 供应商
  *
- * 结构与原版 `ProviderManager`（SettingsPage chunk）对齐：
+ * 结构与项目契约 `ProviderManager`（SettingsPage chunk）对齐：
  *   ① 「已连接的供应商」卡 —— 图标 + 名称 + 状态徽标 + baseUrl + 编辑 / 断开连接
  *   ② 「添加供应商」卡 —— 说明 + 「对话供应商」小节 + 15 行预设（图标 + 名称 + 推荐徽标 + 描述 + 「+ 连接」）
  *
- * 预设目录与原版 `PRESETS` 数组逐字对齐（名称 / 描述 i18n 键 / 协议 / baseURL / 默认模型 / 推荐标记）。
- * 原版 16 项口径 = 15 行预设 + 1 张已连接卡。
+ * 预设目录与项目契约 `PRESETS` 数组按字段对齐（名称 / 描述 i18n 键 / 协议 / baseURL / 默认模型 / 推荐标记）。
+ * 项目契约 16 项口径 = 15 行预设 + 1 张已连接卡。
  */
 import { useCallback, useMemo, useState } from 'react';
 import type { AnthropicAuthMode, ApiFormat, ProviderConfig } from '@shared/types';
@@ -20,7 +20,7 @@ function newId(): string {
   return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** 品牌键 —— 决定图标底色与形状（色值取自原版品牌色表 `dU`） */
+/** 品牌键 —— 决定图标底色与形状（色值取自项目契约品牌色表 `dU`） */
 type BrandKey =
   | 'anthropic'
   | 'openai'
@@ -33,7 +33,7 @@ type BrandKey =
   | 'tencent'
   | 'xiaomi';
 
-/** 品牌样式表（色值逐字取自原版 `dU`；tencent / xiaomi 取自原版图标默认色） */
+/** 供应商色彩表：只用于识别卡片，不代表供应商背书。 */
 const BRAND: Record<BrandKey, { color: string; text: string; round?: boolean }> = {
   anthropic: { color: '#d97757', text: 'AI' },
   openai: { color: '#10a37f', text: 'O', round: true },
@@ -49,17 +49,17 @@ const BRAND: Record<BrandKey, { color: string; text: string; round?: boolean }> 
 
 interface ProviderPreset {
   key: string;
-  /** 展示名（原版硬编码的产品名；OpenAI 兼容走原版 i18n 键） */
+  /** 展示名（项目契约硬编码的产品名；OpenAI 兼容走当前 i18n 键） */
   name: string;
   /** 名称是否走 i18n 键 */
   nameKey?: string;
-  /** 描述 —— 原版 `settings.providerPresets.*` 键 */
+  /** 描述 —— 项目契约 `settings.providerPresets.*` 键 */
   descKey: string;
   brand: BrandKey;
   apiFormat: ApiFormat;
   baseUrl: string;
   anthropicAuthMode: AnthropicAuthMode;
-  /** 原版 `default_models`（无则空数组） */
+  /** 项目契约 `default_models`（无则空数组） */
   defaultModels: string[];
   recommended?: boolean;
   /** 需要用户自己填接口地址（中转站 / 本机 CLI） */
@@ -68,7 +68,7 @@ interface ProviderPreset {
   consoleUrl?: string;
 }
 
-/** 原版 PRESETS（对话供应商 15 行，顺序一致） */
+/** 项目契约 PRESETS（对话供应商 15 行，顺序一致） */
 const PRESETS: ProviderPreset[] = [
   {
     key: 'deepseek',
@@ -247,7 +247,7 @@ const PRESETS: ProviderPreset[] = [
   },
 ];
 
-/** 品牌徽标（原版为品牌 SVG，这里用同色首字母占位；形状与色值对齐原版） */
+/** 品牌徽标（项目契约为品牌 SVG，这里用同色首字母占位；形状与色值对齐项目契约） */
 function BrandMark({ brand }: { brand: BrandKey }): JSX.Element {
   const b = BRAND[brand];
   return (
@@ -261,7 +261,7 @@ function BrandMark({ brand }: { brand: BrandKey }): JSX.Element {
   );
 }
 
-/** 按名称 / baseUrl 反查预设（原版 `resolvePreset` 的简化版） */
+/** 按名称 / baseUrl 反查预设（项目契约 `resolvePreset` 的简化版） */
 function brandOf(p: Pick<ProviderConfig, 'name' | 'baseUrl'>): BrandKey {
   const key = `${p.name} ${p.baseUrl}`.toLowerCase();
   if (/anthropic|claude/.test(key)) return 'anthropic';
@@ -299,7 +299,7 @@ export function ProvidersSection(): JSX.Element {
   const [fastModeModels, setFastModeModels] = useState<string[]>([]);
   const [discoveringModels, setDiscoveringModels] = useState(false);
 
-  /** 原版：已连接列表按名称排序 */
+  /** 项目契约：已连接列表按名称排序 */
   const connected = useMemo(
     () => [...providers].sort((a, b) => a.name.localeCompare(b.name)),
     [providers],

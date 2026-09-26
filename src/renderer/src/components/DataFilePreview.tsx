@@ -1,18 +1,18 @@
 /**
- * 表格数据预览 —— 复刻原版 `DataFilePreview`（原版用 papaparse + worker）。
+ * 表格数据预览 —— 当前实现项目契约 `DataFilePreview`（项目契约用 papaparse + worker）。
  *
  * 本项目不引 papaparse，自实现一个**引号感知**的 CSV/TSV 解析器：
  *   - 支持 `"` 包裹的字段（内含分隔符与换行）
  *   - 支持 `""` 转义引号
  *   - 自动识别分隔符（逗号 / 制表符 / 分号）
  *
- * 安全上限与原版一致：行数、列数、单元格长度都设上限，
+ * 安全上限与项目契约一致：行数、列数、单元格长度都设上限，
  * 并如实告知用户「原文件不会被修改」（`truncated` 文案）。
  */
 import { useMemo } from 'react';
 import { t, tx } from '../i18n';
 
-/** 安全上限（对齐原版「按安全上限显示部分数据」的说法） */
+/** 安全上限（对齐项目契约「按安全上限显示部分数据」的说法） */
 const MAX_ROWS = 500;
 const MAX_COLS = 80;
 const MAX_CELL = 400;

@@ -1,7 +1,7 @@
 /**
  * 本地 HTTP 服务的业务路由。
  *
- * ⚠️ 这是复刻原版最值得抄的设计：
+ * ⚠️ 这是本地服务层最有参考价值的设计：
  *   核心 API 走 HTTP 而不是全塞 IPC。好处在 server/index.ts 里说过了，
  *   这里补充一条最重要的：**agent 自己也能调这些 API**。
  *   比如 agent 需要查「我这个项目里有哪些文件」时，直接 curl 本地服务即可，
@@ -32,9 +32,9 @@ import {
 /**
  * 导入的会话挂到哪个项目。
  *
- * ⚠️ 这是**必须偏离原版**的一处：原版导入时写死 `projectId: null`（@1542024），
- *    而复刻的 `sessions.project_id` 是 `TEXT NOT NULL REFERENCES projects(id)`
- *    —— 照抄会直接违反约束。用户导入后就应该在**眼前的项目**里看到它，所以：
+ * ⚠️ 这是**必须偏离项目契约**的一处：项目契约导入时写死 `projectId: null`（），
+ *    而当前实现的 `sessions.project_id` 是 `TEXT NOT NULL REFERENCES projects(id)`
+ *    —— 直接采用会直接违反约束。用户导入后就应该在**眼前的项目**里看到它，所以：
  *
  *   1. 当前打开的项目（`settings.recentProjectId`）
  *   2. 否则：`app_meta['project-bootstrap:v1']` 里记的默认项目
@@ -94,7 +94,7 @@ interface OpsMessageRow {
  *
  * ⚠️ 不复用 `ipc/session.ts` 的 `getMessages()`：那个函数映射出来的 `ChatMessage`
  *    里**没有** `checkpointRef` / `agentMsgUuid`（渲染层不需要它们，见 P0 的说明）。
- *    排序与 `getMessages` 逐字一致（`ORDER BY created_at`）—— 顺序必须一样，
+ *    排序与 `getMessages` 字段一致（`ORDER BY created_at`）—— 顺序必须一样，
  *    否则"这条之后的消息"这个切片会与渲染层看到的顺序不一致。
  */
 function loadOpsMessages(sessionId: string): OpsMessage[] {
@@ -186,14 +186,14 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 导出会话 JSON —— 对应原版 `GET /api/sessions/:id/export`（decoded main @1536594）。
+   * 导出会话 JSON —— 对应项目契约 `GET /api/sessions/:id/export`（协议实现）。
    *
-   * ⚠️ 这里**只产出 JSON，不弹保存框**。原版也是这么分的两截：
+   * ⚠️ 这里**只产出 JSON，不弹保存框**。项目契约也是这么分的两截：
    *    渲染层先 HTTP 拿到 JSON，再用 IPC `file:saveText` 落盘。
    *    这样"用户点了取消"这个结果能回到渲染层去决定提示什么 ——
    *    如果在主进程弹框，取消与失败就分不开了。
    *
-   * 404 的形状照抄原版：`{error:'not_found'}`（下划线命名，不是驼峰）。
+   * 404 的形状直接采用项目契约：`{error:'not_found'}`（下划线命名，不是驼峰）。
    */
   app.get('/api/sessions/:id/export', (c) => {
     const id = c.req.param('id');
@@ -205,21 +205,21 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 导入会话 —— 对应原版 `POST /api/sessions/import`（decoded main @1541799）。
+   * 导入会话 —— 对应项目契约 `POST /api/sessions/import`（协议实现）。
    *
-   * ── 冲突处理：**永不冲突，永远 201**（照抄原版，已机器确证） ──
+   * ── 冲突处理：**永不冲突，永远 201**（直接采用项目契约，已机器确证） ──
    *   ① `cs` schema 里**根本没有 `session.id`**（只有 title/providerId/model/createdAt/updatedAt），
    *      导入端一律 `uuid()` 新生成 ⇒ **不可能覆盖任何已有会话**，也没有 409/覆盖分支。
-   *   ② `title` 不做去重 —— 同一个文件导两次就是两条同名会话。这是原版行为，不是 bug。
+   *   ② `title` 不做去重 —— 同一个文件导两次就是两条同名会话。这是项目契约行为，不是 bug。
    *
-   * ── 有意比原版**更安全**的两处 ──
-   *   ① 原版是"先 insert session、再循环 insert messages"，**没有包事务**，
+   * ── 有意比项目契约**更安全**的两处 ──
+   *   ① 项目契约是"先 insert session、再循环 insert messages"，**没有包事务**，
    *      中途失败会留下半条会话（有会话、没消息）。这里包 `db.transaction`。
-   *   ② 原版是 `z.array(Zn)`，任何一段 part 不认识就**整个文件 400**。
+   *   ② 项目契约是 `z.array(Zn)`，任何一段 part 不认识就**整个文件 400**。
    *      这里信封严格、parts 逐段宽松，坏的那段降级成文本并计入 `degradedParts`。
    *
-   * ── 偏离原版的地方（见 resolveImportProjectId 的注释） ──
-   *   `projectId` 必须挂到一个真实项目；原版写死 `null`，复刻的列是 NOT NULL。
+   * ── 偏离项目契约的地方（见 resolveImportProjectId 的注释） ──
+   *   `projectId` 必须挂到一个真实项目；项目契约写死 `null`，当前实现的列是 NOT NULL。
    */
   app.post('/api/sessions/import', async (c) => {
     const raw = (await c.req.json().catch(() => null)) as unknown;
@@ -278,7 +278,7 @@ export function mountRoutes(app: Hono): void {
 
     return c.json(
       {
-        // ⚠️ 与原版的返回体不同：原版直接回 session DTO。这里包一层是为了带上
+        // ⚠️ 与项目契约的返回体不同：项目契约直接回 session DTO。这里包一层是为了带上
         //    `degradedParts` —— 用户需要知道"这次导入有几段被降级了"。
         session: getSession(plan.session.id),
         importedMessages: plan.messages.length,
@@ -289,22 +289,22 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 「回到此消息之前」—— 对应原版 `POST /api/checkpoint/revert`（decoded main @1589796）。
+   * 「回到此消息之前」—— 对应项目契约 `POST /api/checkpoint/revert`（协议实现）。
    *
    * ⚠️ 三个必须说清楚的点：
    *
    *  1. **这是本文件里唯一会改用户文件的路由。** 恢复走 `git/restoreVersion()`：
    *     先写 `restore-backup` 备份 → 再 checkout 目标版本 → 再删「当时被跟踪、
-   *     但目标版本里没有」的文件。原版的 checkpoint 在它自己的 `project_versions`
-   *     表里、不碰项目目录；复刻复用 git（副作用已在 P0-5 报备）。
+   *     但目标版本里没有」的文件。项目契约的 checkpoint 在它自己的 `project_versions`
+   *     表里、不碰项目目录；当前实现复用 git（副作用已在 P0-5 报备）。
    *
-   *  2. **确认门槛（`confirm: true`）是复刻的加固**，原版没有这个字段。
+   *  2. **确认门槛（`confirm: true`）是当前实现的加固**，项目契约没有这个字段。
    *     `revertToMessage()` 把它排在**第一位**：没确认的请求连一次数据库读都不做。
    *
    *  3. **顺序不能反**：先恢复文件，成功了才删消息。反过来的话恢复失败会留下
    *     "文件没回来、对话却没了"的半改状态。
    *
-   * 错误码逐字对齐原版（渲染层按这些字符串查 `chat.useChat.revert*` 的 i18n）。
+   * 错误码按字段对齐项目契约（渲染层按这些字符串查 `chat.useChat.revert*` 的 i18n）。
    */
   app.post('/api/checkpoint/revert', async (c) => {
     const raw = (await c.req.json().catch(() => null)) as unknown;
@@ -346,8 +346,8 @@ export function mountRoutes(app: Hono): void {
       ).run(probe.value.sessionId, probe.value.sessionId);
 
       /**
-       * 用量口径归零 —— 原版渲染层在回退成功后就是这么做的（`setTokenUsage(sid, undefined)`）。
-       * 不回填"剩余消息的 token 之和"：复刻 assistant 行的 input/output_tokens 存的是
+       * 用量口径归零 —— 当前渲染层在回退成功后就是这么做的（`setTokenUsage(sid, undefined)`）。
+       * 不回填"剩余消息的 token 之和"：当前实现 assistant 行的 input/output_tokens 存的是
        * 那一轮的**累计**值，相加会把同一份输入数两遍。
        */
       db.prepare(
@@ -355,9 +355,9 @@ export function mountRoutes(app: Hono): void {
       ).run(probe.value.sessionId);
 
       /**
-       * agent 会话 id：保留剩下的对话里还有 assistant 消息时才留着 —— 原版的写法是
-       * `hasAssistantBefore ? {} : {agentSessionId: null}`（decoded main @1589796）。
-       * 照抄，不自己发明规则。
+       * agent 会话 id：保留剩下的对话里还有 assistant 消息时才留着 —— 项目契约的写法是
+       * `hasAssistantBefore ? {} : {agentSessionId: null}`（协议实现）。
+       * 直接采用，不自己发明规则。
        */
       const keepAgent = outcome.kept.some((m) => m.role === 'assistant');
       if (!keepAgent) {
@@ -383,10 +383,10 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 「从此分叉」—— 对应原版 `POST /api/sessions/:id/fork`（decoded main @1538120）。
+   * 「从此分叉」—— 对应项目契约 `POST /api/sessions/:id/fork`（协议实现）。
    *
-   * 响应体 `{session, copiedMessages, draft}` 的字段名逐字对齐原版
-   * （复刻多加一个 `resumable`，见 message-ops.ts 的说明）。
+   * 响应体 `{session, copiedMessages, draft}` 的字段名按字段对齐项目契约
+   * （当前实现多加一个 `resumable`，见 message-ops.ts 的说明）。
    *
    * ⚠️ **原会话必须一个字节都不变**：这里只做 INSERT，一条 UPDATE/DELETE 都没有。
    *    消息是**新 id 的新行**，`created_at` 沿用原值（新会话里对话的时间线要跟原来一样）。

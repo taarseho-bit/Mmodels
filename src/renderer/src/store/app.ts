@@ -20,7 +20,7 @@ import type {
 
 const api = () => window.mathmodel;
 
-/** 右栏可作为标签打开的面板，顺序 = 原版 `dock.rightPanel.*`（文件/终端/浏览器/更改/项目版本/科研绘图/流程图） */
+/** 右栏可作为标签打开的面板，顺序 = 项目契约 `dock.rightPanel.*`（文件/终端/浏览器/更改/项目版本/科研绘图/流程图） */
 export const SIDE_PANEL_TABS = [
   'files',
   'terminal',
@@ -33,7 +33,7 @@ export const SIDE_PANEL_TABS = [
 
 export type SidePanelTab = (typeof SIDE_PANEL_TABS)[number];
 
-/** 已打开标签的持久化键（原版右栏支持 addTab / closeTab） */
+/** 已打开标签的持久化键（项目契约右栏支持 addTab / closeTab） */
 const SIDE_PANEL_TABS_KEY = 'mm-sidepanel-tabs';
 
 function loadSidePanelTabs(): SidePanelTab[] {
@@ -42,7 +42,7 @@ function loadSidePanelTabs(): SidePanelTab[] {
     if (raw) {
       const parsed: unknown = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // 按原版顺序归一化，顺便丢掉不认识的历史值
+        // 按项目契约顺序归一化，顺便丢掉不认识的历史值
         const tabs = SIDE_PANEL_TABS.filter((k) => parsed.includes(k));
         if (tabs.length > 0) return [...tabs];
       }
@@ -61,7 +61,7 @@ function saveSidePanelTabs(tabs: SidePanelTab[]): void {
   }
 }
 
-/** 「编辑器视图」是一个模式而不是一次性动作，跨重启保持（原版语义） */
+/** 「编辑器视图」是一个模式而不是一次性动作，跨重启保持（既有语义） */
 const EDITOR_VIEW_KEY = 'mm-editor-view';
 
 function loadEditorView(): boolean {
@@ -91,9 +91,9 @@ function saveEditorView(on: boolean): void {
 export type AppearanceMode = 'system' | 'light' | 'dark';
 export type AppearanceDensity = 'compact' | 'comfortable' | 'spacious';
 
-/** 单张主题卡（深色 / 浅色各一张）的可编辑令牌 —— 与原版控件清单一致 */
+/** 单张主题卡（深色 / 浅色各一张）的可编辑令牌 —— 与项目契约控件清单一致 */
 export interface ThemeVariant {
-  /** 主题方案名（原版下拉里的 mathmodel） */
+  /** 主题方案名（项目契约下拉里的 mathmodel） */
   preset: string;
   /** 强调色 */
   accent: string;
@@ -110,7 +110,7 @@ export interface ThemeVariant {
   contrast: number;
   /**
    * 用户是否动过这张卡。
-   * 没动过时**不把令牌写进 CSS 变量** —— 卡里显示的是原版预设色值，
+   * 没动过时**不把令牌写进 CSS 变量** —— 卡里显示的是项目契约预设色值，
    * 直接套上去会把整套设计系统换皮（首屏就该是应用自己的配色）。
    */
   touched: boolean;
@@ -431,7 +431,7 @@ export type FollowUpAction = 'send' | 'queue' | 'steer';
 
 /**
  * Ctrl/Cmd+Enter 的语义 —— **对设置里选的行为取反**。
- * 原版设置页的描述就是「Ctrl/Cmd+Enter 可为单条消息临时使用相反行为」：
+ * 项目契约设置页的描述就是「Ctrl/Cmd+Enter 可为单条消息临时使用相反行为」：
  * 设置是「排队」时它打断，设置是「调整当前任务」时它排队。
  */
 export function invertBehavior(behavior: FollowUpBehavior): FollowUpBehavior {
@@ -580,14 +580,14 @@ interface AppState {
 
   // ── 界面 ──
   theme: 'light' | 'dark';
-  /** 右栏当前显示的面板（对齐原版 `dock.rightPanel.*`），null = 面板收起 */
+  /** 右栏当前显示的面板（遵循项目契约 `dock.rightPanel.*`），null = 面板收起 */
   sidePanel: SidePanelTab | null;
-  /** 右栏当前打开的标签。原版支持添加/关闭标签页，这里持久化到 localStorage */
+  /** 右栏当前打开的标签。项目契约支持添加/关闭标签页，这里持久化到 localStorage */
   sidePanelTabs: SidePanelTab[];
   /**
-   * 「编辑器视图」模式（原版 `chat.editorView.enter` / `exit`）。
+   * 「编辑器视图」模式（项目契约 `chat.editorView.enter` / `exit`）。
    * 打开后主区左侧出现编辑器活动栏，并常驻编辑器面板；退出恢复普通对话视图。
-   * 持久化到 localStorage —— 原版这是模式而非一次性动作。
+   * 持久化到 localStorage —— 项目契约这是模式而非一次性动作。
    */
   editorView: boolean;
   taskView: 'chat' | 'workflow';
@@ -595,7 +595,7 @@ interface AppState {
   /**
    * 待填入输入框的提示词。
    * 科研绘图模板页点「使用此模板」时写入，App 切回对话页，
-   * ChatPage 挂载后取走（原版行为：绘图要求自动填入输入框）。
+   * ChatPage 挂载后取走（既有行为：绘图要求自动填入输入框）。
    */
   pendingPrompt: string | null;
   /**
@@ -605,7 +605,7 @@ interface AppState {
   tourRequest: number;
   /**
    * 本次要播的是哪一段教程（设置页「新手教程」7 张卡各一个 id）。
-   * null = 完整导览（原版「快速开始」那条 11 步）。
+   * null = 完整导览（项目契约「快速开始」那条 11 步）。
    */
   requestedTour: TourId | null;
   /**
@@ -714,7 +714,7 @@ export const useApp = create<AppState>((set, get) => ({
   skills: [],
 
   theme: 'light',
-  // 默认隐藏右栏（原版如此，靠顶栏「打开面板」切换）
+  // 默认隐藏右栏（项目契约如此，靠顶栏「打开面板」切换）
   sidePanel: null,
   sidePanelTabs: loadSidePanelTabs(),
   editorView: loadEditorView(),
@@ -790,7 +790,7 @@ export const useApp = create<AppState>((set, get) => ({
     }
     const tabs = get().sidePanelTabs;
     if (!tabs.includes(p)) {
-      // 重新打开的标签按原版顺序归位，而不是一律追加到末尾
+      // 重新打开的标签按项目契约顺序归位，而不是一律追加到末尾
       const next = SIDE_PANEL_TABS.filter((k) => tabs.includes(k) || k === p);
       saveSidePanelTabs(next);
       set({ sidePanelTabs: next, sidePanel: p });
@@ -893,7 +893,7 @@ export const useApp = create<AppState>((set, get) => ({
   clearFollowUps: () => set({ followUpQueue: [] }),
 
   openArtifact: (relPath) => {
-    // 原版右栏没有独立的「产物」标签：产物预览/编辑是「文件」标签里的内联视图。
+    // 项目契约右栏没有独立的「产物」标签：产物预览/编辑是「文件」标签里的内联视图。
     // 所以这里只记路径，并确保停在/切回「文件」标签 —— 否则标签条会出现「无高亮」的坏状态。
     set({ activeArtifact: relPath });
     get().setSidePanel('files');
@@ -1014,7 +1014,7 @@ export const useApp = create<AppState>((set, get) => ({
     return meta;
   },
 
-  beginNewChat: () =>
+  beginNewChat: () => {
     set((s) => ({
       activeSessionId: null,
       newChatRequest: s.newChatRequest + 1,
@@ -1024,6 +1024,10 @@ export const useApp = create<AppState>((set, get) => ({
         null,
       ),
     })),
+    // 第一次（每一次新）项目对话，只要用户没打 # 选任务，默认回到全流程建模
+    // （2026-09-26 用户钦定）。fire-and-forget：不阻塞 UI，失败静默。
+    void get().patchSettings({ composerMode: 'paper' });
+  },
 
   selectSession: (id) =>
     set((s) => ({

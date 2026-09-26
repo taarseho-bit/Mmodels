@@ -16,15 +16,18 @@
 /* ── 三栏外壳 ── */
 
 .app-shell {
+  position: relative;
   height: 100%;
   display: grid;
   /**
    * ⚠️ 只有两行：顶栏 + 主体。
-   *   1) 原版没有底部状态栏，删掉 StatusBar 后第三行会留下 `--statusbar-h`(26px)
+   *   1) 当前没有底部状态栏，删掉 StatusBar 后第三行会留下 `--statusbar-h`(26px)
    *      的死空白 —— 必须从行模板里去掉；
    *   2) 设置页是全屏接管（不渲染 TopBar），此时必须切到 `no-topbar` 的单行模板，
    *      否则 `.app-body` 会落进 `--topbar-h`(44px) 那一行 → 内容溢出被裁、
    *      连设置导航都点不到（真实鼠标点击命中不到按钮）。
+   *   3) chat 路由（2026-09-26 第三版）：顶栏改 34px 薄条（chat-topbar），
+   *      编辑器视图仍是单行 no-topbar。
    */
   grid-template-rows: var(--topbar-h) 1fr;
   background: var(--bg-canvas);
@@ -32,6 +35,136 @@
 
 .app-shell.no-topbar {
   grid-template-rows: 1fr;
+}
+
+/* chat 路由：无顶栏行，主内容顶到窗口顶；
+   窗口顶部 8px 拖拽安全带（按钮均在下方，不误伤） */
+.app-shell.chat-floating::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  -webkit-app-region: drag;
+  z-index: 45;
+}
+
+/* ── ChatQuickBar：chat 路由快捷工具条（右上悬浮 / 编辑器视图头部右侧）── */
+.chat-quickbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 6px;
+}
+.chat-floating-bar .chat-quickbar {
+  padding: 0;
+}
+.chat-quickbar .workflow-switch {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--bg-panel);
+  margin-right: auto;
+}
+.chat-floating-bar .chat-quickbar .workflow-switch {
+  margin-right: 0;
+}
+.chat-quickbar .workflow-switch button {
+  border: 0;
+  background: transparent;
+  padding: 4px 9px;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  min-height: 24px;
+}
+.chat-quickbar .workflow-switch button + button {
+  border-left: 1px solid var(--border);
+}
+.chat-quickbar .workflow-switch button[aria-pressed='true'] {
+  background: var(--accent-weak, rgba(0, 0, 0, 0.05));
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+.chat-quickbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.chat-quickbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--fg-primary);
+}
+.chat-quickbar-anchor {
+  position: relative;
+  display: inline-flex;
+}
+/* 编辑器视图头部里的 quickbar：与 editorview-head-btn 对齐 */
+.editorview-quickbar { display: inline-flex; align-items: center; }
+.editorview-quickbar .chat-quickbar { padding: 0 0 0 6px; }
+/* Popover（portal）里承载的菜单：流式铺满，抵消各自的 absolute 布局 */
+.cz-pop .studio-task-menu,
+.cz-pop .envmenu {
+  position: static;
+  width: auto;
+  top: auto;
+  right: auto;
+  max-height: none;
+  border: 0;
+  box-shadow: none;
+}
+
+/* 侧栏「工作项目」标题行右侧按钮组（搜索 + 新建） */
+.rail-sec-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+/* 工作项目栏内的搜索小框（2026-09-26）：紧凑单行，贴标题行下方 */
+.rail-search.rail-search-inline {
+  padding: 0 10px 6px;
+}
+.rail-search.rail-search-inline .input {
+  height: 24px;
+  font-size: 11.5px;
+  border-radius: 6px;
+  padding: 0 8px;
+}
+
+/* ── 编辑器视图·对话列（360px 窄列）适配（2026-09-26）──
+   composer 上下文栏/底部栏按钮多，窄列下必须允许换行并收紧截断，否则溢出挤爆 */
+.editorview-chatcol .composer-shell,
+.editorview-chatcol .composer-box,
+.editorview-chatcol .cz-bar,
+.editorview-chatcol .cz-foot {
+  min-width: 0;
+}
+.editorview-chatcol .cz-bar,
+.editorview-chatcol .cz-foot {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.editorview-chatcol .cz-btn {
+  max-width: 130px;
+}
+.editorview-chatcol .cz-context-slot {
+  min-width: 0;
+}
+.editorview-chatcol .ap-hl,
+.editorview-chatcol .ap-editor {
+  font-size: 11px;
 }
 
 .app-body {
@@ -63,6 +196,32 @@
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(24px) saturate(165%);
   -webkit-app-region: drag;
+}
+
+/* chat 路由悬浮工具条（2026-09-26 终态）：主内容顶到窗口顶，
+   工具条悬浮在右上角空白区；胶囊底 + blur 保证压到内容上也可读。
+   自身 drag（拖窗口用），内部按钮全部 no-drag。 */
+.chat-floating-bar {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-app-region: drag;
+}
+.chat-floating-bar button,
+.chat-floating-bar input {
+  -webkit-app-region: no-drag;
+}
+.chat-floating-bar .chat-quickbar .workflow-switch {
+  margin-right: 0;
 }
 
 .topbar-context {
@@ -147,7 +306,7 @@
   white-space: nowrap;
 }
 
-/* ── 顶栏：品牌 + 右侧动作（对齐原版结构）── */
+/* ── 顶栏：品牌 + 右侧动作（对齐既有结构）── */
 
 .topbar-brand {
   display: flex;
@@ -241,7 +400,7 @@
   color: var(--fg-primary);
 }
 
-/* ── 左侧栏：竖排导航（对齐原版结构）── */
+/* ── 左侧栏：竖排导航（对齐既有结构）── */
 
 .rail-nav {
   display: flex;
@@ -392,7 +551,7 @@
 
 /**
  * 项目行的行内动作区（重命名 / 删除）。
- * 原版实机取证：项目行 hover 时右侧并排出现这两个图标，**没有**右键菜单 / ⋯ 菜单。
+ * 参考运行验证：项目行 hover 时右侧并排出现这两个图标，**没有**右键菜单 / ⋯ 菜单。
  * 图标本体沿用 `.rail-item-x` 的「默认隐藏、行 hover 才显示」规则。
  */
 .rail-row-actions {
@@ -1004,7 +1163,7 @@
 }
 
 /* 拖入文件时的落点反馈。
-   原版占位文字承诺了「拖入题目 PDF / 附件」，所以必须有可见的落点提示 ——
+   项目契约占位文字承诺了「拖入题目 PDF / 附件」，所以必须有可见的落点提示 ——
    否则用户拖完不知道到底有没有被接收（这正是"拖了没反应"的观感来源）。 */
 .composer-box.dragging {
   border-color: var(--accent);
@@ -1259,7 +1418,7 @@
   user-select: text;
 }
 
-/* ── 右侧面板拖拽调宽手柄（对应原版面板拖拽调整尺寸）── */
+/* ── 右侧面板拖拽调宽手柄（对应项目契约面板拖拽调整尺寸）── */
 .sidepanel-resizer {
   position: absolute;
   left: -3px;
@@ -1280,7 +1439,7 @@
   position: relative;
 }
 
-/* ── 侧栏顶部图标行（原版：收起侧栏 + 搜索）── */
+/* ── 侧栏顶部图标行（项目契约：收起侧栏 + 搜索）── */
 
 .rail-top {
   display: flex;
@@ -1308,7 +1467,7 @@
   color: var(--fg-primary);
 }
 
-/* ── 侧栏底部账号区（原版：头像 + 名称 + 徽章行，右侧齿轮）── */
+/* ── 侧栏底部账号区（项目契约：头像 + 名称 + 徽章行，右侧齿轮）── */
 
 .rail-account {
   display: flex;
@@ -1399,7 +1558,7 @@
   flex: 0 0 auto;
 }
 
-/* ── 右栏多标签：可关闭标签 + 末尾「+」添加标签页（原版 addTab / closeTab）── */
+/* ── 右栏多标签：可关闭标签 + 末尾「+」添加标签页（项目契约 addTab / closeTab）── */
 
 .sidepanel-tab {
   /* 标签改为按内容宽度排列（标签可多可少，且每个带关闭按钮） */
@@ -1559,7 +1718,7 @@
 
 /* ─────────────────────────────────────────────────────────
    环境浮层（EnvironmentMenu）
-   锚点形态对齐原版实机截图 original/06-environment.png：
+   锚点形态按当前环境菜单规范：
    标题 + ⚙ / 项目版本 / 编辑器（编辑器视图 · 在 <编辑器> 中打开）/ 记事本文本域
    ───────────────────────────────────────────────────────── */
 
@@ -1646,7 +1805,7 @@
 .envmenu-group-title:hover {
   color: var(--fg-secondary);
 }
-/* 分组标题的 chevron 与原版一致：常显向下（分组默认展开） */
+/* 分组标题的 chevron 与项目契约一致：常显向下（分组默认展开） */
 
 .envmenu-row {
   display: flex;
@@ -1765,8 +1924,8 @@
 }
 
 /* ─────────────────────────────────────────────────────────
-   编辑器视图（原版 `chat.editorView.*`）
-   形态取自 original/08-editorview.png：活动栏 | 文件树 | 编辑区 | 对话 四列，
+   编辑器视图（项目契约 `chat.editorView.*`）
+   形态采用活动栏 | 文件树 | 编辑区 | 对话 四列，
    顶部一条动作条（返回项目 / 返回模板库 / 收起对话 / 退出编辑器）。
    ───────────────────────────────────────────────────────── */
 
@@ -2005,7 +2164,7 @@
 }
 
 /* ─────────────────────────────────────────────────────────
-   文件面板（原版 `dock.filesPanel.*` + `dock.fileViewer.*`）
+   文件面板（项目契约 `dock.filesPanel.*` + `dock.fileViewer.*`）
    结构：面包屑 / 筛选+刷新+隐藏文件树 / 文件树 / 查看器（源码 ↔ 预览、编译 PDF）
    ───────────────────────────────────────────────────────── */
 

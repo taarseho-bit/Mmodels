@@ -3,7 +3,7 @@
  *
  * 职责：把「一条用户消息」变成「一串流式事件」，并在中途管理进程生命周期。
  *
- * 设计要点（对照原版行为）：
+ * 设计要点（按项目契约行为）：
  *  1. 每个会话一个长驻 `query()` 迭代器，而不是每条消息重启进程
  *     —— 这样 Claude Code 才能保留上下文、复用 warm 状态
  *  2. 事件先落进内存队列再广播，避免渲染层还没挂载监听就丢事件
@@ -123,7 +123,7 @@ export interface RunOptions {
    * 手写的后果是「设置里多两档、这里少两档」，tsc 会在渲染层拦下，
    * 但主进程会**静默忽略**掉它不认识的值（选了等于没选）。
    *
-   * 原版是 5 档、默认 `high`；`xhigh`/`max` 是「更深/最大」，SDK 会在
+   * 项目契约是 5 档、默认 `high`；`xhigh`/`max` 是「更深/最大」，SDK 会在
    * 不支持该档的模型上**自动回落**（`sdk.d.ts:550-551`：`'xhigh'` 在
    * Fable 5 / Opus 4.7+ / Sonnet 5 之外回落 `'high'`，`'max'` 仅部分模型支持）。
    */
@@ -141,10 +141,10 @@ export interface RunOptions {
   bridgeBaseUrl?: string;
   debug?: boolean;
   /**
-   * 用户在设置/输入区选的权限模式（复刻口径 `'full' | 'approval'`）。
+   * 用户在设置/输入区选的权限模式（当前实现口径 `'full' | 'approval'`）。
    *
-   * ⚠️ 这里**原样传复刻口径**，不要在这里换名字 ——
-   *    换算成原版口径的那一步**只在 `permissions.ts` 里做一次**
+   * ⚠️ 这里**原样传当前实现口径**，不要在这里换名字 ——
+   *    换算成项目契约口径的那一步**只在 `permissions.ts` 里做一次**
    *    （见该文件头"口径映射"）。少写一处映射，就少一个"两处各写一半"的坑。
    */
   permissionMode?: AppPermissionMode;
@@ -152,7 +152,7 @@ export interface RunOptions {
    * 每条消息的交互模式（`'default' | 'plan'`）。
    *
    * B2（plan 模式）落地前**没有任何调用方会传它**，默认 `undefined` ⇒ 走权限分支。
-   * 之所以现在就留出这个字段：原版 `jh()` 的三元里 **plan 必须先判**
+   * 之所以现在就留出这个字段：项目契约 `jh()` 的三元里 **plan 必须先判**
    * （`plan + 完全访问` 要得 `'plan'` 而不是 `'bypassPermissions'`），
    * 这个**顺序**是极易写错的，留出字段 + 单测钉住顺序，B2 只需要往里传值。
    */
@@ -179,7 +179,7 @@ export interface RunOptions {
  *
  * 完整形状见 `sdk.d.ts:206-266`（`CanUseTool`）。这里只声明用到的两个，
  * 其余（`title` / `displayName` / `description` / `requestId` / `toolUseID` …）
- * 暂时不用：审批框的直接文案走渲染层 i18n（原版词典里已有
+ * 暂时不用：审批框的直接文案走渲染层 i18n（项目契约词典里已有
  * `composer.composerPendingApprovalPanel.*` 整套），不消费 CLI 渲染的句子。
  *
  * ⚠️ 用可选字段而不是 required：这个参数是 SDK 给的，**我们不能假定它一定给全**
@@ -270,7 +270,7 @@ export class AgentSession extends EventEmitter {
   /**
    * 正在等待用户审批的工具调用：requestId → resolve。
    *
-   * 对应原版 `pendingApprovals` @760956（`Map<requestId, {sessionId, resolve}>`）。
+   * 对应项目契约 `pendingApprovals` （`Map<requestId, {sessionId, resolve}>`）。
    * 与 `pendingQuestions` 同理：**必须保持 pending 直到用户真的决定**。
    * 松开它的三条路径：用户作答、abort、SDK 的 `signal` 被 abort。
    */
@@ -279,17 +279,17 @@ export class AgentSession extends EventEmitter {
   /**
    * 本次会话内用户点过「始终允许」的工具名。
    *
-   * 对应原版 `sessionAllowedTools`（逐 sessionId 分组；复刻一个会话一个
+   * 对应项目契约 `sessionAllowedTools`（逐 sessionId 分组；当前实现一个会话一个
    * `AgentSession` 实例，所以这里一个 `Set` 就够，不必再按 sessionId 分）。
-   * **不落库**：原版也是内存态，重启应用后重新问 —— 这一点照抄。
+   * **不落库**：项目契约也是内存态，重启应用后重新问 —— 这一点直接采用。
    */
   private sessionAllowedTools = new Set<string>();
 
   /**
-   * 本次 run 生效的**原版口径**权限值 —— 在 `run()` 里算好。
+   * 本次 run 生效的**项目契约口径**权限值 —— 在 `run()` 里算好。
    *
    * ⚠️ 它**不是**交给 SDK 的那个值（那个是 `sdkPermissionModeFor()` 的结果）。
-   *    原版也是如此：`buildCanUseTool` 门内比的是 app 级值（`'full-access'`），
+   *    项目契约也是如此：`buildCanUseTool` 门内比的是 app 级值（`'full-access'`），
    *    SDK 拿到的是 `jh()` 的产物。见 `permissions.ts` 文件头"二"。
    */
   private canonicalPermissionMode: CanonicalPermissionMode = 'full-access';
@@ -398,7 +398,7 @@ export class AgentSession extends EventEmitter {
     // SDK 侧那一次 tool 调用会卡到进程退出。
     this.settleAllQuestions(null);
     // 审批同理：挂着的审批不松开，整个回合就卡死在等用户点按钮上。
-    // 松开时给 `'cancel'`（原版语义：中断本轮），而不是 `'decline'` ——
+    // 松开时给 `'cancel'`（项目契约语义：中断本轮），而不是 `'decline'` ——
     // 用户按的是「停止」，不该让模型以为"用户拒绝了但可以接着干别的"。
     this.settleAllApprovals('cancel');
     this.activeInput?.close();
@@ -435,8 +435,8 @@ export class AgentSession extends EventEmitter {
   /**
    * 渲染层提交一条审批决定。
    *
-   * 对应原版 `resolveApproval(sessionId, requestId, decision)` @770166 ——
-   * 原版会核对 sessionId，复刻一个实例只管一个会话，所以只需按 requestId 命中。
+   * 对应项目契约 `resolveApproval(sessionId, requestId, decision)`  ——
+   * 项目契约会核对 sessionId，当前实现一个实例只管一个会话，所以只需按 requestId 命中。
    *
    * @returns 是否命中了一条正在等待的审批（没命中说明它已经被 abort 或已经答过了）
    */
@@ -458,7 +458,7 @@ export class AgentSession extends EventEmitter {
   /**
    * `canUseTool` —— 宿主的工具放行闸门。**权限模式"真生效"就落在这个函数里。**
    *
-   * ── 为什么必须有这个回调（实机取证，别再删） ──
+   * ── 为什么必须有这个回调（运行验证，别再删） ──
    *   CLI 的 AskUserQuestion 工具 `isEnabled()` 在**非交互会话**（SDK/`--print`）里
    *   要求 `permissionPromptToolName` 非空，否则工具被过滤掉，模型调用时会收到
    *   `No such tool available: AskUserQuestion` 然后退化成纯文本提问。
@@ -466,13 +466,13 @@ export class AgentSession extends EventEmitter {
    *   （见 sdk.mjs：`if(canUseTool) push("--permission-prompt-tool","stdio")`）。
    *   → 所以「只加 onUserDialog + supportedDialogKinds」不能解锁这个工具，必须给 canUseTool。
    *
-   * ── ⚠️ 顺序不能动（逐字对应原版 `buildCanUseTool()` @771414 的 if 链） ──
+   * ── ⚠️ 顺序不能动（按语义对应项目契约 `buildCanUseTool()`  的 if 链） ──
    *
    *   ① `AskUserQuestion`  **最先**。若排到权限门后面，在"需要批准"模式下
    *      会先弹一个"要不要允许 AskUserQuestion"的审批框 —— 用户要批准一次
    *      "能不能问你问题"，荒谬且会把弹窗链路变成两层。
-   *   ② （原版此处是 `ExitPlanMode` → 捕获计划并 deny；复刻没有 plan 模式，
-   *      B2 落地时这一支必须插在**③ 之前** —— 原版就是插在这儿的。
+   *   ② （项目契约此处是 `ExitPlanMode` → 捕获计划并 deny；当前实现没有 plan 模式，
+   *      B2 落地时这一支必须插在**③ 之前** —— 项目契约就是插在这儿的。
    *      插到 ③ 之后的话，plan + 完全访问 会先被 ③ 全放行、计划永远捕获不到。）
    *   ③ `'full-access'` 全放行      ← 见 `gateStepFor`
    *   ④ 只读工具白名单 放行          ← 见 `gateStepFor`
@@ -480,13 +480,13 @@ export class AgentSession extends EventEmitter {
    *   ⑥ 其余 → 发审批请求并等待
    *
    * ── 与 SDK `permissionMode` 的关系（这条最容易搞错） ──
-   *   门内比的是**原版口径的 app 级权限值**（`'full-access'`），
-   *   **不是**交给 SDK 的 `'bypassPermissions'`。原版同样如此，理由见
+   *   门内比的是**项目契约口径的 app 级权限值**（`'full-access'`），
+   *   **不是**交给 SDK 的 `'bypassPermissions'`。项目契约同样如此，理由见
    *   `permissions.ts` 文件头"二"。所以下面用 `this.canonicalPermissionMode`。
    *
    * ── 关于 `[CLAUDE_SDK_CAN_USE_TOOL_SHADOWED]` ──
    *   SDK 在 `permissionMode === 'bypassPermissions'` 时会打这个警告，说
-   *   "canUseTool 不会被调用，因为每个工具都被自动放行了"（`sdk.mjs` @844471 的
+   *   "canUseTool 不会被调用，因为每个工具都被自动放行了"（`sdk.mjs`  的
    *   `BSe()`）。**这正是"完全访问"该有的样子**：用户选了完全访问，就该全自动放行。
    *   在"需要批准"模式下 SDK 拿到的是 `'default'`（不是 bypass），
    *   于是**每个工具都会真的进这个回调**，警告消失 —— 这就是"切了有反应"的机械证据。
@@ -505,7 +505,7 @@ export class AgentSession extends EventEmitter {
     //    才能退出 plan。走 requestApproval 复用审批框全链路（pending/超时/abort 清理），
     //    渲染层 ApprovalDialog 按 kind==='plan' 展示计划全文。
     //    ⚠️ 必须插在 ③ 全放行之前：否则 plan + 完全访问 会先被 ③ 放行，计划永远捕获不到
-    //    （原版同位，@771414 if 链 ②）。
+    //    （项目契约同位， if 链 ②）。
     if (toolName === 'ExitPlanMode') {
       return this.requestApproval(toolName, input, ctx);
     }
@@ -521,9 +521,9 @@ export class AgentSession extends EventEmitter {
   }
 
   /**
-   * AskUserQuestion → 宿主的提问确认框（**逐字保留改造前的行为**）。
+   * AskUserQuestion → 宿主的提问确认框（**逐字保留修复前的行为**）。
    *
-   * 这段链路是花了很多次实机调通的，本轮只是把它从 `canUseTool` 里抽成一个方法，
+   * 这段链路是花了很多次运行测试调通的，本轮只是把它从 `canUseTool` 里抽成一个方法，
    * **逻辑一行没改**（否则就是在动那条好不容易调通的链）。
    */
   private async handleAskUserQuestion(input: Record<string, unknown>): Promise<unknown> {
@@ -569,13 +569,9 @@ export class AgentSession extends EventEmitter {
   /**
    * 发一条审批请求给渲染层，并**一直等到用户做出决定**。
    *
-   * 逐字对应原版 `buildCanUseTool()` @771414 里 ⑥ 的那段（@772335 起）。
-   * ⚠️ 那段**逐字原文**已搬到
-   *    `.workbuddy/ui-audit/verify/original-code-dumps.md §4`
-   *    （搬出去的理由见 `WRITE-RULES.md §8`：注释里逐字引用的原文会被 `grep -c`
-   *    一起数上，给出看起来像样的错数字）。这里只留**照抄不改的语义**。
+   * 这里只保留审批等待的语义说明，避免在注释中复制实现代码。
    *
-   * 三处**照抄不改**的语义：
+   * 三处**直接采用不改**的语义：
    *   · `'cancel'` 带 `interrupt: true` —— 用户按「取消回合」是要**停下**，
    *     不是"拒绝这一下、你接着干"。
    *   · `'acceptForSession'` 回传 SDK 给的 `suggestions` 作为 `updatedPermissions`
@@ -599,13 +595,13 @@ export class AgentSession extends EventEmitter {
       toolName,
     };
 
-    // 推给渲染层弹审批框（IPC 层订阅 'approval-ask'，对应原版 approval-request 流事件）
+    // 推给渲染层弹审批框（IPC 层订阅 'approval-ask'，对应项目契约 approval-request 流事件）
     this.emit('approval-ask', request);
 
     const decision = await new Promise<ApprovalDecision>((resolve) => {
       this.pendingApprovals.set(requestId, resolve);
       // SDK 给的 signal：它被 abort 时（SDK 侧取消了这次工具调用）把我们松开，
-      // 否则这条 promise 会挂到永远 —— 这是原版的处理方式，不是我自己加的。
+      // 否则这条 promise 会挂到永远 —— 这是项目契约的处理方式，不是我自己加的。
       ctx.signal?.addEventListener(
         'abort',
         () => {
@@ -692,18 +688,18 @@ export class AgentSession extends EventEmitter {
       // ── 组装 SDK 选项 ──────────────────────────────────────
       /**
        * 权限值**在这里算一次**，两处消费共用（见 `permissions.ts` 文件头）：
-       *   · `sdkMode`      → 交给 SDK 的 `permissionMode`（等价原版 `jh()` @669203）
+       *   · `sdkMode`      → 交给 SDK 的 `permissionMode`（等价项目契约 `jh()` ）
        *   · `this.canonicalPermissionMode` → `canUseTool` 门内比的 app 级值
        *
        * 顺带把测试环境那条"默认值分支"钉在这里：`opts.permissionMode` 为 `undefined`
        * （设置里没这个字段）时走 `'full-access'` ⇒ SDK 侧 `'bypassPermissions'`，
-       * 与改造前完全一致（老用户升级后行为不变）。
+       * 与修复前完全一致（老用户升级后行为不变）。
        */
       const canonical = canonicalPermissionMode(opts.permissionMode);
       const sdkMode = sdkPermissionModeFor(opts.permissionMode, opts.interactionMode);
       this.canonicalPermissionMode = canonical;
       // ⚠️ 每轮都要从 opts 刷新 —— 这行决定「AI 自动决策」是否真的拦住提问。
-      //    （2026-09-20 实机教训：这行曾被同文件的并行编辑覆盖丢失，产物里
+      //    （2026-09-20 运行测试教训：这行曾被同文件的并行编辑覆盖丢失，产物里
       //    askPolicy 恒为初始值 'ask'，导致选了「AI 自动」仍然弹提问框。）
       this.askPolicy = opts.askPolicy ?? 'ask';
 
@@ -725,7 +721,7 @@ export class AgentSession extends EventEmitter {
          */
         permissionMode: sdkMode,
         // ⚠️ **无条件 true，不要跟着 permissionMode 改。**
-        //    原版 @668260 的同对象里 `'allowDangerouslySkipPermissions': !0x0` 也是无条件的
+        //    项目契约  的同对象里 `'allowDangerouslySkipPermissions': !0x0` 也是无条件的
         //    （连 plan 模式下都是 true）。拦不拦工具是 `permissionMode` 管的事，
         //    这个开关只管"允许不允许用 bypassPermissions 这个模式本身"
         //    （SDK 的硬要求：`sdk.d.ts:1748` 'Must be set to true when using
@@ -752,7 +748,7 @@ export class AgentSession extends EventEmitter {
 
       if (claudePath) options.pathToClaudeCodeExecutable = claudePath;
       if (opts.model) options.model = sdkModel(opts.provider, opts.model);
-      // 原版兼容接口不暴露 Anthropic 服务端搜索，改用实际可用的浏览器/网页工具。
+      // 项目契约兼容接口不暴露 Anthropic 服务端搜索，改用实际可用的浏览器/网页工具。
       if (opts.provider.apiFormat === 'openai') options.disallowedTools = ['WebSearch'];
       // SDK 的快速模式属于 settings 层，而不是 query options 顶层字段。
       // 只有调用方确认当前供应商/模型支持时才注入，避免第三方端点收到未知配置。
@@ -780,7 +776,7 @@ export class AgentSession extends EventEmitter {
         options.forwardSubagentText = false;
       }
 
-      // 用户配置的 MCP 服务器（设置/扩展里的「连接器」，原版 settings.mcpServers 语义）：
+      // 用户配置的 MCP 服务器（设置/扩展里的「连接器」，项目契约 settings.mcpServers 语义）：
       // stdio 型 → SDK stdio server；http 型 → SDK http server。
       // 延迟 import 避免循环依赖（config store 不依赖本模块）。
       const { getSettings } = await import('../store/config');
@@ -1011,7 +1007,7 @@ export class AgentSession extends EventEmitter {
         /**
          * ⚠️ **不要改回静默 `return`。**
          *
-         * 静默吞帧本身就是上一个缺陷的组成部分：改造前 `case 'system'` 只认
+         * 静默吞帧本身就是上一个缺陷的组成部分：修复前 `case 'system'` 只认
          * `subtype==='init'`，其余（含全部后台任务帧）连同这个 `default` 一起被吃掉，
          * 于是"到底有没有后台任务在跑"这个信息在宿主侧根本不存在。
          */

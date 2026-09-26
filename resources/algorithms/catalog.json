@@ -1,7 +1,7 @@
 {
   "version": 1,
   "source": "bundled",
-  "note": "本地内置算法目录 —— 原版从远端拉目录并缓存；本地版直接内置，离线可用。条目字段与原版目录对齐：packageName/versionRange/license/suitableFor/inputs/outputs/notFor/docs。",
+  "note": "本地内置算法目录 —— 项目契约从远端拉目录并缓存；当前版本直接内置，离线可用。条目字段与项目契约目录对齐：packageName/versionRange/license/suitableFor/inputs/outputs/notFor/docs。",
   "algorithms": [
     {
       "id": "linear-programming",

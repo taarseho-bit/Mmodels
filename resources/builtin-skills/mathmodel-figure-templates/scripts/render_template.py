@@ -461,7 +461,7 @@ Outputs:
             return
         readme.write_text(text.rstrip() + "\n\n" + block + "\n", encoding="utf-8")
     else:
-        readme.write_text("# 绘图复刻\n\n" + block + "\n", encoding="utf-8")
+        readme.write_text("# 绘图当前实现\n\n" + block + "\n", encoding="utf-8")
 
 
 def main() -> None:
@@ -473,8 +473,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--project",
-        default="绘图复刻",
-        help="Output project directory, default: 绘图复刻",
+        default="绘图当前实现",
+        help="Output project directory, default: 绘图当前实现",
     )
     parser.add_argument(
         "--overwrite",

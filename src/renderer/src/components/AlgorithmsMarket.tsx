@@ -1,13 +1,13 @@
 /**
- * 算法市场 —— 对应原版 ExtensionsPage 的 algorithmsSection。
+ * 算法市场 —— 对应项目契约 ExtensionsPage 的 algorithmsSection。
  *
- * 原版语义（从 chunk 还原）：
- *   - 目录来源 remote/cache/bundled，本地版固定 bundled（离线可用，既定优化）
+ * 项目契约语义（从 chunk 还原）：
+ *   - 目录来源 remote/cache/bundled，当前版本固定 bundled（离线可用，既定优化）
  *   - 7 类任务筛选：全部/决策/预测/分类/聚类/优化/多目标/统计
  *   - Python 运行时状态机：ready / installable / no-python / broken
  *     → no-python 时显示「一键安装 Python」（走 npmmirror 镜像静默安装）
  *   - 每个条目：依赖包/许可证/适用场景/输入/输出/不适用 + 安装按钮（pip 直装）
- *   - 「在项目中使用」→ 把算法用法提示填进输入框（原版 useInProject 语义）
+ *   - 「在项目中使用」→ 把算法用法提示填进输入框（项目契约 useInProject 语义）
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../store/app';

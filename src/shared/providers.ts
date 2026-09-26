@@ -21,7 +21,7 @@ export const PRESET_PROVIDERS: PresetProvider[] = [
     note: '官方直连，需要海外网络环境',
   },
 
-  // ── MiniMax（原版默认走这家）────────────────────────────────
+  // ── MiniMax（项目契约默认走这家）────────────────────────────────
   {
     key: 'minimax',
     name: 'MiniMax',

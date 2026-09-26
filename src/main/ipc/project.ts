@@ -2,7 +2,7 @@
  * 项目管理。
  *
  * 一个「项目」= 一个工作目录。所有产物（论文、图、数据、`.mathmodel/` 元数据）
- * 都落在项目根目录下。这跟原版约定一致 —— 用户拷走整个目录就能带走全部成果。
+ * 都落在项目根目录下。这跟项目契约约定一致 —— 用户拷走整个目录就能带走全部成果。
  *
  * ⚠️ 项目目录里的 `.mathmodel/` 约定：
  *   .mathmodel/paper/config.json   论文模板来源（custom | builtin）
@@ -93,30 +93,30 @@ export function touchProject(id: string): void {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 首次启动播种默认项目（对齐原版 @mathmodel/desktop 的行为）
+// 首次启动播种默认项目（对齐项目契约 @mathmodel/desktop 的行为）
 // ─────────────────────────────────────────────────────────────
 
 /**
- * `settings` 表里记录「默认项目」的键。名字照抄原版，别改 ——
- * 原版靠**这个键是否存在**来区分「全新安装」与「老版本升级」，
+ * `settings` 表里记录「默认项目」的键。名字直接采用项目契约，别改 ——
+ * 当前逻辑靠**这个键是否存在**来区分「全新安装」与「历史版本升级」，
  * 而不是靠 `projects` 表是否为空。两者语义不同：
  * 用户主动把项目全删光时，不该被当成首次安装又塞一个新项目进来。
  */
 const BOOTSTRAP_KEY = 'project-bootstrap:v1';
 
-/** 启动时播种的默认项目 id，供渲染层查询（对齐原版的 get-default-project-id 通道） */
+/** 启动时播种的默认项目 id，供渲染层查询（对齐项目契约的 get-default-project-id 通道） */
 let defaultProjectId: string | null = null;
 
 /**
  * 默认工作区根目录。
  *
- * ⚠️ 原版**不放在 userData 里**，而是放在用户主目录下的
- * `MathModel Projects/`。已用原版真机数据核对：
- *   C:\Users\<用户>\MathModel Projects\Workspace
+ * ⚠️ 项目契约**不放在 userData 里**，而是放在用户主目录下的
+ * `MModels Projects/`。已用实际运行数据核对：
+ *   C:\Users\<用户>\MModels Projects\Workspace
  * 放在主目录的好处是重装应用不丢工作区；代价是卸载残留。
- * 路径要跟原版一致，否则用户在两个版本间切换会看到两套目录。
+ * 路径要跟项目契约一致，否则用户在两个版本间切换会看到两套目录。
  *
- * 例外：原版开了 E2E 开关（`MATHMODEL_E2E=1`）时改落 userData。
+ * 例外：项目契约开了 E2E 开关（`MATHMODEL_E2E=1`）时改落 userData。
  * 这个分支必须保留 —— 自动化测试正是靠它把工作区关进沙箱，
  * 否则每跑一次测试就往用户主目录里写一遍。
  */
@@ -145,7 +145,7 @@ function writeMeta(key: string, value: string): void {
 /**
  * 播种默认项目，返回默认项目 id。
  *
- * 三个分支与原版一一对应：
+ * 三个分支与项目契约一一对应：
  *   1. 已有 meta        → 直接认 meta 里的 id（顺带校验该行还在，被删掉就返回 null）
  *   2. 有项目但无 meta  → 老库升级场景，只补写 meta 且 `defaultProjectId: null`，
  *                        **不擅自新建项目**（用户已经有自己的项目了）
@@ -179,9 +179,9 @@ function resolveDefaultProject(baseDir: string): string | null {
   }
 
   /**
-   * ⚠️ 默认项目名必须是 `Workspace`（原版实机取证：首屏 hero 显示「在 Workspace 中建模」、
+   * ⚠️ 默认项目名必须是 `Workspace`（界面检查取证：首屏 hero 显示「在 Workspace 中建模」、
    *    项目 chip 显示「Workspace」、侧栏项目行也是「Workspace」）。
-   *    之前用了 `MModels Workspace`，导致这三处文案与原版不一致。
+   *    之前用了 `MModels Workspace`，导致这三处文案与项目契约不一致。
    *    目录名保留 `MModels Workspace`（只在 tooltip / 文件面板路径里出现，属品牌差异）。
    */
   const root = join(baseDir, 'MModels Workspace');
@@ -267,7 +267,7 @@ export function registerProjectHandlers(ctx: IpcContext): void {
       if (deleteFiles) {
         // 二次确认：这个操作不可逆
         try {
-          // 两个目录名都清：`.mathmodel` 是 canonical（与原版一致），
+          // 两个目录名都清：`.mathmodel` 是 canonical（与项目契约一致），
           // `.mmodels` 是早期版本的遗留名（只读兼容，不会自动消失）
           rmSync(join(meta.root, '.mathmodel'), { recursive: true, force: true });
           rmSync(join(meta.root, '.mmodels'), { recursive: true, force: true });
@@ -291,7 +291,7 @@ export function registerProjectHandlers(ctx: IpcContext): void {
       if (!next) throw new Error('项目名不能为空');
       /**
        * ⚠️ 只改显示名，**不重命名磁盘目录**。
-       * 原版同样把「项目名」与「目录名」分开（默认项目名 `Workspace`，
+       * 项目契约同样把「项目名」与「目录名」分开（默认项目名 `Workspace`，
        * 目录却是 `MModels Workspace`）——改个名字不该动用户的文件路径，
        * 否则最近打开记录、协作房间、agent 的上下文缓存全部要跟着搬。
        */

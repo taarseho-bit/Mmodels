@@ -6,16 +6,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOTS = [
-  'D:\\',
-  'C:\\Users\\xh',
-];
+// 默认只检查当前项目；需要扫描其他目录时通过 MM_SCAN_ROOTS 传入分号分隔的路径。
+// 不把开发机的用户目录写进仓库，避免把个人环境带入发布包。
+const ROOTS = (process.env.MM_SCAN_ROOTS || process.cwd())
+  .split(';')
+  .map((item) => item.trim())
+  .filter(Boolean);
 
 // 要跳过的巨型目录，避免扫穿全盘
 const SKIP_DIRS = new Set([
   'Windows', 'Program Files', 'Program Files (x86)', 'ProgramData',
   '$Recycle.Bin', 'System Volume Information', 'node_modules', 'AppData',
-  '.git', '.cache', '.npm', 'npm-cache', '.workbuddy',
+  '.git', '.cache', '.npm', 'npm-cache', '.mmodels-audit',
   'resources', 'release', 'dist', 'out', '.unpack',
 ]);
 

@@ -1,23 +1,24 @@
 /**
- * 产物面板 —— 复刻原版 `ArtifactPanes`：**可编辑的产物查看器**。
+ * 产物面板 —— 当前实现项目契约 `ArtifactPanes`：**可编辑的产物查看器**。
  *
- * 原版这块不只是「看一眼」：
+ * 项目契约这块不只是「看一眼」：
  *   - 文本产物可**直接编辑并保存**（⌘S / Ctrl+S）
  *   - 保存前检测**磁盘是否被外部改过**（Agent 或编辑器），冲突时让用户选
  *   - 二进制 / 过大 / 不存在的文件有明确的状态提示，不是空白
  *   - 图片、PDF、表格委托给专用预览组件
  *
- * 文案逐字取自 `dock.fileEditor.*`。
+ * 文案来源于项目资料 `dock.fileEditor.*`。
  *
- * ⚠️ 与原版的差异：原版面板内还有「协作中 · 实时同步」横幅，
- *    那是协作模块的能力，本复刻未实现协作，故不显示该横幅（不造假状态）。
+ * ⚠️ 与项目契约的差异：项目契约面板内还有「协作中 · 实时同步」横幅，
+ *    那是协作模块的能力，当前实现未实现协作，故不显示该横幅（不造假状态）。
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { FilePreview } from '@shared/types';
 import { EmptyState } from './PageShell';
 import { Skeleton } from './Skeleton';
 import { DataFilePreview } from './DataFilePreview';
 import { PdfFilePreview } from './PdfFilePreview';
+import { CodeEditor } from './CodeEditor';
 import { Icon } from './Icon';
 import { useApp } from '../store/app';
 import { t, tx } from '../i18n';
@@ -43,7 +44,7 @@ export function ArtifactPanes({ relPath, onClose }: ArtifactPanesProps): JSX.Ele
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** 音视频加载/解码失败 —— 文件被移动或编码不受支持（对应原版两条文案） */
+  /** 音视频加载/解码失败 —— 文件被移动或编码不受支持（对应项目契约两条文案） */
   const [mediaFailed, setMediaFailed] = useState(false);
 
   /** 编辑缓冲（与磁盘内容分离，才能做冲突检测） */
@@ -55,8 +56,6 @@ export function ArtifactPanes({ relPath, onClose }: ArtifactPanesProps): JSX.Ele
   const [diskChanged, setDiskChanged] = useState(false);
   /** 冲突弹层 */
   const [conflict, setConflict] = useState(false);
-
-  const taRef = useRef<HTMLTextAreaElement | null>(null);
 
   const load = useCallback(
     async (path: string): Promise<void> => {
@@ -275,14 +274,12 @@ export function ArtifactPanes({ relPath, onClose }: ArtifactPanesProps): JSX.Ele
         {preview.kind === 'text' && isTable ? (
           <DataFilePreview text={preview.text ?? ''} truncatedSource={preview.truncated} />
         ) : preview.kind === 'text' ? (
-          <textarea
-            ref={taRef}
-            className="ap-editor"
+          <CodeEditor
             value={draft}
             readOnly={readOnly}
-            spellCheck={false}
-            onChange={(e) => {
-              setDraft(e.target.value);
+            path={preview.relPath}
+            onChange={(v) => {
+              setDraft(v);
               if (saveState !== 'idle') setSaveState('idle');
             }}
           />
@@ -416,7 +413,7 @@ export function isEditableArtifact(p: FilePreview | null): boolean {
 
 /**
  * 从文件树里挑出「产物」：排除配置文件与依赖目录。
- * 原版产物面板只关心 agent 真正产出的东西。
+ * 项目契约产物面板只关心 agent 真正产出的东西。
  */
 export function pickArtifacts(
   tree: Array<{ name: string; relPath: string; isDirectory: boolean; children?: unknown[] }>,

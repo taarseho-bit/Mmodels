@@ -19,7 +19,7 @@ export function adminHtml(): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MathModel 诊断台</title>
+<title>MModels 诊断台</title>
 <style>
   :root {
     --bg:#f7f7f8; --panel:#fff; --fg:#1c1c1e; --muted:#6b7280;
@@ -91,7 +91,7 @@ export function adminHtml(): string {
 </head>
 <body>
 <header>
-  <h1>MathModel 诊断台</h1>
+  <h1>MModels 诊断台</h1>
   <span class="muted" id="meta">加载中…</span>
 </header>
 

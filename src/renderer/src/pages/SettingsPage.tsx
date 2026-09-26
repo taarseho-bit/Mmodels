@@ -1,5 +1,5 @@
 /**
- * 设置页 —— 复刻原版的**分区导航**结构（左侧栏 + 右侧内容）。
+ * 设置页 —— 本地设计的**分区导航**结构（左侧栏 + 右侧内容）。
  *
  * 现在按数学建模工作流分为六组：比赛与论文 / 建模资源 / 模型与协作 /
  *           运行环境 / 自动化与通知 / 外观与帮助。
@@ -7,7 +7,7 @@
  * ⚠️ 全部本地化：
  *   - 个人资料的用量统计从本地 SQLite 聚合（stats:get），不出网
  *   - 没有账号体系：显示名/句柄存本地设置
- *   - 订阅状态：本地版 = 普通用户（不接计费）
+ *   - 订阅状态：当前版本 = 普通用户（不接计费）
  *
  * 各分区已拆分到 `../components/settings/*`，本文件只负责导航 / 搜索 / 分区切换 / 滚动容器。
  */
@@ -187,7 +187,7 @@ export function SettingsPage({
 
   return (
     <div className="settings-shell">
-      {/* ── 左侧导航（复刻原版）── */}
+      {/* ── 左侧导航（本地设计）── */}
       <aside className="settings-side">
         <ResizeHandle storageKey="mm-settings-nav-width" label="调整设置导航宽度" min={200} max={340} fraction={.32} />
         <button className="settings-back" onClick={onBack}>

@@ -172,7 +172,7 @@ async function runHost() {
       (await post({ protocol: 1, code: info.code, name: '队友的小号', accountId: 'acct-guest' }))
         .error ?? 'unexpected-ok';
     results.incompatible =
-      (await post({ protocol: 99, code: info.code, name: '老版本', accountId: 'acct-old' })).error ??
+      (await post({ protocol: 99, code: info.code, name: '历史版本', accountId: 'acct-old' })).error ??
       'unexpected-ok';
     const hello = await httpJson(`${base}/collab/hello`);
     results.helloProtocol = hello.protocol;

@@ -1,13 +1,13 @@
 /**
  * 设置页 ④ 模型
  *
- * 原版结构（SettingsPage chunk 中 `o==="models"` 分支）：
+ * 项目契约结构（SettingsPage chunk 中 `o==="models"` 分支）：
  *   ① 分区右上「+ 添加自定义模型」按钮
  *   ② 两行下拉 —— 当前供应商 / 当前模型（左标题+说明、右下拉）
  *   ③ 「添加自定义模型」弹窗（供应商下拉 + 模型 ID 输入 + 校验）
  *
- * 复刻原有的自创区块（模型名 / 推理强度 effort / 关闭思考 / 内置 MCP）
- * 保留功能、整体下移，收在同分区末尾的「本地附加项」里（原版无这些控件）。
+ * 当前实现原有的自创区块（模型名 / 推理强度 effort / 关闭思考 / 内置 MCP）
+ * 保留功能、整体下移，收在同分区末尾的「本地附加项」里（项目契约无这些控件）。
  */
 import { useCallback, useMemo, useState } from 'react';
 import type { ProviderConfig } from '@shared/types';
@@ -17,7 +17,7 @@ import { Icon } from '../Icon';
 import { Section, Switch } from './shared';
 import { friendlyError } from '../../lib/friendly-error';
 
-/** 模型 ID 校验 —— 原版 zod 规则：非空且不含空格 / 逗号 */
+/** 模型 ID 校验 —— 项目契约 zod 规则：非空且不含空格 / 逗号 */
 function isValidModelId(v: string): boolean {
   return v.trim() !== '' && !/[\s,]/.test(v.trim());
 }
@@ -233,7 +233,7 @@ export function ModelSection(): JSX.Element {
 
   return (
     <div className="col" style={{ gap: 22 }}>
-      {/* ① 分区右上动作（原版在分区标题行右侧） */}
+      {/* ① 分区右上动作（项目契约在分区标题行右侧） */}
       <div className="row" style={{ justifyContent: 'flex-end' }}>
         <button
           className="btn btn-sm"

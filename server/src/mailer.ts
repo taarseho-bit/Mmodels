@@ -153,7 +153,7 @@ export async function notifyNewReport(input: NotifyInput): Promise<boolean> {
     await transporter.sendMail({
       from,
       to,
-      subject: '[MathModel 诊断] ' + (input.reason ? input.reason.slice(0, 40) : input.id),
+      subject: '[MModels 诊断] ' + (input.reason ? input.reason.slice(0, 40) : input.id),
       text,
       html,
     });

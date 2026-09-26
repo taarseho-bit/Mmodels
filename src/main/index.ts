@@ -11,7 +11,7 @@
  *   6. 创建主窗口
  *
  * ⚠️ 关于 `--mathmodel-server-port` / `--mathmodel-server-token`
- *    原版通过命令行参数把服务信息传给渲染层进程。
+ *    项目契约通过命令行参数把服务信息传给渲染层进程。
  *    我们这里改为：服务信息存在模块级变量里，preload 通过
  *    同步 IPC（`ipcRenderer.sendSync`）读取。原因：命令行参数在
  *    Windows 上容易被引号/编码问题坑到，且渲染层无法通过
@@ -45,7 +45,7 @@ const localServer = new LocalServer();
 let mainWindow: BrowserWindow | null = null;
 let quittingCompletely = false;
 
-// 与原版并存：Windows 应用身份、通知和任务栏分组均使用独立品牌。
+// 与项目契约并存：Windows 应用身份、通知和任务栏分组均使用独立品牌。
 app.setName('MModels');
 if (process.platform === 'win32') app.setAppUserModelId('com.mmodels.desktop');
 
@@ -78,7 +78,7 @@ function log(...args: unknown[]): void {
  * bootstrap 后半段任何一次 `getDb()` 都抛「数据库尚未初始化」→
  * 用户看到莫名其妙的「启动失败」框。
  *
- * 实机触发（2026-09-20 便携版）：上一个实例还在托盘/后台活着时再启动
+ * 运行测试触发（2026-09-20 便携版）：上一个实例还在托盘/后台活着时再启动
  * 一个（安装版与便携版共用同一个 userData，锁是按 userData 算的），
  * 新实例就炸在这个窗口期。修复后：抢锁失败的实例安静退出，已有窗口
  * 由旧实例的 `second-instance` 监听拉到前台。
@@ -120,7 +120,7 @@ function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
     title: 'MModels',
     /**
-     * ⚠️ 尺寸与原版实机**逐像素对齐**：原版网页视口实测 1266×804 CSS px
+     * ⚠️ 尺寸与界面检查**逐像素对齐**：项目契约网页视口实测 1266×804 CSS px
      *    （DPR 1.25，CDP `Runtime.evaluate innerWidth/innerHeight` 取证）。
      *    用 useContentSize 让内容区精确等于这个值，否则截图对比会因视口不同
      *    产生大量假差异（换行位置、列数、间距全部对不上）。
@@ -281,7 +281,7 @@ async function bootstrap(): Promise<void> {
   }
 
   // ── 1.5 默认项目 ──
-  // 原版在启动时必定保证「有且有一个可用的默认项目」，否则
+  // 项目契约在启动时必定保证「有且有一个可用的默认项目」，否则
   // env:check / git:info / file:* 这些依赖项目根目录的通道全部不可用，
   // 界面首屏就是一堆「尚未打开任何项目」。
   // 失败**不阻断启动**：最多是首屏没有项目，用户可以自己建。

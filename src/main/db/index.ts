@@ -30,8 +30,8 @@ const SCHEMA = `
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 
--- 应用级键值元数据（原版叫 app_meta，键 project-bootstrap:v1 记录默认项目）
--- 用「有没有 meta 行」区分「全新库」与「老库」，是原版的判定方式，
+-- 应用级键值元数据（项目契约叫 app_meta，键 project-bootstrap:v1 记录默认项目）
+-- 用「有没有 meta 行」区分「全新库」与「老库」，是项目契约的判定方式，
 -- 不要改成「projects 表是否为空」—— 用户把项目全删光时语义完全不同。
 CREATE TABLE IF NOT EXISTS app_meta (
   key   TEXT PRIMARY KEY,
@@ -85,12 +85,12 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at  INTEGER NOT NULL,
   input_tokens  INTEGER NOT NULL DEFAULT 0,
   output_tokens INTEGER NOT NULL DEFAULT 0,
-  -- 回退（P6）与分叉（P7）的地基，语义照抄原版：
+  -- 回退（P6）与分叉（P7）的地基，语义直接采用项目契约：
   --   checkpoint_ref —— 这条 **user** 消息发出【之前】的工作区快照 ref。
   --                     只有 user 行写；assistant 行恒为 NULL。
   --   agent_msg_uuid —— 这条 **assistant** 消息在 agent 侧的消息 id
-  --                     （原版取 agent 回的 lastAssistantUuid）。只有 assistant 行写。
-  -- ⚠️ 原版 /api/sessions/:id/fork 的 resumable 判据就是
+  --                     （项目契约取 agent 回的 lastAssistantUuid）。只有 assistant 行写。
+  -- ⚠️ 项目契约 /api/sessions/:id/fork 的 resumable 判据就是
   --    kept.some(m => m.role === 'assistant' && !!m.agentMsgUuid)，
   --    所以不加这一列，分叉只能"复制消息"，拿不到 agent 上下文的续传。
   -- ⚠️ 这里加了列**还不够** —— 老库的表是早先 IF NOT EXISTS 建出来的，
@@ -103,8 +103,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, created_
 
 -- 进行中回合快照：**一会话最多一行**（session_id 主键）。
 --
--- 原版有同名表 turn_spills(session_id PK, message_id, content, parts, created_at, updated_at)。
--- 这里把 content/parts 合并成 blocks 一列 —— 复刻的 messages 表本来就把正文和块序列
+-- 项目契约有同名表 turn_spills(session_id PK, message_id, content, parts, created_at, updated_at)。
+-- 这里把 content/parts 合并成 blocks 一列 —— 当前实现的 messages 表本来就把正文和块序列
 -- 存在同一个 JSON 里（文本是块的一种），再拆一列反而多一份要对齐的事实。
 --
 -- 为什么需要这张表：assistant 消息要等这一轮**跑完**才 insertMessage

@@ -5,7 +5,7 @@
  *
  * 这段逻辑原来内联在 `ipc/session.ts` 的 `runner.on('event', …)` 里，于是：
  *   · **无法单测**（那个回调在 IPC handler 内部，要跑它就得拉起 electron + 真 SDK）；
- *   · 所以里面的 bug 只能靠实机发现 —— 而这里**真的漏过一个字段**：
+ *   · 所以里面的 bug 只能靠运行测试发现 —— 而这里**真的漏过一个字段**：
  *     `tool-result` 只写了 `toolResult`，把 `ev.isError` 丢了，
  *     于是失败的 Bash / Write 在界面上和成功的长得一模一样（见本文件 `applyStreamEvent` 的注释）。
  *
@@ -63,7 +63,7 @@ export function applyStreamEvent(collected: ContentBlock[], ev: StreamEvent): vo
      *   ⇒ 渲染层与数据库里这个字段恒为 `undefined`，
      *     失败的 Bash/Write 在界面上和成功的长得一模一样。
      *   同一轮里把它补上（导出侧 `flattenToolResult` 也跟着带上，
-     *   原版 `Vn` 的形状里本来就有 `isError`）。
+     *   项目契约 `Vn` 的形状里本来就有 `isError`）。
      *
      * 用 `Boolean(...)` 而不是直接赋值：`ContentBlock.isError` 是 `boolean | undefined`，
      * 收紧成明确的 `true/false`，下游判 `if (block.isError)` 与 `=== true` 都成立。

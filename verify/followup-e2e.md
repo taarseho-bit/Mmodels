@@ -1,4 +1,4 @@
-# 追问行为（排队 / 调整当前任务）实机验证 · followup-e2e
+# 追问行为（排队 / 调整当前任务）运行测试验证 · followup-e2e
 
 - 状态：**已通过**。假上游链路 **38 passed / 0 failed**；真模型（DeepSeek）链路独立复验通过。
 - 产物：`dist/win-unpacked/MModels.exe`（app.asar 12:06:49，含 6 处修复）
@@ -13,24 +13,24 @@
 
 ```bash
 # 全套（C1→C4 + C5 + 时间线），约 2 分钟
-node .workbuddy/ui-audit/tmp-followup-e2e.mjs
+node .mmodels-audit/tmp-followup-e2e.mjs
 
 # 只准备隔离 userData、不起 GUI（不抢前台焦点），报告写 tmp-prep-only-out.txt
-node .workbuddy/ui-audit/tmp-followup-e2e.mjs --prep-only
+node .mmodels-audit/tmp-followup-e2e.mjs --prep-only
 
 # 其它开关
-node .workbuddy/ui-audit/tmp-followup-e2e.mjs --exe=<path> --port=9333 --fakePort=8787 --feedback=900
+node .mmodels-audit/tmp-followup-e2e.mjs --exe=<path> --port=9333 --fakePort=8787 --feedback=900
 ```
 
 - 必须先有 team-lead 打好的新包。脚本会比对 `src/renderer/src/pages/*` 最新 mtime 与 exe mtime，源码更新会打 `[warn] ⚠️ 源码比 exe 新 → 测的是旧产物！`。
-- 隔离性：把 `%APPDATA%/mmodels-desktop/{config.json,mmodels.db}` 复制到 `.workbuddy/ui-audit/e2e-userdata/`，只改**副本**；Electron 用 `--user-data-dir` 指过去，**不碰** team-lead 的 userData 与单实例锁。
+- 隔离性：把 `%APPDATA%/mmodels-desktop/{config.json,mmodels.db}` 复制到 `.mmodels-audit/e2e-userdata/`，只改**副本**；Electron 用 `--user-data-dir` 指过去，**不碰** team-lead 的 userData 与单实例锁。
 - 退出码：`0` = 全过；`1` = 有断言红 / FATAL / 一条断言都没跑到。**没有全局超时**（分步超时叠加最坏 ≈ 13 分钟）；若它几分钟就被杀掉，那是外部工具超时，`finally` 不执行 → 报告文件会保持上一次内容，要配 mtime 看。
-- 报告与截图：`.workbuddy/ui-audit/tmp-followup-e2e-out.txt`（脚本 finally 覆盖写）、`.workbuddy/ui-audit/e2e-shots/*.png`（10 张）。
+- 报告与截图：`.mmodels-audit/tmp-followup-e2e-out.txt`（脚本 finally 覆盖写）、`.mmodels-audit/e2e-shots/*.png`（10 张）。
 - 文件命名约定（踩坑后定的）：**报告文件名带模式**，`-full` / `-prep` 分开，别让两种运行模式复用同一个名字。当前 `--prep-only` 已单独写 `tmp-prep-only-out.txt`。
 
 ### 为什么不配真 key 也能跑
 无 provider 时 `src/main/ipc/session.ts:179 buildRunOptions()` 会在 `runner.run()` **之前**抛错（`:186` 文案「尚未配置任何模型供应商…」）→ 永远不会有 `session-end` → `isRunning` 永远为 true，「回合结束后 FIFO 自动消化」和「打断后补发」两条路径根本走不到。
-所以配一个本地假上游 `.workbuddy/ui-audit/tmp-fake-anthropic.mjs`（`127.0.0.1:8787`，最小合法 Anthropic SSE：`message_start → content_block_start → content_block_delta×N → content_block_stop → message_delta(end_turn) → message_stop`），并带一个 `/__stats` 端点返回 `{calls, times, bodies}` —— 这是后面所有判据的地基。
+所以配一个本地假上游 `.mmodels-audit/tmp-fake-anthropic.mjs`（`127.0.0.1:8787`，最小合法 Anthropic SSE：`message_start → content_block_start → content_block_delta×N → content_block_stop → message_delta(end_turn) → message_stop`），并带一个 `/__stats` 端点返回 `{calls, times, bodies}` —— 这是后面所有判据的地基。
 
 ---
 
@@ -107,7 +107,7 @@ console.log('count=' + rows.length, rows.map(r => r.role + ':' + r.n).join(' | '
 ```
 （`node:sqlite` 在 Node 22 需要 `--experimental-sqlite`；E2E 脚本已把这条自重启处理掉了，见脚本顶部 `MM_E2E_SQLITE_OK` 哨兵。）
 
-**修复前的库层铁证**（`.workbuddy/ui-audit/tmp-dbdump.txt`）：
+**修复前的库层铁证**（`.mmodels-audit/tmp-dbdump.txt`）：
 ```
 {"id":"82c0ed28-…","title":"/mma-review\n\nC1-A","status":"idle",
  "error":"该会话已有正在执行的任务，请先中断或等待完成","message_count":16}
@@ -129,7 +129,7 @@ user:46 | assistant:55 | user:46 | assistant:55 | user:46 | assistant:55 | user:
 
 | | 修复前 | 修复后 |
 |---|---|---|
-| 假上游 E2E | **20 passed / 6 failed**（12:01，`.workbuddy/ui-audit/tmp-e2e-report-before-fix.txt`） | **38 passed / 0 failed**（12:09 启动 / 12:11 落盘，`tmp-e2e-run.txt`，耗时 2m08s） |
+| 假上游 E2E | **20 passed / 6 failed**（12:01，`.mmodels-audit/tmp-e2e-report-before-fix.txt`） | **38 passed / 0 failed**（12:09 启动 / 12:11 落盘，`tmp-e2e-run.txt`，耗时 2m08s） |
 | C1 排队 FIFO | ✓ | ✓ |
 | C2 排队+Ctrl（打断补发） | ✗ | ✓（上游 `4 → 6`，`+28522ms C2-B`） |
 | C3 调整+Enter（打断补发） | ✗ | ✓（上游 `6 → 8`） |
@@ -152,14 +152,14 @@ user:46 | assistant:55 | user:46 | assistant:55 | user:46 | assistant:55 | user:
 
 **单元测试同步（防假阳性）**：`src/renderer/src/store/follow-up-queue.test.ts:144`
 原用例是**假阳性**：`enqueue → mark（条目还在队列里）→ 断言`，但 `ChatPage` 的真实调用顺序**恰好相反**（`enqueue → takeFollowUp()`（先出队）→ `dispatch()` → 失败才 `markFollowUpError()`）。
-现按真实顺序改写，并在测试头写明教训。鉴别力已用旧实现语义重放验证（`.workbuddy/ui-audit/tmp-old-impl-sim.mjs`：旧实现 1/7、新实现 7/7）。
-> 教训：用例必须照抄**真实调用顺序**，否则测的是自己想象的世界。
+现按真实顺序改写，并在测试头写明教训。鉴别力已用早期实现语义重放验证（`.mmodels-audit/tmp-old-impl-sim.mjs`：早期实现 1/7、新实现 7/7）。
+> 教训：用例必须复现**真实调用顺序**，否则测的是自己想象的世界。
 
 ---
 
 ## 6. 真模型（DeepSeek）独立复验
 
-假上游证明"协议层通了"，真模型证明"真实链路也通"。记录见 `.workbuddy/ui-audit/real-deepseek-test.md`：
+假上游证明"协议层通了"，真模型证明"真实链路也通"。记录见 `.mmodels-audit/real-deepseek-test.md`：
 
 - 基础对话：真回复落地 + 「思考过程」折叠块正常 + 用量 `↑80334 ↓65` ✓
 - **排队档**：第 2 条 → 徽标「已排队 1 条 | 回合结束后按顺序自动发出 | 全部清除 | 1 | …」→ 75s 后队列清空、`running=false`、两条用户消息都在列表 ✓（自动消化在真模型上也成立）
@@ -175,15 +175,15 @@ user:46 | assistant:55 | user:46 | assistant:55 | user:46 | assistant:55 | user:
 
 | 文件 | 内容 |
 |---|---|
-| `.workbuddy/ui-audit/tmp-followup-e2e.mjs` | E2E 驱动（C1–C5 + 时间线） |
-| `.workbuddy/ui-audit/tmp-fake-anthropic.mjs` | 假 Anthropic SSE + `/__stats`（`FAKE_PORT`/`FAKE_DELAY`/`FAKE_CHUNKS`） |
-| `.workbuddy/ui-audit/tmp-sdk-probe.mjs` | SDK 层探针 **7/7**：假上游流被真 SDK 接受；`abort` 能终止流（2316ms）；每轮 CLI 启动开销 ≈ 2.8s |
-| `.workbuddy/ui-audit/tmp-old-impl-sim.mjs` | 用旧实现语义重放新单测序列 → 证明新用例**有鉴别力** |
-| `.workbuddy/ui-audit/e2e-shots/` | 10 张截图（`00-ready`、`01/02/03-c1-*`、`04-c2-steer`、`05/06-c4-*`、`07-c5-failed`、`08-c5-recovered`、`99-fail-no-textarea`） |
-| `.workbuddy/ui-audit/tmp-e2e-report-before-fix.txt` | 修复前完整报告（20/6） |
-| `.workbuddy/ui-audit/tmp-e2e-run.txt` | 修复后完整报告（38/0，含 13 条时间线） |
-| `.workbuddy/ui-audit/tmp-dbdump.txt` | 修复前的库层铁证（`sessions.error` + 连续无回复的 user 消息） |
-| `.workbuddy/ui-audit/real-deepseek-test.md` | 真模型复验记录 |
+| `.mmodels-audit/tmp-followup-e2e.mjs` | E2E 驱动（C1–C5 + 时间线） |
+| `.mmodels-audit/tmp-fake-anthropic.mjs` | 假 Anthropic SSE + `/__stats`（`FAKE_PORT`/`FAKE_DELAY`/`FAKE_CHUNKS`） |
+| `.mmodels-audit/tmp-sdk-probe.mjs` | SDK 层探针 **7/7**：假上游流被真 SDK 接受；`abort` 能终止流（2316ms）；每轮 CLI 启动开销 ≈ 2.8s |
+| `.mmodels-audit/tmp-old-impl-sim.mjs` | 用早期实现语义重放新单测序列 → 证明新用例**有鉴别力** |
+| `.mmodels-audit/e2e-shots/` | 10 张截图（`00-ready`、`01/02/03-c1-*`、`04-c2-steer`、`05/06-c4-*`、`07-c5-failed`、`08-c5-recovered`、`99-fail-no-textarea`） |
+| `.mmodels-audit/tmp-e2e-report-before-fix.txt` | 修复前完整报告（20/6） |
+| `.mmodels-audit/tmp-e2e-run.txt` | 修复后完整报告（38/0，含 13 条时间线） |
+| `.mmodels-audit/tmp-dbdump.txt` | 修复前的库层铁证（`sessions.error` + 连续无回复的 user 消息） |
+| `.mmodels-audit/real-deepseek-test.md` | 真模型复验记录 |
 
 ---
 
@@ -192,7 +192,7 @@ user:46 | assistant:55 | user:46 | assistant:55 | user:46 | assistant:55 | user:
 1. **先找"不可撒谎的证据源"**：网络收包计数、DB 行、文件系统副作用。DOM 只用来验"用户看得见"的部分。
 2. **给被判定的动作造一个确定的锚**：这里是"上游调用次数增量"，因为它单调、离线可读、与 UI 无关。
 3. **不稳定等待不要用"一次为真"**：`waitIdle`（`running===false` 一次）在回合间空隙会误判；用 `settle()` = **达到目标计数 且 连续 3 次采样空闲**。
-4. **断言要在"真实调用顺序"上写**：先照抄 UI 里的调用次序（含出队这类状态变更），再断言。顺序写反 → 假阳性（本次单测就踩过）。
+4. **断言要在"真实调用顺序"上写**：先复现 UI 里的调用次序（含出队这类状态变更），再断言。顺序写反 → 假阳性（本次单测就踩过）。
 5. **报告文件名带运行模式**，否则一次 `--prep-only` 会把完整报告覆盖成 3 行，误导判断。
 6. **别用"验证动作"毁掉证据**：验证前先另存一份原始报告。
 7. **造错要造"用户真能做出来的错"**：删 provider（走 `buildRunOptions` 抛错）> 指死端口（被内部 catch，测不到）。

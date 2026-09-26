@@ -19,7 +19,7 @@
   --radius-sm: 5px;
   --radius: 7px;
   --radius-lg: 10px;
-  /* 侧栏宽度：原版实测 239px（截图取样，CDP 探针 `aside` 宽度一致） */
+  /* 侧栏宽度：项目契约实测 239px（截图取样，CDP 探针 `aside` 宽度一致） */
   --sidebar-w: 264px;
   --topbar-h: 58px;
   --statusbar-h: 26px;
@@ -53,9 +53,9 @@
   --t-base: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* ── 阴影 ──
-   * `--shadow-sm` / `--shadow-lg` 逐字取自原版 `:root`（`index-SfRNRtmQ.css`）；
-   * 深色主题在下方 `[data-theme='dark']` 内覆盖为原版深色值。
-   * `--shadow` 原版无对应档，保留本项目自定义值。
+   * `--shadow-sm` / `--shadow-lg` 来源于项目资料 `:root`（`index-SfRNRtmQ.css`）；
+   * 深色主题在下方 `[data-theme='dark']` 内覆盖为项目契约深色值。
+   * `--shadow` 项目契约无对应档，保留本项目自定义值。
    * 注意：这三项不在 `store/app.ts` 的 `OWNED_VARS` 里，外观设置不会覆盖它们。 */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 5px 18px rgba(0, 0, 0, 0.04);
   --shadow: 0 10px 32px rgba(0, 0, 0, 0.09), 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -63,16 +63,16 @@
 }
 
 /* ── 浅色主题（默认）──
- * 对照原版 `:root`（`index-SfRNRtmQ.css`）逐条核对：
+ * 按项目契约 `:root`（`index-SfRNRtmQ.css`）逐条核对：
  *   --bg       #f5f3ef = --bg-canvas    --card   #faf9f6 = --bg-panel
  *   --muted    #ece9e3 = --bg-sunken    --fg     #1f2420 = --fg-primary
  *   --muted-fg #6e6a62 = --fg-muted     --border #ddd8ce = --border
  *   --primary  #2f4a3b = --accent       --primary-fg #f6f4ee = --accent-fg
  *   --accent   #e6ece5 = --accent-weak  --sidebar-accent #e4e9e2 = --bg-active
- * 即浅色主题的语义色**已与原版一致**，本轮只去掉了两处蓝调残留
+ * 即浅色主题的语义色**已与项目契约一致**，本轮只去掉了两处蓝调残留
  * （--code-bg / --scrollbar-thumb）。
- * `--fg-secondary` 原版无中间档前景色 token，保持现值（本已属绿灰族）。
- * 原版无 `--bg-hover` / `--border-weak` / `--border-strong` / `--accent-hover` 对应档，保留。 */
+ * `--fg-secondary` 项目契约无中间档前景色 token，保持现值（本已属绿灰族）。
+ * 项目契约无 `--bg-hover` / `--border-weak` / `--border-strong` / `--accent-hover` 对应档，保留。 */
 :root,
 [data-theme='light'] {
   --bg-canvas: #f2f2f7;
@@ -82,9 +82,10 @@
   --bg-active: rgba(0, 122, 255, 0.12);
   --bg-overlay: rgba(20, 20, 24, 0.34);
 
-  --fg-primary: #1d1d1f;
-  --fg-secondary: #48484a;
-  --fg-muted: #76767c;
+  /* 2026-09-26 用户反馈「文字灰蒙蒙」：主文字纯黑，次级加深 */
+  --fg-primary: #000000;
+  --fg-secondary: #2c2c2e;
+  --fg-muted: #6c6c72;
   --fg-inverse: #ffffff;
 
   --border-weak: rgba(60, 60, 67, 0.10);
@@ -111,61 +112,70 @@
 
   --code-bg: #e9e9ef;
   --scrollbar-thumb: rgba(60, 60, 67, 0.32);
+
+  /* 语法高亮（VSCode Light 口径，2026-09-26 编辑器视图高亮需求） */
+  --tok-comment: #6a9955;
+  --tok-string: #a31515;
+  --tok-number: #098658;
+  --tok-keyword: #0000ff;
+  --tok-builtin: #795e26;
+  --tok-tag: #267f99;
+  --tok-heading: #0b5394;
 }
 
 /* ── 深色主题 ──
- * 对照原版 `:root[data-theme=dark]`（`index-SfRNRtmQ.css`）逐条对齐。
- * 原版深色是一套**中性偏暖的灰**，复刻旧值是一套**蓝调灰**，这正是跨页
- * 「强调色/激活块底色不一致」的根因；本轮把灰阶与强调色一起换回原版。
+ * 按项目契约 `:root[data-theme=dark]`（`index-SfRNRtmQ.css`）逐条对齐。
+ * 项目契约深色是一套**中性偏暖的灰**，当前实现旧值是一套**蓝调灰**，这正是跨页
+ * 「强调色/激活块底色不一致」的根因；本轮把灰阶与强调色一起换回项目契约。
  *
  * 取值来源标注：
- *   原版令牌  = 直接取原版 CSS 变量值
- *   派生      = 原版无对应档，按原版色族/明度关系推导（见行内注释）
+ *   项目契约令牌  = 直接取项目契约 CSS 变量值
+ *   派生      = 项目契约无对应档，按项目契约色族/明度关系推导（见行内注释）
  *   刻意偏离  = 见 `--accent-fg`
  *
  * 为什么可以这样改：`store/app.ts` 的 `APPEARANCE_DEFAULTS` 里，
  * 「mathmodel」预设本身就是 `accent #5E7C69 / background #1C1C1C / foreground #F0EFE9`，
  * 且 `touched:false` 时 `applyAppearance()` 会把内联变量全部 removeProperty，
- * 让设计系统自带配色生效 —— 即原版本套值本就是本项目「未编辑时」的既定目标。 */
+ * 让设计系统自带配色生效 —— 即项目契约本套值本就是本项目「未编辑时」的既定目标。 */
 [data-theme='dark'] {
-  /* 原版 --bg / --card */
+  /* 项目契约 --bg / --card */
   --bg-canvas: #1c1c1e;
   --bg-panel: #2c2c2e;
-  /* 派生：原版深色没有「凹陷」档（其 --muted #262625 比 --bg 更亮，不构成凹陷层级）。
-     保留复刻「比画布暗一档」的既有语义，仅去掉蓝调。 */
+  /* 派生：项目契约深色没有「凹陷」档（其 --muted #262625 比 --bg 更亮，不构成凹陷层级）。
+     保留当前实现「比画布暗一档」的既有语义，仅去掉蓝调。 */
   --bg-sunken: #151517;
-  /* 原版 --secondary / --accent（激活块底色，与原版采样的 #242926 同族） */
+  /* 项目契约 --secondary / --accent（激活块底色，与项目契约采样的 #242926 同族） */
   --bg-hover: rgba(235, 235, 245, 0.10);
   --bg-active: rgba(10, 132, 255, 0.20);
   --bg-overlay: rgba(0, 0, 0, 0.6);
 
-  /* 原版 --fg / --sidebar-fg / --muted-fg
-     （原版深色只有 --fg + --muted-fg 两档文字，复刻是三级；
-      中间档取原版真实存在的次级前景色 --sidebar-fg，保持 14.8 / 11.7 / 6.6:1 的层次） */
+  /* 项目契约 --fg / --sidebar-fg / --muted-fg
+     （项目契约深色只有 --fg + --muted-fg 两档文字，当前实现是三级；
+      中间档取项目契约真实存在的次级前景色 --sidebar-fg，保持 14.8 / 11.7 / 6.6:1 的层次） */
   --fg-primary: #f5f5f7;
   --fg-secondary: #d1d1d6;
   --fg-muted: #98989d;
   --fg-inverse: #1c1c1c;
 
-  /* 原版 --border 为 oklch(100% 0 0/.1)（10% 白叠加）。
-     改为同形式的半透明值后，描边在不同底色上按比例合成，与原件一致。 */
+  /* 项目契约 --border 为 oklch(100% 0 0/.1)（10% 白叠加）。
+     改为同形式的半透明值后，描边在不同底色上按比例合成，与参考值一致。 */
   --border-weak: oklch(100% 0 0 / 0.06);
   --border: oklch(100% 0 0 / 0.1);
   --border-strong: oklch(100% 0 0 / 0.18);
 
-  /* 原版 --primary / --accent / --primary-fg */
+  /* 项目契约 --primary / --accent / --primary-fg */
   --accent: #0a84ff;
-  /* 主按钮底色：原版实测 RGB(125,149,134)（= --accent 叠 20% 白），比 --accent 浅一档 */
+  /* 主按钮底色：项目契约实测 RGB(125,149,134)（= --accent 叠 20% 白），比 --accent 浅一档 */
   --accent-btn: #0a84ff;
-  /* 派生：原版无 hover 档（原件 hover 用 opacity 过渡）；#5e7c69 提亮约 10% */
+  /* 派生：项目契约无 hover 档（参考值 hover 用 opacity 过渡）；#5e7c69 提亮约 10% */
   --accent-hover: #409cff;
   --accent-weak: rgba(10, 132, 255, 0.20);
-  /* ⚠️ 刻意偏离原版 --primary-fg #f6f4ee：
-     白字在 #5e7c69 上 4.60:1（过 WCAG AA 正文 4.5:1），原版 #f6f4ee 只有 4.19:1。
+  /* ⚠️ 刻意偏离项目契约 --primary-fg #f6f4ee：
+     白字在 #5e7c69 上 4.60:1（过 WCAG AA 正文 4.5:1），项目契约 #f6f4ee 只有 4.19:1。
      这与 `applyAppearance()` 自己的推导也一致（accent 相对亮度 <0.55 → '#FFFFFF'）。 */
   --accent-fg: #ffffff;
   /* 「强调色文字」专用档：--accent 直接作前景压在 --accent-weak 上只有 2.92:1
-     （原版自身的胶囊也是这个量级，属原件固有的 a11y 弱点）。
+     （项目契约自身的胶囊也是这个量级，属参考值固有的 a11y 弱点）。
      深色下改用同色族提亮档，6.09:1 过 AA；浅色不需要，与 --accent 同值。 */
   --accent-contrast: #64a8ff;
 
@@ -178,13 +188,22 @@
   --info: #22d3ee;
   --info-weak: #122a2f;
 
-  /* 原版深色阴影（精确值） */
+  /* 项目契约深色阴影（精确值） */
   --shadow-sm: 0 1px 3px 0px #0000004d;
   --shadow-lg: 0 4px 12px -2px #0006;
 
   /* 派生：跟随 --bg-sunken 去蓝调 */
   --code-bg: #151517;
   --scrollbar-thumb: rgba(235, 235, 245, 0.28);
+
+  /* 语法高亮：VSCode Dark+ 口径 */
+  --tok-comment: #6a9955;
+  --tok-string: #ce9178;
+  --tok-number: #b5cea8;
+  --tok-keyword: #569cd6;
+  --tok-builtin: #dcdcaa;
+  --tok-tag: #4ec9b0;
+  --tok-heading: #569cd6;
 }
 
 /* ── 基础重置 ── */

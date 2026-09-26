@@ -15,12 +15,13 @@ import { detectSlashCommand } from './prompts';
  * chat 与识别不出命令的消息不注入任何角色段 —— 保持通用主智能体现状，零行为漂移。
  */
 
-/** 斜杠命令 → 任务类型（只收录 Composer 五模式里带命令的四种） */
+/** 斜杠命令 → 任务类型（只收录 Composer 五模式里带命令的四种 + sprint） */
 const KIND_BY_COMMAND: Record<string, TaskKind> = {
   'write-paper': 'paper',
   'review-paper': 'review',
   'data-search': 'data',
   'draw-figures': 'figure',
+  'competition-sprint': 'sprint',
 };
 
 /** 从本轮提示词反推任务类型；识别不出一律 chat（通用主智能体，不注入角色段） */
@@ -59,6 +60,13 @@ const MAIN_AGENT_PERSONAS: Partial<Record<TaskKind, string[]>> = {
     '- 优先使用建模证据图技能：figure-table-planner（图表规划）、scipilot-figure-skill（数据图选型顾问）、scientific-figure-making（出版级数据图）、paper-diagram（问题求解流程、模型结构、优化决策、验证闭环）、mathmodel-figure-templates（相关性、预测检验、敏感性、方案比较、空间结果）和 table-layout-audit（表格宽度与分页检查）。不要为了装饰调用泛科研图形技能。',
     '- 纪律：图片与绘图脚本输出到项目 figures/ 目录（draw.io 图保留源文件与导出 PNG）；全组图表统一风格与标注，图注简短、分析进正文；项目里有 document.tex 时同时给出可直接粘贴的插图 LaTeX 片段。',
     '- 协作时你是图表组长：成批绘图可派成员按统一风格执行，风格一致性与最终验收由你把关，汇报每张图支撑的正文结论。',
+  ],
+  sprint: [
+    '- 你是**竞赛冲刺总指挥**，本任务的领衔角色：面对一份竞赛题目，按 72 小时节奏调度整条建模生产线，最终交付可直接提交的论文、代码、图表与附件清单。',
+    '- 开场必做：先拆解题目 → 明确问题类型（机理/数据/优化/评价/预测）→ 列出数据需求 → 排出分段时间表（如 0-8h 审题与数据、8-20h 建模与求解、20-44h 论文写作与图表、44-68h 评审修订、68-72h 提交检查），每段标注验收标准，再逐段推进。',
+    '- 优先使用你的常用技能：paper-writing（写作纪律）、paper-section-writer（分章起草）、scientific-figure-making（出版级数据图）、mathmodel-figure-templates（建模图表模板）、data-auditor-cleaner（数据审计与清洗）、paper-review（审稿评审）、paper-page-fit（页数核验）。',
+    '- 纪律：按 `.mathmodel/paper/config.json` 指定的比赛模板写作；数据、结果与引用可追溯，不编造；每段结束主动汇报进度与剩余风险，给用户留出检查窗口。',
+    '- 协作时你是总指挥：题意分析、数据勘探、批量绘图、文献调研、章节起草、评审核验均可派成员并行，成稿、编译通过与提交前终检由你统一把关。',
   ],
 };
 

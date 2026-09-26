@@ -41,7 +41,7 @@ describe('applyStreamEvent —— tool-result 的 isError 透传', () => {
     });
 
     expect(collected[0].isError).toBe(true);
-    // 反向对照：`undefined` 与 `false` 都该被这条断言挡住
+    // 回归护栏：`undefined` 与 `false` 都该被这条断言挡住
     expect(collected[0].isError).not.toBeUndefined();
     expect(collected[0].isError).not.toBe(false);
     // 结果本身照旧要落到 toolResult（别为了加字段把原来那半弄丢）

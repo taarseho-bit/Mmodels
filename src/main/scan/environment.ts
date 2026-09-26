@@ -31,12 +31,12 @@ export interface EnvCheckItem {
   /** 探测到的版本或路径 */
   detail?: string;
   /**
-   * 归一化后的版本号（原版「运行环境」工具行显示 `版本 · 绝对路径`）。
+   * 归一化后的版本号（项目契约「运行环境」工具行显示 `版本 · 绝对路径`）。
    * 与 `detail` 的区别：`detail` 是探测命令的原始首行（如 `git version 2.55.0.windows.3`），
-   * 这里只保留原版会显示的那一段（`2.55.0`）。探测不到时为 undefined。
+   * 这里只保留项目契约会显示的那一段（`2.55.0`）。探测不到时为 undefined。
    */
   version?: string;
-  /** 可执行文件绝对路径（原版工具行显示）。探测不到时为 undefined。 */
+  /** 可执行文件绝对路径（项目契约工具行显示）。探测不到时为 undefined。 */
   path?: string;
   /** 用途说明 */
   purpose: string;
@@ -124,7 +124,7 @@ function firstLine(s: string, max = 60): string {
  *     out[0] Initial Win CP for (console input, console output, system): (CP936, CP936, CP936)
  *     out[1] I changed them all to CP936
  *     out[2] Latexmk, John Collins, 27 Dec. 2024. Version 4.86a   ← 这行才是
- *   取首行 ⇒ 应用里 latexmk 的 detail 显示成那串代码页通知（实机探测到的正是它）。
+ *   取首行 ⇒ 应用里 latexmk 的 detail 显示成那串代码页通知（运行测试探测到的正是它）。
  *
  *   而**不能**简单改成"取含版本号的第一行"：xelatex / bibtex 的输出里紧跟着一行
  *     `kpathsea version 6.4.0`
@@ -151,13 +151,13 @@ function toolLine(s: string, cmd: string, max = 60): string {
   return max > 0 ? own.slice(0, max) : own;
 }
 
-/** 取前 N 段数字构成的版本号：`2.55.0.windows.3` → `2.55.0`（原版只显示前三段） */
+/** 取前 N 段数字构成的版本号：`2.55.0.windows.3` → `2.55.0`（项目契约只显示前三段） */
 function numericVersion(s: string): string | undefined {
   return /(\d+(?:\.\d+)+)/.exec(s)?.[1];
 }
 
 /**
- * 把命令名解析成**绝对路径**（原版工具行的次行显示 `版本 · C:\...\git.EXE`）。
+ * 把命令名解析成**绝对路径**（项目契约工具行的次行显示 `版本 · C:\...\git.EXE`）。
  * Windows 用 `where`（可能多行，取第一条），其余平台用 `which`。解析不到返回 null。
  */
 async function which(cmd: string): Promise<string | null> {
@@ -176,7 +176,7 @@ async function which(cmd: string): Promise<string | null> {
  * 顺序：软件共用环境 → 本机 Python。旧项目环境不自动接管检测。
  *
  * ⚠️ **必须逐个试到第一个可用**，不能"组好候选表就取 `[0]`"。
- *   旧实现是 `for (const name of ['python','python3','py']) candidates.push(...)`
+ *   早期实现是 `for (const name of ['python','python3','py']) candidates.push(...)`
  *   紧接 `return candidates[0] ?? null` —— 没有 venv 时 `candidates[0]` **恒为 `python`**，
  *   后两个候选**永远选不到**（函数文档却写着"其次 PATH 上的 python/python3"，文档与实现矛盾）。
  *
@@ -318,7 +318,7 @@ function hasCjkFont(): string | null {
  *        也会打一段 stderr 并非 0 退出，不能因为"有输出"就当它可用。
  *     3. 其余（`notFound`，或跑了但没吐版本号）→ 保守判不可用，继续试下一个。
  *
- *   ⚠️ 旧实现的写法是
+ *   ⚠️ 早期实现的写法是
  *        `if (r.ok || firstLine(r.stdout + r.stderr)) { if (r.ok) return c; }`
  *      —— 外层"有输出也算"被内层的 `if (r.ok)` 整个抵消，**外层那半边从来没有影响过结果**；
  *      换句话说它等价于 `if (r.ok) return c;`，只是多了一层看不懂的壳。
@@ -342,7 +342,7 @@ export async function checkEnvironment(
   projectRoot?: string,
   /**
    * 随包二进制目录（Electron 的 `process.resourcesPath`）。
-   * 原版把 `uv` 随包分发，因此不能只看 PATH —— 否则会误报「uv 缺失」。
+   * 项目契约把 `uv` 随包分发，因此不能只看 PATH —— 否则会误报「uv 缺失」。
    */
   resourcesDir?: string,
 ): Promise<EnvCheckResult> {
@@ -359,12 +359,12 @@ export async function checkEnvironment(
   ): EnvCheckItem => {
     const item: EnvCheckItem = { id, name, level, status, purpose, detail };
     items.push(item);
-    // 返回引用：调用方可以随后补 version / path（原版工具行的 `版本 · 绝对路径`）
+    // 返回引用：调用方可以随后补 version / path（项目契约工具行的 `版本 · 绝对路径`）
     return item;
   };
 
   // ── 必需：Python 3 ──
-  // ⚠️ `findPython` 现在是 async（它要**逐个候选试**，见其注释 —— 旧实现恒取 `candidates[0]`）
+  // ⚠️ `findPython` 现在是 async（它要**逐个候选试**，见其注释 —— 早期实现恒取 `candidates[0]`）
   //    `seen` 收下沿途每个候选探到的首行：它给出的 `py` 只会有"可用"的那一个，
   //    但用户需要知道的是"为什么不可用"（Python 2 / Store 存根 / 根本没有）。
   const seen: string[] = [];
@@ -382,7 +382,7 @@ export async function checkEnvironment(
     } else if (v) {
       pyDetail = v;
     }
-    // `Python 3.13.14` → `3.13.14`（原版不显示 `Python ` 前缀）
+    // `Python 3.13.14` → `3.13.14`（项目契约不显示 `Python ` 前缀）
     pyVersion = numericVersion(v);
     if (pyOk) {
       // 绝对路径必须问解释器自己：PATH 上叫 `python`，解析出的可能不是同一个
@@ -394,7 +394,7 @@ export async function checkEnvironment(
   } else {
     // 一个可用候选都没有。**不要让用户只看到一句"缺失"**：把第一个真的吐了东西的候选
     // 原样告诉他（`Python 2.7.18` / Store 存根的提示串），他才知道该装什么、该改什么。
-    // 反向对照：若这里退化成"什么都不填"，`environment.test.ts` 那条
+    // 回归护栏：若这里退化成"什么都不填"，`environment.test.ts` 那条
     // 「Python 2.7.18 → missing 但保留原因在 detail」会立刻红。
     const reason = seen.find(Boolean);
     if (reason) {
@@ -429,7 +429,7 @@ export async function checkEnvironment(
     const line = toolLine(r.stdout, cmd) || firstLine(r.stderr);
     const it = push(id, name, 'required', purpose, r.ok ? 'ok' : 'missing', line || undefined);
     if (id === 'xelatex') {
-      // `XeTeX 3.141592653-2.6-0.999996 (TeX Live 2024)` → 原版显示 `TeX Live 2024`
+      // `XeTeX 3.141592653-2.6-0.999996 (TeX Live 2024)` → 项目契约显示 `TeX Live 2024`
       // （xelatex 自身那串版本号是 XeTeX 引擎版本，对用户没有意义）
       const tex = /\(([^)]*TeX[^)]*)\)/i.exec(line)?.[1]?.trim();
       it.version = tex || numericVersion(line) || undefined;
@@ -437,7 +437,7 @@ export async function checkEnvironment(
     } else {
       // ⚠️ latexmk / bibtex 之前**恒无 `version`** —— 只因为这里写着 `if (id === 'xelatex')`。
       //    可它们的输出里明摆着有版本号：`Version 4.86a` / `BibTeX 0.99d`。
-      //    字段注释说这个值是"原版会显示的那一段"，恒缺一半是没道理的。
+      //    字段注释说这个值是"项目契约会显示的那一段"，恒缺一半是没道理的。
       it.version = numericVersion(line) || undefined;
     }
   }
@@ -469,7 +469,7 @@ export async function checkEnvironment(
     let found = false;
     let uvPath: string | undefined;
     // 随包分发：打包后 uv 在 `<resourcesPath>/bin/uv.exe`
-    // （原版布局就是 resources/bin/uv.exe），开发期在 `<proj>/resources/bin/uv.exe`。
+    // （项目契约布局就是 resources/bin/uv.exe），开发期在 `<proj>/resources/bin/uv.exe`。
     // 兼容性地也看一眼资源根目录。
     if (resourcesDir) {
       for (const rel of [

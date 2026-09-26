@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = 'D:/mathmodel-desktop';
-const NODE = 'C:/Users/xh/.workbuddy/binaries/node/versions/22.22.2-3/node.exe';
+const NODE = process.env.MM_NODE || process.execPath;
 const ELECTRON_VER = '43.3.0';
 
 const pkgDir = path.join(

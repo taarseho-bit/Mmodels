@@ -1,4 +1,4 @@
-// ⚠️ 证伪边界（看这行就够了）：本文件**无法**验证真实渲染/真实点击/弹层定位与高度是否生效；交互与观感层面的验证依赖实机 e2e（node 环境无 jsdom，已在下面 ①/②/③ 逐层写明"能证明什么、不能证明什么"）。
+// ⚠️ 证伪边界（看这行就够了）：本文件**无法**验证真实渲染/真实点击/弹层定位与高度是否生效；交互与观感层面的验证依赖运行测试 e2e（node 环境无 jsdom，已在下面 ①/②/③ 逐层写明"能证明什么、不能证明什么"）。
 /**
  * 输入区「＋」菜单（`PlusMenu.tsx`）—— 三层测试，逐层说清**能证明什么 / 不能证明什么**。
  *
@@ -20,7 +20,7 @@
  * **② 真总线 / 真 store 层（最有价值的一层）** —— 把 `onOpenGallery` / `onOpenFilesPanel`
  *    这些回调**绑到真实现上**（`lib/settings-nav.ts` 的 `openRoute`、`store/app.ts`
  *    的 `setSidePanel`），然后走遍每一行、每一个子项，断言：
- *      · 真的收到了 `mm:open-route` 事件，且 `{route, section}` 与预期逐条一致；
+ *      · 真的收到了 `mm:open-route` 事件，且 `{route, section}` 与预期一致；
  *      · 真的只有「打开面板 · 文件」那一行会改 `useApp` 的 `sidePanel`。
  *    这两条**不是读源码**：`window` 在这层被换成一个最小 `EventTarget`，
  *    事件是真派发、真监听的，store 也是真的那个 zustand 实例。
@@ -33,7 +33,7 @@
  *
  * **④ 结构断言层（读源码）** —— 只钉**接线**：`Composer.tsx` 里「＋」按钮的 `onClick`
  *    是开弹层而不是 `setSidePanel('files')`；`Popover.tsx` 的"点外部"处理器只关不发。
- *    和 `ChatPage.restore.test.ts` 同一个做法，另配**永久反向对照**：
+ *    和 `ChatPage.restore.test.ts` 同一个做法，另配**永久回归护栏**：
  *    同一套检查器跑"故意改坏"的源码，必须被抓出来（只断言真源码通过 = 橡皮图章）。
  *
  * ## 这个文件**不能**证明什么（别高估）
@@ -49,7 +49,7 @@
  *   这条链路要真 DOM 才能跑。结构层能证明的是"处理器体里只有 `onClose()`、
  *   没有任何发送类调用"，不能证明"事件确实送到了这个处理器"。
  * · `⌘U`（`composer.attach`）只证明了"命令注册的那一行在"，没证明按下去真能弹对话框。
- * 这些都要靠实机 e2e / 人工点击，本文件替代不了。
+ * 这些都要靠运行测试 e2e / 人工点击，本文件替代不了。
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -107,7 +107,7 @@ function makeDeps(over: Partial<PlusMenuDeps> = {}): PlusMenuDeps {
       { relPath: 'data/a.csv', name: 'a.csv' },
       { relPath: 'data/b.tsv', name: 'b.tsv' },
       { relPath: 'data/c.xlsx', name: 'c.xlsx' },
-      // 第 4 个：用来证明列表真的**截到 3 条**（原版也只有 3 条）
+      // 第 4 个：用来证明列表真的**截到 3 条**（项目契约也只有 3 条）
       { relPath: 'data/d.csv', name: 'd.csv' },
     ],
     connectors: ['arXiv', 'Zotero'],
@@ -260,7 +260,7 @@ function jsxOf(markup: string, rowId: string): string {
   return markup.slice(open, close);
 }
 
-/** 检查结果：null = 通过，字符串 = **为什么不合格**（反向对照要能看到原因） */
+/** 检查结果：null = 通过，字符串 = **为什么不合格**（回归护栏要能看到原因） */
 type CheckResult = string | null;
 /**
  * 判据①的**接线**部分：「＋」按钮点下去必须是"开/关弹层"，且**不许**直接推右栏。
@@ -282,7 +282,7 @@ function checkPlusButton(src: string): CheckResult {
 /**
  * 风险段那一条：「点 ＋ 一键打开文件面板」这条**改动前就存在**的路径必须还在。
  *
- * 复刻改之前它是**唯一**能一键到文件面板的路径（顶栏「打开面板」是另一条，
+ * 当前实现改之前它是**唯一**能一键到文件面板的路径（顶栏「打开面板」是另一条，
  * 但那是"显隐切换"、不保证停在文件 tab），所以"改成弹层"必须**加一行**、不能替换。
  */
 function checkFilesPanelPath(srcComposer: string, srcPlus: string): CheckResult {
@@ -351,7 +351,7 @@ function checkOnlyOneFilesPanelBinding(src: string): CheckResult {
   return null;
 }
 
-/** 改一处源码；改不动就直接抛 —— 否则"反向对照"会变成真空断言 */
+/** 改一处源码；改不动就直接抛 —— 否则"回归护栏"会变成真空断言 */
 function mutate(src: string, from: string, to: string): string {
   if (!src.includes(from)) throw new Error(`变异失败（待改的片段不在源码里）：${from}`);
   return src.replace(from, to);
@@ -360,7 +360,7 @@ function mutate(src: string, from: string, to: string): string {
 /**
  * 裁决二的结构侧闸门：`research` / `webSearch` **不许**再变回"能拨的开关"。
  *
- * 为什么单独一条：这两行的语义在**原版里就不存在**（取证贴在 `PlusMenu.tsx` 文件头），
+ * 为什么单独一条：这两行的语义在**项目契约里就不存在**（取证贴在 `PlusMenu.tsx` 文件头），
  * 只靠 `static: true` 一个字段容易被后人顺手删掉 —— 删掉之后所有元素树断言仍会
  * "因为行还在"而通过，用户却能拨一个什么都不干的开关。
  */
@@ -398,7 +398,7 @@ function checkPlusPopoverHeight(
     return 'Popover 的 maxHeight 默认值不是 320 —— 那会连带改掉另外 5 个选择器的高度';
   }
   if (!p.includes('Math.min(maxHeight, avail)')) {
-    return 'Popover 没有把 maxHeight 接进"可用空间"上限计算（原版是 min(可用高度, 28rem)）';
+    return 'Popover 没有把 maxHeight 接进"可用空间"上限计算（项目契约是 min(可用高度, 28rem)）';
   }
   if (!/maxHeight:\s*pos \? pos\.maxH : maxHeight/.test(p)) {
     return 'Popover 没有把 maxHeight 接进内联样式（那参数就是死的）';
@@ -464,9 +464,9 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
     }
   });
 
-  it('★ 判据②：9 个入口齐全（原版实为 10 行 —— research / webSearch 是两条并列开关行）', () => {
+  it('★ 判据②：9 个入口齐全（项目契约实为 10 行 —— research / webSearch 是两条并列开关行）', () => {
     const rows = buildPlusRows(makeDeps());
-    // 顺序 = 原版渲染顺序；`openFilesPanel` 是复刻新增的（见 PlusMenu.tsx 文件头）
+    // 顺序 = 项目契约渲染顺序；`openFilesPanel` 是当前实现新增的（见 PlusMenu.tsx 文件头）
     expect(rows.map((r) => r.id)).toEqual([
       'addFiles',
       'addToProject',
@@ -481,7 +481,7 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
       'openFilesPanel',
     ]);
     // BACKLOG §3-2 那句枚举里的 9 个入口逐个点名 —— 口径换成"9 项都在"，
-    // 而不是"总行数 = 9"，因为原版真的是 10 行（`research` / `webSearch` 各占一行）
+    // 而不是"总行数 = 9"，因为项目契约真的是 10 行（`research` / `webSearch` 各占一行）
     const spec9 = [
       'addFiles',
       'addToProject',
@@ -496,7 +496,7 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
     for (const id of spec9) {
       expect(rows.map((r) => r.id), `少了 ${id}`).toContain(id);
     }
-    // 有二级菜单的那 5 行（原版是 Radix Sub）必须真的带 submenu
+    // 有二级菜单的那 5 行（项目契约是 Radix Sub）必须真的带 submenu
     expect(rows.filter((r) => r.submenu).map((r) => r.id)).toEqual([
       'addToProject',
       'datasets',
@@ -518,7 +518,7 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
     const rows = buildPlusRows(makeDeps());
     for (const row of rows) {
       if (row.id === 'openFilesPanel') {
-        // 复刻新增那一行：两个**既有**键拼起来，没有新造文案
+        // 当前实现新增那一行：两个**既有**键拼起来，没有新造文案
         expect(row.label).toBe(
           `${tx('chat.chatPage.openPanel')} · ${tx('dock.rightPanel.files')}`,
         );
@@ -539,7 +539,7 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
     expect(webSearch?.static, 'webSearch 不是展示项').toBe(true);
     // ② 数据层不许再挂状态回调：整个行表里只有这两行是 static，其余都是真动作
     expect(rows.filter((r) => r.static).map((r) => r.id)).toEqual(['research', 'webSearch']);
-    // ③ 勾选态是**原版默认态**的镜像（`useState(!1)` / `useState(!0)`），与入参无关
+    // ③ 勾选态是**项目契约默认态**的镜像（`useState(!1)` / `useState(!0)`），与入参无关
     expect(research?.checked).toBe(false);
     expect(webSearch?.checked).toBe(true);
     expect(PLUS_STATIC_SWITCH_DEFAULT).toEqual({ research: false, webSearch: true });
@@ -669,7 +669,7 @@ describe('② 元素树：真的点到那些按钮上', () => {
     expect(noSkills[0].disabled).toBe(true);
     expect(noSkills[0].label).toBe(tx('composer.composerPlusMenu.noSkillsEnabled'));
 
-    // 禁用行：点它**不许**关弹层（原版 Radix 的 disabled item 不触发 onSelect）
+    // 禁用行：点它**不许**关弹层（项目契约 Radix 的 disabled item 不触发 onSelect）
     const onClose = vi.fn();
     activatePlusSubItem(noProjects[0], { onClose });
     expect(onClose).not.toHaveBeenCalled();
@@ -678,7 +678,7 @@ describe('② 元素树：真的点到那些按钮上', () => {
     expect(findEl(tree, 'data-plus-sub-item', 'noProjects')?.props.disabled).toBe(true);
   });
 
-  it('原版那三类"纯展示"条目不自作主张加动作（项目名 / 连接器名点了不做事）', () => {
+  it('项目契约那三类"纯展示"条目不自作主张加动作（项目名 / 连接器名点了不做事）', () => {
     const d = makeDeps();
     const before = JSON.stringify(d);
     for (const sub of ['project', 'connectors'] as PlusSubmenuId[]) {
@@ -722,7 +722,7 @@ describe('③ 真总线 + 真 store（不是读源码）', () => {
     expect(useApp.getState().sidePanel).toBe('files');
   });
 
-  it('★ 改动前那条路径没丢：`setSidePanel(\'files\')` 仍然可达（反向对照见④）', () => {
+  it('★ 改动前那条路径没丢：`setSidePanel(\'files\')` 仍然可达（回归护栏见④）', () => {
     const { deps, off } = realDeps();
     const row = buildPlusRows(deps).find((r) => r.id === 'openFilesPanel');
     expect(row, '「打开面板 · 文件」那一行不见了').toBeTruthy();
@@ -740,9 +740,9 @@ describe('③ 真总线 + 真 store（不是读源码）', () => {
       }
     }
     off();
-    // 顺序 = ALL_SUBS 的顺序（datasets 在 gallery 前面，与原版行序一致）。
+    // 顺序 = ALL_SUBS 的顺序（datasets 在 gallery 前面，与项目契约行序一致）。
     // ⚠️ `extensions/skills` 出现**两次**：`manageSkills` 与 `browseSkills` 是两行，
-    //    原版里它们都跳 `k("skills")`（同一分区，不因为文案不同就编一个假分区）。
+    //    项目契约里它们都跳 `k("skills")`（同一分区，不因为文案不同就编一个假分区）。
     expect(events.map((e) => [e.route, e.section ?? null])).toEqual([
       ['datasets', null],
       ['gallery', null],
@@ -754,7 +754,7 @@ describe('③ 真总线 + 真 store（不是读源码）', () => {
     ]);
   });
 
-  it('反向对照：跳页项**同时**把弹层关掉（只跳不关会让弹层悬在新页面上）', () => {
+  it('回归护栏：跳页项**同时**把弹层关掉（只跳不关会让弹层悬在新页面上）', () => {
     const { deps, off } = realDeps();
     const onClose = vi.fn();
     activatePlusSubItem(
@@ -795,7 +795,7 @@ describe('④ 静态渲染（文案 / 图标 / 角标真的进了标记）', () 
   let htmlCache = '';
   const html = (): string => (htmlCache ||= renderToStaticMarkup(PlusMenu(props())));
 
-  it('10 行 + 复刻新增那行的文案都在标记里', () => {
+  it('10 行 + 当前实现新增那行的文案都在标记里', () => {
     for (const leaf of [
       'addFiles',
       'addToProject',
@@ -835,7 +835,7 @@ describe('④ 静态渲染（文案 / 图标 / 角标真的进了标记）', () 
       const icon = collect(el).find((e) => e.props.name === row.icon);
       expect(icon, `${row.id} 的图标 ${row.icon} 没渲染出来`).toBeTruthy();
     }
-    // 顺带钉一下写死的名字：原版 chunk 里逐个读出来的那几个
+    // 顺带钉一下写死的名字：项目契约 chunk 里逐个读出来的那几个
     expect(PLUS_ICON.addFiles).toBe('paperclip');
     expect(PLUS_ICON.skills).toBe('sparkles');
     expect(PLUS_ICON.connectors).toBe('plug');
@@ -872,14 +872,14 @@ describe('④ 静态渲染（文案 / 图标 / 角标真的进了标记）', () 
     expect(renderToStaticMarkup(<Icon name="这个图标名不存在" />)).toContain('data-missing-icon');
   });
 
-  it('分隔线跟着 `group` 换（原版 3 处 + 复刻新增那行前 1 处 = 4 条）', () => {
+  it('分隔线跟着 `group` 换（项目契约 3 处 + 当前实现新增那行前 1 处 = 4 条）', () => {
     const groups = buildPlusRows(makeDeps()).map((r) => r.group);
     const seps = groups.filter((g, i) => i > 0 && g !== groups[i - 1]).length;
     expect(seps).toBe(4);
     expect(html().split('cz-pop-sep').length - 1).toBe(4);
   });
 
-  it('★ ✓ 只画在 `webSearch` 那一行上（原版默认开）—— 展示项的静态镜像', () => {
+  it('★ ✓ 只画在 `webSearch` 那一行上（项目契约默认开）—— 展示项的静态镜像', () => {
     const tree = PlusMenu(props());
     const checkedRows = ['research', 'webSearch'].filter((id) =>
       collect(findEl(tree, 'data-plus-row', id)).some((el) =>
@@ -897,7 +897,7 @@ describe('④ 静态渲染（文案 / 图标 / 角标真的进了标记）', () 
 });
 
 // ═══════════════════════════════════════════════════════════════
-// ⑤ 结构断言层 + 永久反向对照（反橡皮图章）
+// ⑤ 结构断言层 + 永久回归护栏（反橡皮图章）
 // ═══════════════════════════════════════════════════════════════
 
 describe('⑤ 接线结构断言：「＋」按钮 / 点外部关闭 / ⌘U', () => {
@@ -938,7 +938,7 @@ describe('⑤ 接线结构断言：「＋」按钮 / 点外部关闭 / ⌘U', ()
 
   it('★ 裁决三：高度走的是「＋」菜单专用通道，设计系统的 .cz-pop 没被动', () => {
     expect(checkPlusPopoverHeight(RAW.composer, RAW.popover, RAW.css)).toBeNull();
-    // 448 = 28rem —— 原版 `max-h-[var(--available-height,28rem)]` 的兜底，不是随手拍的
+    // 448 = 28rem —— 项目契约 `max-h-[var(--available-height,28rem)]` 的兜底，不是随手拍的
     expect(PLUS_POPOVER_MAX_HEIGHT).toBe(448);
     // 这条通道真的只给「＋」用：另外 5 个选择器一个都没传
     const s = stripComments(RAW.composer);
@@ -947,12 +947,12 @@ describe('⑤ 接线结构断言：「＋」按钮 / 点外部关闭 / ⌘U', ()
   });
 
   /**
-   * ★ 反向对照：同一套检查器跑**故意改坏**的源码，必须被抓出来。
+   * ★ 回归护栏：同一套检查器跑**故意改坏**的源码，必须被抓出来。
    * 只断言"真源码通过"是橡皮图章 —— 检查器自己必须能红。
-   * 其中 M1 就是本轮要求的那条反向对照（把 onClick 改回旧行为）。
+   * 其中 M1 就是本轮要求的那条回归护栏（把 onClick 改回旧行为）。
    */
-  it('★ 反向对照：每种"改回旧写法"都必须被检查器抓住（真跑，不是摆设）', () => {
-    // M1 —— 本轮的核心反向对照：把「＋」改回"直接推右栏"
+  it('★ 回归护栏：每种"改回旧写法"都必须被检查器抓住（真跑，不是摆设）', () => {
+    // M1 —— 本轮的核心回归护栏：把「＋」改回"直接推右栏"
     const m1 = mutate(
       RAW.composer,
       "onClick={() => setOpenMenu(openMenu === 'plus' ? null : 'plus')}",
@@ -1008,7 +1008,7 @@ describe('⑤ 接线结构断言：「＋」按钮 / 点外部关闭 / ⌘U', ()
     );
     expect(checkOnlyOneFilesPanelBinding(m9)).toMatch(/出现了 2 次/);
 
-    // M10 —— 把 `research` 那行改回"能拨的开关"（裁决二的核心反向对照）
+    // M10 —— 把 `research` 那行改回"能拨的开关"（裁决二的核心回归护栏）
     const m10 = mutate(
       RAW.plus,
       '      checked: PLUS_STATIC_SWITCH_DEFAULT.research,',

@@ -1,9 +1,8 @@
 /**
  * 任务进度面板的数据层回归测试。
  *
- * 输入不是编的 —— 每个 TaskCreate/TaskUpdate 的 input 与 tool_result 文本
- * 都逐字取自实机长跑（`.workbuddy/ui-audit/real-ds-t5b/mmodels.db` 的
- * messages.blocks），只把 subject 换成 A/B/C/D 便于断言。
+ * 输入覆盖 TaskCreate/TaskUpdate 的 input 与 tool_result 文本，只把 subject
+ * 换成 A/B/C/D 便于断言。
  */
 import { describe, expect, it } from 'vitest';
 import type { ContentBlock } from '@shared/types';
@@ -18,7 +17,7 @@ function create(subject: string, result: string): ContentBlock {
     toolName: 'TaskCreate',
     toolUseId: `c${seq}`,
     toolInput: { subject, description: `做 ${subject}`, activeForm: `正在做 ${subject}` },
-    // 实机原文格式："Task #1 created successfully: 修复并跑通 problem3/problem4 求解脚本"
+    // 运行测试原文格式："Task #1 created successfully: 修复并跑通 problem3/problem4 求解脚本"
     toolResult: result,
   };
 }
@@ -30,7 +29,7 @@ function update(taskId: string, status: string): ContentBlock {
     toolName: 'TaskUpdate',
     toolUseId: `u${seq}`,
     toolInput: { taskId, status },
-    // 实机原文："Updated task #1 status"
+    // 运行测试原文："Updated task #1 status"
     toolResult: `Updated task #${taskId} status`,
   };
 }
@@ -167,10 +166,10 @@ describe('latestTaskBlocks —— 重启后只恢复最近一批任务', () => {
  *
  * 为什么值得单测：`tx()` 取不到路径时**原样返回路径字符串**（i18n/index.ts 的
  * `lookup(path) ?? path`），界面上就会直接显示 `composer.composerTaskListCard.progress`
- * —— 不报错、不像坏，只是很难看，而且只在实机截图里才看得见。
- * （第一版就写错成 `chat.composerTaskListCard.*`，实机截图才发现。）
+ * —— 不报错、不像坏，只是很难看，而且只在界面样例里才看得见。
+ * （第一版就写错成 `chat.composerTaskListCard.*`，界面样例才发现。）
  */
-describe('任务面板文案 —— 原版键必须命中', () => {
+describe('任务面板文案 —— 项目契约键必须命中', () => {
   const KEYS = [
     'composer.composerTaskListCard.tasksLabel',
     'composer.composerTaskListCard.progress',

@@ -9,7 +9,7 @@ out/
 electron.vite.config.*.mjs
 
 # Local audit, cache, and temporary workspaces
-.workbuddy/
+.mmodels-audit/
 .backup-*/
 .baseline/
 .cache/

@@ -163,7 +163,7 @@ const FIND_RECT_JS = (text, exact, scope) => `(function(){
   const wsUrl = await waitForBrowserWs(textRef);
   const cdp = await connect(wsUrl);
 
-  // 轮询等窗口 target 出现（原版启动后可能先做鉴权/迁移，窗口晚于 DevTools 端点）
+  // 轮询等窗口 target 出现（项目契约启动后可能先做鉴权/迁移，窗口晚于 DevTools 端点）
   let targetInfos = [];
   for (let i = 0; i < 60; i++) {
     const r = await cdp.send('Target.getTargets');

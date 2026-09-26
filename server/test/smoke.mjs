@@ -221,7 +221,7 @@ try {
   const basic = 'Basic ' + Buffer.from('admin:' + TOKEN).toString('base64');
   const adminPage = await fetch(BASE + '/admin', { headers: { Authorization: basic } });
   const html = await adminPage.text();
-  ok(adminPage.status === 200 && html.includes('MathModel 诊断台'), '/admin 页面可访问');
+  ok(adminPage.status === 200 && html.includes('MModels 诊断台'), '/admin 页面可访问');
 
   const statsRes = await fetch(BASE + '/admin/api/stats?days=7', { headers: { Authorization: basic } });
   const st = await statsRes.json();

@@ -1,7 +1,7 @@
 # electron-builder 打包配置
 #
-# 复刻原版 MathModel 0.0.20 的打包形态（由 NSIS 安装包逆向得到）：
-#   - 原版 exe 名 `mathmodel.exe`，NSIS 安装器
+# 当前版本的便携打包形态：
+#   - Windows 可执行文件与便携包
 #   - 随包资源放在 `process.resourcesPath` 下：bin/ claude-code/ builtin-skills/
 #     builtin-examples/ pdfjs/ elevate.exe
 #   - `app.asar.unpacked` 里只有两个原生模块：better-sqlite3、node-pty
@@ -39,13 +39,13 @@ files:
   - '!out/env-test-bundle.cjs'
   # ⚠️ **排掉 SDK 自带的平台二进制**（272 MB）。
   #    它和 extraResources 里的 resources/claude-code/claude.exe 是同一个文件，
-  #    不排就是双份、白胖 272 MB。原版也只发了一份（在 resources/claude-code/）。
+  #    不排就是双份、白胖 272 MB。当前包只发一份（在 resources/claude-code/）。
   #    主进程通过 `pathToClaudeCodeExecutable` 指向随包那份，见 src/main/agent/env.ts。
   - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
 
   # ── 瘦身：只发 x64 需要的原生二进制 ──
-  # ⚠️ 这里筛掉的是「复刻版有、原版没有」的部分（见 scripts/diff-installed.cjs）。
-  #    原版反而把自己编译原生模块的 MSVC 中间产物也打进去了，那是它的冗余，不必照抄。
+  # ⚠️ 这里筛掉的是调试与构建中间产物（见 scripts/diff-installed.cjs）。
+  #    不把原生模块的 MSVC 中间产物带进发布包，避免增加体积。
   # 其它架构的 prebuild（本包只发 x64）
   - '!node_modules/node-pty/prebuilds/win32-arm64/**'
   - '!node_modules/node-pty/prebuilds/darwin-*/**'
@@ -93,7 +93,7 @@ win:
       arch:
         - x64
   executableName: MModels
-  # 大文件较多，关掉压缩以缩短打包时间（原版安装包本身也是压缩的）
+  # 大文件较多，关掉压缩以缩短打包时间
   compression: normal
 
 nsis:
@@ -126,8 +126,8 @@ portable:
 npmRebuild: false
 buildDependenciesFromSource: false
 
-# ── 自动更新（原版用 GitHub Releases）────────────────────────
-# ⚠️ 复刻版不发版，此处仅保留结构；真要发版时改 publish 配置。
+# ── 自动更新（GitHub Releases）────────────────────────
+# ⚠️ 当前发布流程默认关闭自动发布；正式发布时再填写 publish 配置。
 publish: null
 
 # 关掉 asar 完整性校验之外的额外校验，减少打包噪音

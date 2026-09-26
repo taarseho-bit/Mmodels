@@ -1,7 +1,7 @@
 /**
  * 「Agent 提问」确认框。
  *
- * 背景（用户实机反馈）：Agent 用 AskUserQuestion 提问时，宿主没接对话框，
+ * 背景（用户运行测试反馈）：Agent 用 AskUserQuestion 提问时，宿主没接对话框，
  * 模型只能把「需你确认的 4 个选择 + A/B/C 选项」当普通 markdown 打出来，
  * 用户得手打回复。这里把它渲染成真正的确认弹窗：点选项 → 提交 → 答案回传。
  *
@@ -12,7 +12,7 @@
  * （「always includes a Skip button and a free-text input box for custom answers」），
  * 所以 i18n 里的 customAnswerHint 才是「也可以在下方输入框中填写自定义回答」。
  *
- * 文案对接原版已有的 i18n 键（`notifications.*` / `composer.composerPendingUserInputPanel.*`，
+ * 文案对接项目契约已有的 i18n 键（`notifications.*` / `composer.composerPendingUserInputPanel.*`，
  * 见 i18n/zh.ts），不新造一套词。
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -103,7 +103,7 @@ export function AskUserDialog({ request, onSubmit, onCancel }: Props): JSX.Eleme
   return (
     // ⚠️ 遮罩**故意不绑 onClick**（别再改成点背景即取消）。
     //    这是阻断「弹窗莫名其妙没了」的唯一机械通道：遮罩铺满整个视口，
-    //    任何一次误点/外部真实鼠标点击（实机采集时验证过：一次落在
+    //    任何一次误点/外部真实鼠标点击（运行测试采集时验证过：一次落在
     //    `.ask-option` 之外的点击就会被 backdrop 吃掉）都会把这次提问
     //    变成「用户关闭了提问，没有作答」，模型随即按"没拿到答案"继续。
     //    取消只能由用户显式触发：Esc 或「取消」按钮。

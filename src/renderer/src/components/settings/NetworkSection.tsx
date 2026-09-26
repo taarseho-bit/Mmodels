@@ -1,11 +1,11 @@
 /**
  * 设置页 ⑦ 网络
  *
- * 原版三块（`settings.proxySection.*`）：
+ * 项目契约三块（`settings.proxySection.*`）：
  *   ① 通过代理发送 Agent 流量（开关）
  *   ② 代理来源（下拉：系统代理 / 手动配置）
  *   ③ 当前生效 + 重新检测
- * 复刻自创的「本地模式」说明卡保留，但按审计要求排到原版控件之后。
+ * 当前实现自创的「本地模式」说明卡保留，但按审计要求排到项目契约控件之后。
  *
  * 代理**真的会生效**：
  *   设置存在 `settings.proxy`（conf）→ `main/store/config.ts` 每次写入都调
@@ -63,7 +63,7 @@ export function NetworkSection(): JSX.Element {
   const socks =
     cfg.mode === 'manual' ? /^socks/i.test(cfg.manualUrl.trim()) : (detected?.unsupported ?? false);
 
-  /** 「当前生效」两行文案 —— 复用原版 settings.proxySection.* 词典 */
+  /** 「当前生效」两行文案 —— 复用项目契约 settings.proxySection.* 词典 */
   const effectiveValue = (): string => {
     if (detected === null) return t('检测中…');
     if (!cfg.enabled) return tx('settings.proxySection.directDisabled');

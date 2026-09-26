@@ -1,7 +1,7 @@
 /**
  * 应用外壳。
  *
- * 布局（复刻原版的三栏结构）：
+ * 布局（当前实现项目契约的三栏结构）：
  *   ┌─────────────────────────────────────────────────┐
  *   │ TopBar  项目名 · 模型 · 侧栏开关                 │
  *   ├──────────┬──────────────────────────┬───────────┤
@@ -10,7 +10,7 @@
  *   │ 会话列表 │                          │ /技能     │
  *   └──────────┴──────────────────────────┴───────────┘
  *
- * ⚠️ 与原版实机对齐：**没有底部状态栏**（原版所有页面都没有），
+ * ⚠️ 与界面检查对齐：**没有底部状态栏**（项目契约所有页面都没有），
  *    顶栏也没有品牌块与多余图标。
  * ⚠️ 没有登录页、没有账户菜单、没有额度显示 —— 按要求排除计费功能。
  */
@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ApprovalDecision, ApprovalRequest, AskUserRequest, TourId } from '@shared/types';
 import { useApp, type SidePanelTab } from './store/app';
 import { TopBar } from './components/TopBar';
+import { ChatQuickBar } from './components/ChatQuickBar';
 import { Sidebar } from './components/Sidebar';
 import { SidePanel } from './components/SidePanel';
 import { ResizeHandle } from './components/ResizeHandle';
@@ -43,7 +44,7 @@ import { setLang, t, tx, useLang } from './i18n';
 import { onOpenRoute, onOpenSettings } from './lib/settings-nav';
 import { installKeybindings, registerCommand, RULES, APP_COMMANDS } from './keybindings/dispatch';
 
-/** 路由 —— 与原版顶栏导航一致（不含账号相关页面） */
+/** 路由 —— 与项目契约顶栏导航一致（不含账号相关页面） */
 export type Route =
   | 'workbench'
   | 'chat'
@@ -64,7 +65,7 @@ export function App(): JSX.Element {
   const patchSettings = useApp((s) => s.patchSettings);
   const sidePanel = useApp((s) => s.sidePanel);
   const setSidePanel = useApp((s) => s.setSidePanel);
-  /** 「编辑器视图」模式（原版是模式，不是「打开文件面板」一次性动作） */
+  /** 「编辑器视图」模式（项目契约是模式，不是「打开文件面板」一次性动作） */
   const editorView = useApp((s) => s.editorView);
   const setEditorView = useApp((s) => s.setEditorView);
   const pendingPrompt = useApp((s) => s.pendingPrompt);
@@ -74,7 +75,7 @@ export function App(): JSX.Element {
   const activeSessionId = useApp((s) => s.activeSessionId);
   const beginNewChat = useApp((s) => s.beginNewChat);
   const selectSession = useApp((s) => s.selectSession);
-  /** 编辑器视图·编辑区里内联打开的文件（原版：文件树选中 → 编辑区） */
+  /** 编辑器视图·编辑区里内联打开的文件（项目契约：文件树选中 → 编辑区） */
   const activeArtifact = useApp((s) => s.activeArtifact);
   const openArtifact = useApp((s) => s.openArtifact);
   const [route, setActualRoute] = useState<Route>('chat');
@@ -86,10 +87,10 @@ export function App(): JSX.Element {
   }, []);
 
   /**
-   * 编辑器视图的三栏状态（`original/08-editorview.png`：文件树 | 编辑区 | 对话）。
+   * 编辑器视图的三栏状态（文件树 | 编辑区 | 对话）。
    *  - `editorCol`：第二栏显示什么（活动栏切换；再点一次收起第二栏）
-   *  - `editorChatOpen`：第三栏「对话」列的显隐（原版 `showChat` / `hideChat`）
-   *  - `editorHistoryOpen`：「项目会话」列表是否展开（原版 `chatHistory`）
+   *  - `editorChatOpen`：第三栏「对话」列的显隐（项目契约 `showChat` / `hideChat`）
+   *  - `editorHistoryOpen`：「项目会话」列表是否展开（项目契约 `chatHistory`）
    */
   const [editorCol, setEditorCol] = useState<'files' | 'changes' | 'versions' | null>('files');
   const [editorChatOpen, setEditorChatOpen] = useState(true);
@@ -102,7 +103,7 @@ export function App(): JSX.Element {
    * （设置页「新手教程」7 张卡各一个 id，见 shared/types 的 TourId）。
    */
   const [showTour, setShowTour] = useState<{ tourId?: TourId } | null>(null);
-  /** 顶栏浮层：分享论文 / 局域网协作（原版是浮层，不是路由页） */
+  /** 顶栏浮层：分享论文 / 局域网协作（项目契约是浮层，不是路由页） */
   const [showShare, setShowShare] = useState(false);
   const [showCollab, setShowCollab] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -120,13 +121,13 @@ export function App(): JSX.Element {
     });
   }, []);
 
-  // 界面语言跟随设置（原版：i18next 默认 zh-CN 可切 en）
+  // 界面语言跟随设置（项目契约：i18next 默认 zh-CN 可切 en）
   const lang = useLang();
   useEffect(() => {
     if (settings?.locale) setLang(settings.locale);
   }, [settings?.locale]);
 
-  // 本地版启动后必须可以立即使用各个页面。模型向导保留为可选配置入口，
+  // 当前版本启动后必须可以立即使用各个页面。模型向导保留为可选配置入口，
   // 不再用模态层挡住整个应用；未配置模型时，输入区会明确引导到设置页。
   useEffect(() => {
     if (!ready || !settings || decidedRef.current) return;
@@ -134,7 +135,7 @@ export function App(): JSX.Element {
     if (!settings.onboardingDone) void patchSettings({ onboardingDone: true });
   }, [ready, settings, patchSettings]);
 
-  // 有「待填入的提示词」→ 自动切回对话页（原版：选模板后进入新会话并填好输入框）
+  // 有「待填入的提示词」→ 自动切回对话页（项目契约：选模板后进入新会话并填好输入框）
   useEffect(() => {
     if (pendingPrompt) setRoute('chat');
   }, [pendingPrompt]);
@@ -278,7 +279,7 @@ export function App(): JSX.Element {
 
   /**
    * 环境浮层里的「在 <编辑器> 中打开」/「默认应用」。
-   * 原版能探测本机编辑器并按名字拉起（`openInEditorNamed` 是插值键）；本地版
+   * 项目契约能探测本机编辑器并按名字拉起（`openInEditorNamed` 是插值键）；当前版本
    * 没有编辑器探测/拉起 IPC，两个启动器都交给主进程 `shell.openPath`，由系统按
    * 「目录」的注册程序打开。真正拉起 Cursor 需要主进程 spawn —— 见汇报遗留点。
    */
@@ -335,47 +336,46 @@ export function App(): JSX.Element {
 
   return (
     <ErrorBoundary key={lang}>
-      <div className={`app-shell competition-shell${route === 'settings' ? ' no-topbar' : ''}`}>
+      {/* 2026-09-26 终态：chat 路由**无顶栏行**——主内容直接顶到窗口顶，
+          按钮组（对话/工作流/文件/更多）悬浮在右上角空白区（.chat-floating-bar）。
+          工作流的演示/分析切换已挪进标题旁，右上角在两种视图下都是空白，不再遮挡。 */}
+      <div className={`app-shell competition-shell${route === 'settings' || route === 'chat' ? ' no-topbar' : ''}${route === 'chat' ? ' chat-floating' : ''}`}>
         {/*
-          ⚠️ 设置页是**全屏接管**（原版实机取证：`original/s05-env.txt` 里没有
-          新建会话/科研绘图/… 这些应用侧栏项，设置导航从 x≈10 就开始）。
+          ⚠️ 设置页是**全屏接管**：设置导航从左侧边缘开始，不重复显示应用侧栏。
           所以进设置页要收起顶栏与应用侧栏，否则会变成"双栏并排"。
         */}
-        {route !== 'settings' && (
-          <TopBar
-            showActions={route === 'chat'}
-            onTogglePanel={() => {
-              // 编辑器视图下没有右栏，「打开面板」切换的是第二栏（文件树/更改）
-              if (editorView) setEditorCol((c) => (c === null ? 'files' : null));
-              else setSidePanel(sidePanel === null ? 'files' : null);
-            }}
-            onOpenVersions={() =>
-              editorView ? setEditorCol('versions') : setSidePanel('versions')
-            }
-            onOpenEnvironment={() => { setSettingsSection('env'); setRoute('settings'); }}
-            onOpenShare={() => setShowShare(true)}
-            onOpenCollab={() => setShowCollab(true)}
-            editorView={editorView}
-            onToggleEditorView={() => setEditorView(!editorView)}
-            hasProject={currentProject !== null}
-            onOpenProjectIn={openProjectIn}
-            onRevealInFolder={revealProjectInFolder}
-          />
+        {route !== 'settings' && route !== 'chat' && <TopBar />}
+
+        {/* chat 路由的悬浮工具条：app-shell 是 position:relative，直接绝对定位右上角 */}
+        {route === 'chat' && !editorView && (
+          <div className="chat-floating-bar">
+            <ChatQuickBar
+              onTogglePanel={() => setSidePanel(sidePanel === null ? 'files' : null)}
+              onOpenVersions={() => setSidePanel('versions')}
+              onOpenEnvironment={() => { setSettingsSection('env'); setRoute('settings'); }}
+              onOpenShare={() => setShowShare(true)}
+              onOpenCollab={() => setShowCollab(true)}
+              editorView={editorView}
+              onToggleEditorView={() => setEditorView(!editorView)}
+              hasProject={currentProject !== null}
+              onOpenProjectIn={openProjectIn}
+              onRevealInFolder={revealProjectInFolder}
+            />
+          </div>
         )}
 
         <div className="app-body">
           {/*
             ⚠️ 全屏接管的两处：
-              - 设置页（原版实机：设置导航从 x≈10 开始，没有应用侧栏）
-              - 编辑器视图（原版 `original/08-editorview.txt` 里同样没有
-                新建会话/科研绘图/… 这些应用侧栏项，左边缘只有图标活动栏）
+              - 设置页（界面检查：设置导航从 x≈10 开始，没有应用侧栏）
+              - 编辑器视图：不重复显示应用侧栏，左边缘只保留图标活动栏
           */}
           {route !== 'settings' && !(route === 'chat' && editorView) && (
             <Sidebar route={route} setRoute={setRoute} />
           )}
 
           {/*
-            编辑器视图（`original/08-editorview.png`）：活动栏 | 文件树 | 编辑区 | 对话 四列。
+            编辑器视图：活动栏 | 文件树 | 编辑区 | 对话 四列。
             key 固定 —— 「对话」列在普通视图与编辑器视图之间只能换位置、不能换身份，
             否则 ChatPage 会被卸载，正在流式的回复会丢。
           */}
@@ -433,6 +433,28 @@ export function App(): JSX.Element {
                   <Icon name="x" size={15} />
                   <span>{tx('chat.editorView.exit')}</span>
                 </button>
+
+                {/* 2026-09-26：编辑器视图没有侧栏，快捷工具条（对话/工作流/文件/更多）
+                    在头部右侧复用同一组件，避免这些入口丢失 */}
+                <div className="editorview-quickbar">
+                  <ChatQuickBar
+                    onTogglePanel={() => {
+                      if (editorView) setEditorCol((c) => (c === null ? 'files' : null));
+                      else setSidePanel(sidePanel === null ? 'files' : null);
+                    }}
+                    onOpenVersions={() =>
+                      editorView ? setEditorCol('versions') : setSidePanel('versions')
+                    }
+                    onOpenEnvironment={() => { setSettingsSection('env'); setRoute('settings'); }}
+                    onOpenShare={() => setShowShare(true)}
+                    onOpenCollab={() => setShowCollab(true)}
+                    editorView={editorView}
+                    onToggleEditorView={() => setEditorView(!editorView)}
+                    hasProject={currentProject !== null}
+                    onOpenProjectIn={openProjectIn}
+                    onRevealInFolder={revealProjectInFolder}
+                  />
+                </div>
               </div>
             )}
 

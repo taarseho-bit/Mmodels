@@ -18,6 +18,10 @@ describe('taskKindForPrompt —— 斜杠命令反推任务类型', () => {
     expect(taskKindForPrompt('/draw-figures 绘制投稿级图表')).toBe('figure');
   });
 
+  it('参赛冲刺命令命中 sprint', () => {
+    expect(taskKindForPrompt('/competition-sprint 排定 72 小时冲刺计划')).toBe('sprint');
+  });
+
   it('命令在消息中部也命中（渲染层预填后用户在前面补了文字）', () => {
     expect(taskKindForPrompt('请开始：\n/review-paper 输出评分')).toBe('review');
   });
@@ -46,6 +50,13 @@ describe('mainAgentPersonaSection —— 注入与零漂移', () => {
     const figure = mainAgentPersonaSection('/draw-figures 绘图');
     expect(figure.join('\n')).toContain('图表制作主智能体');
     expect(figure.join('\n')).toContain('figure-table-planner');
+  });
+
+  it('参赛冲刺注入总指挥角色与 72 小时节奏', () => {
+    const sprint = mainAgentPersonaSection('/competition-sprint 冲刺');
+    expect(sprint.join('\n')).toContain('竞赛冲刺总指挥');
+    expect(sprint.join('\n')).toContain('72 小时');
+    expect(sprint.join('\n')).toContain('paper-writing');
   });
 
   it('chat 返回空数组（通用主智能体零漂移）', () => {

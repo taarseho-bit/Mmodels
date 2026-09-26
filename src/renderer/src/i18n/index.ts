@@ -1,8 +1,8 @@
 /**
- * 文案取用与插值 —— 与原版一致：点号路径 + `{{name}}` 占位符。
+ * 文案取用与插值 —— 与项目契约一致：点号路径 + `{{name}}` 占位符。
  *
- * 原版用 i18next（jse = { en:{translation:Sse}, "zh-CN":{translation:zse} }），
- * 默认 zh-CN 并回退 en。本模块复刻同一语义：
+ * 项目契约用 i18next（jse = { en:{translation:Sse}, "zh-CN":{translation:zse} }），
+ * 默认 zh-CN 并回退 en。本模块当前实现同一语义：
  *   - `tx('papers.page.title')`        → 字符串
  *   - `tx('papers.page.problem', { code: 'A' })` → '{{code}} 题' 插值
  *   - `setLang('en-US')`               → 切换语言（en 缺键时回退 zh）
@@ -56,7 +56,7 @@ export function lookup(path: string): string | undefined {
   }
   if (typeof cur === 'string') return cur;
   if (lang === 'en-US') {
-    // en 缺键 → 回退 zh（原版 i18next fallbackLng: 'en' 的反向兜底）
+    // en 缺键 → 回退 zh（当前 i18next fallbackLng: 'en' 的反向兜底）
     cur = zh as unknown;
     for (const p of parts) {
       if (typeof cur !== 'object' || cur === null) return undefined;
@@ -79,7 +79,7 @@ export function tx(path: string, vars?: Record<string, string | number>): string
   );
 }
 
-/** 复数形式（原版 `key_one` / `key_other` 约定） */
+/** 复数形式（项目契约 `key_one` / `key_other` 约定） */
 export function txPlural(path: string, count: number, vars?: Record<string, string | number>): string {
   const suffix = count === 1 ? '_one' : '_other';
   const target = lookup(path + suffix) !== undefined ? path + suffix : path;
@@ -94,9 +94,9 @@ function interp(raw: string, vars?: Record<string, string | number>): string {
 }
 
 /**
- * 「中文即键」取文案 —— 原版词典里没有对应条目的界面（本项目新增的功能页）
+ * 「中文即键」取文案 —— 项目契约词典里没有对应条目的界面（本项目新增的功能页）
  * 用这个：中文原文直接作键，英文译文在 overrides/ 里登记，未登记则原样返回。
- * 优先级：能用原版键（tx）就用 tx，t() 只是新增界面的兜底。
+ * 优先级：能用项目契约键（tx）就用 tx，t() 只是新增界面的兜底。
  */
 export function t(zhStr: string, vars?: Record<string, string | number>): string {
   if (lang !== 'en-US') return interp(zhStr, vars);

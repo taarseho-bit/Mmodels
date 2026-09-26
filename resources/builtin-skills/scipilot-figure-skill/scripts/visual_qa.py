@@ -84,7 +84,7 @@ def _draw_and_collect_glyph_warnings(fig) -> list[str]:
     """
     渲染一次 figure，同时从 warnings 和 logging 两条通道收集缺字告警。
 
-    matplotlib 不同版本对缺字的上报方式不一：老版本走 warnings.warn，
+    matplotlib 不同版本对缺字的上报方式不一：部分版本走 warnings.warn，
     新版本走 logging。两边都挂上才不会漏。渲染顺便让 renderer 就绪，
     供后续 window_extent 测量使用。
     """

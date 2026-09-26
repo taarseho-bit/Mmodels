@@ -1,13 +1,13 @@
 /**
- * 数据集页 —— 复刻原版 `DatabasePage`。
+ * 数据集页 —— 本地设计 `DatabasePage`。
  *
- * 原版定位（`shell.databasePage.*`）：
+ * 项目契约定位（`shell.databasePage.*`）：
  *   「管理绘图数据文件」/「导入 CSV/Excel 数据文件，并在会话中通过 @ 引用为绘图数据源」
  *
  * 关键交互：
  *   - 左侧列表：项目里的数据文件（CSV/TSV/XLSX…）
  *   - 右侧预览：CSV/TSV 走 `DataFilePreview` 渲染真表格
- *   - 「在会话中引用」：把 `@data/xxx.csv` 填进输入框（原版的 @ 引用机制）
+ *   - 「在会话中引用」：把 `@data/xxx.csv` 填进输入框（项目契约中的 @ 引用机制）
  */
 import { useCallback, useEffect, useState } from 'react';
 import { PageShell, EmptyState } from '../components/PageShell';
@@ -29,7 +29,7 @@ interface DatasetFile {
 
 /** 能渲染成表格的类型 */
 const TABLE_EXT = new Set(['.csv', '.tsv']);
-/** Excel 类：本复刻不解析 xlsx（原版用 xlsx 库），如实提示用系统程序打开 */
+/** Excel 类：当前实现不解析 xlsx（项目契约用 xlsx 库），如实提示用系统程序打开 */
 const EXCEL_EXT = new Set(['.xlsx', '.xls']);
 
 function humanSize(n: number): string {
@@ -139,7 +139,7 @@ export function DatabasePage(): JSX.Element {
     void window.mathmodel.app.openPath(`${project.root}\\${rel.replace(/\//g, '\\')}`);
   };
 
-  /** 原版的 @ 引用：把路径塞进输入框交给 Agent */
+  /** 项目契约中的 @ 引用：把路径塞进输入框交给 Agent */
   const reference = (f: DatasetFile): void => {
     fillPrompt(`@${f.relPath}`);
   };

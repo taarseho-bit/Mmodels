@@ -1,10 +1,10 @@
 /**
- * 项目版本面板 —— 复刻原版 `VersionHistoryPanel`。
+ * 项目版本面板 —— 当前实现项目契约 `VersionHistoryPanel`。
  *
- * 原版把版本存在**本机**（`localOnly`：「仅保存在这台设备」），
+ * 项目契约把版本存在**本机**（`localOnly`：「仅保存在这台设备」），
  * 用 git commit 承载。这里沿用同一模型。
  *
- * ⚠️ 恢复前先自动备份当前状态 —— 原版明确承诺
+ * ⚠️ 恢复前先自动备份当前状态 —— 项目契约明确承诺
  *    「恢复前会先保存当前状态，聊天记录不会删除」（`restoreDialogSafety`）。
  *    这正是主进程 `restoreVersion()` 里 `restore-backup` 那一步。
  */
@@ -24,7 +24,7 @@ const KIND_KEY: Record<VersionKind, string> = {
   'restore-backup': 'dock.versionPanel.kinds.restore-backup',
 };
 
-/** 相对时间（原版用 i18next 的复数键，这里给等价中文） */
+/** 相对时间（项目契约用 i18next 的复数键，这里给等价中文） */
 function relative(ms: number): string {
   const d = Date.now() - ms;
   if (d < 60_000) return tx('dock.versionPanel.justNow');

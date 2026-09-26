@@ -25,12 +25,12 @@
  *      少了后者，A 的历史会被写到 B 的界面上。
  *
  * **不能**证明：这些调用在运行时接对了（参数顺序对不对、当前会话判定对不对、
- * 渲染出来的 DOM 是不是真恢复了）。那一层只能靠实机 e2e / 人工点击，
+ * 渲染出来的 DOM 是不是真恢复了）。那一层只能靠运行测试 e2e / 人工点击，
  * 本文件替代不了 —— 所以它只当"接线护栏"，不当"功能已验收"的证据。
  *
  * ## 反橡皮图章
  *
- * 末尾 8 条**反向对照**用同一套检查器跑故意改坏的源码（每种改法对应上面一条断言），
+ * 末尾 8 条**回归护栏**用同一套检查器跑故意改坏的源码（每种改法对应上面一条断言），
  * 断言必须被抓出来。只断言"真源码通过"是橡皮图章 —— 检查器本身必须能红。
  * （这不是摆设：第 3 条对照第一次跑就真红了 —— 它抓出 `effectBody` 没把依赖数组
  *   纳入取样，导致第 ③ 条断言当时是死代码。修好后才绿。）
@@ -55,7 +55,7 @@ function stripComments(src: string): string {
  *
  * ⚠️ 必须把依赖数组也包进来 —— 只取 `{…}` 的话"往依赖里塞 activeSessionId"
  *    这种改法根本不在取样范围内，那条断言就成了死代码（本文件的第 3 条
- *    反向对照正是这么把它抓出来的）。
+ *    回归护栏正是这么把它抓出来的）。
  */
 function effectBody(src: string, anchor: string): string {
   const at = src.indexOf(anchor);
@@ -222,7 +222,7 @@ describe('ChatPage 接线护栏 —— 切会话复原（结构断言，非真�
   });
 });
 
-describe('ChatPage 接线护栏 —— 反向对照（检查器必须能红）', () => {
+describe('ChatPage 接线护栏 —— 回归护栏（检查器必须能红）', () => {
   const MUTATIONS: Array<{ name: string; mutate: (s: string) => string }> = [
     {
       // ① 旧 :485：切会话直接清空
@@ -295,7 +295,7 @@ describe('ChatPage 接线护栏 —— 反向对照（检查器必须能红）',
     (_name, mutation) => {
       const broken = mutation.mutate(RAW);
       // 先保证替换**真的生效**了，否则这条对照是假的
-      expect(broken, '替换没生效，这条反向对照不成立').not.toBe(RAW);
+      expect(broken, '替换没生效，这条回归护栏不成立').not.toBe(RAW);
       expect(checkWiring(broken), '检查器没抓出来 → 它就是橡皮图章').not.toEqual([]);
     },
   );

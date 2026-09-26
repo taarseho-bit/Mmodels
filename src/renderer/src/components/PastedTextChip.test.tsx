@@ -6,14 +6,14 @@
  * `pasted-text.test.ts` 测的是**纯函数**，它证明不了「组件真的把结果渲染出来了」。
  * 本仓已经真踩过这个坑：`tx()` 取不到键时**原样返回路径字符串**，界面直接把
  * `composer.composerTaskListCard.progress` 显示给用户，而当时**单测、typecheck、
- * 构建全绿** —— 直到实机截图才看见。
+ * 构建全绿** —— 直到界面样例才看见。
  *
  * 所以这里盯三件事，都是纯函数测不到的：
  *   ① **图标名写错不报错**：`Icon`（`Icon.tsx:36`）缺名时**静默画一个空心圆**，
  *      所以必须断言**没走到兜底分支**（`data-missing-icon` 不出现），
  *      而不是只断言"名字在资源表里"；
  *   ② **文案必须来自词典**：断言渲染结果里**不含键路径** `chat.pastedText`；
- *   ③ **交互接线**：`onMouseDown` 必须真的调 `preventDefault()`（原版 `Sxe`）——
+ *   ③ **交互接线**：`onMouseDown` 必须真的调 `preventDefault()`（项目契约 `Sxe`）——
  *      漏了它，点「显示在输入框中」会让输入框失焦，用户接着打字打不进去。
  *
  * ## 环境说明
@@ -135,7 +135,7 @@ describe('PastedTextChip · 图标与文案都真的到位（防静默失败）'
 });
 
 describe('PastedTextChip · 交互接线', () => {
-  it('★ 点「显示在输入框中」前会 preventDefault（否则输入框失焦，见原版 Sxe）', () => {
+  it('★ 点「显示在输入框中」前会 preventDefault（否则输入框失焦，见项目契约 Sxe）', () => {
     const onShow = vi.fn();
     const tree = PastedTextChip({ item: chip(LONG), onShowInTextField: onShow, onRemove: () => {} });
     const act = findByClass(tree, 'cz-paste-chip-act');

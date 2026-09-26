@@ -3,7 +3,7 @@
  * 局域网协作 · 端到端联调（真实两进程，非 mock）
  *
  * 房主与队员各起一个 node 进程（`scripts/collab-peer.mjs`），跑真实的
- * HTTP 加入链路、WebSocket 推送、UDP 广播发现，逐项断言原版承诺的语义：
+ * HTTP 加入链路、WebSocket 推送、UDP 广播发现，逐项断言项目契约承诺的语义：
  *   - 开房拿到「本机地址 + 6 位加入码」，加入码必须是 6 位数字
  *   - 地址不通 → joinFailed；加入码不对 → joinInvalidCode
  *   - 同账号重复加入 → joinSameAccountNotAllowed；协议版本不一致 → joinIncompatibleRoom

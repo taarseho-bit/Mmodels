@@ -234,7 +234,7 @@ describe('跳过的目录（SKIP_DIRS + 一切点目录）', () => {
 
   it('通用点目录（不在 SKIP_DIRS 名单里）也跳过', () => {
     put('.cache/x.drawio');
-    put('.workbuddy/x.drawio');
+    put('.mmodels-audit/x.drawio');
     put('keep.drawio');
     expect(collectDiagrams(root).diagrams.map((d) => d.relPath)).toEqual(['keep.drawio']);
   });
@@ -259,7 +259,7 @@ describe('跳过的目录（SKIP_DIRS + 一切点目录）', () => {
         return;
       }
       expect(collectDiagrams(root).diagrams).toHaveLength(0);
-      put('copied.drawio'); // 反向对照
+      put('copied.drawio'); // 回归护栏
       expect(collectDiagrams(root).diagrams.map((d) => d.name)).toEqual(['copied']);
     } finally {
       rmSync(outside, { recursive: true, force: true });
@@ -305,9 +305,9 @@ describe('排序、total 与 MAX_DIAGRAMS', () => {
   });
 
   it('★ 已修复：源文件多于 240 时 total 仍然**精确**（界面上"共 N 张"必须对）', () => {
-    // 旧实现的 `walk()` 护栏是 `out.length > MAX_DIAGRAMS * 4`（>240），而且它**按目录**判定：
+    // 早期实现的 `walk()` 护栏是 `out.length > MAX_DIAGRAMS * 4`（>240），而且它**按目录**判定：
     //   集满一个目录就整体返回，不再进入后面的目录。
-    // 这里造 5 个目录各 61 张 = 305 张。旧实现会停在 244，与 readdir 顺序无关地**稳定少报 61**。
+    // 这里造 5 个目录各 61 张 = 305 张。早期实现会停在 244，与 readdir 顺序无关地**稳定少报 61**。
     // 修法：条数上限只用在"最后返回多少条"（`all.slice(0, MAX_DIAGRAMS)`），
     //       真正的遍历边界是 `MAX_DEPTH` + `SKIP_DIRS` —— 见 `diagram.ts` 的 `walk` 注释。
     for (let d = 0; d < 5; d++) {
@@ -320,11 +320,11 @@ describe('排序、total 与 MAX_DIAGRAMS', () => {
     expect(r.total > r.diagrams.length).toBe(true); // truncated 仍然是 true（提示是对的）
   });
 
-  it('★ 反向对照：`total` 数的是**全部**，`diagrams` 只给最近 60 张 —— 两者的分工不能混', () => {
+  it('★ 回归护栏：`total` 数的是**全部**，`diagrams` 只给最近 60 张 —— 两者的分工不能混', () => {
     // 同一次扫描里同时看两个观测值：
     //   total    = 磁盘上真实有几张（给"共 N 张"和 truncated 用）
     //   diagrams = 按 mtime 倒序取前 60（给列表用）
-    // 如果谁把它们合成一个数（比如像旧实现那样用条数上限去截遍历），必然有一个错。
+    // 如果谁把它们合成一个数（比如像早期实现那样用条数上限去截遍历），必然有一个错。
     for (let d = 0; d < 2; d++) {
       for (let i = 0; i < 40; i++) {
         const rel = `g${d}/f${String(i).padStart(2, '0')}.drawio`;
@@ -365,7 +365,7 @@ describe('★ 已修复：和源文件同名的**目录**不算"已导出的图"
 
     const r = collectDiagrams(root);
     expect(r.diagrams).toHaveLength(1);
-    // 旧实现：`existsSync` 对目录也返回 true、`statSync(dir)` 也成功 ⇒ 通过全部检查，
+    // 早期实现：`existsSync` 对目录也返回 true、`statSync(dir)` 也成功 ⇒ 通过全部检查，
     //   于是 pngRelPath 指向一个目录（缩略图永远加载不出来）、stale=false（也不提示待导出）。
     // 现在：导出图必须 **存在且是文件** ⇒ 目录一律当作"没有导出图"。
     // 判据（回答总纲）：这两行就是全部观测值；把 `exportedAt` 的 `isFile()` 去掉，两行同时变回
@@ -373,7 +373,7 @@ describe('★ 已修复：和源文件同名的**目录**不算"已导出的图"
     expect(r.diagrams[0]!.pngRelPath).toBe(null);
     expect(r.diagrams[0]!.stale).toBe(true);
 
-    // ★ 反向对照：把那个目录换成**真文件**，行为必须变回"已导出"
+    // ★ 回归护栏：把那个目录换成**真文件**，行为必须变回"已导出"
     //   —— 证明上面那两行红的是"目录 vs 文件"，不是"x.png 这个路径本身不被认"。
     rmSync(join(root, 'x.png'), { recursive: true });
     writeFileSync(join(root, 'x.png'), 'png');
@@ -391,7 +391,7 @@ describe('★ 已修复：和源文件同名的**目录**不算"已导出的图"
     expect(r1.diagrams[0]!.pdfRelPath).toBe(null);
     expect(r1.diagrams[0]!.stale).toBe(true);
 
-    // 反向对照：png 是真文件（新）→ 已导出；pdf 是目录 → 不影响
+    // 回归护栏：png 是真文件（新）→ 已导出；pdf 是目录 → 不影响
     writeFileSync(join(root, 'y.png'), 'png');
     pin('y.png', 1);
     const r2 = collectDiagrams(root);
@@ -420,7 +420,7 @@ describe('路径含空格与中文', () => {
   });
 });
 
-describe('真实机器状态（扫真实存在的目录，不是临时造的空壳）', () => {
+describe('真运行测试器状态（扫真实存在的目录，不是临时造的空壳）', () => {
   it('扫真实老项目目录：不抛，且不会顺着 .mmodels（点目录）爬进去', () => {
     const legacy = join(homedir(), 'MModels Projects', 'MModels Workspace');
     if (!existsSync(legacy)) {
@@ -469,7 +469,7 @@ describe('真实机器状态（扫真实存在的目录，不是临时造的空�
     // ⚠️ 注意 `release/` **不在** SKIP_DIRS 里，它是会被扫的（本机恰好没有 .drawio）；
     //    所以这里只断言真正声明要跳的那几个，别把"没搜到"当成"跳过了"。
     for (const d of r.diagrams) {
-      for (const skip of ['node_modules/', 'dist/', 'out/', 'build/', '.workbuddy/', '.git/']) {
+      for (const skip of ['node_modules/', 'dist/', 'out/', 'build/', '.mmodels-audit/', '.git/']) {
         expect(d.relPath.startsWith(skip)).toBe(false);
       }
     }

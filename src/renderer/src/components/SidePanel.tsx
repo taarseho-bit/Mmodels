@@ -2,10 +2,10 @@
  * 右侧面板 —— 文件、终端、浏览器与本地图表参考等标签。
  *
  * 常用标签：文件 / 终端 / 浏览器 / 更改 / 项目版本 / 科研绘图。
- * 原版另有 `addTab:"添加标签页"`、`closeTab:"关闭标签页"` → 标签可关可加
+ * 项目契约另有 `addTab:"添加标签页"`、`closeTab:"关闭标签页"` → 标签可关可加
  * （已打开的标签持久化到 localStorage，刷新后恢复）。
  *
- * 原版右栏没有「产物」「技能」标签：
+ * 项目契约右栏没有「产物」「技能」标签：
  *   · 产物 —— 是「文件」标签内的**内联视图**（面包屑/筛选/文件树/查看器都在 `FilesPanel` 里，
  *     打开文件不切标签，点查看器的 × 回到文件树）
  *   · 技能 —— 独立的能力入口，见侧栏「扩展」页
@@ -76,10 +76,10 @@ export function SidePanel(): JSX.Element {
 
   return (
     <aside className="sidepanel">
-      {/* 左缘拖拽手柄（原版 browser.setPanelBounds 的渲染层等价实现） */}
+      {/* 左缘拖拽手柄（项目契约 browser.setPanelBounds 的渲染层等价实现） */}
       <ResizeHandle storageKey="mm-sidepanel-width" label="调整右侧面板宽度" edge="left" initial={340} min={260} max={720} fraction={.42} />
 
-      {/* 标签条：已打开的标签 + 末尾「+」添加标签页（原版 addTab / closeTab） */}
+      {/* 标签条：已打开的标签 + 末尾「+」添加标签页（项目契约 addTab / closeTab） */}
       <div className="sidepanel-tabs">
         {tabs.map((key) => (
           <div
@@ -143,7 +143,7 @@ export function SidePanel(): JSX.Element {
           <BrowserPanel />
         </div>
 
-        {/* 「文件」标签内部自带 面包屑/筛选/文件树/查看器（原版把查看、编辑、编译都放在这个标签里） */}
+        {/* 「文件」标签内部自带 面包屑/筛选/文件树/查看器（项目契约把查看、编辑、编译都放在这个标签里） */}
         {active === 'files' && <FilesPanel />}
         {active === 'terminal' && <TerminalPanel />}
         {active === 'changes' && <DiffPanel />}

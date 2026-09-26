@@ -5,8 +5,8 @@
  *
  * 输入区那个「完全访问 / 需要批准」选择器**长期是装饰品**：
  * `settings.permissionMode` 在主进程**零读取点**，切过去不改变任何行为。
- * 更糟的是"直接透传"这条捷径会**静默失效** —— 原版只认字面量 `'approval-required'`，
- * 而复刻的设置值是 `'approval'`，透进去会 fallthrough 到 `bypassPermissions`
+ * 更糟的是"直接透传"这条捷径会**静默失效** —— 项目契约只认字面量 `'approval-required'`，
+ * 而当前实现的设置值是 `'approval'`，透进去会 fallthrough 到 `bypassPermissions`
  * （＝用户切到"需要批准"，实际仍然全放行）。
  *
  * 所以这里的每条断言都成对：**正面**（该变的变了）+ **反面**（不该变的没变）。
@@ -31,13 +31,13 @@ import {
 } from './permissions';
 
 // ─────────────────────────────────────────────────────────────
-// 口径映射：复刻值 → 原版值（**静默失效**就死在这一步）
+// 口径映射：当前实现值 → 项目契约值（**静默失效**就死在这一步）
 // ─────────────────────────────────────────────────────────────
 
-describe('canonicalPermissionMode —— 复刻口径 → 原版口径', () => {
-  it('`approval` → `approval-required`（**原版字面量，不是 `approval`**）', () => {
+describe('canonicalPermissionMode —— 当前实现口径 → 项目契约口径', () => {
+  it('`approval` → `approval-required`（**项目契约字面量，不是 `approval`**）', () => {
     // 这条就是"静默失效"的回归判据：如果这里返回 `'approval'`，
-    // 原版 `jh()` 的三元会 fallthrough 成 bypassPermissions。
+    // 项目契约 `jh()` 的三元会 fallthrough 成 bypassPermissions。
     expect(canonicalPermissionMode('approval')).toBe('approval-required');
     expect(canonicalPermissionMode('approval')).not.toBe('approval');
   });
@@ -51,12 +51,12 @@ describe('canonicalPermissionMode —— 复刻口径 → 原版口径', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// SDK permissionMode（原版 jh() 的等价物）
+// SDK permissionMode（项目契约 jh() 的等价物）
 // ─────────────────────────────────────────────────────────────
 
-describe('sdkPermissionModeFor —— 等价原版 jh() @669203', () => {
+describe('sdkPermissionModeFor —— 等价项目契约 jh() ', () => {
   it('`approval` → `default`（**这是本轮修的核心**）', () => {
-    // 改造前这一行是硬编码 `'bypassPermissions'`，所以选择器切了没反应。
+    // 修复前这一行是硬编码 `'bypassPermissions'`，所以选择器切了没反应。
     expect(sdkPermissionModeFor('approval')).toBe('default');
     expect(sdkPermissionModeFor('approval')).not.toBe('bypassPermissions');
   });
@@ -74,7 +74,7 @@ describe('sdkPermissionModeFor —— 等价原版 jh() @669203', () => {
   });
 
   it('plan **优先于**权限：三种权限值在 plan 下都得 `plan`', () => {
-    // ⚠️ 顺序不能换（原版 jh 的三元里 plan 是第一个分支）。
+    // ⚠️ 顺序不能换（项目契约 jh 的三元里 plan 是第一个分支）。
     //    写成权限优先的话，"plan + 完全访问" 会得 bypassPermissions，plan 当场失效。
     expect(sdkPermissionModeFor('full', 'plan')).toBe('plan');
     expect(sdkPermissionModeFor('approval', 'plan')).toBe('plan');
@@ -98,10 +98,10 @@ describe('sdkPermissionModeFor —— 等价原版 jh() @669203', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// requestKind / detail（逐字照抄原版 Oh / Dh）
+// requestKind / detail（直接采用项目契约 Oh / Dh）
 // ─────────────────────────────────────────────────────────────
 
-describe('approvalKindOf —— 逐字等价原版 Oh() @675592', () => {
+describe('approvalKindOf —— 按规则实现项目契约 Oh() ', () => {
   it('Read / Glob / Grep → `file-read`', () => {
     for (const t of ['Read', 'Glob', 'Grep']) expect(approvalKindOf(t)).toBe('file-read');
   });
@@ -116,10 +116,10 @@ describe('approvalKindOf —— 逐字等价原版 Oh() @675592', () => {
     expect(approvalKindOf('Bash')).not.toBe('file-read');
   });
 
-  it('`MultiEdit` → `command`：**原版 quirk，照抄不改**', () => {
-    // 原版 `Oh` 的 file-change 分支里没有 MultiEdit（虽然原版另一处的 `Mh`
-    // 集合里有它）。这是原版自身的不一致；这里照抄，改成"更合理"会让
-    // 同一份行为在原版与复刻里对不上。真要修应当单开一条并在原版侧确认。
+  it('`MultiEdit` → `command`：**项目契约 quirk，直接采用不改**', () => {
+    // 项目契约 `Oh` 的 file-change 分支里没有 MultiEdit（虽然项目契约另一处的 `Mh`
+    // 集合里有它）。这是项目契约自身的不一致；这里直接采用，改成"更合理"会让
+    // 同一份行为在项目契约与当前实现里对不上。真要修应当单开一条并在项目契约侧确认。
     expect(approvalKindOf('MultiEdit')).toBe('command');
   });
 
@@ -128,7 +128,7 @@ describe('approvalKindOf —— 逐字等价原版 Oh() @675592', () => {
   });
 });
 
-describe('approvalDetailOf —— 逐字等价原版 Dh() @675812', () => {
+describe('approvalDetailOf —— 按规则实现项目契约 Dh() ', () => {
   it('形状是 `工具名: <JSON>`', () => {
     expect(approvalDetailOf('Bash', { command: 'ls' })).toBe('Bash: {"command":"ls"}');
   });
@@ -161,7 +161,7 @@ describe('approvalDetailOf —— 逐字等价原版 Dh() @675812', () => {
     expect(over.endsWith('…')).toBe(true);
     // 截的是**原文**：前 400 个字符就是原串的前 400 个，只把尾巴换成省略号
     expect(over).toBe(`${raw.slice(0, 400)}…`);
-    // 反向对照：上面那条若写成 `over.slice(0,400) === noCut` 是错的 ——
+    // 回归护栏：上面那条若写成 `over.slice(0,400) === noCut` 是错的 ——
     // 两个输入的内容本身不同（一个 393 个 y、一个 394 个），
     // 拿"截断结果的前缀"跟另一个输入的结果比，比的是两回事。
   });
@@ -183,7 +183,7 @@ describe('approvalDetailOf —— 逐字等价原版 Dh() @675812', () => {
 // 权限门（canUseTool 的 if 链判定）
 // ─────────────────────────────────────────────────────────────
 
-describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链', () => {
+describe('gateStepFor —— 等价项目契约 buildCanUseTool()  的 if 链', () => {
   const none: ReadonlySet<string> = new Set<string>();
 
   it('完全访问：连 Bash 都放行（不是"危险工具就拦"）', () => {
@@ -191,18 +191,18 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
     expect(gateStepFor('full-access', 'Write', none)).toBe('full-access');
   });
 
-  it('需要批准 + 内置只读工具（Read/Glob/Grep）→ **仍然发审批**（反向对照）', () => {
-    // ⚠️ 这是我第一版写反的地方，专门留一条反向对照钉住。
-    // 原版白名单 `Fp` @756802 里**没有任何内置工具**（只有 10 个 MCP 名），
-    // 所以"读文件"在原版里**是会弹框的** —— 渲染层那条 promptFileRead 文案
+  it('需要批准 + 内置只读工具（Read/Glob/Grep）→ **仍然发审批**（回归护栏）', () => {
+    // ⚠️ 这是我第一版写反的地方，专门留一条回归护栏钉住。
+    // 项目契约白名单 `Fp`  里**没有任何内置工具**（只有 10 个 MCP 名），
+    // 所以"读文件"在项目契约里**是会弹框的** —— 渲染层那条 promptFileRead 文案
     // 与 `Oh` 的 'file-read' 一一对应，若 Read 免审批这条文案就永远不可能出现。
-    // 写成 'readonly'（放行）= 比原版更宽松，而审批门错的方向不能是"更宽松"。
+    // 写成 'readonly'（放行）= 比项目契约更宽松，而审批门错的方向不能是"更宽松"。
     for (const t of ['Read', 'Glob', 'Grep']) {
       expect(gateStepFor('approval-required', t, none)).toBe('approval');
     }
   });
 
-  it('需要批准 + 原版白名单里的 MCP 只读工具 → 放行', () => {
+  it('需要批准 + 项目契约白名单里的 MCP 只读工具 → 放行', () => {
     for (const t of [...READONLY_TOOLS]) {
       expect(gateStepFor('approval-required', t, none)).toBe('readonly');
     }
@@ -218,7 +218,7 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
   });
 
   it('需要批准 + Bash → **发审批**（这是本轮修的另一半）', () => {
-    // 改造前 canUseTool 是"除 AskUserQuestion 外一律 allow" ⇒ 这里会放行。
+    // 修复前 canUseTool 是"除 AskUserQuestion 外一律 allow" ⇒ 这里会放行。
     expect(gateStepFor('approval-required', 'Bash', none)).toBe('approval');
   });
 
@@ -236,9 +236,9 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
     expect(gateStepFor('approval-required', 'Bash', none)).toBe('approval');
   });
 
-  it('只读白名单 = 原版那 10 个 MCP 名（逐字对照 Ju + _u）', () => {
-    // 原版 @638492：Ju = 6 个 mcp__mathmodel__*；@622345：_u = 4 个 mcp__mathmodel-browser__*
-    // 原版 10 个逐字保留；复刻侧新增 browser_wait（内置浏览器等待轮询，无副作用只读）。
+  it('只读白名单 = 项目契约那 10 个 MCP 名（逐字对照 Ju + _u）', () => {
+    // 项目契约 ：Ju = 6 个 mcp__mathmodel__*；：_u = 4 个 mcp__mathmodel-browser__*
+    // 项目契约 10 个逐字保留；当前实现侧新增 browser_wait（内置浏览器等待轮询，无副作用只读）。
     // 2026-09-26：内置 MCP 已真实注册（builtin-mcp.ts / browser-tools.ts），白名单实际生效。
     expect([...READONLY_TOOLS].sort()).toEqual([
       'mcp__mathmodel-browser__browser_logs',
@@ -256,7 +256,7 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
     expect(READONLY_TOOLS.size).toBe(11);
   });
 
-  it('反向对照：**任何内置工具都不在白名单里**（最易错的是 Read/Glob/Grep）', () => {
+  it('回归护栏：**任何内置工具都不在白名单里**（最易错的是 Read/Glob/Grep）', () => {
     // `Read`/`Glob`/`Grep` 是 `Oh` 判 'file-read' 的三个，最容易被误读成
     // "只读 ⇒ 免审批"。它们其实走审批（见上一条）。TodoWrite/TaskCreate/TaskUpdate
     // 同理：`Oh` 函数体里根本没有它们的分支，落 else → 与 Bash 同类的 'command'。
@@ -285,7 +285,7 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
     expect(gateStepFor('approval-required', 'Bash', allowed)).toBe('session-allowed');
     // 没记忆过的 Write 仍然问
     expect(gateStepFor('approval-required', 'Write', allowed)).toBe('approval');
-    // ⚠️ 反向对照（这条才是"Read 不在白名单"的判据）：
+    // ⚠️ 回归护栏（这条才是"Read 不在白名单"的判据）：
     //    · 用户没点过「始终允许」⇒ 每次都要问
     expect(gateStepFor('approval-required', 'Read', new Set())).toBe('approval');
     //    · 用户显式点过「始终允许」⇒ 走 session-allowed
@@ -293,7 +293,7 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
     expect(gateStepFor('approval-required', 'Read', new Set(['Read']))).toBe('session-allowed');
   });
 
-  it('顺序：只读判定排在 session-allowed **之前**（原版 if 链同序）', () => {
+  it('顺序：只读判定排在 session-allowed **之前**（项目契约 if 链同序）', () => {
     // 用一个真的在白名单里的工具来测这个顺序 —— 它同时也在 session-allowed 里，
     // 但必须先命中 readonly（若两分支顺序写反，结果同样是 'readonly' 也是放行，
     // 所以这条的真正价值是**钉住分支存在且可达**；'Read' 那条则钉住它不该被放行）。
@@ -302,7 +302,7 @@ describe('gateStepFor —— 等价原版 buildCanUseTool() @771414 的 if 链',
   });
 
   it('完全访问 + 空白名单：不因为"没记忆过"就去问', () => {
-    // 顺序判据：full-access 分支在原版里排在 readonly / session-allowed **之前**，
+    // 顺序判据：full-access 分支在项目契约里排在 readonly / session-allowed **之前**，
     // 所以它必须能直接放行任意工具。
     expect(gateStepFor('full-access', 'AnythingAtAll', new Set())).toBe('full-access');
   });
@@ -338,12 +338,12 @@ describe('结构级判据 —— agent/session.ts 里的顺序与"别跟着改"�
 
   it('`permissionMode` 是**算出来的**，不再是硬编码的 `bypassPermissions`', () => {
     expect(SRC).toContain('permissionMode: sdkMode');
-    // 反向对照：硬编码那行必须消失（它曾经让选择器变成装饰品）
+    // 回归护栏：硬编码那行必须消失（它曾经让选择器变成装饰品）
     expect(SRC).not.toContain("permissionMode: 'bypassPermissions',");
   });
 
   it('`allowDangerouslySkipPermissions: true` **无条件保留**（plan 下也是 true）', () => {
-    // 原版 @668260 同对象里它也是无条件的。拦不拦工具是 permissionMode 的事，
+    // 项目契约  同对象里它也是无条件的。拦不拦工具是 permissionMode 的事，
     // 这个开关只管"允不允许用 bypassPermissions 这个模式本身"。
     expect(SRC).toContain('allowDangerouslySkipPermissions: true');
     // 它不得被写成依赖任何变量的形式

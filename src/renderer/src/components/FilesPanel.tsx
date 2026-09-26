@@ -1,7 +1,7 @@
 /**
- * 文件面板 —— 「文件」标签的完整内容（对齐原版 `dock.filesPanel.*` + `dock.fileViewer.*`）。
+ * 文件面板 —— 「文件」标签的完整内容（对齐项目契约 `dock.filesPanel.*` + `dock.fileViewer.*`）。
  *
- * 原版这个标签不是"一棵树"就完了，它是**面包屑 + 筛选 + 文件树 + 文件查看器**四件套：
+ * 项目契约这个标签不是"一棵树"就完了，它是**面包屑 + 筛选 + 文件树 + 文件查看器**四件套：
  *   · 面包屑      —— 当前打开文件在项目里的位置（根是 `/`）
  *   · 筛选文件…   —— 过滤文件树（`explorerPanel.filterPlaceholder` / `noMatchingFiles`）
  *   · 文件树      —— 可隐藏（`filesPanel.hideFileTree` / `showFileTree`）
@@ -10,9 +10,9 @@
  *                    没选文件时是空态「打开文件 / 从工作区目录树中选择文件」
  *                    （`fileViewer.emptyTitle` / `emptyDescription`）
  *
- * 打开文件的行为：**在本标签内联打开**（原版右栏没有独立的「产物」标签）。
+ * 打开文件的行为：**在本标签内联打开**（项目契约右栏没有独立的「产物」标签）。
  * 源码态复用 `ArtifactPanes`（可编辑 + 保存 + 冲突检测），预览态用 `Markdown`
- * 渲染 .md——这正是原版「查看源码 ↔ 预览」这对开关的含义。
+ * 渲染 .md——这正是项目契约「查看源码 ↔ 预览」这对开关的含义。
  *
  * Props 供「编辑器视图」复用（默认值 = 现有行为，不改变任何默认表现）。
  */
@@ -214,7 +214,7 @@ export function FilesPanel({
   const openArtifact = useApp((s) => s.openArtifact);
   const activeArtifact = useApp((s) => s.activeArtifact);
   const fillPrompt = useApp((s) => s.fillPrompt);
-  /** 原版「Agent 正在工作，结束后即可编译」——沿用右栏其他面板判断 agent 忙的方式 */
+  /** 项目契约「Agent 正在工作，结束后即可编译」——沿用右栏其他面板判断 agent 忙的方式 */
   const running = useApp(
     (s) => s.sessions.find((x) => x.id === s.activeSessionId)?.status === 'running',
   );
@@ -226,9 +226,9 @@ export function FilesPanel({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  /** 筛选关键字（对应原版「筛选文件…」） */
+  /** 筛选关键字（对应项目契约「筛选文件…」） */
   const [q, setQ] = useState('');
-  /** 文件树是否显示（对应原版 隐藏/显示文件树）；`treeOnly` 时恒显示 */
+  /** 文件树是否显示（对应项目契约 隐藏/显示文件树）；`treeOnly` 时恒显示 */
   const [treeVisible, setTreeVisible] = useState(defaultTreeVisible);
   /** 查看器形态：预览（渲染后的 Markdown） / 源码（可编辑文本） */
   const [rendered, setRendered] = useState(true);
@@ -335,7 +335,7 @@ export function FilesPanel({
     [onOpenFile, openArtifact],
   );
 
-  /** 项目根 + POSIX 相对路径 → 本机绝对路径（原版在 Windows 上就是这种拼接方式） */
+  /** 项目根 + POSIX 相对路径 → 本机绝对路径（项目契约在 Windows 上就是这种拼接方式） */
   const absOf = (p: string): string =>
     project ? `${project.root}\\${p.replace(/\//g, '\\')}` : p;
 
@@ -439,7 +439,7 @@ export function FilesPanel({
 
   /**
    * 菜单项 —— 文件与目录**同一套项**，差别只在删除确认的两套文案键（见 `ctxNode.kind`）。
-   * 顺序照原版：`copyPath / copyName / revealInFolder / ─ / rename / ─ / delete`。
+   * 顺序照项目契约：`copyPath / copyName / revealInFolder / ─ / rename / ─ / delete`。
    * 创建副本走主进程 `fs.cpSync`，保留二进制内容并对目录递归复制。
    */
   const ctxItems: ContextMenuItem[] = ctxNode
@@ -497,7 +497,7 @@ export function FilesPanel({
 
   const compile = (): void => {
     if (!relPath) return;
-    // 原版「编译 PDF」= 把编译指令交给 agent（`filesPanel.compilePrompt`）
+    // 项目契约「编译 PDF」= 把编译指令交给 agent（`filesPanel.compilePrompt`）
     fillPrompt(tx('dock.filesPanel.compilePrompt', { path: relPath }));
   };
 
@@ -682,7 +682,7 @@ export function FilesPanel({
                     </div>
                   )
                 ) : (
-                  // 源码态：可编辑 + 保存 + 冲突检测（原版 `dock.fileEditor.*`）
+                  // 源码态：可编辑 + 保存 + 冲突检测（项目契约 `dock.fileEditor.*`）
                   <ArtifactPanes relPath={relPath} />
                 )}
               </div>
@@ -716,7 +716,7 @@ export function FilesPanel({
       {/*
         ── 删除的二次确认 ──
         **文件与目录用两套文案键**（`deleteFileTitle|Body` / `deleteFolderTitle|Body`）；
-        确认按钮用 `common.delete`、取消用 `common.cancel`（与原版逐字一致）。
+        确认按钮用 `common.delete`、取消用 `common.cancel`（与项目契约字段一致）。
       */}
       <ConfirmDialog
         open={delTarget !== null}

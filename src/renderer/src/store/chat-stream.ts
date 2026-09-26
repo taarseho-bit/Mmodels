@@ -15,7 +15,7 @@
  * ## 与 DB 的分工（下一轮要做的事已留好口）
  *
  * 本 store 只保证**应用运行期内**的复原，重启后不保证 —— 那需要把块序列落库
- * （原版 `chat_messages.parts`）。`hydrate()` 就是为那条路径预留的入口：
+ * （项目契约 `chat_messages.parts`）。`hydrate()` 就是为那条路径预留的入口：
  * 外部可以直接灌一份"来自库里的块"，内部逻辑**不假设**缓存一定是本地产生的
  * （`applyStreamEvent` 是纯函数、`hydrate` 与流式事件写的是同一种槽位）。
  *
@@ -28,7 +28,7 @@
  * ⚠️ `error` 故意**不在** phase 里：一轮里可能先报错、后面才 session-end。
  *    如果把 error 当成 phase，`active` 会在回合中途变 false，而
  *    `ChatPage` 的追问队列正是拿 `isRunning` 当门槛（`pendingTurnRef` 那段注释记录了
- *    这个坑的实机证据）—— 队列会提前开火，撞上主进程「该会话已有正在执行的任务」，
+ *    这个坑的运行测试证据）—— 队列会提前开火，撞上主进程「该会话已有正在执行的任务」，
  *    消息被静默丢弃。所以 phase 只管轮次生命周期，error 单独记。
  */
 import type { AgentActivity, ContentBlock, ContextWindowUsage, InflightTurn, StreamEvent, TokenUsage } from '@shared/types';
@@ -291,7 +291,7 @@ export function applyStreamEvent(
       return { ...entry, error: ev.message, updatedAt: now };
 
     case 'message-stop':
-      return entry; // 与旧实现一致：不改状态
+      return entry; // 与早期实现一致：不改状态
 
     case 'session-end':
       // ⚠️ 刻意**保留** blocks：后台会话跑完时用户可能正在别的会话，

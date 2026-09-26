@@ -17,10 +17,10 @@ the directory containing this `SKILL.md`; do not depend on a fixed home-director
    with the actual directory containing this `SKILL.md`:
 
 ```bash
-python3 "<skill-directory>/scripts/render_template.py" paired-raincloud --project "./绘图复刻"
+python3 "<skill-directory>/scripts/render_template.py" paired-raincloud --project "./绘图当前实现"
 ```
 
-3. The renderer copies the bundled template script into `绘图复刻/scripts/`, runs it there, and writes outputs to `绘图复刻/outputs/`.
+3. The renderer copies the bundled template script into `绘图当前实现/scripts/`, runs it there, and writes outputs to `绘图当前实现/outputs/`.
 4. Return the generated PNG/PDF/SVG paths and the copied script path to the user.
 
 Use `--list` to show supported ids:
@@ -32,9 +32,9 @@ python3 "<skill-directory>/scripts/render_template.py" --list
 ## Output Contract
 
 - Work under the current workspace unless the user gives another path.
-- Default project folder: `绘图复刻`.
-- Script path: `绘图复刻/scripts/make_<template>.py`.
-- Outputs: `绘图复刻/outputs/<template>_replica.png`, `.pdf`, `.svg`.
+- Default project folder: `绘图当前实现`.
+- Script path: `绘图当前实现/scripts/make_<template>.py`.
+- Outputs: `绘图当前实现/outputs/<template>_replica.png`, `.pdf`, `.svg`.
 - Use the bundled scripts as the first choice; edit the copied workspace script only when the user requests customization.
 - The bundled scripts use deterministic simulated data. Do not claim simulated values reproduce a source study exactly.
 
@@ -62,7 +62,7 @@ The guide distinguishes calculated metrics from supplied demonstration summaries
 
 ## When Customizing
 
-If the user asks for changes, copy/run the nearest template first, then edit the copied file in `绘图复刻/scripts/`. Preserve:
+If the user asks for changes, copy/run the nearest template first, then edit the copied file in `绘图当前实现/scripts/`. Preserve:
 
 - `MPLCONFIGDIR` before importing matplotlib.
 - deterministic seeds for simulated data.

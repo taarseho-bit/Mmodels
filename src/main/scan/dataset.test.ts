@@ -197,7 +197,7 @@ describe(`递归与深度上限（MAX_DEPTH = ${MAX_DEPTH}）`, () => {
     deepFile(MAX_DEPTH + 1, 'too-deep.csv');
     const r = collectDataFiles(root);
     expect(r.files).toHaveLength(0);
-    // 反向对照：同一棵树上把文件提到边界内侧，必须能扫到
+    // 回归护栏：同一棵树上把文件提到边界内侧，必须能扫到
     // （证明"没扫到"是深度判的，不是别的原因）
     deepFile(MAX_DEPTH, 'ok.csv');
     expect(collectDataFiles(root).files.map((f) => f.name)).toEqual(['ok.csv']);
@@ -249,7 +249,7 @@ describe('跳过的目录', () => {
       }
       const r = collectDataFiles(root);
       expect(r.files).toHaveLength(0);
-      // 反向对照：把同一个文件**真拷进来**必须能扫到（证明上面不是因为文件本身有问题）
+      // 回归护栏：把同一个文件**真拷进来**必须能扫到（证明上面不是因为文件本身有问题）
       put('copied.csv', 'x');
       expect(collectDataFiles(root).files.map((f) => f.name)).toEqual(['copied.csv']);
     } finally {
@@ -311,13 +311,13 @@ describe(`数量上限 MAX_DATASETS = ${MAX_DATASETS}`, () => {
     const r = collectDataFiles(root);
     expect(r.files).toHaveLength(200);
     expect(new Set(r.files.map((f) => f.relPath)).size).toBe(200);
-    // 旧实现是 `out.length >= MAX_DATASETS`，而 `out.length` 永远只可能 === 200
+    // 早期实现是 `out.length >= MAX_DATASETS`，而 `out.length` 永远只可能 === 200
     // ⇒ 一个都没丢也报 true。现在口径是"**是否真的还有没读完的**"：
     //   判据（回答总纲）：把 `>` 改回 `>=`，这一行立刻变 true ⇒ 红。
     expect(r.truncated).toBe(false);
   });
 
-  it('★ 反向对照：201 个（真的丢了一个）→ truncated 必须为 true —— 别为了"不吓唬人"把提示也去掉', () => {
+  it('★ 回归护栏：201 个（真的丢了一个）→ truncated 必须为 true —— 别为了"不吓唬人"把提示也去掉', () => {
     many(201, 1);
     const r = collectDataFiles(root);
     expect(r.files).toHaveLength(MAX_DATASETS);
@@ -340,9 +340,9 @@ describe(`数量上限 MAX_DATASETS = ${MAX_DATASETS}`, () => {
     expect(dropped).toHaveLength(1);
 
     // 「最近修改优先」：丢掉的必须是最旧的 f000。
-    // 判据（回答总纲）：把截断挪回 `walk` 里（旧实现），丢掉的会变成**最新**的 f200
+    // 判据（回答总纲）：把截断挪回 `walk` 里（早期实现），丢掉的会变成**最新**的 f200
     //   —— 两个观测值直接对调 ⇒ 这条测试真的钉着"截断在排序之后"。
-    // 旧实现的实测：丢弃 f200、保留 f000 —— 与 mtime 完全无关，纯粹是"遍历到 200 就停"。
+    // 早期实现的实测：丢弃 f200、保留 f000 —— 与 mtime 完全无关，纯粹是"遍历到 200 就停"。
     // （前提：NTFS 的 readdir 顺序在本机稳定且为字典序；已用
     //   _tmp/probe-build/run-ds-boundary.cjs 的 [I] 项在真实磁盘上验过：
     //   三次 readdir 一致、withFileTypes 与不带参数一致、顺序为 f000,f001,…。
@@ -372,7 +372,7 @@ describe('路径含空格与中文', () => {
   });
 });
 
-describe('真实机器状态（扫真实存在的目录，不是临时造的空壳）', () => {
+describe('真运行测试器状态（扫真实存在的目录，不是临时造的空壳）', () => {
   it('扫真实老项目目录：不把它自己的 .mmodels/paper/config.json 当成数据集', () => {
     const legacy = join(homedir(), 'MModels Projects', 'MModels Workspace');
     const cfg = join(legacy, '.mmodels', 'paper', 'config.json');

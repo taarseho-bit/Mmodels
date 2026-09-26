@@ -30,6 +30,6 @@ describe('write-paper 独立流程', () => {
     expect(skill).toContain('已确认');
     expect(skill).toContain('简体中文');
     expect(skill).not.toContain('MMODELS-LOCAL-START');
-    expect(skill).not.toContain('原版');
+    expect(skill).not.toContain('项目契约');
   });
 });

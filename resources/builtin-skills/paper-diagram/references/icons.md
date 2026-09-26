@@ -83,5 +83,5 @@ shape=document;html=1;    shape=parallelogram;html=1;
 
 ## 记账
 
-用了近似或内嵌位图/SVG 的地方，在交付说明（复刻任务则在 `asset-ledger.md`）里写清：原图是什么、
+用了近似或内嵌位图/SVG 的地方，在交付说明（当前实现任务则在 `asset-ledger.md`）里写清：原图是什么、
 用什么近似的、差在哪。**不要悄悄省略元素**——漏画比画得糙严重得多。

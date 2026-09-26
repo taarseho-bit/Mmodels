@@ -1,5 +1,5 @@
 /**
- * 「局域网协作」面板 —— 原版是**局域网**协作（非云端）：房主开房生成加入码，
+ * 「局域网协作」面板 —— 项目契约是**局域网**协作（非云端）：房主开房生成加入码，
  * 队友在同一网段内用「房主地址 + 加入码」加入；进房间要房主批准（编辑者 / 查看者），
  * 附近的房间靠 UDP 广播自动发现，Agent 任务可以提交给房主批准后执行。
  *
@@ -28,7 +28,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** 加入失败的语义 → 文案键（一一对应原版词典里的 joinXxx） */
+/** 加入失败的语义 → 文案键（一一对应项目契约词典里的 joinXxx） */
 const ERR_KEY: Record<CollabJoinError, string> = {
   joinFailed: 'dock.collabPanel.joinFailed',
   joinInvalidCode: 'dock.collabPanel.joinInvalidCode',

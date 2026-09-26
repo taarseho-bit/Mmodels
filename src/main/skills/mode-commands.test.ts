@@ -1,7 +1,7 @@
 /**
  * 护栏：**模式选择器发出的斜杠命令，必须真的能被 SDK 注册。**
  *
- * ── 为什么需要这条（真实事故，用户实机截图确认）────────────────
+ * ── 为什么需要这条（真实事故，用户界面样例确认）────────────────
  * 「找数据」模式发出去的命令是 `/data-search`（`Composer.tsx` 的 `MODE_COMMAND.data`），
  * 而对应的内置技能 `resources/builtin-skills/data-search/` 当时**带着
  * `.disabled-by-default`**，于是整条链路这样断掉：
@@ -87,7 +87,7 @@ function modeCommands(): string[] {
 /**
  * 一次判定：这个内置技能"出厂即可用"吗（= SDK 会加载它、斜杠命令会注册）？
  *
- * 抽成带 `root` 参数的纯函数，是为了**反向对照**能对着一个临时造的假技能跑 ——
+ * 抽成带 `root` 参数的纯函数，是为了**回归护栏**能对着一个临时造的假技能跑 ——
  * 证明"带标记 ⇒ 判红"这条因果链真的成立。否则主判定即便永远返回 ok，也没人发现得了。
  */
 function checkSkill(name: string, root: string): { ok: boolean; reason: string } {
@@ -127,7 +127,7 @@ describe('自检：这条护栏真的读到了东西（防"空集合上恒真"�
     // ★ 本次事故的命令必须在 —— 这条比数量断言更能防"正则悄悄失效"
     expect(COMMANDS).toContain('/data-search');
     expect(COMMANDS).toContain('/write-paper');
-    // 反向对照：`chat: null` 不是命令，不该被当成一个斜杠命令抓进来
+    // 回归护栏：`chat: null` 不是命令，不该被当成一个斜杠命令抓进来
     expect(COMMANDS).not.toContain('/chat');
   });
 
@@ -147,7 +147,7 @@ describe('★ 主判据：每个模式命令对应的内置技能，出厂即可
   });
 });
 
-describe('反向对照：判据真的在判那三件事（否则"全绿"没有意义）', () => {
+describe('回归护栏：判据真的在判那三件事（否则"全绿"没有意义）', () => {
   it('★ 只有 `.disabled-by-default` 这一个差别 ⇒ 必须判红', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'mm-skill-guard-'));
     const dir = join(tmp, 'ghost-skill');

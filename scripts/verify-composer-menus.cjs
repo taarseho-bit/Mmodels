@@ -447,7 +447,7 @@ app.whenReady().then(async () => {
   })()`);
   await settle(500);
 
-  const shotDir = 'D:/mathmodel-desktop/.workbuddy/ui-audit/_composer';
+  const shotDir = 'D:/mathmodel-desktop/.mmodels-audit/_composer';
   fs.mkdirSync(shotDir, { recursive: true });
   const shoot2 = async (name) => {
     await new Promise((r) => setTimeout(r, 500));

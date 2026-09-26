@@ -25,7 +25,7 @@ description: 制作与修改可编辑的 draw.io / diagrams.net 数学建模示�
 | `optimization-decision` | 1400×900，场景到方案的决策链 + 敏感性反馈 | 优化题的目标、约束、求解、方案比较和取舍 | `assets/optimization-decision/example.json` |
 | `validation-loop` | 1400×900，验证主环 + 失败回到模型的虚线 | 基线、运行、误差、稳健性、证据闭环 | `assets/validation-loop/example.json` |
 
-旧版 `roadmap-*`、`framework-3col`、`stageflow-3col`、`taskflow-land` 脚本仍可读取历史项目，但不再作为新任务的首选模板。它们偏“项目路线/汇报总览”，不应该替代论文中的问题求解逻辑图。
+历史版本 `roadmap-*`、`framework-3col`、`stageflow-3col`、`taskflow-land` 脚本仍可读取历史项目，但不再作为新任务的首选模板。它们偏“项目路线/汇报总览”，不应该替代论文中的问题求解逻辑图。
 
 1. 读模板说明的两节：**语义约定**（哪些槽位并列、哪些汇流、哪两组必须可对比）与**字数预算**。语义放错比字数超框严重。
 2. 从用户材料抽内容，**不要编**；有源文件（`.tex`/`.md`/代码）时逐个核对数值，术语用原文。

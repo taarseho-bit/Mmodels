@@ -160,10 +160,10 @@ const api = {
       ipcRenderer.invoke(IPC.FILE_SAVE_TEXT, defaultName, content),
     saveBinary: (defaultName: string, base64: string): Promise<string | null> =>
       ipcRenderer.invoke(IPC.FILE_SAVE_BINARY, defaultName, base64),
-    /** 打开外部文本文件（原版 openTextFile，用于会话导入）：取消/失败返回 null */
+    /** 打开外部文本文件（项目契约 openTextFile，用于会话导入）：取消/失败返回 null */
     openText: (): Promise<{ path: string; content: string } | null> =>
       ipcRenderer.invoke(IPC.FILE_OPEN_TEXT),
-    /** 把 HTML 渲染成分享图 PNG 保存（原版 saveShareImage）：取消返回 null */
+    /** 把 HTML 渲染成分享图 PNG 保存（项目契约 saveShareImage）：取消返回 null */
     saveShareImage: (opts: {
       defaultName?: string;
       html: string;
@@ -183,7 +183,7 @@ const api = {
       ipcRenderer.invoke(IPC.FILE_DUPLICATE, relPath),
   },
 
-  // ── 系统通知（对应原版 notifications 命名空间）──────────────
+  // ── 系统通知（对应项目契约 notifications 命名空间）──────────────
   notifications: {
     isSupported: (): Promise<boolean> => ipcRenderer.invoke(IPC.NOTIFY_IS_SUPPORTED),
     show: (opts: {

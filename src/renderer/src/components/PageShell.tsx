@@ -1,7 +1,7 @@
 /**
- * 页壳与空态 —— 逐字对应原版 `PageShell` chunk（`PageShell-ClBCklFx.js`）。
+ * 页壳与空态 —— 按语义对应项目契约 `PageShell` chunk（`PageShell-ClBCklFx.js`）。
  *
- * 原版结构（tailwind）：
+ * 项目契约结构（tailwind）：
  *   PageShell: <div flex h-full flex-col>
  *                <header titlebar-drag flex h-9 shrink-0 items-center justify-between px-5>
  *                  <div flex items-baseline gap-2.5>

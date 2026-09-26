@@ -223,7 +223,7 @@ describe('一键装环境 · 顺序（A5d/A5e 的护栏）', () => {
     expect(S.db[0].text).toContain('请修复本机建模运行环境');
   });
 
-  it('★ 反向对照：send 失败时**不许**跳页（错误提示必须留在用户看得见的页面上）', async () => {
+  it('★ 回归护栏：send 失败时**不许**跳页（错误提示必须留在用户看得见的页面上）', async () => {
     S.sendShouldFail = true;
     const tree = await renderEnv();
     confirmHandler(tree)();
@@ -334,7 +334,7 @@ describe('一键装环境 · 消息内容（A5e 的护栏）', () => {
     expect((text.match(/推荐/g) ?? []).length).toBe(1);
   });
 
-  it('反向对照：没有缺失项时**不列清单**，改成"冒烟验证"（否则会把"没问题"说成"有问题"）', async () => {
+  it('回归护栏：没有缺失项时**不列清单**，改成"冒烟验证"（否则会把"没问题"说成"有问题"）', async () => {
     H.items = [
       { id: 'uv', name: 'uv', level: 'required', status: 'ok', purpose: 'p' },
       { id: 'python', name: 'Python', level: 'required', status: 'ok', purpose: 'p' },

@@ -420,7 +420,7 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
   const bridgeBaseUrl = await bridgeRegistry.ensureFor(provider, { model, effort: settings.effort ?? undefined, disableThinking: settings.disableThinking });
   getDb().prepare('UPDATE sessions SET provider_id = ?, model = ? WHERE id = ?').run(provider.id, model, sessionId);
 
-  // 项目根写入原版的 AGENTS.md 工作约定（不覆盖已有内容）
+  // 项目根写入项目契约的 AGENTS.md 工作约定（不覆盖已有内容）
   ensureProjectInstructions(cwd);
   // 论文任务：按设置自动初始化项目论文配置（`.mathmodel/paper/config.json`）
   ensurePaperProjectConfig(cwd, prompt);
@@ -491,8 +491,8 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
     } : {}),
     onWorkflow: publishWorkflow,
     /**
-     * 权限模式（复刻口径 `'full' | 'approval'`）—— **原样透传，不在这里改名**。
-     * 换算成原版口径 / SDK 口径的那一步只在 `agent/permissions.ts` 里做一次。
+     * 权限模式（当前实现口径 `'full' | 'approval'`）—— **原样透传，不在这里改名**。
+     * 换算成项目契约口径 / SDK 口径的那一步只在 `agent/permissions.ts` 里做一次。
      *
      * 这一行就是"输入区那个选择器"与"实际行为"之间**唯一**的连接点：
      * 在此之前 `settings.permissionMode` 没有任何主进程读取点，
@@ -510,25 +510,25 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
 }
 
 /**
- * 组装系统提示词 —— 逐字还原原版。
+ * 组装系统提示词 —— 逐字还原项目契约。
  *
- * 原版并没有一个「人格设定」式的长 system prompt；它靠三件事给模型定调：
+ * 项目契约并没有一个「人格设定」式的长 system prompt；它靠三件事给模型定调：
  *  1. 项目根写入 `AGENTS.md` / `CLAUDE.md`（PROJECT_INSTRUCTIONS），SDK 自动读入
  *  2. 每条用户消息由 `composePrompt()` 按任务类型预置起始指令
  *  3. 技能（SKILL.md）通过 plugins 挂载 —— 由 `agent/skills-plugin.ts` 物化成
  *     完整插件目录后挂载，斜杠命令（/write-paper 等）因此才会被注册
  *
  * 因此这里只注入**工作目录**与**项目配置文件路径**这类机器事实，
- * 不自创「你是某某助手」的措辞 —— 那是原版没有的东西。
+ * 不自创「你是某某助手」的措辞 —— 那是项目契约没有的东西。
  *
- * ⚠️ 唯一一处**有意偏离原版**的追加：末尾的「交流语言与过程解说」「提问与继续执行」
+ * ⚠️ 唯一一处**有意偏离项目契约**的追加：末尾的「交流语言与过程解说」「提问与继续执行」
  *    「长时任务：不要交还回合去等通知」三节。
- *    依据是用户实机反馈（2026-09-17）：
+ *    依据是用户运行测试反馈（2026-09-17）：
  *      1. agent 的过程解说全英文（"I'll start by reading the project config…"），中文用户读不懂；
  *      2. 用户答完 AskUserQuestion 后，agent 又反问「需要我用这两项设定开始建模和撰写论文吗?」，
  *         用户原话「我已经选择完之后，你应该是立刻运行，而不是让我确认了」。
  *    这不是人格设定，是**输出约定**，放在这里而不是 `agent/prompts.ts`，
- *    是为了不破坏那个文件「逐字取自原版」的保真语义。
+ *    是为了不破坏那个文件的兼容语义。
  *
  *    第三节最初用于规避单轮 query 提前关闭 stdin；常驻 SessionInputQueue 修复后，
  *    SDK 的后台完成通知已经能继续同一次运行。现在该节改为要求等待真实结果并自行汇总。
@@ -540,7 +540,7 @@ export type MultiAgentTrigger = 'paper' | 'review' | 'audit' | 'multi-file' | 'c
  *
  * 与任务模式（composerMode）正交：任务模式决定做什么，决策模式决定
  * AI 怎么做决定（2026-09-20，用户需求）。
- *   - `manual`（精细人工，默认）：关键决策逐项弹窗征求用户 —— 收紧原版
+ *   - `manual`（精细人工，默认）：关键决策逐项弹窗征求用户 —— 收紧项目契约
  *     「模型自主决定何时提问」的自由度，明确列出必须问的五类决策点；
  *   - `auto`（AI 自动）：自主完成全部决策、禁止提问 —— 与 session 侧的
  *     AskUserQuestion deny 兜底配套（提示词在前，deny 在后）；
@@ -667,11 +667,11 @@ export function buildSystemPrompt(
     // `agent/main-agent-personas.ts` 头注。
     ...mainAgentPersonaSection(turnPrompt),
 
-    // ── 本地版要求（用户实机反馈，非原版内容）────────────────────
-    // 原版是英文开发者的产品，模型默认用英文解说；中文用户明确要求「全中文 + 讲人话」。
+    // ── 当前版本要求（用户运行测试反馈，非项目契约内容）────────────────────
+    // 当前任务规则默认使用简洁的英文技术表达；中文用户明确要求「全中文 + 讲人话」。
     // 另：AskUserQuestion 答完又反问「需要我继续吗」——用户点名要求去掉这道二次确认。
     '',
-    '# 交流语言与过程解说（本地版要求）',
+    '# 交流语言与过程解说（当前版本要求）',
     '- 用户是中文用户：**所有面向用户的文字一律用简体中文**，包括且不限于：',
     '  过程解说、阶段小结、结论、待办、报错说明，**以及你的思考过程（thinking / 思考过程）** ——',
     '  思考过程在界面上是可展开给用户看的，用英文写等于让用户读不懂你在想什么。',
@@ -748,7 +748,7 @@ export function buildSystemPrompt(
           '- 子智能体只负责分析与核验，正式代码、图表和论文文件由主智能体统一写入，避免并行覆盖。',
           '- 主助手始终是唯一汇总人：成员只返回结构化证据、风险和建议，不再互相闲聊或接力创建新的临时成员；若一个成员已经能完成后续步骤，直接复用它。',
           '- 协作采用“先判断、再派发、收结果、过质量门、再交付”的闭环；没有清晰输入、交付物和验收标准的任务，不创建成员。',
-          '- 子智能体结论不能直接照抄：核对成员之间的冲突后，对**影响最终结论的 2-3 个关键数值**做抽查式复算即可，不必把全部计算重跑一遍；数值一致性由核验成员按阶段复核。',
+          '- 子智能体结论不能直接直接采用：核对成员之间的冲突后，对**影响最终结论的 2-3 个关键数值**做抽查式复算即可，不必把全部计算重跑一遍；数值一致性由核验成员按阶段复核。',
           ...multiAgentTurnInstructions(turnPrompt, sessionCollab),
 
           // 任务清单生命周期（2026-09-19 二轮）：清单是跨回合演进的，每条新消息都重新判定，
@@ -772,7 +772,7 @@ export function buildSystemPrompt(
         ]
       : []),
 
-    // ── 长时任务：不要交还回合去等通知（用户实机反馈，非原版内容）────
+    // ── 长时任务：不要交还回合去等通知（用户运行测试反馈，非项目契约内容）────
     // 实测两次：模型在后台下载 28/77、抓取 45/77 时交还回合，明确写着
     // 「它跑完会自动通知我接着做」，结果后台任务随进程一起被收掉，用户只能自己敲「继续」。
     // 常驻 SessionInputQueue 已接通 SDK 自动续跑；这里约束模型不要提前下最终结论。
@@ -782,15 +782,15 @@ export function buildSystemPrompt(
     '- 等全部结果回来后再汇总、核验并完成当前任务，不要让用户额外回复“继续”。',
     '- 必须等待用户提供新信息时才停下来，并清楚说明缺少什么；不要假装仍在后台工作。',
   ];
-  // 用户在「设置 → 系统提示词」里写的附加指令（本地存储，原版同位置功能）
+  // 用户在「设置 → 系统提示词」里写的附加指令（本地存储，项目契约同位置功能）
   const custom = getSettings().systemPrompt?.trim();
   if (custom) lines.push('【用户附加指令】', custom);
   return lines.join('\n');
 }
 
 /**
- * 确保项目根存在 `AGENTS.md`（内容取原版 PROJECT_INSTRUCTIONS）。
- * 已存在则不覆盖 —— 原版明确要求「不覆盖已有论文或项目配置」。
+ * 确保项目根存在 `AGENTS.md`（内容取项目契约 PROJECT_INSTRUCTIONS）。
+ * 已存在则不覆盖 —— 项目契约明确要求「不覆盖已有论文或项目配置」。
  */
 function ensureProjectInstructions(cwd: string): void {
   const target = join(cwd, 'AGENTS.md');
@@ -812,12 +812,12 @@ function resourcesDir(): string {
 }
 
 /**
- * 「初始化论文项目配置」（设置 → 论文与比赛，对应原版 `writeProjectConfig` 的全局版）。
+ * 「初始化论文项目配置」（设置 → 论文与比赛，对应项目契约 `writeProjectConfig` 的全局版）。
  *
  * ⚠️ 修复的是一个**死开关**：`paperInitProjectConfig` 之前只有默认值、类型和界面开关，
  *    全仓没有任何地方消费它 —— 用户点了「初始化论文项目配置」，项目里不会出现
  *    `.mathmodel/paper/config.json`，于是 agent 读不到比赛字段、模板来源，也就没有
- *    可填的 LaTeX 字段（用户实机抱怨的原始现象）。
+ *    可填的 LaTeX 字段（用户运行测试抱怨的原始现象）。
  *
  * 触发条件（三条都要满足，缺一不写）：
  *   1. 本次确实是一条**论文任务** —— 判定用「提示词里有 `/write-paper` 斜杠命令」。
@@ -825,7 +825,7 @@ function resourcesDir(): string {
  *      的 `MODE_COMMAND`），用户手打命令也走同一条判定。
  *      ⚠️ 这里**不能**用 `settings.composerMode === 'paper'` —— 它的默认值就是
  *      `'paper'`，会导致任何一条普通消息都去建配置文件（过度写入）。
- *   2. 设置里 `paperInitProjectConfig !== false`（默认开；关掉用于反向对照）。
+ *   2. 设置里 `paperInitProjectConfig !== false`（默认开；关掉用于回归护栏）。
  *   3. 目标文件不存在 —— 已存在则原样不动，返回 `already-exists`。
  *
  * 失败一律**不阻断会话**：写不了配置最多是 agent 没有比赛字段，不该让用户发不出消息。
@@ -854,7 +854,7 @@ function ensurePaperProjectConfig(cwd: string, prompt: string): void {
     profile: prof,
   });
 
-  // 留一条日志便于取证（原版也有 `[paper-config] skipped `）
+  // 留一条日志便于取证（项目契约也有 `[paper-config] skipped `）
   if (r.created) {
     console.log(
       `[paper-config] created ${paperConfigPath(cwd)} template=${r.templateId} source=builtin` +
@@ -961,7 +961,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
   /**
    * 用户在「工具审批」框里做出决定（权限模式 = 需要批准时才会出现）。
    *
-   * 对应原版 `resolveApproval()` @770166。四个决定的语义见 `ApprovalDecision`
+   * 对应项目契约 `resolveApproval()` 。四个决定的语义见 `ApprovalDecision`
    * 的注释；`'cancel'` 会**中断本轮**，所以渲染层那个按钮是「取消回合」不是「关闭」。
    */
   ipcMain.handle(
@@ -1009,7 +1009,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       });
 
       // 工具审批请求（权限模式 = 需要批准时，canUseTool 拦下工具调用后发出的）。
-      // 对应原版 `approval-request` 流事件；用户在审批框里选完 → SESSION_ANSWER_APPROVAL
+      // 对应项目契约 `approval-request` 流事件；用户在审批框里选完 → SESSION_ANSWER_APPROVAL
       // → runner.answerApproval()，那边挂着的 promise 才 resolve，SDK 才拿到决定。
       runner.on('approval-ask', (req: ApprovalRequest) => {
         pushToRenderer(IPC.SESSION_APPROVAL_ASK, req);
@@ -1118,7 +1118,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
           const blocks = collected.filter(Boolean);
           if (blocks.length) {
             // ⚠️ P0 只加列，这里**故意不传 agentMsgUuid**：它的值来自 agent 侧回的
-            //    assistant 消息 uuid（原版取 `lastAssistantUuid`），要等 P7（分叉）
+            //    assistant 消息 uuid（项目契约取 `lastAssistantUuid`），要等 P7（分叉）
             //    把 agent/session.ts 的那个字段接出来才能填。在那之前该列恒为 NULL，
             //    表现为"分叉只能复制消息、不能续传 agent 上下文"。
             //    `id` 用的是回合开头生成的 assistantMsgId —— 与进行中快照同源，

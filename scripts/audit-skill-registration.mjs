@@ -20,7 +20,10 @@ const code = ts.transpileModule(readFileSync(resolve('src/main/agent/project-plu
 }).outputText;
 new Function('require', 'module', 'exports', code)(name => name === 'electron' ? { app: { getPath: () => temp } } : require(name), moduleObject, moduleObject.exports);
 const projectPlugin = moduleObject.exports.projectSkillsPlugin(workspace, temp);
-let builtinPlugin = process.argv[2] || 'C:/Users/xh/AppData/Roaming/mmodels-desktop/skills-plugin';
+const defaultPluginRoot = process.env.APPDATA
+  ? join(process.env.APPDATA, 'mmodels-desktop', 'skills-plugin')
+  : join(temp, 'skills-plugin');
+let builtinPlugin = process.argv[2] || defaultPluginRoot;
 if (process.argv.includes('--source-skills')) {
   builtinPlugin = join(temp, 'builtin-plugin');
   mkdirSync(join(builtinPlugin, '.claude-plugin'), { recursive: true });

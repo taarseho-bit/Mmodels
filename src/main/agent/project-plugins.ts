@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, symlink
 import { join, resolve } from 'node:path';
 import type { AppSettings } from '@shared/types';
 
-/** Explicit project plugin, like the original. Do not enable unrelated host .claude settings. */
+/** Load only project-scoped plugins; do not enable unrelated host `.claude` settings. */
 export function projectSkillsPlugin(cwd: string, storage = app.getPath('userData')): string | null {
   const source = join(cwd, '.claude', 'skills');
   if (!existsSync(source) || !readdirSync(source).some(n => existsSync(join(source, n, 'SKILL.md')))) return null;
@@ -38,6 +38,6 @@ export function workspaceInstructions(cwd: string): string {
   return ['AGENTS.md', 'CLAUDE.md'].flatMap(name => {
     const file = join(cwd, name);
     if (!existsSync(file)) return [];
-    return [`## 项目约定：${name}\n${readFileSync(file, 'utf8')}`];
+    return [`## 项目契约：${name}\n${readFileSync(file, 'utf8')}`];
   }).join('\n\n');
 }

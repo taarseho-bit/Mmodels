@@ -5,13 +5,13 @@
  *
  *   1. **坏文件不能毁库** —— 校验必须在**动数据库之前**。所以这里正面测 schema 的拒绝面，
  *      并从结构上断言路由里 `safeParse` 出现在 `db.transaction` 之前。
- *   2. **冲突处理照抄原版** —— `cs` 里没有 `session.id`，导入一律新 uuid，**永不覆盖**。
+ *   2. **冲突处理直接采用项目契约** —— `cs` 里没有 `session.id`，导入一律新 uuid，**永不覆盖**。
  *      所以 `planImport` 必须用**传入的新 id**，而不是文件里的 id（文件里压根没有）。
- *   3. **装不下的 part 不静默丢** —— 复刻的 `ContentBlock` 只有 5 种 kind，
- *      原版有 7 种 part。降级的四种必须**内容可读**且**计数回报**。
+ *   3. **装不下的 part 不静默丢** —— 当前实现的 `ContentBlock` 只有 5 种 kind，
+ *      项目契约有 7 种 part。降级的四种必须**内容可读**且**计数回报**。
  *
- * 另外还有一条最容易写错的：`providerId` / `model` 在复刻是 `NOT NULL DEFAULT ''`，
- * 原版可空 —— `null` 必须落成 `''`，不是字符串 `'null'`、也不是漏写。
+ * 另外还有一条最容易写错的：`providerId` / `model` 在当前实现是 `NOT NULL DEFAULT ''`，
+ * 项目契约可空 —— `null` 必须落成 `''`，不是字符串 `'null'`、也不是漏写。
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -26,7 +26,7 @@ import {
   type SessionPart,
 } from './export';
 
-/** 一份合法的导出文件（原版 `cs` 形状） */
+/** 一份合法的导出文件（项目契约 `cs` 形状） */
 function file(over: Partial<SessionExportPayload> = {}): SessionExportPayload {
   return {
     format: 'mathmodel-session',
@@ -93,7 +93,7 @@ describe('sessionImportSchema —— 信封严格（坏文件必须在这里被�
     expect(sessionImportSchema.safeParse(bad3).success).toBe(false);
   });
 
-  it('允许：providerId / model 为 null（原版是 nullable）', () => {
+  it('允许：providerId / model 为 null（项目契约是 nullable）', () => {
     const f = file({
       session: { ...file().session, providerId: null, model: null },
     });
@@ -105,10 +105,10 @@ describe('sessionImportSchema —— 信封严格（坏文件必须在这里被�
     expect(sessionImportSchema.safeParse(file({ messages: [] })).success).toBe(true);
   });
 
-  it('**parts 逐段宽松**：不认识的一段不该让整个文件被拒（原版会拒，这里有意放宽）', () => {
+  it('**parts 逐段宽松**：不认识的一段不该让整个文件被拒（项目契约会拒，这里有意放宽）', () => {
     const f = file({ messages: [msg([{ type: 'brand-new-part-from-the-future', x: 1 }]) as never] });
 
-    // 反向对照：原版是 z.array(Zn)，这一段会让整个文件 400
+    // 回归护栏：项目契约是 z.array(Zn)，这一段会让整个文件 400
     expect(sessionImportSchema.safeParse(f).success).toBe(true);
   });
 });
@@ -176,18 +176,18 @@ describe('partsToBlocks —— 7 种 part 的映射与降级', () => {
     expect(text).toContain('a.tex');
     expect(text).toContain('b.py');
     expect(text).toContain('+3');
-    expect(text).toContain('−1'); // U+2212，与原版 share HTML 一致
+    expect(text).toContain('−1'); // U+2212，与项目契约 share HTML 一致
     expect(r.degraded).toBe(1);
   });
 
-  it('turn-end：interrupted → `_Stopped_`；failed → 带错误信息（逐字用原版字面量）', () => {
+  it('turn-end：interrupted → `_Stopped_`；failed → 带错误信息（逐字用项目契约字面量）', () => {
     const a = partsToBlocks([{ type: 'turn-end', state: 'interrupted' }]);
     const b = partsToBlocks([{ type: 'turn-end', state: 'failed', errorMessage: '连接中断' }]);
     const c = partsToBlocks([{ type: 'turn-end', state: 'failed' }]);
 
     expect((a.blocks[0] as { text: string }).text).toBe('_Stopped_');
     expect((b.blocks[0] as { text: string }).text).toBe('> ⚠️ Turn failed: 连接中断');
-    // 反向对照：没有 errorMessage 时不该留下一个孤零零的冒号
+    // 回归护栏：没有 errorMessage 时不该留下一个孤零零的冒号
     expect((c.blocks[0] as { text: string }).text).toBe('> ⚠️ Turn failed');
     expect(a.degraded + b.degraded + c.degraded).toBe(3);
   });
@@ -220,7 +220,7 @@ describe('partsToBlocks —— 7 种 part 的映射与降级', () => {
   });
 });
 
-describe('planImport —— 冲突处理与列换算（照抄原版的"只增不改"）', () => {
+describe('planImport —— 冲突处理与列换算（直接采用项目契约的"只增不改"）', () => {
   it('会话 id 用**传入的新 id**（文件里根本没有 id ⇒ 永不覆盖）', () => {
     const plan = planImport(file(), 'brand-new-id', seqIds(), 999);
 
@@ -249,17 +249,17 @@ describe('planImport —— 冲突处理与列换算（照抄原版的"只增不
     expect(plan.session.updatedAt).not.toBe(plan.session.createdAt);
   });
 
-  it('**反向对照**：providerId/model 为 null → 落成空串 `\'\'`，不是字符串 `\'null\'`', () => {
+  it('**回归护栏**：providerId/model 为 null → 落成空串 `\'\'`，不是字符串 `\'null\'`', () => {
     const f = file({ session: { ...file().session, providerId: null, model: null } });
     const plan = planImport(f, 's', seqIds(), 1);
 
-    // 复刻的列是 `TEXT NOT NULL DEFAULT ''` —— 落 null 会直接违反约束
+    // 当前实现的列是 `TEXT NOT NULL DEFAULT ''` —— 落 null 会直接违反约束
     expect(plan.session.providerId).toBe('');
     expect(plan.session.model).toBe('');
     expect(plan.session.providerId).not.toBe('null');
   });
 
-  it('**反向对照**：用量为 null → 落 0（列是 NOT NULL）', () => {
+  it('**回归护栏**：用量为 null → 落 0（列是 NOT NULL）', () => {
     const plan = planImport(file({ messages: [msg([{ type: 'text', text: 'a' }]) as never] }), 's', seqIds(), 1);
 
     expect(plan.messages[0].inputTokens).toBe(0);
@@ -360,9 +360,9 @@ describe('往返：导出的文件能被导入，且从第二次导出起是不�
     // 第一次往返是有损的：见下一条断言。从第二次起才稳定。
     expect(third.messages).toEqual(second.messages);
 
-    // 反向对照：把"损失"钉在测试里，避免它悄悄变大 ——
+    // 回归护栏：把"损失"钉在测试里，避免它悄悄变大 ——
     // parts/content/durationMs/effort/costUsd 之外，只有 token 数会从
-    // null 变成 0（复刻的 messages.input_tokens / output_tokens 是
+    // null 变成 0（当前实现的 messages.input_tokens / output_tokens 是
     // NOT NULL DEFAULT 0，读回来必然是数字，无法还原成 null）。
     for (let i = 0; i < first.messages.length; i++) {
       expect(second.messages[i].parts).toEqual(first.messages[i].parts);
@@ -388,7 +388,7 @@ describe('往返：导出的文件能被导入，且从第二次导出起是不�
         createdAt: 1_700_000_000_000,
       },
     ];
-    // 手工往导出结果里塞一段 attachment，模拟"原版导出的文件"
+    // 手工往导出结果里塞一段 attachment，模拟"项目契约导出的文件"
     const first = buildExportPayload(meta, original, 1);
     first.messages[0].parts.unshift({
       type: 'attachment',
@@ -407,7 +407,7 @@ describe('往返：导出的文件能被导入，且从第二次导出起是不�
     expect(third.messages).toEqual(second.messages);
     // 而且文件名还在（没有静默丢内容）
     expect(JSON.stringify(second.messages)).toContain('fig.png');
-    // 反向对照：降级确实发生了 —— 第二次导出里已经没有 attachment 这个 type
+    // 回归护栏：降级确实发生了 —— 第二次导出里已经没有 attachment 这个 type
     expect(JSON.stringify(second.messages)).not.toContain('"attachment"');
   });
 
@@ -437,7 +437,7 @@ describe('结构级判据 —— 路由里"先校验、后动库"', () => {
     expect(txAt).toBeGreaterThan(guardAt);
   });
 
-  it('导入包在事务里（原版没包；中途失败会留半条会话）', () => {
+  it('导入包在事务里（项目契约没包；中途失败会留半条会话）', () => {
     expect(ROUTES_SRC).toContain('db.transaction(');
     expect(ROUTES_SRC).toContain("})();");
   });

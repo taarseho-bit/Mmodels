@@ -272,7 +272,7 @@ describe('HTTP 路由表（假 req/res，零 socket）', () => {
     });
     addMember(room, 'm1');
     addMember(room, 'm2');
-    // 反向对照：真加两个成员后必须变成 3 —— 否则上面那个 1 只是巧合
+    // 回归护栏：真加两个成员后必须变成 3 —— 否则上面那个 1 只是巧合
     expect((await req(room, 'GET', '/collab/hello')).body.members).toBe(3);
   });
 
@@ -354,7 +354,7 @@ describe('加入流程（handleJoin）：协议 / 加入码 / 有效期 / 同账
   it('★ 加入码**过期**（10 分钟）后被拒 —— 这条漏了界面完全看不出来', async () => {
     const room = makeRoom(root, { codeExpiresAt: Date.now() - 1 });
     expect((await post(room, '/collab/join', good())).body.error).toBe('joinInvalidCode');
-    // 反向对照：只把过期时间挪回未来，同一个 code 就必须放行
+    // 回归护栏：只把过期时间挪回未来，同一个 code 就必须放行
     room.codeExpiresAt = Date.now() + 1000;
     expect((await post(room, '/collab/join', good())).body.ok).toBe(true);
   });
@@ -389,12 +389,12 @@ describe('加入流程（handleJoin）：协议 / 加入码 / 有效期 / 同账
     expect(a.body).toMatchObject({ ok: true, pending: true });
     expect(room.pending.size).toBe(1);
 
-    // 反向对照①：同一身份（同名 + 无 id）再申请 → 挡回，且**没有**多出一条
+    // 回归护栏①：同一身份（同名 + 无 id）再申请 → 挡回，且**没有**多出一条
     const again = await post(room, '/collab/join', { ...good(), accountId: '' });
     expect(again.body).toEqual({ ok: false, error: 'joinSameAccountNotAllowed' });
     expect(room.pending.size).toBe(1);
 
-    // 反向对照②：**不同名**的无 id 客户端仍然放行（否则就是"把匿名端一刀切封掉"，
+    // 回归护栏②：**不同名**的无 id 客户端仍然放行（否则就是"把匿名端一刀切封掉"，
     //   那是另一个 bug：房间里本来就可以有多个人）
     const other = await post(room, '/collab/join', { ...good(), accountId: '', name: '另一个名字' });
     expect(other.body).toMatchObject({ ok: true, pending: true });
@@ -421,7 +421,7 @@ describe('加入流程（handleJoin）：协议 / 加入码 / 有效期 / 同账
       (await post(room, '/collab/join', { ...good(), code: '123456', accountId: 'acct-owner' })).body,
     ).toEqual({ ok: false, error: 'joinSameAccountNotAllowed' });
 
-    // 反向对照：匿名端撞的是**匿名端**时挡得住（上一条用例已覆盖，这里再钉一次不同名放行）
+    // 回归护栏：匿名端撞的是**匿名端**时挡得住（上一条用例已覆盖，这里再钉一次不同名放行）
     expect(room.pending.size).toBe(1);
   });
 
@@ -447,7 +447,7 @@ describe('加入流程（handleJoin）：协议 / 加入码 / 有效期 / 同账
   it('★ 身份键的两个命名空间不能互相冒充（`acct:` / `name:` 前缀）', async () => {
     // 匿名端（没有安装 id）拿**别人的 accountId 原文**当自己的显示名 ——
     // 不能因此被当成那个人（挡回），也不能反过来把那个人挤掉。
-    // 反向对照：若去掉前缀（`return a || name`），两者的身份键都变成 `acct-li` → 这条会红。
+    // 回归护栏：若去掉前缀（`return a || name`），两者的身份键都变成 `acct-li` → 这条会红。
     const room = makeRoom(root);
     addMember(room, 'm1', { name: '小李', accountId: 'acct-li' });
     const r = await post(room, '/collab/join', {
@@ -732,7 +732,7 @@ describe('★ 已修复：任务的「我的」按**稳定身份**判，不按�
       ['t1', false],
       ['t2', true],
     ]);
-    // 反向对照：队员看这两条，只有 t1 是自己的
+    // 回归护栏：队员看这两条，只有 t1 是自己的
     expect(rt.guestRoom(room, 'm1').tasks.map((t: any) => [t.id, t.mine])).toEqual([
       ['t1', true],
       ['t2', false],
@@ -801,7 +801,7 @@ describe('共享文件 · 加入共享清单（shareFile）', () => {
     }
     expect(room.shared.size).toBe(0);
 
-    // 反向对照：正好等于上限的要能共享（> 才拒）
+    // 回归护栏：正好等于上限的要能共享（> 才拒）
     svc.shareFile('edge.txt');
     svc.shareFile('ok.txt');
     expect([...room.shared.keys()].sort()).toEqual(['edge.txt', 'ok.txt']);
@@ -814,7 +814,7 @@ describe('共享文件 · 加入共享清单（shareFile）', () => {
     svc.shareFile('a.txt');
     svc.unshareFile('a.txt');
     expect(room.shared.size).toBe(0);
-    expect(readFileSync(abs, 'utf8')).toBe('hi'); // 反向对照：文件还在
+    expect(readFileSync(abs, 'utf8')).toBe('hi'); // 回归护栏：文件还在
     expect(svc.unshareFile('a.txt').sharedFiles).toEqual([]); // 幂等
   });
 });
@@ -953,7 +953,7 @@ describe('共享文件 · 写（房主权威 + 乐观并发）', () => {
     });
     expect(r.body).toMatchObject({ ok: false, error: 'fileConflict', version: 2, diskVersion: 2 });
     expect(r.body.content).toBe('other'); // 不是 'mine'
-    // ★ 反向对照：冲突时**绝不能**碰磁盘 —— 否则就是静默覆盖队友刚写的内容
+    // ★ 回归护栏：冲突时**绝不能**碰磁盘 —— 否则就是静默覆盖队友刚写的内容
     expect(readFileSync(abs, 'utf8')).toBe('other');
   });
 
@@ -1187,7 +1187,7 @@ describe('共享文件 · 另存（hostCopy，「覆盖 / 放弃 / 另存」里�
     room.shared.set('a.txt', { path: 'a.txt', version: 1, by: 'x', updatedAt: 1 });
     const r = await post(room, '/collab/file-copy', { id: 'm1', path: 'a.txt', content: 'M' });
     expect(r.body).toMatchObject({ ok: false, error: 'fileFailed' });
-    // 反向对照：删掉一个号，立刻就能用上那个号（说明是"找空位"而不是"随机撞"
+    // 回归护栏：删掉一个号，立刻就能用上那个号（说明是"找空位"而不是"随机撞"
     rmSync(join(root, 'a-副本50.txt'));
     expect(
       (await post(room, '/collab/file-copy', { id: 'm1', path: 'a.txt', content: 'M' })).body.savedAs,
@@ -1255,7 +1255,7 @@ describe('心跳与清理（handleHeartbeat / housekeeping）', () => {
 
     rt.housekeeping(room);
     expect(room.members.get('m1').online).toBe(false);
-    expect(room.members.get('m2').online).toBe(true); // 反向对照
+    expect(room.members.get('m2').online).toBe(true); // 回归护栏
     expect(room.members.size).toBe(2);
   });
 
@@ -1312,7 +1312,7 @@ describe('心跳与清理（handleHeartbeat / housekeeping）', () => {
 
     ws.emit('close');
     expect(room.members.get('m1').ws).toBe(null);
-    // 反向对照：另一个人的连接不受影响（否则两个人会一起掉线）
+    // 回归护栏：另一个人的连接不受影响（否则两个人会一起掉线）
     expect(room.members.get('m2').ws).toBe(ws2);
   });
 
@@ -1368,7 +1368,7 @@ describe('任务提交（经真实路由 /collab/task）', () => {
     //   `String(...).trim() || '队友'` 口径不一致。已修：先 `trim()` 再判空。
     const blank = await post(room, '/collab/task', { id: 'm1', title: '   ', prompt: '' });
     expect(blank.body.task.title).toBe('Agent 任务');
-    // 反向对照 + 反恒真：不是"一律回落"，真标题必须原样（只去掉首尾空白）
+    // 回归护栏 + 反恒真：不是"一律回落"，真标题必须原样（只去掉首尾空白）
     const real = await post(room, '/collab/task', { id: 'm1', title: '  算一下  ', prompt: '' });
     expect(real.body.task.title).toBe('算一下');
   });
@@ -1402,7 +1402,7 @@ describe('任务提交（经真实路由 /collab/task）', () => {
   });
 });
 
-describe('真实机器状态：没连上任何人时的行为（不联网、不抛）', () => {
+describe('真运行测试器状态：没连上任何人时的行为（不联网、不抛）', () => {
   it('既是房主也不是队员时读/写/另存都回 fileFailed（不会去 postJson 打网络）', async () => {
     // 判据：若这里漏了 `!this.guest` 守卫，就会对 undefined.baseUrl 取属性而抛
     await expect(svc.readFile('a.txt')).resolves.toMatchObject({ ok: false, error: 'fileFailed' });
@@ -1423,7 +1423,7 @@ describe('真实机器状态：没连上任何人时的行为（不联网、不�
     await expect(svc.submitTask({ title: '来自房主', prompt: 'p' })).resolves.toBe(true);
     expect(room.tasks).toHaveLength(1);
     expect(room.tasks[0]).toMatchObject({ from: '房主', mine: true, status: 'pending' });
-    // 反向对照：开着自动批准时房主自己的任务直接 queued
+    // 回归护栏：开着自动批准时房主自己的任务直接 queued
     room.autoApproveTasks = true;
     await svc.submitTask({ title: '第二个', prompt: '' });
     expect(room.tasks[1].status).toBe('queued');

@@ -3,7 +3,7 @@
  *
  * ── 为什么能在 node 环境里测（本仓没有 jsdom / happy-dom，且冻结期不许装依赖）──
  * 分发器**只碰事件的 5 个字段**（`code` / 四个修饰键）和 `preventDefault()`，
- * 它连 `target` 都不看（那是**故意的**，见下面判据③的反向对照）。
+ * 它连 `target` 都不看（那是**故意的**，见下面判据③的回归护栏）。
  * 所以：造一个"只记监听器"的假 target，直接调用那个监听器、传一个假事件对象即可。
  * **测的是产品代码里那一份匹配逻辑**，不是我的想象力。
  *
@@ -13,7 +13,7 @@
  *   ③ 在 `<textarea>` 里打**普通字母键** ⇒ 不触发任何命令；
  *   ④ 分清楚"能接的"和"被缺失功能挡住的"（`RULES[].unwired`，见最后一组用例）。
  *
- * ── 每条用例都带「反向对照」与「反恒真」──
+ * ── 每条用例都带「回归护栏」与「反恒真」──
  *   反恒真 = 证明这个判定**不是永远返回同一个值**（写死 true / 写死 false 都会红）。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -115,7 +115,7 @@ function install(overrides: Record<string, string> = {}, mac = false) {
 
 // ───────────────────────── ① 归一化 / 捕获 ─────────────────────────
 
-describe('键位串归一化（原版 `Yw`：小写 + 去空白 + 别名展开）', () => {
+describe('键位串归一化（项目契约 `Yw`：小写 + 去空白 + 别名展开）', () => {
   it('别名展开：`cmd`→`meta`、`return`→`enter`、`ArrowLeft`→`left`、空白被吃掉', () => {
     expect(normalizeBinding('Ctrl + N')).toBe('ctrl+n');
     expect(normalizeBinding('cmd+k')).toBe('meta+k');
@@ -126,7 +126,7 @@ describe('键位串归一化（原版 `Yw`：小写 + 去空白 + 别名展开�
   });
 
   it('`mod` / `meta` / `ctrl` 是三个**不同**的 token（不能互相折叠）', () => {
-    // 反向对照：若把 `mod` 归一成 `ctrl`，Mac 上 ⌘ 系的键位就会全部落到 Ctrl 上 → 这三条不等 → 红。
+    // 回归护栏：若把 `mod` 归一成 `ctrl`，Mac 上 ⌘ 系的键位就会全部落到 Ctrl 上 → 这三条不等 → 红。
     expect(normalizeBinding('mod+b')).not.toBe(normalizeBinding('ctrl+b'));
     expect(normalizeBinding('meta+b')).not.toBe(normalizeBinding('ctrl+b'));
   });
@@ -142,7 +142,7 @@ describe('键位串归一化（原版 `Yw`：小写 + 去空白 + 别名展开�
   });
 });
 
-describe('录制（`captureBinding`，原版 `z6e`）', () => {
+describe('录制（`captureBinding`，项目契约 `z6e`）', () => {
   it('裸字母键**不许**录成键位（否则用户打字会被吃掉）', () => {
     const ev = key('KeyA', { key: 'a' });
     expect(captureBinding(ev as unknown as KeyboardEvent)).toBeNull();
@@ -157,7 +157,7 @@ describe('录制（`captureBinding`，原版 `z6e`）', () => {
     expect(captureBinding(key('ControlLeft', { key: 'Control', ctrlKey: true }) as unknown as KeyboardEvent)).toBeNull();
   });
 
-  it('非 Mac 上 Ctrl+/ 录成 `mod+slash`（原版 `Vk` 里那条就是这个形状）', () => {
+  it('非 Mac 上 Ctrl+/ 录成 `mod+slash`（项目契约 `Vk` 里那条就是这个形状）', () => {
     // 本机（Windows / CI）走的是"非 Mac"分支
     const got = captureBinding(key('Slash', { key: '/', ctrlKey: true }) as unknown as KeyboardEvent);
     if (isMacPlatform()) return; // 真在 Mac 上跑时这条不适用（⌘ 才是 mod）
@@ -167,14 +167,14 @@ describe('录制（`captureBinding`，原版 `z6e`）', () => {
 
 // ───────────────────────── ② 匹配 ─────────────────────────
 
-describe('匹配：修饰键必须**精确**相等（原版没开 `ignoreModifiers`）', () => {
+describe('匹配：修饰键必须**精确**相等（项目契约没开 `ignoreModifiers`）', () => {
   it('`mod+b` 命中 Ctrl+B（非 Mac）与 ⌘+B（Mac）', () => {
     expect(matchesBinding(key('KeyB', { ctrlKey: true }), 'mod+b', false)).toBe(true);
     expect(matchesBinding(key('KeyB', { metaKey: true }), 'mod+b', true)).toBe(true);
   });
 
   it('★ 反恒真：多按一个修饰键就不算命中（Ctrl+Shift+B ≠ mod+b）', () => {
-    // 反向对照：若把"修饰键精确相等"退化成"包含即命中"，这条会变 true → 红。
+    // 回归护栏：若把"修饰键精确相等"退化成"包含即命中"，这条会变 true → 红。
     expect(matchesBinding(key('KeyB', { ctrlKey: true, shiftKey: true }), 'mod+b', false)).toBe(false);
     expect(matchesBinding(key('KeyB', { ctrlKey: true, altKey: true }), 'mod+b', false)).toBe(false);
     // 少按也不命中
@@ -199,10 +199,10 @@ describe('匹配：修饰键必须**精确**相等（原版没开 `ignoreModifie
     expect(matchesBinding(key('KeyN', { ctrlKey: true }), 'mod+n', false)).toBe(true);
   });
 
-  it('★ 长按产生的重复事件**照常触发**（原版 `N_` 不忽略 `e.repeat`）', () => {
-    // 原版依据：`N_`（第 44399 行）keydown 路径里"这是不是重复事件"那个变量**恒为 false**，
+  it('★ 长按产生的重复事件**照常触发**（项目契约 `N_` 不忽略 `e.repeat`）', () => {
+    // 项目契约依据：`N_`（第 44399 行）keydown 路径里"这是不是重复事件"那个变量**恒为 false**，
     // 于是长按会持续触发 —— `gallery.prev` 长按连续翻页正需要它。
-    // 反向对照：若谁给分发器加一道 `if (e.repeat) return;` 的"好意"过滤，这条立刻红。
+    // 回归护栏：若谁给分发器加一道 `if (e.repeat) return;` 的"好意"过滤，这条立刻红。
     const calls: number[] = [];
     reg('gallery.prev', () => calls.push(1));
     const { target } = install();
@@ -211,13 +211,13 @@ describe('匹配：修饰键必须**精确**相等（原版没开 `ignoreModifie
     expect(calls).toHaveLength(2);
   });
 
-  it('★ 两处**有意**偏离原版的地方也钉住（偏离是有理由的，不能被"顺手改回去"）', () => {
-    // D1：原版 `$xe` 第 40216 行 `if (o.length === 0) return true;` —— 只按修饰键的键位串
+  it('★ 两处**有意**偏离项目契约中的地方也钉住（偏离是有理由的，不能被"顺手改回去"）', () => {
+    // D1：项目契约 `$xe` 第 40216 行 `if (o.length === 0) return true;` —— 只按修饰键的键位串
     //     会匹配**任意**按键（连 Ctrl+C / Ctrl+V 都会被吃掉）。本实现判为不命中。
     expect(matchesBinding(key('KeyC', { ctrlKey: true }), 'ctrl', false)).toBe(false);
-    // D2：原版第 40217 行只取第一个主键（`mod+b+k` 等价 `mod+b`）。本实现判为脏数据 ⇒ 不命中。
+    // D2：项目契约第 40217 行只取第一个主键（`mod+b+k` 等价 `mod+b`）。本实现判为脏数据 ⇒ 不命中。
     expect(matchesBinding(key('KeyB', { ctrlKey: true }), 'mod+b+k', false)).toBe(false);
-    // 反向对照：同一批用例里"正常的键位串"必须照常命中，证明上面两条不是"一律返回 false"
+    // 回归护栏：同一批用例里"正常的键位串"必须照常命中，证明上面两条不是"一律返回 false"
     expect(matchesBinding(key('KeyC', { ctrlKey: true }), 'mod+c', false)).toBe(true);
     expect(matchesBinding(key('KeyB', { ctrlKey: true }), 'mod+b', false)).toBe(true);
   });
@@ -232,15 +232,15 @@ describe('匹配：修饰键必须**精确**相等（原版没开 `ignoreModifie
 
 // ───────────────────────── ③ 用户覆盖的合并 ─────────────────────────
 
-describe('`effectiveBinding`：用户值优先（原版 `r6`）', () => {
+describe('`effectiveBinding`：用户值优先（项目契约 `r6`）', () => {
   it('有用户值就用用户值，没有才回落默认', () => {
     expect(effectiveBinding('sidebar.toggle', { 'sidebar.toggle': 'mod+j' }, 'mod+b')).toBe('mod+j');
     expect(effectiveBinding('sidebar.toggle', {}, 'mod+b')).toBe('mod+b');
   });
 
   it('★ 显式写空串 = **解绑**；键不存在 = 用默认（两者不能混为一谈）', () => {
-    // 原版依据：`Yw('')` 得到空串，空串匹配不到任何键 ⇒ 等价于"这条命令没有快捷键"。
-    // 反向对照：若把两者都写成 `?? default`（或都用 `||`），第一条会变成 `mod+b` → 红。
+    // 项目契约依据：`Yw('')` 得到空串，空串匹配不到任何键 ⇒ 等价于"这条命令没有快捷键"。
+    // 回归护栏：若把两者都写成 `?? default`（或都用 `||`），第一条会变成 `mod+b` → 红。
     expect(effectiveBinding('sidebar.toggle', { 'sidebar.toggle': '   ' }, 'mod+b')).toBeNull();
     expect(effectiveBinding('sidebar.toggle', { 'sidebar.toggle': '' }, 'mod+b')).toBeNull();
     expect(effectiveBinding('sidebar.toggle', undefined, 'mod+b')).toBe('mod+b');
@@ -265,7 +265,7 @@ describe('分发器：命中/未命中的行为（判据①②）', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('★ 命中 ⇒ `preventDefault` 恰好 1 次，且**在回调之前**（原版先 `M_e` 再调处理函数）', () => {
+  it('★ 命中 ⇒ `preventDefault` 恰好 1 次，且**在回调之前**（项目契约先 `M_e` 再调处理函数）', () => {
     const ev = key('KeyB', { ctrlKey: true });
     reg('sidebar.toggle', probe(ev));
     const { target } = install();
@@ -287,7 +287,7 @@ describe('分发器：命中/未命中的行为（判据①②）', () => {
 
   it('★ 判据③ 在 `<textarea>` 里打普通字母键 ⇒ 0 次回调 + 0 次 preventDefault', () => {
     // 这是"打字被快捷键吃掉"的直接判据。注意：**没有任何键位是裸字母**才成立 ——
-    // 所以下面还要有一条反向对照，证明这条不是因为"把 form tag 一律忽略"才过的。
+    // 所以下面还要有一条回归护栏，证明这条不是因为"把 form tag 一律忽略"才过的。
     const ta = { tagName: 'TEXTAREA' };
     const calls: string[] = [];
     for (const cmd of ['sidebar.toggle', 'search.toggle', 'gallery.prev', 'gallery.next', 'new-chat']) {
@@ -302,11 +302,11 @@ describe('分发器：命中/未命中的行为（判据①②）', () => {
     expect(calls).toEqual([]);
   });
 
-  it('★ 反向对照：输入框里按**已绑定**的组合键**仍要触发**（原版 `enableOnFormTags: true`）', () => {
-    // 原版硬证据：三处 `N_` 调用点都传 `enableOnFormTags: true / enableOnContentEditable: true`
+  it('★ 回归护栏：输入框里按**已绑定**的组合键**仍要触发**（项目契约 `enableOnFormTags: true`）', () => {
+    // 项目契约硬证据：三处 `N_` 调用点都传 `enableOnFormTags: true / enableOnContentEditable: true`
     // （`.baseline/readable/index-OYc102qC.js:44460 / 45350`）。
     // 这条与上一条**必须同时成立** —— 只满足上一条的做法（"form tag 里一律忽略"）会让
-    // "我在输入框里想按 Ctrl+B 收起侧栏"失效，那是**偏离原版**。
+    // "我在输入框里想按 Ctrl+B 收起侧栏"失效，那是**偏离项目契约**。
     const calls: string[] = [];
     reg('sidebar.toggle', () => calls.push('sidebar.toggle'));
     const { target } = install();
@@ -317,7 +317,7 @@ describe('分发器：命中/未命中的行为（判据①②）', () => {
   });
 
   it('★ 没有登记处理函数的命令**完全不参与匹配**（灯箱没开时按 ← 什么都不发生）', () => {
-    // 反向对照：若匹配只看 `RULES` 而不看注册表，这条会命中 `gallery.prev` 并 preventDefault → 红。
+    // 回归护栏：若匹配只看 `RULES` 而不看注册表，这条会命中 `gallery.prev` 并 preventDefault → 红。
     // 这条是"图库没打开时用户按方向键"的安全保证。
     const ev = key('ArrowLeft');
     const { target } = install();
@@ -365,7 +365,7 @@ describe('分发器：命中/未命中的行为（判据①②）', () => {
     expect(calls).toHaveLength(1); // 旧键位不再触发
     target.fire(key('KeyJ', { ctrlKey: true }));
     expect(calls).toHaveLength(2); // 新键位生效
-    // 反向对照：若在安装时把 overrides 快照下来，最后两条会反过来 → 红。
+    // 回归护栏：若在安装时把 overrides 快照下来，最后两条会反过来 → 红。
     off();
   });
 
@@ -386,7 +386,7 @@ describe('分发器：只挂一个监听（本项要修的核心）', () => {
     expect(target.size).toBe(1);
     off();
     expect(target.size).toBe(0);
-    // 反向对照：这正是"别在每个组件各挂一个"的判据 —— 14 条命令 + N 个面板
+    // 回归护栏：这正是"别在每个组件各挂一个"的判据 —— 14 条命令 + N 个面板
     // 如果是各自 `addEventListener`，这里会是两位数，退化成"谁先 preventDefault 谁赢"。
   });
 
@@ -410,7 +410,7 @@ describe('★ 判据④ `RULES` 必须把"能不能用"标出来，不许假装�
     expect([count('global'), count('chat'), count('preview'), count('gallery')]).toEqual([3, 8, 1, 2]);
   });
 
-  it('★ 9 条可自定义条目的默认键位**逐字等于原版 `Vk`**（第 19020 行）', () => {
+  it('★ 9 条可自定义条目的默认键位**逐字等于项目契约 `Vk`**（第 19020 行）', () => {
     const VK: Record<string, string> = {
       'shortcuts.help': 'mod+slash',
       'search.toggle': 'mod+k',
@@ -424,7 +424,7 @@ describe('★ 判据④ `RULES` 必须把"能不能用"标出来，不许假装�
     };
     const mine: Record<string, string> = {};
     for (const r of RULES) if (r.defaultBinding) mine[r.command] = r.defaultBinding;
-    // 反向对照：改动任何一个默认键位（比如把 mod+b 换成 mod+\\）这条立刻红。
+    // 回归护栏：改动任何一个默认键位（比如把 mod+b 换成 mod+\\）这条立刻红。
     expect(mine).toEqual(VK);
   });
 
@@ -450,9 +450,9 @@ describe('★ 判据④ `RULES` 必须把"能不能用"标出来，不许假装�
     // （`composer.attach` 原本也在这条里，现已在 `Composer.tsx` 接线 → 见下面已接线清单）
     expect(by('other-owner')).toEqual(['message.editSubmit']);
     expect(by('product-decision')).toEqual(['prompt.pickOption']);
-    // 已接线的必须**没有** `unwired`（反向对照：如果谁把已接线的也标上，这里会多出来）
+    // 已接线的必须**没有** `unwired`（回归护栏：如果谁把已接线的也标上，这里会多出来）
     // ⚠️ 这 7 条里前 5 条走**本分发器**；`composer.send` / `composer.newline`
-    //    是 `Composer.tsx` 自己的 `onKeyDown` 处理的（原版这两条也只有 `display`、不可自定义）。
+    //    是 `Composer.tsx` 自己的 `onKeyDown` 处理的（项目契约这两条也只有 `display`、不可自定义）。
     expect(RULES.filter((r) => !r.unwired).map((r) => r.command)).toEqual([
       'shortcuts.help',
       'search.toggle',
@@ -476,7 +476,7 @@ describe('★ 判据④ `RULES` 必须把"能不能用"标出来，不许假装�
 
   it('★ 走**分发器**的可自定义命令与注册表口径对齐', () => {
     // ⚠️ 只挑"已接线 **且** 可自定义"的：`composer.send` / `composer.newline` 虽然已接线，
-    //    但它们是 `display`-only（原版不给 `keys`）⇒ 本来就没有键位串可挂到分发器上。
+    //    但它们是 `display`-only（项目契约不给 `keys`）⇒ 本来就没有键位串可挂到分发器上。
     const wired = RULES.filter((r) => !r.unwired && r.defaultBinding).map((r) => r.command);
     expect(wired).toEqual([
       'shortcuts.help',
@@ -493,7 +493,7 @@ describe('★ 判据④ `RULES` 必须把"能不能用"标出来，不许假装�
     // 反恒真：拿一个没登记的 command 去构造候选，它必须拿不到键位（不许凭空造出绑定）
     expect(candidateBindings(['chat.find'], {})).toEqual([{ command: 'chat.find', binding: 'mod+f' }]);
     expect(candidateBindings(['不存在的命令'], {})).toEqual([]);
-    // 反向对照：`display`-only 的两条**永远**进不了候选表（它们不是全局热键，由 textarea 自己处理）
+    // 回归护栏：`display`-only 的两条**永远**进不了候选表（它们不是全局热键，由 textarea 自己处理）
     expect(candidateBindings(['composer.send', 'composer.newline'], {})).toEqual([]);
   });
 
@@ -504,7 +504,7 @@ describe('★ 判据④ `RULES` 必须把"能不能用"标出来，不许假装�
   });
 
   it('平台判定在 node 环境下不抛（`typeof navigator` 守卫）', () => {
-    // 反向对照：去掉守卫后，本文件在 node 里 import 就会 ReferenceError ⇒ 所有用例直接失败。
+    // 回归护栏：去掉守卫后，本文件在 node 里 import 就会 ReferenceError ⇒ 所有用例直接失败。
     expect(typeof isMacPlatform()).toBe('boolean');
   });
 
@@ -514,8 +514,8 @@ describe('★ 判据④ `RULES` 必须把"能不能用"标出来，不许假装�
   });
 });
 
-// `APP_COMMANDS` 的两条也钉一下：它们是"本仓自带、原版没有"的，别被误删
-describe('`APP_COMMANDS`：本仓原有的两条（原版表里没有）', () => {
+// `APP_COMMANDS` 的两条也钉一下：它们是"本仓自带、当前没有"的，别被误删
+describe('`APP_COMMANDS`：本仓原有的两条（项目契约表里没有）', () => {
   it('默认键位保持历史字面量写法（`Ctrl + N` / `Ctrl + ,`），归一化后可用', () => {
     expect(APP_COMMANDS.map((c) => c.command)).toEqual(['new-chat', 'open-settings']);
     expect(normalizeBinding(APP_COMMANDS[0]!.defaultBinding)).toBe('ctrl+n');

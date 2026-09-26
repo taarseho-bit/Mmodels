@@ -1,15 +1,15 @@
 /**
- * 输入区（Composer）—— 复刻原版的结构。
+ * 输入区（Composer）—— 当前实现项目契约的结构。
  *
- * 原版的输入区远不止一个文本框，自上而下三层：
+ * 项目契约的输入区远不止一个文本框，自上而下三层：
  *   ① 上下文栏：项目选择器 · 任务模式选择器 · 比赛模板选择器 ……… 比赛信息
  *   ② 附件 chips + 文本框
  *   ③ 底部栏：＋ 添加文件 · 权限选择器 ……… 模型·推理强度 · 发送
  *
- * 文案逐字取自 `composer.composerContextBar.*` / `composer.composerPermissionPicker.*` /
+ * 文案来源于项目资料 `composer.composerContextBar.*` / `composer.composerPermissionPicker.*` /
  * `chat.modelPicker.*` / `composer.composerAttachments.*`。
  *
- * 原版发送按钮左侧的计费提示依赖在线积分体系，本地版不显示这一项。
+ * 项目契约发送按钮左侧的计费提示依赖在线积分体系，当前版本不显示这一项。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -40,7 +40,7 @@ import { registerCommand } from '../keybindings/dispatch';
 import { t, tx } from '../i18n';
 import { appendPasted, makePastedText, shouldFoldPasted, type PastedText } from '../lib/pasted-text';
 
-export type ComposerMode = 'chat' | 'paper' | 'figure' | 'review' | 'data';
+export type ComposerMode = 'chat' | 'paper' | 'figure' | 'review' | 'data' | 'sprint';
 export type PermissionMode = 'full' | 'approval';
 /**
  * 决策模式 —— 与任务模式（ComposerMode）**正交**的另一个维度：
@@ -59,11 +59,11 @@ const DECISION_MODE_ICON: Record<DecisionMode, string> = {
   manual: 'hand',
   auto: 'sparkles',
 };
-/** chip 上显示的短字（菜单里才是全名 + 描述） */
+/** chip 上显示的短字（菜单里才是全名 + 描述；2026-09-26 用户钦定命名） */
 const DECISION_MODE_SHORT: Record<DecisionMode, string> = {
   plan: '先规划',
-  manual: '精细',
-  auto: '自动',
+  manual: '人工精细',
+  auto: 'AI 全自动',
 };
 
 interface PaperPageLimitDraft {
@@ -99,49 +99,83 @@ function pageLimitFromDraft(draft: PaperPageLimitDraft): PaperPageLimit | null {
   };
 }
 
-/** 模式 → 发送时自动附加的斜杠命令（原版行为：模式本质是预设命令） */
+/** 模式 → 发送时自动附加的斜杠命令（项目契约行为：模式本质是预设命令） */
 const MODE_COMMAND: Record<ComposerMode, string | null> = {
   chat: null,
   paper: '/write-paper',
   figure: '/draw-figures',
   review: '/review-paper',
   data: '/data-search',
+  sprint: '/competition-sprint',
 };
-
-const MODES: ComposerMode[] = ['chat', 'paper', 'figure', 'review', 'data'];
 
 /**
  * 自定义比赛字段的 id 前缀。
  *
- * 原版 `contestFields` 是数组，加一项就是自定义字段；这里给本地生成的 id 一个前缀，
+ * 项目契约 `contestFields` 是数组，加一项就是自定义字段；这里给本地生成的 id 一个前缀，
  * 好处是**重开弹层时只靠文件内容就能认出哪些是自定义行**，不必等模板列表加载完
  * （否则每换一次模板都要重新判定，判定错会让用户填的值看起来"丢了"）。
  */
 /**
  * 「用户自己加的字段」的 id 前缀。
  *
- * ⚠️ 后缀里**不能带下划线**：原版 `contestFields` 的字段 id schema 是
- *    `z.string().min(1).max(64).regex(/^[a-z][A-Za-z0-9]*$/)`（从原版未混淆的渲染层
+ * ⚠️ 后缀里**不能带下划线**：项目契约 `contestFields` 的字段 id schema 是
+ *    `z.string().min(1).max(64).regex(/^[a-z][A-Za-z0-9]*$/)`（从项目契约未混淆的渲染层
  *    bundle 里挖到，`Gk` 定义：`q().min(1).max(64).regex(/^[a-z][A-Za-z0-9]*$/)`）——
  *    小驼峰、只允许 [A-Za-z0-9]。所以前缀用 `custom`（而不是 `custom_`），
  *    后半段也只用 `toString(36)` 的字母数字。
  */
 const CUSTOM_FIELD_PREFIX = 'custom';
 
+// ── # 任务面板 ──
 /**
- * 模式 → 图标。
+ * 输入框里打 `#` 唤起的任务面板（2026-09-26 用户钦定的差异化改版）。
  *
- * 原版 13-menu-mode 展开后每项左侧都有图标（对话气泡 / 文档 / 柱状图 /
- * 剪贴板勾 / 数据库），同一枚图标也用在上下文栏的「模式」chip 上。
- * 复刻早期只给 chip 配了一枚 `sparkles`，菜单项则完全没有图标。
+ * 用户原话：「删除这个选择……改成和其他的智能体一样，打一个 # 然后后面出现一大列的选择，
+ * 现在这个本质上也是选择哪个 skill 吧，改成大量的进行选择自己想要的，
+ * 把全流程论文写作放在最上面的位置。」
+ *
+ * 与旧「任务模式」菜单的关系：
+ *  - 旧菜单的六种模式 = 这里前六项（工作流项）：选中即切 `composerMode`（隐式命令前缀
+ *    机制不变，`MODE_COMMAND` / WorkbenchPage 的 ask 流零漂移），并在输入框**显式**落下
+ *    斜杠命令 —— 用户看得见自己选了什么；
+ *  - 其余为细分任务项（对应真实内置技能）：只插入一句指令模板，不切模式；
+ *  - 「全流程论文写作」按用户要求固定在第一位。
  */
-const MODE_ICON: Record<ComposerMode, string> = {
-  chat: 'message-square',
-  paper: 'file-text',
-  figure: 'chart-column',
-  review: 'clipboard-check',
-  data: 'database',
-};
+interface HashTask {
+  id: string;
+  icon: string;
+  /** 选中后替换 `#token` 的插入文本（命令带尾随空格，方便续写） */
+  insert: string;
+  /** 工作流项给出 —— 同时切换 composerMode；细分任务项不切 */
+  mode?: ComposerMode;
+  /** 过滤关键词（中英混合，仅用于匹配不进 i18n） */
+  keywords: string[];
+}
+const HASH_TASKS: HashTask[] = [
+  { id: 'paper', icon: 'file-text', insert: '/write-paper ', mode: 'paper', keywords: ['论文', '写作', 'write', 'paper', 'latex', '成稿', 'wp'] },
+  { id: 'sprint', icon: 'zap', insert: '/competition-sprint ', mode: 'sprint', keywords: ['冲刺', '参赛', '72', '赛程', '比赛', 'sprint', 'schedule', 'cs'] },
+  { id: 'figure', icon: 'chart-column', insert: '/draw-figures ', mode: 'figure', keywords: ['图', '绘图', '图表', '画图', 'figure', 'plot', 'chart', 'df'] },
+  { id: 'review', icon: 'clipboard-check', insert: '/review-paper ', mode: 'review', keywords: ['评审', '评阅', '打分', '诊断', 'review', 'score', 'rp'] },
+  { id: 'data', icon: 'database', insert: '/data-search ', mode: 'data', keywords: ['数据', '找数据', '下载', '数据集', 'data', 'dataset', 'ds'] },
+  { id: 'chat', icon: 'message-square', insert: '', mode: 'chat', keywords: ['聊天', '对话', '自由', 'chat'] },
+  { id: 'abstract', icon: 'pen-line', insert: '请使用 abstract-writer 技能撰写并润色摘要：', keywords: ['摘要', 'abstract', 'summary'] },
+  { id: 'problem', icon: 'scan-eye', insert: '请使用 problem-parser 技能解析题目，输出目标、约束、决策变量与数据需求：', keywords: ['题目', '审题', '解析', 'problem', 'parser'] },
+  { id: 'method', icon: 'target', insert: '请使用 method-selector 技能对比候选建模方法并给出选型建议：', keywords: ['方法', '选型', '模型选择', 'method'] },
+  { id: 'literature', icon: 'book-open', insert: '请使用 literature-search 技能检索真实文献并核验可得性：', keywords: ['文献', '检索', 'literature', 'search', '论文搜索'] },
+  { id: 'litReview', icon: 'notebook-tabs', insert: '请使用 literature-review 技能撰写文献综述：', keywords: ['综述', '文献综述', 'review'] },
+  { id: 'citation', icon: 'text-quote', insert: '请使用 citation-management 技能整理文中引用与参考文献：', keywords: ['引用', '参考文献', 'citation', 'reference'] },
+  { id: 'bibVerify', icon: 'shield-check', insert: '请使用 verifying-bibliography 技能逐条核验参考文献真实性：', keywords: ['核真', '参考文献', '真实性', 'bibliography', 'verify'] },
+  { id: 'dataAudit', icon: 'file-spreadsheet', insert: '请使用 data-auditor-cleaner 技能审计并清洗 data/ 目录下的数据：', keywords: ['数据', '审计', '清洗', 'audit', 'clean'] },
+  { id: 'robust', icon: 'activity', insert: '请使用 robustness-checker 技能做灵敏度与稳健性分析：', keywords: ['灵敏度', '稳健', '敏感性', 'robustness', 'sensitivity'] },
+  { id: 'proof', icon: 'sigma', insert: '请使用 proof-audit 技能逐条审查推导与公式：', keywords: ['推导', '公式', '证明', 'proof', 'audit'] },
+  { id: 'pagefit', icon: 'gauge', insert: '请使用 paper-page-fit 技能核验论文页数并压缩到比赛上限内：', keywords: ['页数', '压缩', 'page', 'fit'] },
+  { id: 'table', icon: 'columns-2', insert: '请使用 table-layout-audit 技能检查表格宽度、裁切与分页：', keywords: ['表格', 'table', '裁切'] },
+  { id: 'diagram', icon: 'git-branch', insert: '请使用 paper-diagram 技能绘制问题求解流程 / 模型结构图：', keywords: ['流程图', '结构图', 'diagram', 'flow'] },
+  { id: 'figureTpl', icon: 'blocks', insert: '请使用 mathmodel-figure-templates 技能按论文场景选择建模图表模板：', keywords: ['图表', '模板', 'template'] },
+  { id: 'submission', icon: 'package-check', insert: '请使用 submission-package-audit 技能按竞赛要求逐项检查提交材料：', keywords: ['提交', '检查', 'submission', '材料'] },
+  { id: 'defense', icon: 'graduation-cap', insert: '请使用 defense-ppt 技能生成答辩提纲与幻灯片：', keywords: ['答辩', 'ppt', '幻灯片', 'defense'] },
+];
 
 // ── 思考强度 ──
 /**
@@ -155,12 +189,12 @@ const MODE_ICON: Record<ComposerMode, string> = {
  */
 export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 const EFFORT_LEVELS: EffortLevel[] = ['low', 'medium', 'high', 'xhigh', 'max'];
-/** 原版模型 chip 默认显示「高」。设置里没选过时按 高 展示（不写回设置，避免挂载即写入） */
+/** 项目契约模型 chip 默认显示「高」。设置里没选过时按 高 展示（不写回设置，避免挂载即写入） */
 const DEFAULT_EFFORT: EffortLevel = 'high';
 /**
  * 档位 → 词典键。
  *
- * ⚠️ **不能机械拼 `effort${首字母大写}`**：原版这两个档位的键名不是规则拼法 ——
+ * ⚠️ **不能机械拼 `effort${首字母大写}`**：项目契约这两个档位的键名不是规则拼法 ——
  * `xhigh` 的键是 `effortExtra`（'超高'）、`max` 的键是 `effortMax`（'最大'）。
  * 机械拼会得到 `effortXhigh`，而那个键**在词典里不存在** ——
  * `tx()` 取不到值时会把**键路径原样渲染到界面上**（本项目的静默失败形态）。
@@ -189,12 +223,12 @@ interface ModelOption {
   /** 显示给用户的服务商名称，便于多个供应商同名模型的区分 */
   providerName?: string;
   id: string;
-  /** 右侧的上下文窗口徽标（原版：1M / 200K） */
+  /** 右侧的上下文窗口徽标（项目契约：1M / 200K） */
   badge?: string;
 }
 
 /**
- * 内置模型目录 —— 原版 14-menu-model 列出的 5 个模型，逐字照抄。
+ * 内置模型目录 —— 项目契约 14-menu-model 列出的 5 个模型，直接采用。
  *
  * 数据来源优先级：**本机已配置的供应商/模型**（`useApp().providers`）；
  * 一个都没配时回落到这份内置目录，保证模型选择器与原生 UI 一致且可点选
@@ -208,7 +242,7 @@ const BUILTIN_MODELS: ModelOption[] = [
   { providerId: '', id: 'claude-haiku-4-5', badge: '200K' },
 ];
 
-/** 未配置任何模型时 chip 显示哪个（原版选中项就是 claude-sonnet-5） */
+/** 未配置任何模型时 chip 显示哪个（项目契约选中项就是 claude-sonnet-5） */
 const DEFAULT_MODEL_ID = 'claude-sonnet-5';
 
 /** 供应商自带的模型名里若写了 `[1M]` / `[200K]`，取出来当徽标 */
@@ -220,9 +254,9 @@ function badgeOf(modelId: string): string | undefined {
 /**
  * 「完全访问」的图标 —— lucide `shield-alert`（盾牌 + 感叹号）。
  *
- * 图标表里只提取到了 `shield-check`，而原版 15-menu-permission 用的是带感叹号的
- * 盾牌（托盘文案也是「完全访问」而非「已批准」）。路径数据逐字取自原版 bundle
- * （`app.asar` 中 `pt("shield-alert", …)`），就地渲染以免动生成器产出的图标表。
+ * 图标表里只提取到了 `shield-check`，而项目契约 15-menu-permission 用的是带感叹号的
+ * 盾牌（托盘文案也是「完全访问」而非「已批准」）。图标在这里直接绘制，
+ * 避免为一个小图标改动整张图标数据表。
  */
 function ShieldAlertIcon({ size = 13 }: { size?: number }): JSX.Element {
   return (
@@ -250,7 +284,7 @@ function ShieldAlertIcon({ size = 13 }: { size?: number }): JSX.Element {
 /**
  * 附件图标选择。
  *
- * 原版渲染附件只有两种形态：图片给缩略图，其余给「小图标 + 文件名」。
+ * 项目契约渲染附件只有两种形态：图片给缩略图，其余给「小图标 + 文件名」。
  * 这里对齐它 —— **只用图标区分类型，不显示任何文字标签**。
  * （曾经用文字徽标且无扩展名时退化成英文 "file"，界面上会突然冒出一个英文单词。）
  */
@@ -288,7 +322,7 @@ interface Attachment {
    * 小写扩展名（不含点），用于挑图标。空串表示没有扩展名。
    *
    * ⚠️ 早先这里是个文字徽标，还写成 `ext || 'file'` —— 没有扩展名的文件
-   *    会在附件上渲染出英文单词 "file"。**原版没有这种东西**：
+   *    会在附件上渲染出英文单词 "file"。**项目契约没有这种东西**：
    *    它渲染附件只有两种形态 —— 图片给缩略图，其余给「小图标 + 文件名」。
    *    所以这里只保留扩展名用来选图标，不显示任何文字标签。
    */
@@ -302,7 +336,7 @@ export interface ComposerSendOptions {
   displayText?: string;
   /**
    * **对设置里选的行为取反**（不是恒定打断）。
-   * 原版设置页描述：「Ctrl/Cmd+Enter 可为单条消息临时使用相反行为」——
+   * 项目契约设置页描述：「Ctrl/Cmd+Enter 可为单条消息临时使用相反行为」——
    * 所以设置为「排队」时它打断，设置为「调整当前任务」时它排队。
    */
   invertFollowUp?: boolean;
@@ -437,10 +471,65 @@ export function Composer({
 
   // ── 下拉开关 ──
   const [openMenu, setOpenMenu] = useState<
-    null | 'project' | 'mode' | 'decision' | 'quality' | 'template' | 'perm' | 'model' | 'plus' | 'options'
+    null | 'project' | 'decision' | 'quality' | 'template' | 'perm' | 'model' | 'plus' | 'options'
   >(null);
   const [contextOpen, setContextOpen] = useState(false);
-  // ── 「＋」菜单（原版 `data-tour="composer-plus"` 那个 Popover）──
+
+  // ── # 任务面板（输入 `#` 唤起，见 HASH_TASKS 注释）──
+  /** start = `#` 字符在 value 中的下标；query = `#` 到光标之间的过滤词 */
+  const [hash, setHash] = useState<{ start: number; query: string } | null>(null);
+  const [hashIndex, setHashIndex] = useState(0);
+  /** 光标前的文本以 `#token` 结尾（# 在行首或空白后）⇒ 面板打开 */
+  const detectHash = (text: string, caret: number): void => {
+    const before = text.slice(0, caret);
+    const m = /(^|\s)#([^\s#]*)$/.exec(before);
+    if (m) {
+      setHash({ start: caret - m[2].length - 1, query: m[2] });
+      setHashIndex(0);
+    } else {
+      setHash(null);
+    }
+  };
+  const hashItems = useMemo<HashTask[]>(() => {
+    if (!hash) return [];
+    const q = hash.query.trim().toLowerCase();
+    if (!q) return HASH_TASKS;
+    return HASH_TASKS.filter(
+      (it) =>
+        tx(`composer.hashPalette.items.${it.id}`).toLowerCase().includes(q) ||
+        tx(`composer.hashPalette.items.${it.id}Description`).toLowerCase().includes(q) ||
+        it.keywords.some((k) => k.toLowerCase().includes(q)),
+    );
+    // tx 是模块级函数（非 hook），不进依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hash]);
+  /** 选中一项：替换 `#token` 为插入文本；工作流项带上中文名让输入框可见（2026-09-26 用户要求） */
+  const applyHashTask = (task: HashTask): void => {
+    if (!hash) return;
+    const el = ref.current;
+    const caret = el?.selectionStart ?? value.length;
+    // 工作流项：'/write-paper ' + '全流程论文写作' + '：' —— 命令仍可被 SDK 识别，
+    // 后面的中文是给用户看的任务名，接着写题目即可；细分任务项 insert 本身已是完整句子
+    const insert = task.mode
+      ? `${task.insert}${tx(`composer.hashPalette.items.${task.id}`)}：`
+      : task.insert;
+    const next = value.slice(0, hash.start) + insert + value.slice(caret);
+    onChange(next);
+    if (task.mode) void patchSettings({ composerMode: task.mode });
+    setHash(null);
+    // 光标落在插入文本末尾；顺带复算高度（value 变了但没走 textarea 的 onChange）
+    requestAnimationFrame(() => {
+      const ta = ref.current;
+      if (!ta) return;
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 240)}px`;
+      const pos = hash.start + insert.length;
+      ta.focus();
+      ta.setSelectionRange(pos, pos);
+    });
+  };
+
+  // ── 「＋」菜单（项目契约 `data-tour="composer-plus"` 那个 Popover）──
   /**
    * 二级子菜单开关。与「思考强度」同一套"悬停展开 + 点击固定 + 延时关闭"，
    * 只是这里要记**哪一个**子菜单开着。
@@ -450,8 +539,8 @@ export function Composer({
   /**
    * ⚠️ 这里**故意没有** `research` / `webSearch` 两个开关的 state。
    *
-   * 原版那两个开关是"只有状态、没有消费者"的（拨了不改变任何东西，取证贴在
-   * `PlusMenu.tsx` 文件头），所以复刻把它们降级成**不可交互的展示项**，
+   * 项目契约那两个开关是"只有状态、没有消费者"的（拨了不改变任何东西，取证贴在
+   * `PlusMenu.tsx` 文件头），所以当前实现把它们降级成**不可交互的展示项**，
    * 不再持有状态 —— 见裁决「宁可少一个开关，也不要多一个骗人的开关」。
    */
   /** 数据集子菜单里要列的文件（打开菜单时扫一次当前项目） */
@@ -475,7 +564,7 @@ export function Composer({
   const [pageLimitDraft, setPageLimitDraft] = useState<PaperPageLimitDraft>(EMPTY_PAGE_LIMIT);
   const [setupOpen, setSetupOpen] = useState(false);
   /**
-   * 用户**自己加**的比赛字段（原版 `contestFields` 是数组，加一项就是自定义字段）。
+   * 用户**自己加**的比赛字段（项目契约 `contestFields` 是数组，加一项就是自定义字段）。
    * 只存 id + label，值统一在 `paperFields[id]` 里，读写只有一处。
    */
   const [customFields, setCustomFields] = useState<{ id: string; label: string }[]>([]);
@@ -490,7 +579,7 @@ export function Composer({
   const [srcTpl, setSrcTpl] = useState<PaperTemplateRef | null>(null);
 
   // ⚠️ 兜底必须是 'paper' 而不是 'chat'。
-  //    原版 composerMode 默认就是 "paper"（zod schema 与运行时兜底都是），
+  //    项目契约 composerMode 默认就是 "paper"（zod schema 与运行时兜底都是），
   //    只有 paper 模式才会显示「比赛模板选择器 + 比赛信息」，并把占位文字
   //    换成「粘贴题目，或拖入题目 PDF / 附件…」。
   //    兜底写成 chat 会让首屏看不到任何比赛相关内容 —— 用户会以为功能没做。
@@ -546,7 +635,7 @@ export function Composer({
     if (!template) return srcTpl;
     return {
       id: template.id,
-      // 落成原版 `Np` 对象（两键必填非空）；en 取 template.json 的 name.en
+      // 落成项目契约 `Np` 对象（两键必填非空）；en 取 template.json 的 name.en
       name: makeLocalizedText(template.name, template.nameEn),
       entryFile: template.entryFile,
       source: 'builtin',
@@ -563,7 +652,7 @@ export function Composer({
     sourcePath?: string | null;
   } | null = (() => {
     const ref = templateRefForSave();
-    // 磁盘上的 `ref.name` 现在是原版 `Np` 对象 —— 渲染前按界面语言取一个字符串
+    // 磁盘上的 `ref.name` 现在是项目契约 `Np` 对象 —— 渲染前按界面语言取一个字符串
     const lang = settings?.locale ?? 'zh-CN';
     if (template) {
       // 自定义模板源下，名字/描述以磁盘上的 ref 为准 ——
@@ -591,9 +680,9 @@ export function Composer({
   /** 组装要落盘的 contestFields：模板自带的在前，用户自定义的在后（顺序稳定，便于比对） */
   const contestFieldsForSave = useCallback((): PaperContestField[] => {
     const out: PaperContestField[] = [];
-    // 写侧**一律落成原版 `Np` 对象**：模板自带字段的 en 取 template.json 的
+    // 写侧**一律落成项目契约 `Np` 对象**：模板自带字段的 en 取 template.json 的
     // `fields[].label.en`（如「题号」→「Problem」）；用户手填的自定义字段只有中文名，
-    // en 用中文原文兜底 —— 但两个键都必须非空（原版 `Np` 是 `min(1)`）。
+    // en 用中文原文兜底 —— 但两个键都必须非空（项目契约 `Np` 是 `min(1)`）。
     for (const f of template?.fields ?? []) {
       const v = (paperFields[f.id] ?? '').trim();
       if (v) out.push({ id: f.id, label: makeLocalizedText(f.label, f.labelEn), value: v });
@@ -606,7 +695,7 @@ export function Composer({
   }, [template, paperFields, customFields]);
 
   const addCustomField = useCallback((): void => {
-    // 后缀只用 base36 的字母数字，整体满足原版 id schema（见 CUSTOM_FIELD_PREFIX 注释）
+    // 后缀只用 base36 的字母数字，整体满足项目契约 id schema（见 CUSTOM_FIELD_PREFIX 注释）
     const id = `${CUSTOM_FIELD_PREFIX}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     setCustomFields((prev) => [...prev, { id, label: '' }]);
   }, []);
@@ -654,8 +743,8 @@ export function Composer({
   /**
    * 没人选过比赛时，自动认领一个。
    *
-   * 规则照抄模板自带的标记：优先 `defaultFor` 命中当前语言的，其次 `order` 最小的。
-   * 中文界面下就是 `cumcm`（国赛 CUMCM）—— 与原版首屏一致。
+   * 规则直接采用模板自带的标记：优先 `defaultFor` 命中当前语言的，其次 `order` 最小的。
+   * 中文界面下就是 `cumcm`（国赛 CUMCM）—— 与项目契约首屏一致。
    *
    * ⚠️ 不做这一步，输入区只会显示「暂无模板」，
    *    而「比赛信息」按钮依赖 template 才渲染，于是永远不出现 ——
@@ -722,7 +811,7 @@ export function Composer({
         setCustomFields(
           list
             .filter((f) => f.id.startsWith(CUSTOM_FIELD_PREFIX))
-            // 读侧兼容：磁盘上的 `label` 可能是原版 `Np` 对象，也可能是早期版本写下的
+            // 读侧兼容：磁盘上的 `label` 可能是项目契约 `Np` 对象，也可能是早期版本写下的
             // 普通字符串 —— 只认一种，用户存好的字段名就丢了。
             .map((f) => ({ id: f.id, label: pickLocalizedText(f.label, settings?.locale ?? 'zh-CN') })),
         );
@@ -743,7 +832,7 @@ export function Composer({
   /**
    * 折叠起来的粘贴长文本。
    *
-   * ⚠️ 与 `attachments` 是**两个独立数组**（原版也是两个独立 setter）：
+   * ⚠️ 与 `attachments` 是**两个独立数组**（项目契约也是两个独立 setter）：
    *    附件走「路径清单」进正文，粘贴文本走正文末尾的 `<pasted_text>` 尾巴，
    *    两者在发送时的拼法完全不同，合并成一个数组会分不开。
    */
@@ -758,8 +847,8 @@ export function Composer({
    *
    * 之前这两个调用点是 `void saveConfig(...)` —— 失败被完全吞掉：用户点了「保存」，
    * 项目里那份 `.mathmodel/paper/config.json` 是用户手写的（`managedBy` 不是 mathmodel）
-   * 时，主进程按原版语义**拒绝写入**，而界面一声不响，用户以为存上了。
-   * 现在三种原因各自对应原版那条文案（`chat.newChatPage.paperConfig*`）。
+   * 时，主进程按项目契约语义**拒绝写入**，而界面一声不响，用户以为存上了。
+   * 现在三种原因各自对应项目契约那条文案（`chat.newChatPage.paperConfig*`）。
    */
   const savePaperConfig = useCallback(async (patch: PaperConfigPatch): Promise<void> => {
     const targetProjectId = project?.id;
@@ -860,7 +949,7 @@ export function Composer({
       });
   }, [addFromPaths]);
 
-  // ⌘U —— 原版 `Vk` 里 `composer.attach` 的键位，走统一分发器（不要再挂 keydown 监听）
+  // ⌘U —— 项目契约 `Vk` 里 `composer.attach` 的键位，走统一分发器（不要再挂 keydown 监听）
   useEffect(
     () => registerCommand('composer.attach', () => pickAttachments()),
     [pickAttachments],
@@ -887,7 +976,7 @@ export function Composer({
     [onChange, ref],
   );
 
-  /** 打开「＋」菜单时扫一次当前项目的数据文件（原版这三行是写死的样例名） */
+  /** 打开「＋」菜单时扫一次当前项目的数据文件（项目契约这三行是写死的样例名） */
   useEffect(() => {
     if (openMenu !== 'plus' || !project) return;
     let alive = true;
@@ -959,7 +1048,7 @@ export function Composer({
     if (effectiveTpl) {
       // 用 contestFieldsForSave() 而不是直接遍历 paperFields：顺序稳定（模板字段在前、
       // 自定义字段在后），并且带上 label —— 用户自定义的字段名（"组别"）才是模型要看的。
-      // ⚠️ `label` 是原版 `Np` 对象，拼进正文前必须按语言解析，否则会写出 `[object Object]`。
+      // ⚠️ `label` 是项目契约 `Np` 对象，拼进正文前必须按语言解析，否则会写出 `[object Object]`。
       const lang = settings?.locale ?? 'zh-CN';
       const kv = contestFieldsForSave();
       if (kv.length) {
@@ -970,7 +1059,7 @@ export function Composer({
         );
       }
       const pageLimit = pageLimitFromDraft(pageLimitDraft);
-      if (pageLimit && (mode === 'paper' || mode === 'review')) {
+      if (pageLimit && (mode === 'paper' || mode === 'review' || mode === 'sprint')) {
         const range =
           pageLimit.scope === 'total'
             ? '整份 PDF'
@@ -991,7 +1080,7 @@ export function Composer({
     setAttachments([]);
     // ★2 粘贴 chip 同理：发完就清，否则下一条会把同一段长文再送一遍
     setPastedTexts([]);
-    // ★3 尾巴**不进 parts**：照原版 `n0e` 用两个换行接在正文**之后**（见 lib/pasted-text.ts）。
+    // ★3 尾巴**不进 parts**：照项目契约 `n0e` 用两个换行接在正文**之后**（见 lib/pasted-text.ts）。
     //    不要把 serializePasted(...) 塞进 parts —— 那会让尾巴与「参考以下文件：…」
     //    这类段落平级，正文为空时还会多出一个前导换行。
     // 最终文本交给父级（父级负责清空输入框）
@@ -1001,6 +1090,29 @@ export function Composer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    // # 任务面板打开时接管导航键（IME 组合中不拦，让输入法先收字）
+    if (hash && hashItems.length > 0 && !e.nativeEvent.isComposing) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHashIndex((i) => (i + 1) % hashItems.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHashIndex((i) => (i - 1 + hashItems.length) % hashItems.length);
+        return;
+      }
+      if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+        e.preventDefault();
+        applyHashTask(hashItems[Math.min(hashIndex, hashItems.length - 1)]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setHash(null);
+        return;
+      }
+    }
     if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
       toggleDecisionMode();
@@ -1009,7 +1121,7 @@ export function Composer({
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!value.trim() && attachments.length === 0 && pastedTexts.length === 0) return;
-      // Ctrl/Cmd+Enter = 本次取反（原版：「临时使用相反行为」）；普通 Enter 按设置走
+      // Ctrl/Cmd+Enter = 本次取反（项目契约：「临时使用相反行为」）；普通 Enter 按设置走
       handleSend(e.ctrlKey || e.metaKey);
     }
   };
@@ -1017,7 +1129,7 @@ export function Composer({
   // ── 模型 / 思考强度 ──────────────────────────────────────
   /**
    * 可选模型列表：优先本机已配置的供应商，一个都没有时回落到内置目录。
-   * 内置目录对齐原版 14-menu-model 的 5 项，保证未配置时菜单也不是空的。
+   * 内置目录对齐项目契约 14-menu-model 的 5 项，保证未配置时菜单也不是空的。
    */
   const modelOptions = useMemo<ModelOption[]>(() => {
     const fromProviders: ModelOption[] = [];
@@ -1029,7 +1141,7 @@ export function Composer({
     return fromProviders.length > 0 ? fromProviders : BUILTIN_MODELS;
   }, [providers]);
 
-  /** 当前模型：设置里没选过就默认 claude-sonnet-5（原版选中项） */
+  /** 当前模型：设置里没选过就默认 claude-sonnet-5（项目契约选中项） */
   const model =
     settings?.defaultModel ||
     (modelOptions.some((o) => o.id === DEFAULT_MODEL_ID)
@@ -1102,12 +1214,12 @@ export function Composer({
             <Icon name="chevron-down" size={11} />
           </button>
           <Popover open={openMenu === 'project'} onClose={close}>
-            {/* 原版顺序：默认工作区（标题 + 副标题）→ 项目当前项(✓) → ⋯ → 导入文件夹… → 新建项目…
-                原版没有「项目」分组标题，也没有地球图标 */}
+            {/* 项目契约顺序：默认工作区（标题 + 副标题）→ 项目当前项(✓) → ⋯ → 导入文件夹… → 新建项目…
+                项目契约没有「项目」分组标题，也没有地球图标 */}
             <button
               className="cz-pop-item"
               onClick={() => {
-                // 原版：切回全局「默认工作区」。这里落到启动时播种的默认项目上。
+                // 项目契约：切回全局「默认工作区」。这里落到启动时播种的默认项目上。
                 void (async () => {
                   const id = await window.mathmodel.project.defaultId();
                   if (id) await openProject(id);
@@ -1141,7 +1253,7 @@ export function Composer({
             <button
               className="cz-pop-item"
               onClick={() => {
-                // 原版的「导入文件夹…」= 挑一个已存在的目录登记成项目。
+                // 项目契约的「导入文件夹…」= 挑一个已存在的目录登记成项目。
                 // 现有主进程能力里 PROJECT_CREATE 弹出的就是「选择或新建项目目录」
                 // 对话框（允许 openDirectory），目录已登记时只更新名称与打开时间 ——
                 // 语义正好是导入，直接复用，不新增 IPC。
@@ -1165,56 +1277,215 @@ export function Composer({
           </Popover>
         </div>
 
-        {/* 任务模式 */}
+        {/* 任务模式菜单已删（2026-09-26）：任务选择改由输入框 `#` 任务面板承担，
+            见 HASH_TASKS。composerMode 机制保留（隐式命令前缀 / placeholder）。 */}
+
+        {/* 决策模式 chip 已移到底部栏（2026-09-26：放「数模协作」旁边，见 cz-foot）。 */}
+
+
+        <div className="grow" />
+
+        {/* 比赛信息 */}
+        <button
+          className="cz-btn ghost"
+          title={positivePage(pageLimitDraft.maxPages)
+            ? t('比赛信息，正文最多 {{pages}} 页', { pages: pageLimitDraft.maxPages })
+            : t('填写比赛信息和页数要求')}
+          onClick={() => {
+            setSetupOpen(true);
+            if (templates.length === 0 && !tplLoading) void loadTemplates();
+          }}
+        >
+          <Icon name="clipboard-list" size={13} />
+          <span>{tx('composer.composerContextBar.paperSetup')}</span>
+        </button>
+      </div>
+
+      {/* ── ② 附件 chips + 粘贴 chip + 文本框 ── */}
+      {(attachments.length > 0 || pastedTexts.length > 0) && (
+        <div className="cz-chips">
+          {/* ⚠️ 附件在前、粘贴 chip 在后 —— **这个先后顺序没有从项目契约确证**
+              （项目契约是同一容器里的两块列表，压缩码里读不出相对位置）。
+              待 `diff-chat` 补一张"同时放一个附件 + 一段长文本"的界面样例后对齐。 */}
+          {attachments.map((a) => (
+            <span key={a.id} className="cz-chip" title={a.path ?? a.name}>
+              <Icon name={IMAGE_EXT.has(a.ext) ? 'file-image' : FILE_ICON[a.ext] ?? 'file'} size={13} />
+              <span className="truncate">{a.name}</span>
+              <button
+                className="cz-chip-x"
+                title={tx('composer.composerAttachments.removeAttachment')}
+                onClick={() => removeAttachment(a.id)}
+              >
+                <Icon name="x" size={11} />
+              </button>
+            </span>
+          ))}
+
+          {pastedTexts.map((p) => (
+            <PastedTextChip
+              key={p.id}
+              item={p}
+              onShowInTextField={() => {
+                // 项目契约语义：**展开进正文 + 移除 chip**
+                // （不是"复制一份进正文、chip 留着" —— 那样再发一次会重复带同一段）
+                onChange(value.trim() ? `${value.trim()}\n\n${p.text}` : p.text);
+                setPastedTexts((prev) => prev.filter((x) => x.id !== p.id));
+              }}
+              onRemove={() => setPastedTexts((prev) => prev.filter((x) => x.id !== p.id))}
+            />
+          ))}
+        </div>
+      )}
+
+      <FollowUpQueueBadge
+        queue={myFollowUps}
+        onRemove={removeFollowUp}
+        onRetry={retryFollowUp}
+        onClear={clearFollowUps}
+      />
+
+      <div className="composer-input-region">
+      <ResizeHandle storageKey="mm-composer-height" label="调整输入区高度" edge="top" initial={96} min={64} max={360} fraction={.35} viewport optional />
+      {/* # 任务面板：输入 `#` 唤起（见 HASH_TASKS）。mousedown 用 preventDefault 保住输入框焦点 */}
+      {hash && hashItems.length > 0 && (
+        <div className="cz-pop hash-pop" role="listbox" aria-label={tx('composer.hashPalette.title')}>
+          <div className="cz-pop-label">{tx('composer.hashPalette.title')}</div>
+          {hashItems.map((it, i) => (
+            <button
+              key={it.id}
+              type="button"
+              role="option"
+              aria-selected={i === hashIndex}
+              className={`cz-pop-item${i === hashIndex ? ' active' : ''}`}
+              title={tx(`composer.hashPalette.items.${it.id}Description`)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                applyHashTask(it);
+              }}
+              onMouseEnter={() => setHashIndex(i)}
+            >
+              <Icon name={it.icon} size={13} />
+              <span className="truncate">{tx(`composer.hashPalette.items.${it.id}`)}</span>
+              <span className="grow" />
+              {it.insert ? (
+                <span className="cz-pop-hint hash-pop-cmd">{it.insert.trim()}</span>
+              ) : null}
+            </button>
+          ))}
+          <div className="cz-pop-note">{tx('composer.hashPalette.hint')}</div>
+        </div>
+      )}
+      <textarea
+        id="tour-composer"
+        ref={ref}
+        className="composer-input"
+        placeholder={
+          isRunning
+            ? // 项目契约为运行中准备了两条占位文案，正是「追问行为」两个取值：
+              // 排队 → 「按 Enter 将下一条消息加入队列…」；调整 → 「按 Enter 可引导当前回合…」
+              readFollowUpBehavior() === 'steer'
+              ? tx('composer.composer.placeholderBusySteer')
+              : tx('composer.composer.placeholderBusyQueue')
+            : placeholder
+        }
+        value={value}
+        // 运行中**不再禁用**：追问行为（排队 / 调整当前任务）要求运行中仍能输入并回车
+        onChange={(e) => {
+          onChange(e.target.value);
+          detectHash(e.target.value, e.target.selectionStart ?? e.target.value.length);
+          const el = e.target;
+          el.style.height = 'auto';
+          el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
+        }}
+        onPaste={(e) => {
+          // 项目契约 `so` 的三分支（顺序不能换）：
+          // ① 剪贴板里是**文件** → 登记成附件并阻止默认粘贴（否则会把文件名或二进制垃圾塞进输入框）
+          // ② 是**长文本**（≥4000 字符 或 ≥25 行）→ 折成 chip，同样吞掉这次粘贴
+          // ③ 都不是 → **什么都不做**，让浏览器默认粘贴生效
+          // ⚠️ 不能写成无条件 e.preventDefault()：那会让普通短文本也粘不进去。
+          //    这是本项唯一的破坏性风险面（§11.6 R1）。
+          const files = Array.from(e.clipboardData.files);
+          if (files.length) {
+            e.preventDefault();
+            addFromFiles(files);
+            return;
+          }
+          const text = e.clipboardData.getData('text/plain');
+          if (shouldFoldPasted(text)) {
+            e.preventDefault();
+            setPastedTexts((prev) => [...prev, makePastedText(text)]);
+          }
+        }}
+        onKeyDown={onKeyDown}
+        onBlur={() => setHash(null)}
+      />
+      </div>
+
+      {/* ── ③ 底部栏 ── */}
+      <div className="cz-foot">
+        {/* 加号：项目契约点它弹出「添加附件、技能及更多内容」的弹层（不是直接推开右栏）。
+            ⚠️ 改动前这里是 `onClick={() => setSidePanel('files')}` —— tooltip 与项目契约
+            字段一致、行为却完全不同。那条"一键打开文件面板"的路径**没有丢**：
+            弹层最后一组里有一行「打开面板 · 文件」，指向同一个动作（见 PlusMenu.tsx）。 */}
         <div className="cz-slot">
           <button
-            className="cz-btn"
-            title={tx('composer.composerContextBar.modeTooltip')}
-            onClick={() => setOpenMenu(openMenu === 'mode' ? null : 'mode')}
+            id="tour-plus"
+            className="cz-icon-btn"
+            title={tx('composer.composerPlusMenu.triggerTooltip')}
+            onClick={() => setOpenMenu(openMenu === 'plus' ? null : 'plus')}
           >
-            <Icon name={MODE_ICON[mode]} size={13} />
-            <span className="truncate">{tx(`composer.composerContextBar.modes.${mode}`)}</span>
-            <Icon name="chevron-down" size={11} />
+            <Icon name="plus" size={15} />
           </button>
-          <Popover open={openMenu === 'mode'} onClose={close}>
-            {/* 原版：每项左侧一枚图标、标题 + 副标题两行，选中项右侧 ✓（无蓝色底块） */}
-            {MODES.map((m) => (
-              <button
-                key={m}
-                className={`cz-pop-item${m === mode ? ' selected' : ''}`}
-                onClick={() => {
-                  void patchSettings({ composerMode: m });
-                  close();
-                }}
-              >
-                <Icon name={MODE_ICON[m]} size={13} />
-                <div className="col" style={{ minWidth: 0 }}>
-                  <span className="cz-pop-title">
-                    {tx(`composer.composerContextBar.modes.${m}`)}
-                  </span>
-                  <span className="cz-pop-hint">
-                    {tx(`composer.composerContextBar.modes.${m}Description`)}
-                  </span>
-                </div>
-                <span className="grow" />
-                {m === mode ? <Icon name="check" size={13} className="cz-pop-check" /> : null}
-              </button>
-            ))}
-            {manualCommand ? (
-              <div className="cz-pop-note">
-                {tx('composer.composerContextBar.modeOverriddenTooltip', {
-                  mode: tx(`composer.composerContextBar.modes.${mode}`),
-                })}
-              </div>
-            ) : null}
+          {/* `maxHeight` 只给这个菜单用（见 Popover 的注释）：11 行 ≈374px 全部可见，
+              对齐项目契约 `max-h-[var(--available-height,28rem)]`；`.cz-pop` 那个
+              320px 还压在另外 5 个选择器上，所以不动它。 */}
+          <Popover open={openMenu === 'plus'} onClose={close} maxHeight={PLUS_POPOVER_MAX_HEIGHT}>
+            <PlusMenu
+              subOpen={plusSub}
+              onSubEnter={openPlusSub}
+              onSubLeave={holdPlusSub}
+              onSubToggle={togglePlusSub}
+              onClose={close}
+              projects={projects}
+              skills={plusSkills}
+              datasets={plusDatasets}
+              connectors={plusConnectors}
+              onAddFiles={pickAttachments}
+              onOpenFilesPanel={() => setSidePanel('files')}
+              onInsertSkill={(name) => insertIntoComposer(`/${name} `)}
+              onInsertPrompt={(prompt) => insertIntoComposer(prompt)}
+              onInsertDataset={(relPath) => insertIntoComposer(`@${relPath}`)}
+              onManageDatasets={() => openRoute('datasets')}
+              onOpenGallery={() => openRoute('gallery')}
+              onManage={managePlus}
+            />
           </Popover>
         </div>
 
-        {/* 决策模式 —— 与任务模式正交的另一个维度（怎么做决定，而不是做什么）。
-            放在任务模式 chip 旁边；「先规划」原是「选项」菜单里的开关，升格至此。 */}
+        {/* 多智能体协作 —— 独立常驻开关（2026-09-20 从「选项」菜单拎出；2026-09-26 定名）：
+            开启时高亮，一眼可见当前是否在协作模式。 */}
         <div className="cz-slot">
           <button
-            className={`cz-btn${decisionMode !== 'manual' ? ' active' : ''}`}
+            type="button"
+            className={`cz-btn ghost${multiAgentEnabled ? ' active' : ''}`}
+            aria-label="多智能体协作"
+            aria-pressed={multiAgentEnabled}
+            title={multiAgentEnabled
+              ? '多智能体协作：开 —— 复杂任务按需分给建模伙伴并行推进（点击关闭）'
+              : '多智能体协作：关 —— 全部由主助手单干（点击开启）'}
+            onClick={() => void patchSettings({ multiAgentEnabled: !multiAgentEnabled })}
+          >
+            <Icon name="brain" size={14} />
+            <span>多智能体协作</span>
+          </button>
+        </div>
+
+        {/* 决策模式 —— 与任务模式（# 面板）正交的另一个维度：怎么决定，而不是做什么。
+            2026-09-26 从顶部上下文栏移到左下角、放在「数模协作」旁边（用户钦定）。 */}
+        <div className="cz-slot">
+          <button
+            type="button"
+            className={`cz-btn ghost${decisionMode !== 'manual' ? ' active' : ''}`}
             title={tx('composer.composerContextBar.decisionModeTooltip')}
             onClick={() => setOpenMenu(openMenu === 'decision' ? null : 'decision')}
           >
@@ -1247,205 +1518,11 @@ export function Composer({
                 {dm === decisionMode ? <Icon name="check" size={13} className="cz-pop-check" /> : null}
               </button>
             ))}
+            <div className="cz-pop-note">{tx('composer.composerContextBar.hashHint')}</div>
           </Popover>
         </div>
 
-
-        <div className="grow" />
-
-        {/* 比赛信息 */}
-        <button
-          className="cz-btn ghost"
-          title={positivePage(pageLimitDraft.maxPages)
-            ? t('比赛信息，正文最多 {{pages}} 页', { pages: pageLimitDraft.maxPages })
-            : t('填写比赛信息和页数要求')}
-          onClick={() => {
-            setSetupOpen(true);
-            if (templates.length === 0 && !tplLoading) void loadTemplates();
-          }}
-        >
-          <Icon name="clipboard-list" size={13} />
-          <span>{tx('composer.composerContextBar.paperSetup')}</span>
-        </button>
-      </div>
-
-      {/* ── ② 附件 chips + 粘贴 chip + 文本框 ── */}
-      {(attachments.length > 0 || pastedTexts.length > 0) && (
-        <div className="cz-chips">
-          {/* ⚠️ 附件在前、粘贴 chip 在后 —— **这个先后顺序没有从原版确证**
-              （原版是同一容器里的两块列表，压缩码里读不出相对位置）。
-              待 `diff-chat` 补一张"同时放一个附件 + 一段长文本"的原版截图后对齐。 */}
-          {attachments.map((a) => (
-            <span key={a.id} className="cz-chip" title={a.path ?? a.name}>
-              <Icon name={IMAGE_EXT.has(a.ext) ? 'file-image' : FILE_ICON[a.ext] ?? 'file'} size={13} />
-              <span className="truncate">{a.name}</span>
-              <button
-                className="cz-chip-x"
-                title={tx('composer.composerAttachments.removeAttachment')}
-                onClick={() => removeAttachment(a.id)}
-              >
-                <Icon name="x" size={11} />
-              </button>
-            </span>
-          ))}
-
-          {pastedTexts.map((p) => (
-            <PastedTextChip
-              key={p.id}
-              item={p}
-              onShowInTextField={() => {
-                // 原版语义：**展开进正文 + 移除 chip**
-                // （不是"复制一份进正文、chip 留着" —— 那样再发一次会重复带同一段）
-                onChange(value.trim() ? `${value.trim()}\n\n${p.text}` : p.text);
-                setPastedTexts((prev) => prev.filter((x) => x.id !== p.id));
-              }}
-              onRemove={() => setPastedTexts((prev) => prev.filter((x) => x.id !== p.id))}
-            />
-          ))}
-        </div>
-      )}
-
-      <FollowUpQueueBadge
-        queue={myFollowUps}
-        onRemove={removeFollowUp}
-        onRetry={retryFollowUp}
-        onClear={clearFollowUps}
-      />
-
-      <div className="composer-input-region">
-      <ResizeHandle storageKey="mm-composer-height" label="调整输入区高度" edge="top" initial={96} min={64} max={360} fraction={.35} viewport optional />
-      <textarea
-        id="tour-composer"
-        ref={ref}
-        className="composer-input"
-        placeholder={
-          isRunning
-            ? // 原版为运行中准备了两条占位文案，正是「追问行为」两个取值：
-              // 排队 → 「按 Enter 将下一条消息加入队列…」；调整 → 「按 Enter 可引导当前回合…」
-              readFollowUpBehavior() === 'steer'
-              ? tx('composer.composer.placeholderBusySteer')
-              : tx('composer.composer.placeholderBusyQueue')
-            : placeholder
-        }
-        value={value}
-        // 运行中**不再禁用**：追问行为（排队 / 调整当前任务）要求运行中仍能输入并回车
-        onChange={(e) => {
-          onChange(e.target.value);
-          const el = e.target;
-          el.style.height = 'auto';
-          el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
-        }}
-        onPaste={(e) => {
-          // 原版 `so` 的三分支（顺序不能换）：
-          // ① 剪贴板里是**文件** → 登记成附件并阻止默认粘贴（否则会把文件名或二进制垃圾塞进输入框）
-          // ② 是**长文本**（≥4000 字符 或 ≥25 行）→ 折成 chip，同样吞掉这次粘贴
-          // ③ 都不是 → **什么都不做**，让浏览器默认粘贴生效
-          // ⚠️ 不能写成无条件 e.preventDefault()：那会让普通短文本也粘不进去。
-          //    这是本项唯一的破坏性风险面（§11.6 R1）。
-          const files = Array.from(e.clipboardData.files);
-          if (files.length) {
-            e.preventDefault();
-            addFromFiles(files);
-            return;
-          }
-          const text = e.clipboardData.getData('text/plain');
-          if (shouldFoldPasted(text)) {
-            e.preventDefault();
-            setPastedTexts((prev) => [...prev, makePastedText(text)]);
-          }
-        }}
-        onKeyDown={onKeyDown}
-      />
-      </div>
-
-      {/* ── ③ 底部栏 ── */}
-      <div className="cz-foot">
-        {/* 加号：原版点它弹出「添加附件、技能及更多内容」的弹层（不是直接推开右栏）。
-            ⚠️ 改动前这里是 `onClick={() => setSidePanel('files')}` —— tooltip 与原版
-            逐字一致、行为却完全不同。那条"一键打开文件面板"的路径**没有丢**：
-            弹层最后一组里有一行「打开面板 · 文件」，指向同一个动作（见 PlusMenu.tsx）。 */}
-        <div className="cz-slot">
-          <button
-            id="tour-plus"
-            className="cz-icon-btn"
-            title={tx('composer.composerPlusMenu.triggerTooltip')}
-            onClick={() => setOpenMenu(openMenu === 'plus' ? null : 'plus')}
-          >
-            <Icon name="plus" size={15} />
-          </button>
-          {/* `maxHeight` 只给这个菜单用（见 Popover 的注释）：11 行 ≈374px 全部可见，
-              对齐原版 `max-h-[var(--available-height,28rem)]`；`.cz-pop` 那个
-              320px 还压在另外 5 个选择器上，所以不动它。 */}
-          <Popover open={openMenu === 'plus'} onClose={close} maxHeight={PLUS_POPOVER_MAX_HEIGHT}>
-            <PlusMenu
-              subOpen={plusSub}
-              onSubEnter={openPlusSub}
-              onSubLeave={holdPlusSub}
-              onSubToggle={togglePlusSub}
-              onClose={close}
-              projects={projects}
-              skills={plusSkills}
-              datasets={plusDatasets}
-              connectors={plusConnectors}
-              onAddFiles={pickAttachments}
-              onOpenFilesPanel={() => setSidePanel('files')}
-              onInsertSkill={(name) => insertIntoComposer(`/${name} `)}
-              onInsertPrompt={(prompt) => insertIntoComposer(prompt)}
-              onInsertDataset={(relPath) => insertIntoComposer(`@${relPath}`)}
-              onManageDatasets={() => openRoute('datasets')}
-              onOpenGallery={() => openRoute('gallery')}
-              onManage={managePlus}
-            />
-          </Popover>
-        </div>
-
-        {/* 多智能体协作 —— 独立常驻开关（2026-09-20，用户要求从「选项」菜单拎出来显眼展示）：
-            开启时高亮，一眼可见当前是否在协作模式。 */}
-        <div className="cz-slot">
-          <button
-            type="button"
-            className={`cz-btn ghost${multiAgentEnabled ? ' active' : ''}`}
-            aria-label="多智能体协作"
-            aria-pressed={multiAgentEnabled}
-            title={multiAgentEnabled
-              ? '多智能体协作：开 —— 复杂任务按需分给建模伙伴并行推进（点击关闭）'
-              : '多智能体协作：关 —— 全部由主助手单干（点击开启）'}
-            onClick={() => void patchSettings({ multiAgentEnabled: !multiAgentEnabled })}
-          >
-            <Icon name="brain" size={14} />
-            <span>协作</span>
-          </button>
-        </div>
-        <div className="cz-slot">
-          <button
-            type="button"
-            className="cz-btn ghost"
-            title="任务深度：这一轮建模、写论文、找数据要做得多细 —— 快速先出思路，标准常规推进，深度会全面验证、敏感性分析、引用核对并反复打磨。随时可改，只对之后的回合生效。"
-            onClick={() => setOpenMenu(openMenu === 'options' ? null : 'options')}
-          >
-            <Icon name="circle-check" size={13} />
-            <span>{qualityLabel}</span>
-            <Icon name="chevron-down" size={11} />
-          </button>
-          <Popover open={openMenu === 'options'} onClose={close} align="right">
-            <div className="cz-pop-label">任务深度（建模质量策略）</div>
-            <div className="muted" style={{ fontSize: 10, lineHeight: 1.5, padding: '0 10px 6px' }}>
-              决定这一轮任务做多细：解题、写论文、找数据、验证的投入程度都随档位变化。简单问答不受影响。
-            </div>
-            {([
-              ['fast', '快速', '先给出可用思路和初步结果，适合探索与头脑风暴'],
-              ['balanced', '标准', '按常规深度完成建模、写作与数据工作'],
-              ['strict', '深度', '按交付标准做：复算、敏感性分析、引用核对、数据核验与反复打磨'],
-            ] as const).map(([value, label, hint]) => (
-              <button key={value} className={`cz-pop-item${qualityMode === value ? ' selected' : ''}`} onClick={() => { void patchSettings({ modelingQualityMode: value }); close(); }}>
-                <Icon name="circle-check" size={13} />
-                <span className="col" style={{ gap: 1 }}><span>{label}</span><span className="muted" style={{ fontSize: 10 }}>{hint}</span></span>
-                <span className="grow" />
-                {qualityMode === value ? <Icon name="check" size={13} className="cz-pop-check" /> : null}
-              </button>
-            ))}
-          </Popover>
-        </div>
+        {/* 任务深度 chip 已移到右侧模型选择旁（2026-09-26 用户钦定），见 cz-context-slot 之后。 */}
         <div className="cz-slot">
           <button
             className="cz-btn ghost"
@@ -1464,7 +1541,7 @@ export function Composer({
             </span>
             <Icon name="chevron-down" size={11} />
           </button>
-          {/* 原版是**单行**项（没有第二行描述），选中项右侧独立 ✓，图标统一灰色描边 */}
+          {/* 项目契约是**单行**项（没有第二行描述），选中项右侧独立 ✓，图标统一灰色描边 */}
           <Popover open={openMenu === 'perm'} onClose={close}>
             {(['full', 'approval'] as PermissionMode[]).map((pm) => (
               <button
@@ -1548,7 +1625,7 @@ export function Composer({
             <Icon name="chevron-down" size={11} />
           </button>
           <Popover open={openMenu === 'model'} onClose={close} align="right">
-            {/* 原版：5 个模型 + 右侧上下文徽标 + 选中项 ✓，底部单行「思考强度 高 ›」二级入口 */}
+            {/* 项目契约：5 个模型 + 右侧上下文徽标 + 选中项 ✓，底部单行「思考强度 高 ›」二级入口 */}
             {modelOptions.map((o) => (
               <button
                 key={o.providerId + o.id}
@@ -1628,6 +1705,38 @@ export function Composer({
           </Popover>
         </div>
 
+        {/* 任务深度（建模质量策略）—— 2026-09-26 从左侧挪到模型选择旁边（用户钦定） */}
+        <div className="cz-slot">
+          <button
+            type="button"
+            className="cz-btn ghost"
+            title="任务深度：这一轮建模、写论文、找数据要做得多细 —— 快速先出思路，标准常规推进，深度会全面验证、敏感性分析、引用核对并反复打磨。随时可改，只对之后的回合生效。"
+            onClick={() => setOpenMenu(openMenu === 'options' ? null : 'options')}
+          >
+            <Icon name="circle-check" size={13} />
+            <span>{qualityLabel}</span>
+            <Icon name="chevron-down" size={11} />
+          </button>
+          <Popover open={openMenu === 'options'} onClose={close} align="right">
+            <div className="cz-pop-label">任务深度（建模质量策略）</div>
+            <div className="muted" style={{ fontSize: 10, lineHeight: 1.5, padding: '0 10px 6px' }}>
+              决定这一轮任务做多细：解题、写论文、找数据、验证的投入程度都随档位变化。简单问答不受影响。
+            </div>
+            {([
+              ['fast', '快速', '先给出可用思路和初步结果，适合探索与头脑风暴'],
+              ['balanced', '标准', '按常规深度完成建模、写作与数据工作'],
+              ['strict', '深度', '按交付标准做：复算、敏感性分析、引用核对、数据核验与反复打磨'],
+            ] as const).map(([value, label, hint]) => (
+              <button key={value} className={`cz-pop-item${qualityMode === value ? ' selected' : ''}`} onClick={() => { void patchSettings({ modelingQualityMode: value }); close(); }}>
+                <Icon name="circle-check" size={13} />
+                <span className="col" style={{ gap: 1 }}><span>{label}</span><span className="muted" style={{ fontSize: 10 }}>{hint}</span></span>
+                <span className="grow" />
+                {qualityMode === value ? <Icon name="check" size={13} className="cz-pop-check" /> : null}
+              </button>
+            ))}
+          </Popover>
+        </div>
+
         {/* 发送 / 停止 */}
         {isRunning ? (
           <button
@@ -1651,9 +1760,9 @@ export function Composer({
         )}
       </div>
 
-      {/* ⚠️ 这里原版**没有**任何「N 条消息 / 新建对话」行 ——
+      {/* ⚠️ 这里项目契约**没有**任何「N 条消息 / 新建对话」行 ——
           输入卡片到「＋ 完全访问」一行就结束，下面是「试试这些数模真题案例」。
-          复刻早期多出来的这一行已删除（00-main P1-3 / 11-chat P1-1）。 */}
+          当前实现早期多出来的这一行已删除（00-main P1-3 / 11-chat P1-1）。 */}
 
       {/* ── 比赛信息弹层 ── */}
       {setupOpen && (
@@ -1758,7 +1867,7 @@ export function Composer({
                       {f.required ? <span style={{ color: 'var(--danger)' }}> *</span> : null}
                     </label>
                     {/* ── 有 options 的字段是**下拉框** ──
-                        原版的判据就是 `options.length > 0 ? <Select> : <Input>`
+                        项目契约的判据就是 `options.length > 0 ? <Select> : <Input>`
                         （长三角赛「赛道」、东三省/五一杯「参赛组别」这类）。
                         之前 `listPaperTemplates` 把 options 丢了，这几个比赛只能填文本框。 */}
                     {f.options?.length ? (
@@ -1870,7 +1979,7 @@ export function Composer({
               </section>
 
               {/* ── 自定义字段 ──
-                  原版 contestFields 是数组，所以「加字段」就是追加一项；
+                  项目契约 contestFields 是数组，所以「加字段」就是追加一项；
                   名字由用户填（如「组别」），因为模板元数据里本来就没有这个键。 */}
               {customFields.map((c) => (
                 <div key={c.id} className="row" style={{ gap: 8, alignItems: 'flex-end' }}>

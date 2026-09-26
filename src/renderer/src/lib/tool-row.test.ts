@@ -1,4 +1,4 @@
-// ⚠️ 证伪边界（看这行就够了）：本文件**无法**验证真实点击展开；交互层面的验证依赖实机 e2e（node 环境无 jsdom）。
+// ⚠️ 证伪边界（看这行就够了）：本文件**无法**验证真实点击展开；交互层面的验证依赖运行测试 e2e（node 环境无 jsdom）。
 /**
  * 工具行文案 + 折叠组逻辑的单测（规格：BACKLOG §3-30 / #25）。
  *
@@ -9,7 +9,7 @@
  * 纯函数，在 node 下直接断言**真实的用户可见字符串**。这比"断言源码里有个变量"
  * 强得多：后者改名就红、行为错了却不红。
  *
- * ## 反向对照
+ * ## 回归护栏
  *
  * `toolRowLabel` 的映射表被换回旧的 `block.toolName?.split('__').pop()` 时，
  * 本文件第 1 组用例**必须真红**（已经实跑验证过，见汇报）。所以这一组不是
@@ -22,7 +22,7 @@
  *   ② 每条还带着原 `block`（展开后是完整 ToolCard，不是光秃秃一行标签）；
  *   ③ 源码形状（`ChatPage.tsx` 里组组件确有一个 `useState` 开关 + 展开时 map rows）。
  * ③ 是**结构断言**：只保证"接线还在"，不保证"点得动"。真正的点击验证要靠
- * 实机 e2e（或将来装 jsdom）。这一条如实写明，不含糊。
+ * 运行测试 e2e（或将来装 jsdom）。这一条如实写明，不含糊。
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -71,7 +71,7 @@ describe('tool-row · 判据① 一条命令的行文案是动作，不是工具
     const b = done('Bash', { command: 'ls -la' });
     const label = labelOf(b);
 
-    // ★ 反向对照的红点就在这里：退回 split('__').pop() 时 label 会变成 'Bash'
+    // ★ 回归护栏的红点就在这里：退回 split('__').pop() 时 label 会变成 'Bash'
     expect(label).not.toBe('Bash');
     expect(label).not.toContain('Bash');
     expect(label.startsWith('运行')).toBe(true);
@@ -118,13 +118,13 @@ describe('tool-row · 键族里那几类工具都有动作文案', () => {
     expect(labelOf(tool('WebSearch', {}))).toBe('搜索网页');
     expect(labelOf(tool('WebFetch', {}))).toBe('抓取网页');
     expect(labelOf(tool('Task', {}))).toBe('运行子任务');
-    // read / edited / wrote 原版没给通用键 ⇒ 落 genericTool（见 lib/tool-row.ts 头注）
+    // read / edited / wrote 项目契约没给通用键 ⇒ 落 genericTool（见 lib/tool-row.ts 头注）
     expect(labelOf(tool('Read', {}))).toBe('使用工具');
     expect(labelOf(tool('Edit', {}))).toBe('使用工具');
     expect(labelOf(tool('Write', {}))).toBe('使用工具');
   });
 
-  it('超长 value 截断到 ROW_VALUE_MAX 且带省略号（展示口径，不是原版明文）', () => {
+  it('超长 value 截断到 ROW_VALUE_MAX 且带省略号（展示口径，不是项目契约明文）', () => {
     const long = 'x'.repeat(ROW_VALUE_MAX + 50);
     const label = labelOf(done('Bash', { command: long }));
     expect(label).toBe(`运行 ${'x'.repeat(ROW_VALUE_MAX)}…`);
@@ -268,7 +268,7 @@ describe('tool-row · ChatPage 的接线（结构断言，附证伪边界）', (
   });
 
   it('组组件有一个展开开关，且展开时逐行 map 出 rows（结构断言）', () => {
-    // ⚠️ 证伪边界：这只能证明"接线还在"，点不点得动要实机 e2e 才算数
+    // ⚠️ 证伪边界：这只能证明"接线还在"，点不点得动要运行测试 e2e 才算数
     expect(src).toContain('function ToolGroupCard(');
     const body = src.slice(src.indexOf('function ToolGroupCard('), src.indexOf('function preStyle'));
     expect(body).toContain('useState(false)');

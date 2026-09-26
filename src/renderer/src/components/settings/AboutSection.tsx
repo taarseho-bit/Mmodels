@@ -1,19 +1,19 @@
 /**
  * 设置页 ⑭ 关于
  *
- * 对齐原版 s13-about：
+ * 对齐项目契约 s13-about：
  *   - 顶部「版本 x.x.x」行 + 「检查更新」按钮（自动更新 → 按既定决策保留骨架并置灰）
  *   - 「版本更新」changelog 区块（最近 3 个版本）+「在网页查看全部更新」
  *   - 外部链接 2×2 网格（官网 / 小红书 / QQ 群 / GitHub）
  *   - 「参加测试版」「帮助排查问题」两张卡（同属自动更新 / 诊断上传 → 骨架 + 置灰）
- *   - 复刻自有的本机环境信息表保留在末尾
+ *   - 当前实现自有的本机环境信息表保留在末尾
  */
 import { useEffect, useState } from 'react';
 import { tx, txPlural, t } from '../../i18n';
 import { Section } from './shared';
 import { CHANGELOG } from '../WhatsNew';
 
-/** changelog 里展示的版本数（原版为「最近 3 个版本」） */
+/** changelog 里展示的版本数（项目契约为「最近 3 个版本」） */
 const RELEASE_WINDOW = 3;
 
 export function AboutSection(): JSX.Element {
@@ -67,7 +67,7 @@ export function AboutSection(): JSX.Element {
               : tx('whatsnew.changelogAccordion.version', { version: '—' })}
           </span>
           <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.6 }}>
-            {t('自动更新按既定决策未提供，当前为本地版。')}
+            {t('自动更新按既定决策未提供，当前为当前版本。')}
           </span>
         </div>
         <span className="badge">{t('本地运行')}</span>
@@ -118,7 +118,7 @@ export function AboutSection(): JSX.Element {
         </div>
       </Section>
 
-      {/* ── 本机环境信息（复刻自有，保留）── */}
+      {/* ── 本机环境信息（当前实现自有，保留）── */}
       <div className="panel" style={{ padding: 14 }}>
         {!info ? (
           <span className="muted">{t('读取版本信息…')}</span>

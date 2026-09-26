@@ -1,4 +1,4 @@
-// 修补原版 en 词典里 25 条未翻译的中文条目（原版自身的翻译欠账）
+// 修补项目契约 en 词典里 25 条未翻译的中文条目（项目契约自身的翻译欠账）
 const fs = require('fs');
 const p = 'D:/mathmodel-desktop/src/renderer/src/i18n/en.ts';
 let s = fs.readFileSync(p, 'utf8');
@@ -12,12 +12,12 @@ const map = [
   ['科研绘图模板', 'Scientific Figure Templates'],
   ['查看全部模板', 'View all templates'],
   ['点击提示词即可填充到左侧输入框', 'Click a prompt to fill it into the input box on the left'],
-  ['SHAP、ROC、泰勒图、环形热图等复刻模板', 'Replicated templates: SHAP, ROC, Taylor diagrams, ring heatmaps and more'],
+  ['SHAP、ROC、泰勒图、环形热图等当前实现模板', 'Publication-ready templates: SHAP, ROC, Taylor diagrams, ring heatmaps and more'],
   ['填入{{title}}绘图提示词', 'Insert the {{title}} plotting prompt'],
   ['简体中文', 'Chinese (Simplified)'],
   ['全部', 'All'],
   ['关闭预览', 'Close preview'],
-  ['选择模板，让 Agent 根据项目数据复刻并导出投稿级图表', 'Pick a template and let the Agent replicate and export publication-ready figures from your project data'],
+  ['选择模板，让 Agent 根据项目数据当前实现并导出投稿级图表', 'Pick a template and let the Agent render and export publication-ready figures from your project data'],
   ['绘图库', 'Plotting libraries'],
   ['下一张图', 'Next figure'],
   ['上一张图', 'Previous figure'],

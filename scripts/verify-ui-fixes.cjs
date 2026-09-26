@@ -1,5 +1,5 @@
 /**
- * 验证本轮针对「界面和原版不一样」的三处修复。
+ * 验证本轮针对「界面和项目契约不一样」的三处修复。
  *
  * 起因（用户实测反馈）：
  *   1. 看不到「选择哪个比赛」→ 默认模式是 chat 而非 paper，且没人自动认领比赛模板
@@ -110,7 +110,7 @@ function connect(wsUrl) {
 }
 
 (async () => {
-  log('════ 验证「界面与原版不一致」的三处修复 ════');
+  log('════ 验证「界面与项目契约不一致」的三处修复 ════');
   try {
     fs.rmSync(SANDBOX, { recursive: true, force: true });
   } catch {
@@ -231,7 +231,7 @@ function connect(wsUrl) {
       "(function(){var t=document.body.innerText;" +
         "return /(^|[^A-Za-z])file([^A-Za-z]|$)/i.test(t);})()",
     );
-    ok(hasFileWord === false, '界面上没有残留的英文 "file" 字样（旧版文字徽标已移除）');
+    ok(hasFileWord === false, '界面上没有残留的英文 "file" 字样（历史版本文字徽标已移除）');
 
     // ── 全局 drop 拦截（否则拖到窗口会让渲染层跳转）──
     const before = await cdp.eval('location.href');

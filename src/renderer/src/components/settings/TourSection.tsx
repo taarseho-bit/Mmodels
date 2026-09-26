@@ -1,10 +1,10 @@
 /**
  * 设置页 ⑬ 新手教程
  *
- * 原版（`onboarding.tutorialCenter.*`）：介绍段 + 「已完成 n / 7」进度 + 7 张教程卡
+ * 项目契约（`onboarding.tutorialCenter.*`）：介绍段 + 「已完成 n / 7」进度 + 7 张教程卡
  * 两列网格，每卡：图标、标题、描述、时长步数、右侧「开始教程 / 重新学习」。
  *
- * 复刻原先只有 1 张「界面巡览」卡（对应 quickStart）。本文件按原版重建 7 卡网格。
+ * 当前实现原先只有 1 张「界面巡览」卡（对应 quickStart）。本文件按项目契约重建 7 卡网格。
  *
  * 每张卡跑的是**自己那一段短教程**（`requestTour(id)` → GuidedTour 按 tourId 选步骤），
  * 不再一律跑 11 步完整导览。
@@ -31,13 +31,13 @@ const PENDING_KEY = 'mm-tour-pending';
 interface TourCard {
   id: TourId;
   icon: string;
-  /** 原版标记「建议先看」的卡（实机为第一张） */
+  /** 项目契约标记「建议先看」的卡（运行测试为第一张） */
   recommended?: boolean;
   /** 内容涉及云端分享 → 按既定决策排除，保留骨架 + 置灰 */
   disabled?: boolean;
 }
 
-/** 顺序与实机截图一致（图标名取自 icons/lucide-data.ts，见 hasIcon 断言） */
+/** 顺序与界面样例一致（图标名取自 icons/lucide-data.ts，见 hasIcon 断言） */
 const CARDS: TourCard[] = [
   { id: 'quickStart', icon: 'zap', recommended: true },
   { id: 'modes', icon: 'boxes' },
@@ -194,7 +194,7 @@ export function TourSection(): JSX.Element {
                 <button
                   className="btn btn-sm"
                   disabled={c.disabled}
-                  title={c.disabled ? t('本地版不提供云端分享，教程暂不可用') : undefined}
+                  title={c.disabled ? t('当前版本不提供云端分享，教程暂不可用') : undefined}
                   onClick={() => start(c.id)}
                 >
                   {isDone ? tx('onboarding.tutorialCenter.replay') : tx('onboarding.tutorialCenter.start')}

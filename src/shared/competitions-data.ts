@@ -2,7 +2,7 @@
  * MModels 赛事赛程数据。数据按公开赛事通知整理，字段统一供比赛工作台、倒计时和项目配置使用。
  *
  * 共 114 条，覆盖已公布、预计和待确认的赛程。
- * ⚠️ 数据为原版快照，日期以主办方通知为准（原版亦如此声明）。
+ * ⚠️ 数据为数据快照，日期以主办方通知为准（项目契约亦如此声明）。
  */
 
 export type CompetitionCategory =
@@ -57,7 +57,7 @@ export interface Competition {
   sources: CompetitionSource[];
   events: CompetitionEvent[];
   verifiedAt: string;
-  /** 预计赛程的参考月份（形如 "2027-04"，来自原版数据） */
+  /** 预计赛程的参考月份（形如 "2027-04"，来自项目资料） */
   estimatedMonths?: string[];
 }
 
@@ -4275,7 +4275,7 @@ export const CATEGORY_KEY: Record<CompetitionCategory, string> = {
 
 /**
  * 赛事状态 → i18n 路径后缀（competitions.stages.<x>）。
- * 注意原版把「已公布/预计/待定/暂停/历史」与「即将开始/比赛中/已结束」
+ * 注意项目契约把「已公布/预计/待定/暂停/历史」与「即将开始/比赛中/已结束」
  * 分开表达：前者是数据状态，后者是相对当前时间的展示阶段。
  */
 export const STATUS_KEY: Record<CompetitionStatus, string> = {
@@ -4305,7 +4305,7 @@ export const AUDIENCE_KEY: Record<CompetitionAudience, string> = {
 
 /**
  * 根据当前时间推算赛事的展示阶段（competitions.stages.<x>）。
- * 原版有此概念：upcoming / ongoing / ended / estimated / tba / paused / historical。
+ * 当前有此概念：upcoming / ongoing / ended / estimated / tba / paused / historical。
  */
 export function stageOf(c: Competition, now = new Date()): string {
   if (c.status === 'paused') return 'paused';
