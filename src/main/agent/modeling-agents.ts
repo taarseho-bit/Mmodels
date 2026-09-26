@@ -12,26 +12,27 @@ export const ROLE_SKILL_HINTS: Record<string, string> = {
     'problem-parser（题意解析）、problem-classifier（题型分类）、model-assumptions-builder（建模假设清单）、' +
     'symbol-table-builder（符号表统一）、related-paper-analyzer（相关工作分析）、deep-research（深度调研）',
   'data-analyst':
-    'data-auditor-cleaner（数据审计与清洗）、pdf（PDF 附件读取）、novelty-assessment（查新）',
+    'data-auditor-cleaner（数据审计与清洗）、data-provenance（数据溯源）、pdf（PDF 附件读取）、novelty-assessment（查新）',
   'literature-researcher':
     'literature-search（多库文献检索）、literature-review（综述整理）、citation-management（引用管理）、' +
     'reference-manager（参考文献管理）、paper-search（真实文献检索与核验）、related-paper-analyzer（相关工作分析）、' +
     'deep-research（深度调研）',
   'model-solver':
-    'modeling-algorithms（算法资源库选型索引）、method-selector（模型选型与风险探针）、' +
-    'python-model-code-generator（求解代码生成）、robustness-checker（灵敏度与稳健性检验）',
+    'modeling-algorithms（算法资源库选型索引）、method-selector（模型选型与风险探针）、model-selection-audit（模型方案比较）、' +
+    'baseline-comparison（基线对照）、python-model-code-generator（求解代码生成）、robustness-checker（灵敏度与稳健性检验）、result-reproducibility（结果复现）',
   'paper-writer':
     'paper-writing（写作纪律）、paper-section-writer（分章起草）、literature-positioning（文献定位）、' +
     'citation-management（引用管理）、reference-manager（参考文献管理）、paper-search（真实文献检索）、' +
     'paper-polisher（语言润色）',
   'figure-maker':
     'figure-table-planner（图表规划）、scipilot-figure-skill（数据图选型顾问）、scientific-figure-making（出版级数据图）、' +
-    'academic-figures（SVG 示意图/图形摘要）、nature-figure（高级图表）、paper-diagram（问题求解流程、模型结构、优化决策、验证闭环）、' +
-    'mathmodel-figure-templates（赛事图表模板）、table-layout-audit（表格宽度与分页检查）',
+    'paper-diagram（问题求解流程、模型结构、优化决策、验证闭环）、mathmodel-figure-templates（赛事图表模板）、' +
+    'figure-quality-audit（图表质量检查）、table-layout-audit（表格宽度与分页检查）',
   'paper-reviewer':
     'paper-review（审稿评审）、proof-audit（推导审计）、claim-evidence-audit（论断-证据审计）、' +
     'verifying-bibliography（引用真实性核验）、quality-assurance-auditor（终审清单）、' +
-    'paper-page-fit（页数核验）、competition-audit（提交材料核对）',
+    'paper-page-fit（页数核验）、paper-table-repair（表格修复）、figure-quality-audit（图表质量检查）、' +
+    'result-reproducibility（结果复现）、submission-package-audit（提交包检查）、competition-audit（提交材料核对）',
 };
 
 const SKILL_GUIDANCE =

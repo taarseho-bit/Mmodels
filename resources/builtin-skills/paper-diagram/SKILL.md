@@ -1,11 +1,11 @@
 ---
 name: paper-diagram
-description: 制作与修改可编辑的 draw.io / diagrams.net 示意图（.drawio XML），产出 .drawio + PNG/PDF。优先使用数学建模证据图：问题求解流程、模型结构、优化决策和验证闭环；也支持从零手写 XML 和高保真复刻参考图。当用户要求论文流程图、算法流程图、模型/系统架构图、方法示意图、把建模过程做成一张图，或要求修复文字溢出/箭头错乱/配色不一致/排版对不齐时使用。画折线图、热图等数据图表请改用绘图类技能。
+description: 制作与修改可编辑的 draw.io / diagrams.net 数学建模示意图（.drawio XML），产出 .drawio + PNG/PDF。优先使用问题求解流程、模型结构、优化决策和验证闭环；也支持从零创建算法流程和实验结构图。画折线图、热图等数据图表请改用科学绘图技能。
 ---
 
 # 论文与研究示意图（draw.io）
 
-主产物是**可编辑的 .drawio**，PNG/PDF 是附带导出。模板、手写、复刻、校验、预览、导出全在本目录内。
+主产物是**可编辑的 .drawio**，PNG/PDF 是附带导出。模板、手写、校验、预览和导出全在本目录内。
 
 ## 先判断走哪条路
 
@@ -13,9 +13,8 @@ description: 制作与修改可编辑的 draw.io / diagrams.net 示意图（.dra
 |---|---|---|
 | 全文脉络、研究框架、执行流程，或课题的任务分解 | **A 套模板** | 下方模板索引 |
 | 其他示意图：算法流程、模型架构、实验设计、机制示意… | **B 从零手写 XML** | `references/authoring.md` |
-| 给了参考图，要照着重画成可编辑矢量图 | **C 高保真复刻** | `references/replication.md` |
 
-三条路的 XML 写法一致，产物可互相接着改；区别只在**流程纪律的严格程度**。
+模板和手写图使用同一套 XML 约定，产物可以继续编辑和复用。
 
 ## A. 套模板
 
@@ -56,16 +55,6 @@ python3 scripts/modeling_flow.py assets/validation-loop/example.json -o out.draw
 
 画之前想清楚每根箭头的语义（谁到谁、单向还是双向、扇入还是扇出）；说不出含义的箭头不要画。
 
-## C. 高保真复刻参考图
-
-比 B 多一套证据链，照 `references/replication.md` 执行，要点：
-
-1. **先标定再动笔**：连通域抠盒子坐标与填充色、行列扫描找框线、颜色普查取配色、量字宽反推字号。**不要目测**，也不要假设"标题一定比正文大"。
-2. **四件中间产物**：`visual-spec.md`（看到了什么）、`layout-grid.md`（坐标计划）、`asset-ledger.md`（哪些是近似的，防止悄悄丢元素）、`defect-log.md`（首次截图后只增不改）。
-3. **≥3 轮**"截图 → 九区盘点 → 修完所有 P0/P1 → 重渲 → 逐条核销"；截图必须是画布本身。
-4. **红队复审 + 自评分卡**（见 `references/self-check.md`）：总分 <40 或任一维 ≤4 不交付。
-5. 像素差分定位残留差异，逐条写进 `defect-log.md`，不写"已完美还原"。
-
 ## 通用：校验、预览、导出
 
 ```bash
@@ -98,7 +87,6 @@ python3 scripts/preview_html.py fig.drawio      # 浏览器预览，无需 drawi
 | `stageflow-3col.md` | 用三栏阶段流程模板（执行流程）|
 | `taskflow-land.md` | 用横版任务流水线模板 |
 | `adding-templates.md` | 新增一个模板 |
-| `replication.md` | 复刻参考图：标定方法、四件产物、迭代闭环 |
 | `self-check.md` | 九区盘点、红队复审、自评分卡、交付清单 |
 | `preflight-rules.md` | 静态检查在查什么、误报如何绕开 |
 

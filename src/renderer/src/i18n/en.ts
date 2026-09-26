@@ -1,8 +1,5 @@
 /**
- * 英文文案字典 —— 逐字取自原版 MModels 0.0.20 的 i18n 资源（jse.en.translation）。
- *
- * 与 zh.ts 同构：键集合完全对齐（由 scripts/gen-en-i18n.cjs 生成，勿手改结构）。
- * 原版默认 zh-CN 并回退 en；本文件即那份 en 回退资源。
+ * MModels 英文文案字典。中文键的英文覆盖集中在 `overrides/*.ts`。
  */
 
 export const en = {
@@ -1990,7 +1987,7 @@ export const en = {
         submit: "Start sharing",
         title: "Share paper",
       },
-      prompt: "/paper-sharing Share the paper in this project to MathModel Model Square",
+      prompt: "Archive this project's paper in the local paper library by contest and year, then check for personal information.",
       promptCost: "\nCost: {{cost}} CNY. The paper does not contain this; pass it verbatim to upload_paper costCny and do not ask.",
       sessionTitle: "Share paper",
       startFailed: "Could not start sharing the paper",

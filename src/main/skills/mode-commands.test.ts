@@ -185,17 +185,17 @@ describe('反向对照：判据真的在判那三件事（否则"全绿"没有�
 });
 
 describe('默认禁用的内置技能必须是一份"有理由的名单"', () => {
-  it('★ 当前只有 metaheuristic-optimization（理由见下），新增必须显式改这里', () => {
+  it('★ 仅停用不适合数学建模主流程的技能，新增必须显式改这里', () => {
     const disabled = readdirSync(BUILTIN, { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .filter((d) => existsSync(join(BUILTIN, d.name, '.disabled-by-default')))
       .map((d) => d.name)
       .sort();
 
-    // 为什么它可以是默认禁用：它是**专精技能**，`MODE_COMMAND` 里没有命令映射到它
+    // 为什么它们可以是默认禁用：它们是通用期刊配图素材，主流程使用数学建模图表技能
     //   ⇒ 用户不会"点了某个模式却得到 Unknown command"，而是由用户在「扩展 → 技能」里按需打开。
     // ⚠️ 任何**新的**默认禁用都必须先回答同一个问题："有模式命令指向它吗？"
     //    有 ⇒ 先看本文件的主判据；没有 ⇒ 把它加进这个名单，并在报告里说明理由。
-    expect(disabled).toEqual(['metaheuristic-optimization']);
+    expect(disabled).toEqual(['academic-figures', 'metaheuristic-optimization', 'nature-figure']);
   });
 });

@@ -113,7 +113,7 @@ const SKILLS: Record<string, string> = {
   'paper-polish': '论文润色', 'nature-figure': '科研绘图', 'competition-delivery-check': '比赛交付核对',
   'competition-audit': '比赛交付核对', 'data-search': '数据检索', doctor: '环境检查',
   'mathmodel-figure-templates': '建模图表模板', 'metaheuristic-optimization': '启发式优化',
-  'draw-figures': '建模绘图', 'paper-sharing': '论文整理', 'skill-creator': '技能创建',
+  'draw-figures': '建模绘图', 'paper-library': '论文整理', 'skill-creator': '技能创建',
 };
 export function workflowToolLabel(name: string, skill?: string): string {
   if (skill) return SKILLS[skill.split(':').pop() ?? skill] ?? '专项技能';

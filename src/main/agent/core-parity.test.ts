@@ -105,10 +105,10 @@ describe('核心能力对齐', () => {
       expect(agent.prompt, `${id} 提示词未注入技能清单`).toContain(hint);
       expect(agent.prompt).toContain('必须实际调用该技能');
     }
-    // 与 session.ts 协作组映射同源的抽查：求解员绑定算法库与选型，绘图员绑定用户点名的绘图技能
+    // 协作组映射抽查：求解员绑定算法库与选型，绘图员绑定建模图表质量链路
     expect(ROLE_SKILL_HINTS['model-solver']).toContain('modeling-algorithms');
     expect(ROLE_SKILL_HINTS['figure-maker']).toContain('scipilot-figure-skill');
-    expect(ROLE_SKILL_HINTS['figure-maker']).toContain('academic-figures');
+    expect(ROLE_SKILL_HINTS['figure-maker']).toContain('figure-quality-audit');
   });
   it('项目技能独立加载并保留全局配置隔离', () => {
     const dir = mkdtempSync(join(tmpdir(), 'mm-core-test-')); dirs.push(dir);

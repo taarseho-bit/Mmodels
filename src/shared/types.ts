@@ -1033,16 +1033,8 @@ export interface PaperPageLimit {
 /**
  * 比赛信息（存 `<项目>/.mathmodel/paper/config.json`，同一项目内的所有对话共享）。
  *
- * **逐字对齐原版 schema** —— 那段 zod 的**逐字原文**已搬到
- * `.workbuddy/ui-audit/verify/original-code-dumps.md §3.2`
- * （搬出去的理由见 `WRITE-RULES.md §8`：注释里逐字引用的原文会被 `grep -c`
- * 一起数上，给出看起来像样的错数字）。结构与 `PaperTemplateSource` 的同源：
- * 版本号 + `managedBy` + `template` 引用 + 比赛字段数组 + 队伍信息（可空）。
- *
- * ⚠️ 路径曾经历一次**回退**：本项目早期自造了 `.mmodels/` 这个名字，后果是
- *    「原版建过的项目我们读不到、我们写的原版也读不到」。现已按原版改回
- *    `.mathmodel/`（原版 `Li`/`Tre` 都是这个字符串），`.mmodels` 只作**遗留只读兼容**
- *    （canonical 不存在时读它，迁移时也**不删**旧文件）——见 `MM_DIR` / `LEGACY_MM_DIR`。
+ * 配置结构由 MModels 自己维护：版本号、管理标记、模板引用、比赛字段和队伍信息。
+ * 项目配置统一写入 `.mathmodel/paper/config.json`；旧目录只在迁移工具中识别，不作为新项目格式。
  */
 export interface PaperConfig {
   schemaVersion: 1;

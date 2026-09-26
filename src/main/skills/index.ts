@@ -1,7 +1,7 @@
 /**
  * 技能（Skill）扫描与管理。
  *
- * 技能的形态（复刻原版约定）：
+ * 技能目录约定：
  *   <skill-root>/<dir-name>/
  *     SKILL.md              ← 必需，YAML frontmatter 带 name / description
  *     scripts/              ← 可选，可执行脚本
@@ -10,7 +10,7 @@
  *     .disabled-by-default  ← 可选空文件，存在则默认不启用
  *
  * ⚠️ 设计取舍：为什么用「禁用列表 + 显式启用列表」而不是单一启用列表
- *    原版的约定是：技能目录一放进去就自动生效，除非有 `.disabled-by-default`。
+ *    技能目录一放进去就自动生效，除非有 `.disabled-by-default`。
  *    我们的持久化反过来记 —— 默认态不写配置，只记**用户动过的开关**：
  *      - disabledSkills：用户关掉的目录名；
  *      - enabledSkills：用户显式打开的目录名（用来压过技能自带的 .disabled-by-default）。

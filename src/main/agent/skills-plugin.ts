@@ -7,7 +7,7 @@
  *   只把技能目录列在 systemPrompt 里，agent 侧根本不会注册命令，
  *   用户发出 `/write-paper …` 时会得到 `Unknown command`，等于该模式什么都没触发。
  *
- * 产物布局（与原版 userData 实拍结构一致）：
+ * 产物布局：
  *   <userData>/skills-plugin/
  *     .claude-plugin/plugin.json     ← {"name":"mathmodel","version":"1.0.0"}
  *     seeded-builtins.json           ← 内置技能的播种记录：目录名 → 内容摘要
@@ -42,7 +42,7 @@ import {
 import { join, relative, sep } from 'node:path';
 import { listSkills } from '../skills';
 
-/** 插件清单 —— 原版逐字如此（`name` 必须是合法插件名） */
+/** 插件清单。`name` 必须是合法插件名。 */
 const PLUGIN_MANIFEST = { name: 'mathmodel', version: '1.0.0' } as const;
 
 const SEEDED_FILE = 'seeded-builtins.json';
@@ -59,9 +59,7 @@ export function skillsPluginRoot(): string {
 /**
  * 目录内容摘要：按相对路径排序后，把 `路径\0文件内容摘要` 依次喂进 sha256。
  *
- * 说明：原版 `seeded-builtins.json` 里的值是 64 位 sha256，但它是原版自身
- * 的私有算法（已试过「目录内容摘要 / 路径+内容 / 名字前缀」等多种组合都对不上），
- * 不影响语义 —— 这里只需要**同一种算法前后一致**即可判断"用户有没有改过"。
+ * 这里只需要同一种算法前后一致，即可判断用户是否修改过物化副本。
  */
 function hashDir(dir: string): string {
   const h = createHash('sha256');

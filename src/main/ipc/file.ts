@@ -357,8 +357,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
   );
 
   /**
-   * 打开外部文本文件 —— 对应原版 `openTextFile`（通道 mathmodel:open-text-file）。
-   * 原版用法是会话导入：弹「打开」对话框（JSON 过滤器），读出 utf8 内容返回。
+   * 打开外部文本文件，用于本地会话导入和项目资料读取。
    * 返回 `{path, content}`；用户取消或读取失败返回 null。
    */
   ipcMain.handle(

@@ -654,7 +654,7 @@ export function buildSystemPrompt(
   const lines = [
     sharedEnvironmentInstructions(),
     `当前项目根目录：${cwd}`,
-    '论文模板与比赛字段配置位于 `.mathmodel/paper/config.json`（早期版本可能写在 `.mmodels/paper/config.json`，两者等价，都读得到）。',
+            '论文模板与比赛字段配置位于当前项目的 `.mathmodel/paper/config.json`，不同项目互不共享。',
     // 技能已由插件机制注册成斜杠命令（命令描述自带说明），这里只作一句提示，
     // 不复述技能目录路径 —— 否则 agent 会再去把每个 SKILL.md 读一遍，纯属浪费。
     '技能已挂载为插件，可直接用斜杠命令调用（/write-paper、/review-paper、/draw-figures 等）；' +

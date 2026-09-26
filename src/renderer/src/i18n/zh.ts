@@ -1,23 +1,6 @@
 /**
- * 界面文案字典 —— 逐字取自原版 MModels 0.0.20 的 i18n 资源。
- *
- * 原版结构（从主 chunk 还原）：
- *   zse = { competitions, automation, chat, collabTeam, common, composer, dock,
- *           extensions, integrations, onboarding, papers, profile, settings,
- *           shell, whatsnew }
- *   jse = { en:{translation:...}, "zh-CN":{translation:zse} }
- * 即中文文案分散在 15 个命名空间，键拼成 `papers.page.title` 这类点号路径。
- *
- * 本文件收录 2069 条（原 2153 条），
- * **已排除 84 条账号 / 计费 / 会员 / 用户菜单相关文案**
- * （用户既定要求：不复刻收费）。
- * 注：`integrations.weChatSection.*`（微信机器人配置，30 条）原属排除名单，
- *    因本项目已实现该分区，现已恢复收录。
- *
- * ⚠️ 文案保真的单一真相源。改动前请对照原版，
- *    或用 `scripts/grep-i18n.cjs` 检索 `_extract/i18n-zh-full.txt`。
- *
- * 注入方式与原版一致：i18next，默认语言 zh-CN，占位符语法 `{{name}}`。
+ * MModels 简体中文文案字典。
+ * 业务页面使用稳定的点号键和 `{{name}}` 占位符；新增功能优先在这里维护，避免组件散落文案。
  */
 
 export const zh = {
@@ -1777,20 +1760,20 @@ export const zh = {
       paperSharing: {
         steps: {
           dialog: {
-            description: '花费可以不填。只有点击「开始分享」后，Agent 才会检查项目里的 PDF 并发起投稿；本教程不会点击它，也不会发送消息。',
-            title: '提交前先确认',
+            description: '选择比赛和年份后，论文会复制到本机资料库；本教程不会读取或上传你的文件。',
+            title: '归档前先确认',
           },
           entry: {
-            description: '请点击右上角高亮的「分享论文」，打开投稿信息窗口。',
-            title: '点一下分享论文',
+            description: '请打开论文资料库，查看按比赛和年份归档的本地论文。',
+            title: '打开论文资料库',
           },
           overview: {
-            description: '「全部论文」展示审核通过的公开论文；「我的投稿」用于查看审核中、已发布或被退回的论文。',
-            title: '认识数模广场',
+            description: '论文资料库按比赛、年份和题号整理；所有文件都保存在本机。',
+            title: '认识论文资料库',
           },
           unavailable: {
-            description: '审核通过的论文会公开展示，投稿状态可在「我的投稿」查看。当前无法分享时，请先按页面提示登录或等待广场恢复开放。',
-            title: '这里是数模广场',
+            description: '归档后的论文可以继续添加笔记、收藏和打开查看，不会自动发送到网络。',
+            title: '这里是本地论文库',
           },
         },
       },
@@ -1914,9 +1897,9 @@ export const zh = {
           title: '选择任务模式',
         },
         paperSharing: {
-          description: '了解公开论文、投稿状态，并打开分享窗口查看提交流程。',
+          description: '了解本地论文库的比赛分类、批量归档和阅读笔记。',
           duration: '约 1 分钟 · 3 步',
-          title: '分享论文与数模广场',
+          title: '管理本地论文库',
         },
         quickStart: {
           description: '保留原来的完整导览，认识模型、运行环境、项目、输入区、协作、Skills 和例题。',
@@ -1984,23 +1967,23 @@ export const zh = {
     },
     page: {
       back: '返回列表',
-      closed: '数模广场暂停开放',
-      closedDescription: '数模广场正在维护，暂时无法访问。',
+      closed: '本地论文库暂时无法打开',
+      closedDescription: '论文文件仍保存在项目目录中，可以稍后重试。',
       closedFor: '{{competition}}期间暂停开放，避免赛题讨论与论文流通影响比赛公平；比赛结束后恢复。',
-      description: '仅接受 Agent 生成的论文',
-      empty: '还没有公开论文',
-      emptyDescription: '点击左侧「分享论文」，让 Agent 帮你检查并上传第一篇。',
+      description: '按比赛和年份整理本机论文',
+      empty: '还没有归档论文',
+      emptyDescription: '从当前项目归档一篇论文，或直接导入本地 PDF。',
       filters: {
         all: '全部',
         competition: '竞赛',
         problem: '题号',
         year: '年份',
       },
-      loadFailed: '数模广场加载失败',
+      loadFailed: '本地论文库读取失败',
       loadMore: '加载更多',
-      localLibraryHint: '审核通过后会出现在这里',
-      mineEmpty: '你还没有投稿',
-      mineEmptyDescription: '通过左侧「分享论文」提交的论文会在这里显示审核状态。',
+      localLibraryHint: '文件保存在本机论文资料库',
+      mineEmpty: '还没有本地归档记录',
+      mineEmptyDescription: '从项目归档的论文会在这里按比赛和年份显示。',
       open: '阅读',
       pages: '{{count}} 页',
       problem: '{{code}} 题',
@@ -2011,26 +1994,26 @@ export const zh = {
       },
       tabs: {
         all: '全部论文',
-        mine: '我的投稿',
+        mine: '我的归档',
       },
-      title: '数模广场',
+      title: '本地论文库',
       withdraw: '撤回',
       withdrawFailed: '撤回失败',
       withdrawn: '已撤回',
     },
     share: {
       form: {
-        cost: '花费（元）',
-        costPlaceholder: '例如 35',
-        description: '做这篇论文大概花了多少钱，会显示在数模广场详情里，可不填。',
-        submit: '开始分享',
-        title: '分享论文',
+        cost: '备注（可选）',
+        costPlaceholder: '例如：已通过表格排版检查',
+        description: '归档前可以添加一句备注，不会上传任何文件。',
+        submit: '开始归档',
+        title: '归档论文',
       },
-      prompt: '/paper-sharing 把这个项目里的pdf论文分享到 MModels 数模广场',
+      prompt: '将当前项目的论文复制到本地论文库，按比赛和年份归档，并检查是否包含个人信息。',
       promptCost: '\\n花费 {{cost}} 元。',
-      sessionTitle: '分享论文',
-      startFailed: '无法开始分享论文',
-      tooltip: '把论文分享到数模广场',
+      sessionTitle: '归档论文',
+      startFailed: '无法开始归档论文',
+      tooltip: '把论文归档到本地论文库',
     },
     status: {
       published: '已发布',
@@ -2607,7 +2590,7 @@ export const zh = {
       },
       newThread: '新建会话',
       noResults: '没有匹配的结果',
-      papers: '数模广场',
+      papers: '本地论文库',
       placeholder: '搜索会话、项目和页面…',
       plugins: '插件',
       searchLabel: '搜索',
@@ -2649,7 +2632,7 @@ export const zh = {
       noProjectsYet: '暂无项目',
       openWorkspace: '打开工作区',
       openWorkspaceFailed: '打开工作区文件夹失败',
-      papers: '数模广场',
+      papers: '本地论文库',
       projects: '项目',
       rename: '重命名',
       settings: '设置',
@@ -2658,7 +2641,7 @@ export const zh = {
       shareImageSaved: '分享图片已保存',
       sharePageHtml: '分享页面（.html）',
       sharePageSaved: '分享页面已保存',
-      sharePaper: '分享论文',
+      sharePaper: '归档论文',
       showLess: '收起',
       showMore: '显示更多',
     },

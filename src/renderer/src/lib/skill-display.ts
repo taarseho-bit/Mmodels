@@ -24,6 +24,14 @@ export const SKILL_DISPLAY_NAMES: Record<string, string> = {
   'modeling-algorithms': '算法资源库',
   'python-model-code-generator': '求解代码生成',
   'robustness-checker': '稳健性检验',
+  'model-selection-audit': '模型选型核验',
+  'baseline-comparison': '基线方案对比',
+  'result-reproducibility': '结果复现核验',
+  'data-provenance': '数据溯源',
+  'submission-package-audit': '提交包检查',
+  'paper-table-repair': '表格排版修复',
+  'figure-quality-audit': '图表质量检查',
+  'defense-question-simulator': '答辩问题模拟',
   'paper-writing': '写作纪律',
   'paper-section-writer': '分章起草',
   'paper-polisher': '语言润色',
@@ -48,7 +56,6 @@ export const SKILL_DISPLAY_NAMES: Record<string, string> = {
   'related-paper-analyzer': '相关工作分析',
   'literature-review': '综述整理',
   'literature-positioning': '文献定位',
-  'paper-sharing': '论文分享',
   'skill-creator': '技能创建器',
 };
 

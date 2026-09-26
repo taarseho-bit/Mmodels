@@ -1,12 +1,10 @@
 /**
- * 本机投稿记录 —— 「分享论文」与「我的投稿」共用的单一存储。
+ * 本地论文归档 —— 归档入口与论文库共用的单一存储。
  *
- * 原版的投稿记录由服务端返回（`review_pending` → `published` / `rejected` / `removed`；
- * 文案见 `papers.status.*`）。本复刻排除云端，记录只落在 localStorage。
+ * 记录只保存在当前电脑，不上传到云端；状态用于区分待整理、已整理和已移除。
  *
- * 两条提交入口 —— 数模广场页头的「分享论文」、顶栏的「分享论文」——
- * 现在都走同一个 `PaperShareDialog`，并在提交时调用本模块的 `registerSubmission()`，
- * 因此两条路径的登记行为与字段结构完全一致。
+ * 所有入口都走同一个归档弹窗，并在提交时调用本模块的 `registerSubmission()`，
+ * 因此登记行为与字段结构保持一致。
  */
 export type PaperStatus = 'review_pending' | 'published' | 'rejected' | 'removed';
 
@@ -23,7 +21,7 @@ export interface LocalPaper {
   reviewNote?: string;
 }
 
-/** 键名沿用原版 localStorage 约定 */
+/** 本地归档键名，保持版本升级时可迁移。 */
 const KEY = 'mmodels:papers:mine:v1';
 
 /** 记录变更事件 —— 让已挂载的「我的投稿」在弹窗提交后即时刷新 */
@@ -57,9 +55,8 @@ export function subscribePapers(fn: () => void): () => void {
 /**
  * 登记一条新投稿（最新的排在最前）。
  *
- * ⚠️ 原版这里由 Agent 读出 PDF 标题、竞赛、题号后回填；
- * 本复刻在**提交弹窗**里先行登记「待审核」记录（用项目名占位），
- * 让「我的投稿」立刻有反馈，字段与原版一致。
+ * 归档弹窗先登记项目名、赛事和题号，随后允许用户补齐 PDF 元数据，
+ * 让本地论文库立即有反馈。
  */
 export function registerSubmission(input: {
   title: string;
