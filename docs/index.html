@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090d18" />
+    <meta name="description" content="MModels 是面向数学建模竞赛与科研训练的本地智能工作台。把题目、数据、代码、图表和论文放进同一条可复盘的建模链路。" />
+    <meta property="og:title" content="MModels · 把题目，推演成答案" />
+    <meta property="og:description" content="面向数学建模的本地智能工作台：从拆题到论文交付，一条链路完成。" />
+    <meta property="og:type" content="website" />
+    <title>MModels · 把题目，推演成答案</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <canvas class="math-field" id="math-field" aria-hidden="true"></canvas>
+    <div class="page-noise" aria-hidden="true"></div>
+
+    <header class="site-header" data-header>
+      <a class="brand" href="#top" aria-label="MModels 首页">
+        <span class="brand-mark" aria-hidden="true"><span>∑</span></span>
+        <span class="brand-copy"><strong>MModels</strong><small>MODEL THE UNKNOWN</small></span>
+      </a>
+      <nav class="main-nav" aria-label="主导航">
+        <a href="#workflow">工作流</a>
+        <a href="#capabilities">能力</a>
+        <a href="#calendar">赛事节奏</a>
+        <a href="#download">开始使用</a>
+      </nav>
+      <a class="header-cta" href="#download">获取桌面端 <span>↗</span></a>
+    </header>
+
+    <main id="top">
+      <section class="hero section-shell">
+        <div class="hero-copy reveal">
+          <div class="eyebrow"><span class="pulse-dot"></span> LOCAL-FIRST · 数学建模智能工作台</div>
+          <h1>把题目，<br /><em>推演成答案。</em></h1>
+          <p class="hero-lede">从一段原题开始，沿着假设、模型、代码、实验与论文，建立一条可解释、可复盘、可交付的建模链路。</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#download">开始一次建模 <span>→</span></a>
+            <a class="button button-quiet" href="#workflow"><span class="play-icon">▶</span> 看懂工作流</a>
+          </div>
+          <div class="hero-proof"><span>⌁</span> 数据留在你的设备上　·　支持 Windows 桌面端　·　适合竞赛与科研训练</div>
+        </div>
+
+        <div class="hero-visual reveal reveal-delay-1" aria-label="MModels 建模工作台预览">
+          <div class="visual-orbit orbit-one"></div>
+          <div class="visual-orbit orbit-two"></div>
+          <div class="visual-cross cross-x"></div><div class="visual-cross cross-y"></div>
+          <div class="console-window">
+            <div class="console-bar"><div class="window-dots"><i></i><i></i><i></i></div><span>workspace / 2026-national-cup</span><span class="live-state"><b></b> LIVE MODEL</span></div>
+            <div class="console-body">
+              <aside class="console-sidebar"><div class="side-label">PROJECT</div><div class="project-name"><span class="project-icon">∴</span><span>城市配送优化</span></div><div class="side-label">STAGES</div><div class="stage active"><b>01</b><span>题意解析</span><i>✓</i></div><div class="stage active"><b>02</b><span>建立假设</span><i>✓</i></div><div class="stage current"><b>03</b><span>求解与验证</span><i>•</i></div><div class="stage"><b>04</b><span>论文交付</span></div><div class="side-bottom">MModels <span>0.1.15</span></div></aside>
+              <div class="console-main"><div class="console-heading"><div><small>OPTIMIZATION MODEL / 03</small><h3>约束条件下的路径成本</h3></div><span class="model-chip">MILP · RUNNING</span></div><div class="chart-card"><div class="chart-label"><span>目标函数收敛曲线</span><span class="chart-value">−18.4% <small>vs. baseline</small></span></div><svg viewBox="0 0 520 170" role="img" aria-label="目标函数收敛曲线"><defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#57e6d0" stop-opacity=".24"/><stop offset="1" stop-color="#57e6d0" stop-opacity="0"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g class="chart-grid"><path d="M0 20H520M0 62H520M0 104H520M0 146H520M40 0V170M160 0V170M280 0V170M400 0V170M520 0V170"/></g><path class="chart-area" d="M40 28 C85 36 92 112 135 98 S194 55 225 80 S285 103 318 92 S360 58 388 72 S433 94 468 67 S495 58 520 45 V170 H40Z"/><path class="chart-line" filter="url(#glow)" d="M40 28 C85 36 92 112 135 98 S194 55 225 80 S285 103 318 92 S360 58 388 72 S433 94 468 67 S495 58 520 45"/><circle class="chart-point" cx="388" cy="72" r="4"/><circle class="chart-point" cx="520" cy="45" r="4"/></svg><div class="chart-axis"><span>0</span><span>20</span><span>40</span><span>60 iterations</span></div></div><div class="console-foot"><div class="agent-row"><span class="agent-avatar">M</span><div><strong>建模手</strong><small>正在校验敏感性分析…</small></div><span class="agent-progress">78%</span></div><div class="mini-terminal"><span class="terminal-prompt">›</span> solving constraints <span class="terminal-cursor">_</span></div></div></div>
+            </div>
+          </div>
+          <div class="float-card float-formula"><span class="float-kicker">ASSUMPTION 04</span><strong>∂J / ∂x = 0</strong><small>局部最优 → 全局验证</small></div>
+          <div class="float-card float-result"><span class="result-check">✓</span><div><strong>可解释结果</strong><small>图表与结论已同步</small></div></div>
+        </div>
+      </section>
+
+      <section class="signal-strip" aria-label="MModels 运行状态"><div><span class="signal-number">01</span><span>从原题到结构化问题</span></div><div><span class="signal-number">02</span><span>从模型到可运行实验</span></div><div><span class="signal-number">03</span><span>从结果到完整论文</span></div><div class="signal-live"><span class="pulse-dot"></span> SYSTEM READY</div></section>
+
+      <section class="intro section-shell reveal" id="workflow"><div class="section-marker">[ 01 / WORKFLOW ]</div><div class="intro-grid"><h2>不是替你猜答案，<br /><em>而是陪你把答案推出来。</em></h2><div><p class="section-lede">好的建模过程，需要让每一个关键决策都留下痕迹。MModels 把竞赛中最容易断裂的环节，串成一个连续的工作空间。</p><a class="text-link" href="#capabilities">探索完整能力 <span>↗</span></a></div></div></section>
+
+      <section class="workflow-section section-shell"><div class="workflow-rail"><div class="rail-line"></div><div class="workflow-step reveal"><span class="step-index">01</span><div><span class="step-tag">FRAME</span><h3>把题目变成问题结构</h3><p>识别目标、约束、变量与评价指标，形成一份可以继续讨论的建模地图。</p><div class="step-meta"><span>题意解析</span><span>假设清单</span><span>变量关系</span></div></div><div class="step-visual frame-visual"><div class="node node-a">目标函数</div><div class="node node-b">约束条件</div><div class="node node-c">决策变量</div><svg viewBox="0 0 300 140"><path d="M73 32L150 70L226 30M73 105L150 70L226 104"/></svg></div></div><div class="workflow-step reveal"><span class="step-index">02</span><div><span class="step-tag">SOLVE</span><h3>让模型在真实数据上跑起来</h3><p>连接本地代码环境，记录每次实验与参数变化，让“能跑”与“可信”同时发生。</p><div class="step-meta"><span>Python / R</span><span>参数实验</span><span>结果校验</span></div></div><div class="step-visual solve-visual"><div class="terminal-lines"><span>› load dataset / demand.csv</span><span>› fit <b>gradient_boosting</b></span><span>› validate 5-fold cross validation</span><span class="terminal-ok">✓ metrics saved to experiment #18</span></div></div></div><div class="workflow-step reveal"><span class="step-index">03</span><div><span class="step-tag">DELIVER</span><h3>把结果写成可以交付的论文</h3><p>将图表、模型解释与结论收拢到同一份文档，保留引用、假设与实验证据。</p><div class="step-meta"><span>图表自动沉淀</span><span>Markdown / PDF</span><span>引用管理</span></div></div><div class="step-visual deliver-visual"><div class="paper-sheet"><span class="paper-title">03 · 模型建立与求解</span><span class="paper-line long"></span><span class="paper-line"></span><div class="paper-chart"><i></i><i></i><i></i><i></i><i></i></div><span class="paper-line short"></span></div><span class="paper-badge">READY TO EXPORT</span></div></div></div></section>
+
+      <section class="capabilities section-shell" id="capabilities"><div class="section-marker">[ 02 / CAPABILITIES ]</div><div class="cap-head"><h2>一套工作台，<br /><em>覆盖完整建模周期。</em></h2><p>保持本地优先，保持过程透明。你可以从一个空白项目开始，也可以把已有代码、数据和论文带进来。</p></div><div class="cap-grid"><article class="cap-card cap-wide reveal"><div class="cap-index">A / 01</div><div><h3>Agent 协作建模</h3><p>建模手、代码手、论文手围绕同一个项目上下文协作，每一个建议都能回到数据与假设。</p></div><div class="agent-stack"><span>M</span><span>∫</span><span>文</span><div class="agent-connector"></div></div></article><article class="cap-card reveal"><div class="cap-index">B / 02</div><h3>Notebook 与图表</h3><p>执行、保存、复用每次实验，让图表成为证据链的一部分。</p><div class="sparkline"><svg viewBox="0 0 240 74"><path d="M5 60 C28 57 29 18 55 39 S81 60 101 25 S128 40 151 14 S176 38 195 21 S219 42 235 8"/></svg></div></article><article class="cap-card reveal"><div class="cap-index">C / 03</div><h3>论文交付</h3><p>从摘要、模型、结果到参考文献，保留你的表达，也减少格式整理。</p><div class="doc-lines"><i></i><i></i><i></i><i></i><b>PDF</b></div></article><article class="cap-card cap-wide cap-data reveal"><div class="cap-index">D / 04</div><div><h3>数据、文件与版本</h3><p>项目文件、运行日志、模型版本和最终产出放在一个可检索的本地空间，比赛结束后依然能复盘。</p></div><div class="data-orbit"><span class="data-dot dot-1"></span><span class="data-dot dot-2"></span><span class="data-dot dot-3"></span><span class="data-ring"></span><strong>DATA<br />→ MODEL<br />→ PAPER</strong></div></article></div></section>
+
+      <section class="calendar-section section-shell" id="calendar"><div class="section-marker">[ 03 / RHYTHM ]</div><div class="calendar-head"><div><h2>全年备赛，<br /><em>从容安排每个节点。</em></h2></div><p>把比赛当作一次次可积累的实验。这里记录常见赛事节奏，具体时间与费用请以官方通知为准。</p></div><div class="calendar-track"><div class="calendar-month past"><span>02</span><strong>美赛</strong><small>国际 · 全英文</small></div><div class="calendar-month"><span>04</span><strong>MathorCup</strong><small>高校热门</small></div><div class="calendar-month active"><span>09</span><strong>全国赛</strong><small>本科主战场</small><i>NOW PLANNING</i></div><div class="calendar-month"><span>09</span><strong>华为杯研赛</strong><small>科研表达</small></div><div class="calendar-month"><span>11</span><strong>大湾区杯</strong><small>金融建模</small></div></div></section>
+
+      <section class="download-section section-shell reveal" id="download"><div class="download-card"><div class="download-grid"><div><div class="eyebrow"><span class="pulse-dot"></span> READY WHEN YOU ARE</div><h2>下一道题，<br /><em>从一个项目开始。</em></h2><p>下载桌面端，把原题、数据和想法放进来。MModels 会和你一起把它们推演成一份可解释的结果。</p><div class="download-actions"><a class="button button-primary" href="https://github.com" target="_blank" rel="noreferrer">前往 GitHub <span>↗</span></a><a class="button button-quiet" href="#workflow">先看工作流 <span>↗</span></a></div></div><div class="download-mark"><span>∑</span><small>MODEL THE<br />UNKNOWN</small></div></div></div></section>
+    </main>
+
+    <footer class="site-footer section-shell"><a class="brand" href="#top"><span class="brand-mark"><span>∑</span></span><span class="brand-copy"><strong>MModels</strong><small>MODEL THE UNKNOWN</small></span></a><div class="footer-copy">本地数学建模智能工作台 · 让过程可解释，让答案可交付</div><div class="footer-meta">© 2026 MModels <span>·</span> Built for modelers</div></footer>
+    <script src="./main.js"></script>
+  </body>
+</html>
