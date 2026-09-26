@@ -34,6 +34,9 @@ const STARTED_AT = Date.now();
 const VERSION = '1.0.0';
 
 const PORT = Number(process.env.PORT ?? 8787);
+// 默认只在本机监听。需要局域网或反向代理时显式设置 DIAG_HOST，避免
+// 一个诊断服务因为忘记防火墙配置而暴露到整台机器所在的网络。
+const HOST = (process.env.DIAG_HOST ?? '127.0.0.1').trim() || '127.0.0.1';
 const DATA_DIR = process.env.DIAG_DATA_DIR ?? 'data';
 const RETENTION_DAYS = Number(process.env.DIAG_RETENTION_DAYS ?? 30);
 const TOKEN = (process.env.DIAG_TOKEN ?? '').trim();
@@ -286,7 +289,7 @@ app.route('/admin', admin);
 // 根路径给个指引，避免访问到的人以为是坏掉的
 app.get('/', (c) =>
   c.text(
-    'MModels 诊断接收服务已运行。\n' +
+      'MModels 诊断接收服务已运行。\n' +
       '探活：GET /health\n' +
       '查看台：GET /admin（Basic 登录，用户名 admin，密码为 DIAG_TOKEN）\n',
   ),
@@ -296,10 +299,10 @@ app.get('/', (c) =>
 // 启动
 // ─────────────────────────────────────────────────────────────
 
-serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
+serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
   console.log('──────────────────────────────────────────');
   console.log(' MModels 诊断服务 v' + VERSION);
-  console.log(' 监听     : http://0.0.0.0:' + info.port);
+  console.log(' 监听     : http://' + HOST + ':' + info.port);
   console.log(' 数据目录 : ' + DATA_DIR);
   console.log(' 保留期   : ' + RETENTION_DAYS + ' 天');
   console.log(' 限流     : ' + RATE_PER_MIN + ' 次/分钟/IP');

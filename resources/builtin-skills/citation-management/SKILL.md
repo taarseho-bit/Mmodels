@@ -4,93 +4,66 @@ description: "管理引用：BibTeX 生成与清洗、引用格式统一（APA/I
 argument-hint: [tex-or-bib-file]
 ---
 
-# Citation Management
+# 引用管理
 
-Manage the full lifecycle of citations in a LaTeX paper.
+用于数学建模论文的引用收集、整理、核验和格式统一。
 
-## Input
+## 输入
 
-- `$0` — Action: `harvest`, `validate`, `add`, `format`
-- `$1` — Path to `.tex` or `.bib` file
+- `$0`：`harvest`、`validate`、`add` 或 `format`
+- `$1`：`.tex` 或 `.bib` 文件路径
 
-## Scripts
+## 常用检查
 
-### Validate citations (check all cite keys resolve)
 ```bash
-python ~/.claude/skills/citation-management/scripts/validate_citations.py \
+python resources/builtin-skills/citation-management/scripts/validate_citations.py \
   --tex paper/main.tex --bib paper/references.bib --check-figures --figures-dir paper/figures/
 ```
 
-Reports: missing citations, unused bib entries, duplicate keys, duplicate sections, duplicate labels, undefined references, missing figures.
+检查缺失引用、未使用条目、重复键、重复章节、重复标签、未定义引用和缺失图片。
 
-### Generate BibTeX from paper database
+## 生成 BibTeX
+
 ```bash
-python ~/.claude/skills/deep-research/scripts/bibtex_manager.py \
+python resources/builtin-skills/deep-research/scripts/bibtex_manager.py \
   --jsonl paper_db.jsonl --output references.bib
 ```
 
-### Search for a specific paper to add
+检索公开文献时只使用可核验来源。API 密钥从运行环境变量 `S2_API_KEY` 读取，不要写入项目文件、脚本或日志。
+
 ```bash
-python ~/.claude/skills/deep-research/scripts/search_semantic_scholar.py \
-  --query "attention is all you need" --max-results 5 \
-  --api-key "$(grep S2_API_Key /Users/lingzhi/Code/keys.md 2>/dev/null | cut -d: -f2 | tr -d ' ')"
+python resources/builtin-skills/deep-research/scripts/search_semantic_scholar.py \
+  --query "attention is all you need" --max-results 5 --api-key "${S2_API_KEY}"
 ```
 
-### Harvest missing citations automatically
+## 收集缺失引用
+
 ```bash
-python ~/.claude/skills/citation-management/scripts/harvest_citations.py \
+python resources/builtin-skills/citation-management/scripts/harvest_citations.py \
   --tex paper/main.tex --bib paper/references.bib --output candidates.bib --max-rounds 10
 ```
 
-Scans .tex for uncited claims, searches Semantic Scholar, outputs candidate BibTeX entries.
-Key flags: `--dry-run` (preview only), `--verbose`, `--api-key`
+候选条目必须逐条核验后才能并入正式 `.bib` 文件。
 
-### Auto-fix missing citation placeholders
+## 生成待核验清单
+
 ```bash
-python ~/.claude/skills/citation-management/scripts/validate_citations.py \
+python resources/builtin-skills/citation-management/scripts/validate_citations.py \
   --tex paper/main.tex --bib paper/references.bib --fix
 ```
 
-Generates `references_fixed.bib` with placeholder entries for all missing citation keys.
+`--fix` 只生成 `references_missing.txt`，不会写入虚假的作者、标题、年份或占位 BibTeX。最终论文不得包含 `TODO`、`20XX`、空作者或无法核验的引用。
 
-## Action: `harvest` — Iterative Citation Harvesting
+## 工作规则
 
-Based on AI-Scientist's 20-round citation harvesting loop. For each round:
+- 不编造文献，不把搜索结果标题直接当作正式引用。
+- 优先使用 DOI、出版社页面、期刊官网或公开数据库中的可核验记录。
+- 引用键、正文引用和参考文献表必须在编译前统一检查。
+- 对数学建模论文，数据来源、算法来源和外部公式都要分别标注。
+- 生成候选引用后，必须运行 `verifying-bibliography` 再进入交付流程。
 
-1. Read the current `.tex` draft
-2. Identify the most important missing citation
-3. Search Semantic Scholar via script
-4. Select the most relevant paper from results
-5. Extract BibTeX and generate a clean key (`lastNameYearWord`)
-6. Append to `.bib` (skip if key exists)
-7. Insert `\cite{key}` at the appropriate location
-8. Stop when no more gaps or 20 rounds reached
+## 相关技能
 
-**Key rules:**
-- DO NOT add a citation that already exists
-- Only add citations found via API — never fabricate
-- Cite broadly — not just popular papers
-- Do not copy verbatim from prior literature
-
-## Action: `validate` — Pre-Compilation Check
-
-Run `validate_citations.py` to catch all issues before compilation. Fix any reported problems.
-
-## Action: `add` — Add Specific Paper
-
-Search Semantic Scholar for the paper, extract BibTeX, clean the key, append to `.bib`.
-
-BibTeX key format: `firstAuthorLastNameYearFirstContentWord` (e.g., `vaswani2017attention`)
-
-## Action: `format` — Standardize .bib
-
-- Sort entries alphabetically by key
-- Ensure consistent indentation (2 spaces)
-- Remove empty fields
-- Protect proper nouns with `{Braces}` in titles
-- Ensure required fields per entry type
-
-## Related Skills
-- Upstream: [literature-search](../literature-search/), [deep-research](../deep-research/)
-- Downstream: [paper-compilation](../paper-compilation/), [latex-formatting](../latex-formatting/)
-- See also: [related-work-writing](../related-work-writing/)
+- `literature-search`、`literature-review`、`deep-research`
+- `verifying-bibliography`、`claim-evidence-audit`
+- `latex-paper-audit`、`paper-page-fit`、`submission-package-audit`

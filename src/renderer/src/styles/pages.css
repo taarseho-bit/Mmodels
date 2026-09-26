@@ -7263,6 +7263,70 @@ body.desktop-pet-document #root {
 .transcript-find input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--fg-primary); font-size: 12px; }
 .transcript-find-count { min-width: 38px; color: var(--fg-muted); font-size: 10px; text-align: right; font-variant-numeric: tabular-nums; }
 .shortcuts-dialog { width: min(560px, calc(100vw - 32px)); }
+
+/* ── 对话区最终排版：内容优先、动作收起、不同宽度下不互相挤压 ── */
+.chat-inner {
+  width: min(980px, 100%);
+  max-width: 980px;
+  gap: 24px;
+}
+.msg {
+  column-gap: 14px;
+  row-gap: 7px;
+}
+.msg-body {
+  min-width: 0;
+  max-width: 860px;
+  font-size: 14px;
+  line-height: 1.78;
+  overflow-wrap: anywhere;
+}
+.msg-user .msg-body {
+  max-width: min(760px, 90%);
+  padding: 11px 15px;
+  line-height: 1.68;
+}
+.msg-body :is(p, ul, ol, blockquote, pre) { margin-block: 0.5em; }
+.msg-body :is(p, ul, ol, blockquote, pre):first-child { margin-top: 0; }
+.msg-body :is(p, ul, ol, blockquote, pre):last-child { margin-bottom: 0; }
+.msg-usage {
+  color: var(--fg-muted);
+  font-size: 10px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.msg-ops {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.msg:hover .msg-ops,
+.msg:focus-within .msg-ops { opacity: 1; }
+.activity-line,
+.activity-waiting,
+.activity-inline-retry { max-width: 760px; }
+.activity-summary { min-width: 0; }
+.activity-summary > :is(.tool-name, span:not(.activity-dot):not(.activity-detail-label)) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-body,
+.thinking-body { max-width: min(760px, 100%); }
+.thinking-body { line-height: 1.6; }
+.error-notice { max-width: 760px; }
+.composer { padding-inline: max(16px, 24px); }
+.composer-inner { width: min(920px, 100%); max-width: 920px; }
+.composer-box { border-radius: 18px; }
+
+@media (max-width: 760px) {
+  .chat-inner { gap: 18px; padding-inline: 14px; }
+  .msg { grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; }
+  .msg-body { font-size: 14px; }
+  .msg-user .msg-body { max-width: 94%; }
+  .msg-ops { opacity: 1; margin-left: 24px; }
+  .composer { padding-inline: 10px; }
+}
 .shortcuts-list { max-height: min(65vh, 540px); overflow: auto; padding: 8px 14px 14px; }
 .shortcut-row { display: flex; align-items: center; gap: 16px; min-height: 34px; border-bottom: 1px solid var(--border-weak); font-size: 12px; }
 .shortcut-row kbd { margin-left: auto; padding: 2px 6px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; color: var(--fg-secondary); font: 10px var(--font-mono); }

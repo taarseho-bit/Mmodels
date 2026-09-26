@@ -316,7 +316,17 @@ export class AgentSession extends EventEmitter {
 
   private emitEvent(ev: StreamEvent): void {
     if (ev.type === 'session-error') this.workflowHadError = true;
-    if (ev.type === 'session-end') this.workflow?.finish(ev.reason || this.workflowHadError ? 'interrupted' : 'completed');
+    if (ev.type === 'session-end') {
+      // 结束原因不是“只要有值就算异常”。SDK 可能会为用户停止、后台超时和
+      // 正常收尾分别带上不同文字；这里显式映射，避免工作流把正常结束误标为中断。
+      const reason = ev.reason?.toLowerCase();
+      const status = this.workflowHadError || reason === 'error' || reason === 'background-timeout'
+        ? 'interrupted'
+        : reason === 'stopped' || reason === 'cancelled' || reason === 'canceled'
+          ? 'stopped'
+          : 'completed';
+      this.workflow?.finish(status);
+    }
     this.emit('event', ev);
   }
 

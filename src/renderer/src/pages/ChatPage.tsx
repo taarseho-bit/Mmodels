@@ -62,6 +62,7 @@ import { Icon } from '../components/Icon';
 import { buildDisplay, toolRowLabel, type ToolGroup } from '../lib/tool-row';
 import {
   activityMessagesFor,
+  compactActivityText,
   friendlyGroupActivity,
   friendlyStreamError,
   friendlyToolActivity,
@@ -136,7 +137,7 @@ function ToolCard({
    * 永远不回落到 `mcp__xxx__yyy` 这种内部标识符，也不会是空串）。
    */
   const title = label ?? toolRowLabel(block);
-  const summary = friendlyToolActivity(block, streaming);
+  const summary = compactActivityText(friendlyToolActivity(block, streaming), 96);
 
   return (
     <div className={`tool-card activity-line${block.isError ? ' activity-retrying' : ''}`}>
@@ -182,7 +183,7 @@ function ToolGroupCard({ group, streaming }: { group: ToolGroup; streaming: bool
     <div className="tool-card tool-group activity-line">
       <button type="button" className="tool-head activity-summary" onClick={() => setOpen((v) => !v)}>
         <span className="activity-dot" aria-hidden="true" />
-        <span className="tool-name">{friendlyGroupActivity(group.rows, streaming)}</span>
+        <span className="tool-name">{compactActivityText(friendlyGroupActivity(group.rows, streaming), 96)}</span>
         <span className="activity-detail-label">{open ? t('收起详情') : t('查看详情')}</span>
         <Icon name={open ? 'chevron-up' : 'chevron-down'} size={11} />
       </button>
@@ -209,7 +210,7 @@ const preStyle: React.CSSProperties = {
 
 function ThinkingBlock({ text }: { text: string }): JSX.Element {
   const [open, setOpen] = useState(false);
-  const detail = localizeThinkingDetail(text);
+  const detail = compactActivityText(localizeThinkingDetail(text), 480);
   return (
     <div className="thinking-block activity-line">
       <button type="button" className="thinking-head activity-summary" onClick={() => setOpen((v) => !v)}>
@@ -296,7 +297,18 @@ const BlockList = memo(function BlockList({
   blocks: ContentBlock[];
   streaming: boolean;
 }): JSX.Element {
-  const visible = blocks.filter(Boolean);
+  // 模型在很短的时间内可能连续发出相同的思考状态。相邻重复项只保留一条，
+  // 避免对话区像日志一样不断堆叠；工具、错误和正文块仍完整保留。
+  const visible = blocks.filter(Boolean).reduce<ContentBlock[]>((out, block) => {
+    const previous = out.at(-1);
+    if (previous?.kind === 'thinking' && block.kind === 'thinking') {
+      const before = compactActivityText(previous.text ?? '', 480);
+      const current = compactActivityText(block.text ?? '', 480);
+      if (before && before === current) return out;
+    }
+    out.push(block);
+    return out;
+  }, []);
   const hasToolActivity = visible.some((block) => block.kind === 'tool_use');
   /** 最后一段有正文的文本块 —— 流式光标画在它上面（用**引用相等**判定，
    *  比下标稳：折叠组会吃掉若干个块，下标已经对不上了） */
@@ -1478,17 +1490,11 @@ export function ChatPage(): JSX.Element {
                   <BlockList blocks={m.blocks} streaming={false} />
                 )}
                 {m.usage && (m.usage.inputTokens || m.usage.outputTokens) ? (
-                  <div className="muted" style={{ fontSize: 10, marginTop: 6 }}>
-                    ↑{m.usage.inputTokens} ↓{m.usage.outputTokens}
+                  <div className="muted msg-usage" style={{ marginTop: 6 }}>
+                    输入 {m.usage.inputTokens.toLocaleString('zh-CN')} · 输出 {m.usage.outputTokens.toLocaleString('zh-CN')}
                     {m.usage.reasoningTokens ? (
                       <>
-                        {' '}
-                        <Icon
-                          name="brain"
-                          size={10}
-                          style={{ display: 'inline-block', verticalAlign: '-1px' }}
-                        />
-                        {m.usage.reasoningTokens}
+                        {' · 推理 '}{m.usage.reasoningTokens.toLocaleString('zh-CN')}
                       </>
                     ) : null}
                   </div>

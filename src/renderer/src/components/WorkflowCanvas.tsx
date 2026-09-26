@@ -20,7 +20,9 @@ export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'anal
   const fit = () => {
     const rect = viewport.current?.getBoundingClientRect();
     if (!rect || !rect.width || !rect.height) return;
-    const scale = Math.min(1, Math.max(.72, Math.min((rect.width - 40) / layout.width, (rect.height - 32) / layout.height)));
+    // 演示面板优先保证“整张图看得见”，不要因为成员稍多就把底部裁掉。
+    // 用户仍可用滚轮放大；适应视图允许缩到 38%，避免无限向下滚动。
+    const scale = Math.min(1, Math.max(.38, Math.min((rect.width - 40) / layout.width, (rect.height - 32) / layout.height)));
     setView({ scale, x: Math.max(16, (rect.width - layout.width * scale) / 2), y: Math.max(16, (rect.height - layout.height * scale) / 2) });
   };
   const focusNode = (id: string | null | undefined = focusId) => {

@@ -44,6 +44,7 @@ node test/smoke.mjs
 |---|---|---|
 | `PORT` | `8787` | 监听端口 |
 | `DIAG_TOKEN` | **必填** | Bearer 令牌，同时是 `/admin` 的密码。不设则**拒绝启动** |
+| `DIAG_HOST` | 可选，默认 `127.0.0.1` | 监听地址；只有明确需要局域网访问时才设置为 `0.0.0.0` |
 | `DIAG_DATA_DIR` | `data` | 数据目录（备份就是拷它） |
 | `DIAG_RETENTION_DAYS` | `30` | 保留期，到期自动清理 |
 | `DIAG_RATE_PER_MIN` | `120` | 每 IP 每分钟请求上限 |

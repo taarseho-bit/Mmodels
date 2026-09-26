@@ -80,7 +80,7 @@ def main():
     parser.add_argument("--bib", required=True, help=".bib file")
     parser.add_argument("--check-figures", action="store_true", help="Also check figure files exist")
     parser.add_argument("--figures-dir", help="Directory containing figures")
-    parser.add_argument("--fix", action="store_true", help="Output suggested fixes")
+    parser.add_argument("--fix", action="store_true", help="输出缺失引用清单（不会生成可直接编译的占位文献）")
     args = parser.parse_args()
 
     # Load tex content
@@ -203,22 +203,16 @@ def main():
         print("  All checks passed!")
 
     if args.fix and missing:
-        print(f"\n## AUTO-FIX: Generating placeholder entries for {len(missing)} missing keys")
-        fix_entries = []
-        for key in sorted(missing):
-            entry = f"@misc{{{key},\n  title = {{{key.replace('_', ' ')}}},\n  note = {{TODO: Replace with actual reference}},\n  year = {{20XX}},\n}}"
-            fix_entries.append(entry)
-
-        fix_bib_path = args.bib.replace(".bib", "_fixed.bib")
-        with open(args.bib, encoding="utf-8", errors="replace") as f:
-            original_bib = f.read()
-        with open(fix_bib_path, "w", encoding="utf-8") as f:
-            f.write(original_bib)
-            f.write("\n\n% === Auto-generated placeholder entries ===\n")
-            for entry in fix_entries:
-                f.write("\n" + entry + "\n")
-        print(f"  Patched .bib written to: {fix_bib_path}")
-        print(f"  {len(fix_entries)} placeholder entries added (marked with TODO)")
+        # 不再把虚假的作者、年份和标题写进 BibTeX。那种文件虽然能继续编译，
+        # 却很容易被误当成最终参考文献；这里只生成待核验清单。
+        pending_path = args.bib.replace(".bib", "_missing.txt")
+        with open(pending_path, "w", encoding="utf-8") as f:
+            f.write("以下引用键尚未找到可靠文献，请逐条补充真实来源：\n")
+            f.write("\n".join(f"- {key}" for key in sorted(missing)))
+            f.write("\n")
+        print(f"\n## PENDING REFERENCES: {len(missing)}")
+        print(f"  待核验清单已写入：{pending_path}")
+        print("  未修改原始 .bib，也没有生成可提交的占位文献。")
 
     sys.exit(1 if issues > 0 else 0)
 

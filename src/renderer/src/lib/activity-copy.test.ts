@@ -3,6 +3,7 @@ import type { ContentBlock } from '@shared/types';
 import {
   MODEL_WAITING_MESSAGES,
   activityMessagesFor,
+  compactActivityText,
   friendlyGroupActivity,
   friendlyStreamError,
   friendlyToolActivity,
@@ -20,6 +21,11 @@ const tool = (toolName: string, extra: Partial<ContentBlock> = {}): ContentBlock
 });
 
 describe('对话过程的通俗中文文案', () => {
+  it('展示层会收紧重复标点和多余空白，但不改变正常短句', () => {
+    expect(compactActivityText('  正在检查！！\n\n\n 数据……  ')).toBe('正在检查！\n\n数据…');
+    expect(compactActivityText('结果已整理')).toBe('结果已整理');
+    expect(compactActivityText('一二三四五六七八九十', 6)).toBe('一二三四五…');
+  });
   it('等待文案简短、全为中文建模语境且不暴露工具名', () => {
     expect(MODEL_WAITING_MESSAGES.length).toBeGreaterThanOrEqual(5);
     for (const message of MODEL_WAITING_MESSAGES) {

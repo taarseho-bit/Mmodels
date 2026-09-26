@@ -213,7 +213,9 @@ export class WorkflowTrace {
   finish(status: Exclude<WorkflowStatus, 'running'>): void {
     if (this.run.status !== 'running') return;
     this.run.status = status;
-    this.run.stageStatus = 'completed';
+    // 只有真正完成才把最后一步标成“已收口”；停止或异常结束要保留当前阶段，
+    // 这样演示视图不会把一轮被中断的任务误显示成已经交付。
+    this.run.stageStatus = status === 'completed' ? 'completed' : 'waiting';
     for (const node of this.run.nodes) {
       if (node.status === 'running') node.status = status === 'completed' && node.id === 'main' ? 'returned' : status === 'stopped' ? 'stopped' : 'unknown';
       node.endedAt ??= Date.now();

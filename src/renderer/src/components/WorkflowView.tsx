@@ -113,7 +113,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
         const stages = run.workflowStages?.length ? run.workflowStages : ['了解问题', '研究与计算', '核对结果', '整理交付'];
         const current = Math.min(Math.max(run.currentStage ?? 0, 0), stages.length - 1);
         return <section className="workflow-stage-rail" aria-label="任务推进阶段">
-          <div className="workflow-stage-heading"><span>推进到哪一步</span><small>{run.stageStatus === 'completed' ? '本轮已收口' : `当前：${stages[current]}`}</small></div>
+          <div className="workflow-stage-heading"><span>推进到哪一步</span><small>{run.status === 'stopped' ? '本轮已停止' : run.status === 'interrupted' ? '需要复核' : run.stageStatus === 'completed' ? '本轮已收口' : `当前：${stages[current]}`}</small></div>
           <ol>{stages.map((stage, index) => <li key={`${stage}-${index}`} className={index < current || (run.stageStatus === 'completed' && index === current) ? 'is-done' : index === current && run.stageStatus !== 'completed' ? 'is-current' : 'is-next'}>
             <span className="workflow-stage-dot">{index < current || (run.stageStatus === 'completed' && index === current) ? '✓' : index + 1}</span><span>{stage}</span>
           </li>)}</ol>

@@ -12,7 +12,7 @@
 .workflow-switch button { padding:4px 12px; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; font-size:12px; }
 .workflow-switch button[aria-pressed="true"] { background:var(--bg-panel, #8882); box-shadow:0 1px 3px #0002; }
 .workflow-switch button:active { transform:scale(.96); }
-.workflow-view { flex:1; min-height:0; height:100%; overflow:hidden; display:flex; flex-direction:column; padding:12px clamp(14px, 2.4vw, 36px); color:var(--fg-primary); }
+.workflow-view { flex:1; min-height:0; height:100%; overflow:hidden; display:flex; flex-direction:column; padding:10px clamp(14px, 2.2vw, 32px); color:var(--fg-primary); }
 .workflow-heading, .workflow-summary, .workflow-node-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 /* 2026-09-26：演示/分析切换挪到「项目工作流」标题文字旁边（用户钦定） */
 .workflow-heading-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -22,17 +22,17 @@
 .workflow-note { margin:5px 0 8px; }
 .workflow-empty { margin:64px auto; max-width:460px; text-align:center; line-height:1.8; }
 .workflow-empty h3 { font-size:17px; }.workflow-empty p { font-size:13px; color:var(--fg-secondary); }
-.workflow-summary { justify-content:flex-start; flex-wrap:wrap; font-size:11px; padding:6px 0; border-block:1px solid #8882; }
-.workflow-skill-overview { margin:10px 0 4px; padding:11px 12px; border:1px solid #8882; border-radius:10px; background:color-mix(in srgb,var(--bg-panel) 86%,var(--accent) 4%); }
+.workflow-summary { justify-content:flex-start; flex-wrap:wrap; font-size:10.5px; padding:5px 0; border-block:1px solid #8882; line-height:1.3; }
+.workflow-skill-overview { margin:7px 0 3px; padding:8px 10px; border:1px solid #8882; border-radius:10px; background:color-mix(in srgb,var(--bg-panel) 86%,var(--accent) 4%); max-height:92px; overflow:auto; }
 .workflow-skill-overview-head { display:flex; align-items:baseline; gap:10px; margin-bottom:8px; font-size:12px; }.workflow-skill-overview-head span { color:var(--fg-muted); font-size:10.5px; }
 .workflow-skill-overview-list { display:flex; flex-wrap:wrap; gap:6px; }
 .workflow-skill-chip { display:inline-grid; grid-template-columns:7px minmax(0,auto); grid-template-rows:auto auto; column-gap:7px; align-items:center; min-width:150px; max-width:245px; padding:7px 9px; border:1px solid var(--border-weak); border-radius:8px; background:var(--bg-panel); color:var(--fg-primary); text-align:left; cursor:pointer; transition:border-color .15s,transform .15s,background .15s; }
 .workflow-skill-chip:hover { border-color:var(--accent); background:var(--bg-hover); transform:translateY(-1px); }.workflow-skill-chip strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11.5px; font-weight:600; }.workflow-skill-chip small { grid-column:2; color:var(--fg-muted); font-size:10px; white-space:nowrap; }.workflow-skill-chip-dot { grid-row:1 / span 2; width:7px; height:7px; border-radius:50%; background:var(--accent); }.workflow-skill-chip.is-running .workflow-skill-chip-dot { background:#26ae88; box-shadow:0 0 0 3px #26ae8822; animation:workflow-breathe 1.3s ease-in-out infinite; }.workflow-skill-chip.is-review .workflow-skill-chip-dot { background:var(--warning,#d68b22); }.workflow-skill-chip.is-done .workflow-skill-chip-dot { background:var(--fg-muted); }.workflow-skill-overview-more { display:block; margin-top:8px; color:var(--fg-muted); font-size:10.5px; }
 .workflow-summary label { margin-right:auto; }.workflow-summary select { color:inherit; background:var(--bg-panel); border:1px solid #8883; border-radius:6px; padding:6px; margin-left:8px; max-width:260px; }
 .workflow-status { border-radius:20px; padding:4px 9px; background:#8881; }.workflow-status.is-running { color:#268568; background:#329b7b16; }
-.workflow-stage-rail { margin:8px 0 2px; padding:8px 12px; border:1px solid #8882; border-radius:10px; background:color-mix(in srgb, var(--bg-panel) 76%, transparent); }
+.workflow-stage-rail { margin:6px 0 2px; padding:6px 10px; border:1px solid #8882; border-radius:10px; background:color-mix(in srgb, var(--bg-panel) 76%, transparent); }
 .workflow-stage-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--fg-secondary); font-size:11px; }.workflow-stage-heading small { color:var(--fg-muted); }
-.workflow-stage-rail ol { display:flex; align-items:flex-start; gap:0; list-style:none; padding:12px 0 0; margin:0; }
+.workflow-stage-rail ol { display:flex; align-items:flex-start; gap:0; list-style:none; padding:8px 0 0; margin:0; }
 .workflow-stage-rail li { display:flex; align-items:center; gap:7px; flex:1; min-width:0; color:var(--fg-muted); font-size:11px; position:relative; }
 .workflow-stage-rail li:not(:last-child)::after { content:''; height:1px; flex:1; margin:0 10px; background:#8883; }
 .workflow-stage-rail li.is-done { color:#4b987f; }.workflow-stage-rail li.is-current { color:var(--fg-primary); font-weight:600; }.workflow-stage-rail li.is-current::after { background:color-mix(in srgb, var(--accent) 45%, #8883); }
@@ -73,7 +73,7 @@
 .flow-live, .flow-toolbar-actions { display:flex; align-items:center; gap:8px; }.flow-live > span { width:6px; height:6px; background:#8c94a1; border-radius:50%; }.flow-live > span.is-live { background:#37a984; box-shadow:0 0 0 4px #37a98417; }.flow-live small { color:var(--fg-muted); margin-left:5px; }
 .flow-toolbar-actions button { border:0; background:transparent; color:var(--fg-secondary); padding:5px 7px; font-size:11px; border-radius:5px; cursor:pointer; display:inline-flex; align-items:center; }
 .flow-toolbar-actions button:hover, .flow-toolbar-actions button[aria-pressed="true"] { background:var(--bg-hover); color:var(--fg-primary); }.flow-zoom-level { font-size:10px; color:var(--fg-muted); min-width:29px; text-align:center; }
-.flow-viewport { position:relative; flex:1; height:auto; min-height:260px; min-width:0; overflow:hidden; touch-action:none; cursor:grab; background-image:radial-gradient(circle, #8993a538 .8px, transparent .8px); background-size:18px 18px; isolation:isolate; }
+.flow-viewport { position:relative; flex:1; height:auto; min-height:220px; min-width:0; overflow:hidden; touch-action:none; cursor:grab; background-image:radial-gradient(circle, #8993a538 .8px, transparent .8px); background-size:18px 18px; isolation:isolate; }
 .flow-viewport.is-panning { cursor:grabbing; }.flow-viewport:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
 .flow-world { position:absolute; inset:0 auto auto 0; transform-origin:0 0; will-change:transform; }.flow-connections { position:absolute; inset:0; overflow:visible; pointer-events:none; }
 .flow-edge path { fill:none; stroke:var(--flow-color); stroke-width:1.5; stroke-linejoin:round; }.flow-edge .flow-edge-base { opacity:.52; }.flow-edge.is-participation .flow-edge-base { stroke-dasharray:5 5; opacity:.42; }.flow-edge.is-exchange .flow-edge-base { stroke-dasharray:3 5; opacity:.32; }.flow-edge.is-muted { opacity:.38; }
@@ -137,3 +137,27 @@
 @keyframes flow-focus { 0%,100% { transform:rotate(-3deg); } 50% { transform:rotate(3deg); } }
 @keyframes flow-hand { 0%,100% { transform:rotate(-8deg); } 35%,65% { transform:rotate(12deg); } }
 @media (prefers-reduced-motion:reduce) { .flow-person-hand, .flow-person.is-working .flow-person-eyes, .flow-person.is-working .flow-person-face { animation:none; } }
+
+/* ── 工作流画布收口：总览也保持可读，不用放大才看得清 ── */
+.workflow-heading-subtitle { margin: 3px 0 0; color: var(--fg-muted); font-size: 11px; line-height: 1.5; }
+.workflow-layout.is-flow-canvas { min-height: 0; }
+.workflow-layout.is-flow-canvas > .flow-canvas-shell { min-height: 0; }
+.flow-world.is-overview .flow-agent-heading { flex-wrap: nowrap; }
+.flow-world.is-overview .flow-agent-name { font-size: 12px; }
+.flow-world.is-overview .flow-agent-state { font-size: 10px; }
+.flow-world.is-overview .flow-agent { padding: 9px 11px 8px; }
+.flow-world.is-overview .flow-agent .flow-person { transform: scale(.86); transform-origin: left center; }
+.flow-world.is-overview .flow-agent-foot { display: flex; font-size: 9px; }
+.workflow-detail { scrollbar-width: thin; }
+.workflow-detail-heading h3 { overflow-wrap: anywhere; }
+.flow-skill-section li { padding: 8px 9px; margin-bottom: 6px; }
+.workflow-explainer p { max-width: 920px; }
+
+@media (max-width: 760px) {
+  .workflow-view { padding-inline: 10px; }
+  .workflow-heading-row { gap: 8px; }
+  .workflow-heading h2 { font-size: 17px; }
+  .workflow-summary { gap: 7px 11px; }
+  .workflow-stage-rail ol { overflow-x: auto; }
+  .workflow-stage-rail li { min-width: 120px; }
+}

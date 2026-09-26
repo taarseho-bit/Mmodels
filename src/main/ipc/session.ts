@@ -51,7 +51,7 @@ import { getProject } from './project';
 import { extraPlugins, workspaceInstructions } from '../agent/project-plugins';
 import { saveVersion } from '../git';
 import { resolveResourcesRoot } from '../resources';
-import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS } from '../agent/orchestration-policy';
+import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS, skillRouteHints } from '../agent/orchestration-policy';
 
 /** 全局会话注册表（整个应用一份） */
 export const sessionRegistry = new SessionRegistry();
@@ -451,9 +451,13 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
     : settings.modelingQualityMode === 'fast'
       ? '\n数学建模任务深度：快速模式。优先给出可运行的思路和初步结果，明确说明哪些环节还没做完。'
       : '\n数学建模任务深度：标准模式。按常规深度完成建模、写作与数据工作；论文提交前再做完整核对。';
+  const routeHints = settings.skillAutoSelect === false ? [] : skillRouteHints(prompt);
+  const routeText = routeHints.length
+    ? `\n本轮可能有帮助的技能方向（先判断是否真的需要，再调用，不要为了凑数量全部使用）：${routeHints.map(h => `${h.label}（${h.reason}）`).join('；')}。`
+    : '';
   const skillInstruction = settings.skillAutoSelect === false
     ? '\n技能调用策略：只使用用户明确指定或当前模式强制要求的技能，不要自行加载额外技能。'
-    : '\n技能调用策略：根据题目、附件和当前阶段自动选择匹配的建模技能，并在工作流中说明实际调用了什么。';
+    : '\n技能调用策略：根据题目、附件和当前阶段自动选择匹配的建模技能；实际调用后，用一句通俗中文说明做了什么。' + routeText;
 
   // ── A3 任务面板对账提醒 ─────────────────────────────────────
   // 会话任务清单（跨消息折叠）里还有未完成项时，在本轮提示词开头注入断点提醒——
@@ -685,6 +689,8 @@ export function buildSystemPrompt(
     '  （点名具体文件与步骤，例如「收到题目 PDF，我先读题和数据表，再建第一问的优化模型」），让用户第一秒就知道你在干什么；',
     '  之后每个阶段用**一行状态**汇报：正在对哪个文件 / 哪一步做什么、预计产出什么 —— 状态行必须与实际动作一致，不许空泛的"处理中"。',
     '- 汇报要生动可读：进度用短清单、结果对比用小表格、关键数字加粗；让用户不展开任何面板也能看懂局面。',
+    '- 版式要克制：状态行一行只表达一个动作，避免连续重复“正在……”；不要堆叠箭头、星号、感叹号、表情或装饰分隔线，只有真正需要层级时才使用标题和项目符号。',
+    '- 对话正文先给结论，再给必要依据；长内容按“结论—依据—下一步”组织，工具名、内部编号和重复的过程话不要出现在正文里。',
     '- 中间过程只在有实质进展时更新，连续的命令、读取和检查合并成一句；不要一个工具调用发一条说明。',
     '- 默认隐藏 PATH、MSI、退出码、下载速度、参数和调用栈等技术细节；用户主动排查时再给关键详情。',
     '- 每个阶段结束给一句小结；可以带点口语和轻微的风味（"这里翻车了""换个思路"），',

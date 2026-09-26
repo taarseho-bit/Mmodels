@@ -172,6 +172,7 @@ describe('真实事件工作流观察器', () => {
     vi.runAllTimers();
     expect(snapshots).toHaveLength(2);
     expect(snapshots.at(-1)?.status).toBe('stopped');
+    expect(snapshots.at(-1)?.stageStatus).toBe('waiting');
     expect(snapshots[0].nodes).toHaveLength(1);
   });
   it('子成员返回不冒充核验通过，丢失结束事件也不永远转圈', async () => {

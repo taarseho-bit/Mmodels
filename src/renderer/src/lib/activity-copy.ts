@@ -1,6 +1,28 @@
 import type { ContentBlock } from '@shared/types';
 import { toolKindOf, type ToolRow } from './tool-row';
 
+/**
+ * 把活动行压成一条清楚、稳定的中文短句。
+ *
+ * 模型偶尔会把同一个标点连续写很多次，或者把换行和空格混在状态行里。
+ * 这里只处理“展示层”的旁白，不改工具参数、正文和诊断信息；因此不会影响
+ * 复现，也不会把用户真正写的内容悄悄改掉。
+ */
+export function compactActivityText(value: string, maxLength = 120): string {
+  const text = value
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/([。！？!?，,、；;：:])\1+/g, '$1')
+    .replace(/\.{2,}/g, '…')
+    .replace(/…{2,}/g, '…')
+    .trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
+}
+
 /** 对话还在运行时轮换显示。文案刻意只说正在做什么，不暴露内部工具。 */
 export const MODEL_WAITING_MESSAGES = [
   '正在把题目条件整理成可计算的关系…',

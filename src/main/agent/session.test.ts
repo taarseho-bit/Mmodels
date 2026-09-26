@@ -343,6 +343,12 @@ describe('工作流观察接线', () => {
     await runOnce('验证', { onWorkflow: r => snapshots.push(r) }).done;
     expect(snapshots.at(-1)?.status).toBe('interrupted');
   });
+  it('只把明确的停止/错误原因映射为非正常结束', async () => {
+    const snapshots: WorkflowRun[] = [];
+    installFakeQuery([{ ...result(), reason: 'provider-finished' }]);
+    await runOnce('供应商正常收尾', { onWorkflow: r => snapshots.push(r) }).done;
+    expect(snapshots.at(-1)?.status).toBe('completed');
+  });
   it('真实 run 选项挂观察钩子，完成后发布快照但不混入对话正文', async () => {
     const sdk = installFakeQuery([assistant('完成'), result()]);
     const snapshots: WorkflowRun[] = [];
