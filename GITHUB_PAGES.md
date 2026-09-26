@@ -4,10 +4,10 @@
 
 ## 首次发布
 
-1. 在 GitHub 创建一个仓库，并把它作为本地仓库的 `origin`：
+1. 当前项目已经连接到 GitHub 仓库 [`taarseho-bit/Mmodels`](https://github.com/taarseho-bit/Mmodels)，本地 `origin` 为：
 
    ```bash
-   git remote add origin https://github.com/<你的账号>/<仓库名>.git
+   git remote -v
    git push -u origin main
    ```
 
@@ -15,7 +15,7 @@
 3. 等待 `Deploy marketing site to GitHub Pages` 工作流完成，站点地址通常是：
    `https://<你的账号>.github.io/<仓库名>/`
 
-当前工作区还没有配置 GitHub 远程仓库，所以需要先填入真实的仓库地址再推送。拿到仓库地址后，应把首页中的 GitHub 按钮从 `https://github.com` 替换成对应仓库或 Releases 地址。
+首页中的 GitHub 按钮已指向项目仓库。后续如果更换仓库，需要同步修改 `docs/index.html` 中的按钮链接和本文件中的地址。
 
 ## 自定义域名
 
