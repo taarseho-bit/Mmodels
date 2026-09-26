@@ -1286,6 +1286,13 @@ export function ChatPage(): JSX.Element {
 
   return (
     <div className="chat-page">
+      <div className="chat-page-context topbar-context-path" aria-label="当前项目与任务">
+        <span title={currentProject.name}>{currentProject.name}</span>
+        <Icon name="chevron-right" size={12} aria-hidden="true" />
+        <strong title={activeSession?.title ?? '新任务'}>
+          {activeSession?.title || '新任务'}
+        </strong>
+      </div>
       {taskView === 'workflow' && <WorkflowView key={currentProject.id} projectId={currentProject.id} onReturn={returnToChat} />}
       <div className="chat-scroll" style={taskView === 'workflow' ? { display: 'none' } : undefined} ref={scrollRef} onScroll={onScroll}>
         <div className={`chat-inner${isEmpty ? ' is-empty' : ''}`}>

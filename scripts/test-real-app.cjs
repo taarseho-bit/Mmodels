@@ -786,8 +786,11 @@ async function main() {
     `(async function(){
       var api = window.mathmodel;
       var project = await api.project.current();
+      for (var i = 0; i < 30 && !document.querySelector('.sidebar'); i++) {
+        await new Promise(function(r){ setTimeout(r, 100); });
+      }
       var before = (await api.session.list(project.id)).length;
-      var newTask = document.querySelector('.rail-create-strip button');
+      var newTask = document.querySelector('.rail-create-strip button[aria-label="新任务"]');
       if (newTask) newTask.click();
       await new Promise(function(r){ setTimeout(r, 150); });
       var after = (await api.session.list(project.id)).length;
@@ -827,11 +830,8 @@ async function main() {
     `(async function(){
       var api = window.mathmodel;
       var beforeSettings = await api.settings.get();
-      document.querySelector('[aria-label="任务选项"]')?.click();
-      await new Promise(r => setTimeout(r, 50));
-      var collab = [...document.querySelectorAll('.cz-pop-item')].find(el => el.textContent.includes('多智能体协作'));
+      var collab = document.querySelector('[aria-label="多智能体协作"]');
       var collabEnabled = collab?.getAttribute('aria-pressed') === 'true';
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       document.querySelector('[aria-label="更多任务操作"]')?.click();
       await new Promise(r => setTimeout(r, 50));
       var petToggle = [...document.querySelectorAll('.studio-task-menu button')].find(el => el.textContent.includes('桌面小模'));
