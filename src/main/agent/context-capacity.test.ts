@@ -2,10 +2,10 @@ import { expect, it } from 'vitest';
 import type { ProviderConfig } from '@shared/types';
 import { knownContextWindow, boundedContextWindow, sdkModel } from './runtime-options';
 const provider: ProviderConfig = { id:'p', name:'test', apiKey:'', apiFormat:'openai', baseUrl:'https://api.deepseek.com', enabled:true };
-it('官方Flash识别1M，旧名称和未知中转不冒充已确认容量', () => {
+it('Flash识别1M，旧名称不冒充长窗口', () => {
   expect(knownContextWindow(provider,'deepseek-flash')).toBe(1_000_000);
   expect(knownContextWindow(provider,'deepseek-chat')).toBeUndefined();
-  expect(knownContextWindow({...provider,baseUrl:'https://example.com'},'deepseek-flash')).toBeUndefined();
+  expect(knownContextWindow({...provider,baseUrl:'https://example.com'},'deepseek-flash[1m]')).toBe(1_000_000);
 });
 it('1M为上限，兼容300K和200K模型', () => {
   for (const n of [128000,200000,300000,1000000]) expect(knownContextWindow({...provider,contextWindows:{custom:n}},'custom')).toBe(n);

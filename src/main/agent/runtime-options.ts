@@ -10,13 +10,19 @@ export function sdkModel(provider: ProviderConfig, model: string): string {
     && ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-flash'].includes(model) ? `${model}[1m]` : model;
 }
 
-/** Verified official DeepSeek V4/Flash endpoint only; do not guess limits for third-party aliases. */
+/**
+ * 识别当前产品明确支持的长窗口模型。
+ * 用户可能通过 OpenAI/Anthropic 兼容网关接入 DeepSeek，不能因为网关改了域名
+ * 就退回 SDK 默认窗口；模型名本身已经是用户选择的容量依据。
+ */
 export function knownContextWindow(provider: ProviderConfig, model: string): number | undefined {
   const configured = provider.contextWindows?.[model];
   if (Number.isFinite(configured) && configured! >= 128_000) return Math.min(1_000_000, Math.floor(configured!));
+  const normalizedModel = model.trim().toLowerCase().replace(/\[1m\]$/, '');
+  if (['deepseek-flash', 'deepseek-v4-flash', 'deepseek-v4-pro'].includes(normalizedModel)) return 1_000_000;
   try {
     if (new URL(provider.baseUrl).hostname === 'api.deepseek.com'
-      && ['deepseek-flash', 'deepseek-v4-flash', 'deepseek-v4-pro'].includes(model)) return 1_000_000;
+      && ['deepseek-flash', 'deepseek-v4-flash', 'deepseek-v4-pro'].includes(normalizedModel)) return 1_000_000;
   } catch { /* invalid URL is reported when connecting */ }
   return undefined;
 }
