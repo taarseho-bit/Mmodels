@@ -106,7 +106,7 @@ body {
 .site-nav a.is-current { background: var(--red-soft); color: var(--red); font-weight: 600; }
 @media (max-width: 1100px) { .site-nav { display: none; } }
 
-/* ── 左侧栏切换入口：叙述版 / 功能清单 ── */
+/* ── 左侧栏切换入口：叙述版 / 功能清单 / 二进制版 ── */
 .view-switch {
   position: fixed;
   left: 12px;

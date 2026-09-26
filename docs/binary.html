@@ -3,15 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="theme-color" content="#ffffff" />
-<meta name="description" content="MModels 数学建模竞赛桌面工作台功能清单：项目与任务管理、多智能体协作、工作流、数据绘图、图表库、论文交付、竞赛日历、自动化、编辑器、算法与模板库、设置与桌面小模。" />
-<title>MModels 功能清单 · 数学建模竞赛桌面工作台</title>
+<meta name="theme-color" content="#05070b" />
+<meta name="description" content="MModels 数学建模竞赛桌面工作台 · 系统功能规格：项目任务管理、多智能体协作、工作流、数据绘图、图表库、论文交付、竞赛日历、自动化、编辑器、算法与模板库、设置与桌面小模。" />
+<title>MModels SYS/SPEC · 功能规格</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="./features.css" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./binary.css" />
 </head>
 <body id="top">
+
+<canvas class="rain" id="rain" aria-hidden="true"></canvas>
 
 <div class="layout">
 
@@ -19,39 +21,39 @@
   <aside class="lsb">
     <div class="lsb-inner">
       <a class="lsb-brand" href="index.html">
-        <span class="lsb-mark">∑</span>
-        <b>MModels</b>
-        <small>数学建模竞赛工作台</small>
+        <span class="lsb-mark">01</span>
+        <b>MModels::SYS</b>
+        <small>数学建模竞赛工作台 · 功能规格</small>
       </a>
 
       <div class="lsb-switch" role="group" aria-label="页面风格切换">
         <a class="lsb-switch-item" href="index.html">叙述版</a>
-        <a class="lsb-switch-item is-active" href="features.html">功能清单</a>
-        <a class="lsb-switch-item" href="binary.html">二进制版</a>
+        <a class="lsb-switch-item" href="features.html">功能清单</a>
+        <a class="lsb-switch-item is-active" href="binary.html">二进制版</a>
       </div>
 
       <nav class="lsb-nav" aria-label="功能章节">
-        <a href="#overview">总览</a>
-        <a href="#projects">项目与任务</a>
-        <a href="#palette">任务面板</a>
-        <a href="#decisions">模型与决策</a>
-        <a href="#agents">多智能体协作</a>
-        <a href="#workflow">工作流</a>
-        <a href="#dataplot">数据绘图</a>
-        <a href="#gallery">图表库</a>
-        <a href="#paper">论文交付</a>
-        <a href="#contest">竞赛日历</a>
-        <a href="#automation">自动化</a>
-        <a href="#editor">编辑器视图</a>
-        <a href="#algo">算法与扩展</a>
-        <a href="#settings">设置分区</a>
-        <a href="#pet">桌面小模</a>
-        <a href="#terminal">终端面板</a>
+        <a href="#overview">01 · 总览</a>
+        <a href="#projects">02 · 项目与任务</a>
+        <a href="#palette">03 · 任务面板</a>
+        <a href="#decisions">04 · 模型与决策</a>
+        <a href="#agents">05 · 多智能体协作</a>
+        <a href="#workflow">06 · 工作流</a>
+        <a href="#dataplot">07 · 数据绘图</a>
+        <a href="#gallery">08 · 图表库</a>
+        <a href="#paper">09 · 论文交付</a>
+        <a href="#contest">10 · 竞赛日历</a>
+        <a href="#automation">11 · 自动化</a>
+        <a href="#editor">12 · 编辑器视图</a>
+        <a href="#algo">13 · 算法与扩展</a>
+        <a href="#settings">14 · 设置分区</a>
+        <a href="#pet">15 · 桌面小模</a>
+        <a href="#terminal">16 · 终端面板</a>
       </nav>
 
       <div class="lsb-foot">
         <a href="index.html">← 返回叙述版</a>
-        <span>全部截图来自软件真实运行画面</span>
+        <span>ALL CAPTURES FROM LIVE APP</span>
       </div>
     </div>
   </aside>
@@ -61,23 +63,23 @@
 
     <header class="fhead">
       <div>
-        <h1>MModels 功能清单</h1>
-        <p>数学建模竞赛桌面工作台 · 面向 Windows 桌面环境</p>
+        <h1>MModels 功能规格</h1>
+        <p>数学建模竞赛桌面工作台 · WINDOWS DESKTOP</p>
       </div>
-      <p class="fhead-meta">本文档按功能模块列出软件各项能力，供功能核验与版本对照使用。</p>
+      <p class="fhead-meta">SYS/SPEC v1.0 · 按功能模块列出系统能力，供功能核验与版本对照。</p>
     </header>
 
-    <!-- 总览 -->
+    <!-- 01 总览 -->
     <section class="fsection" id="overview">
       <h2><span class="no">01</span>总览</h2>
-      <p>MModels 是面向数学建模竞赛的桌面工作台。软件围绕「一个竞赛项目」组织全部工作：题目、数据、代码、论文、讨论、任务、协作记录集中存放于同一项目空间；多智能体协作、数据绘图、论文交付检查、竞赛日历与定时自动化等能力以模块形式提供。以下按功能模块逐项列出。</p>
+      <p>MModels 是面向数学建模竞赛的桌面工作台。系统以「竞赛项目」为单位组织全部工作：题目、数据、代码、论文、讨论、任务、协作记录集中存放于同一项目空间。多智能体协作、数据绘图、论文交付检查、竞赛日历、定时自动化等能力以模块形式提供。以下按模块逐项列出。</p>
       <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
         <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="建模对话主界面" />
-        <figcaption>图 1 · 建模对话主界面：项目侧栏、赛题附件、对话与任务入口</figcaption>
+        <figcaption>FIG.01 · 建模对话主界面：项目侧栏、赛题附件、对话与任务入口</figcaption>
       </figure>
     </section>
 
-    <!-- 项目与任务 -->
+    <!-- 02 项目与任务 -->
     <section class="fsection" id="projects">
       <h2><span class="no">02</span>项目与任务</h2>
       <p>每个竞赛题目对应一个独立项目。项目内包含会话、文件、数据、论文、任务与协作记录；侧栏顶部提供就地搜索框，可在项目与任务两个层级中检索。</p>
@@ -91,27 +93,27 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/menu-project.png">
           <img src="./assets/screenshots/01-workspace/menu-project.png" alt="项目切换菜单" />
-          <figcaption>图 2 · 项目切换菜单</figcaption>
+          <figcaption>FIG.02 · 项目切换菜单</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/search-inline.png">
           <img src="./assets/screenshots/01-workspace/search-inline.png" alt="项目与任务就地搜索" />
-          <figcaption>图 3 · 工作项目区就地搜索</figcaption>
+          <figcaption>FIG.03 · 工作项目区就地搜索</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/onboarding-tutorials.png">
           <img src="./assets/screenshots/01-workspace/onboarding-tutorials.png" alt="新手教程列表" />
-          <figcaption>图 4 · 新手教程</figcaption>
+          <figcaption>FIG.04 · 新手教程</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/dialog-contest-info.png">
           <img src="./assets/screenshots/01-workspace/dialog-contest-info.png" alt="比赛信息登记弹窗" />
-          <figcaption>图 5 · 比赛信息登记</figcaption>
+          <figcaption>FIG.05 · 比赛信息登记</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- # 任务面板 -->
+    <!-- 03 任务面板 -->
     <section class="fsection" id="palette">
       <h2><span class="no">03</span>任务面板</h2>
-      <p>在输入框中键入 <b>#</b> 唤起任务面板，列出当前可执行的全部任务。任务按优先级排列，支持方向键选择与回车确认；选中后任务名称回填至输入框。</p>
+      <p>在输入框中键入 <b class="hl">#</b> 唤起任务面板，列出当前可执行的全部任务。任务按优先级排列，支持方向键选择与回车确认；选中后任务名称回填至输入框。</p>
       <ul class="flist">
         <li>全流程论文写作固定置顶</li>
         <li>细分任务：参赛冲刺、图表工坊、评阅诊断、数据勘探、摘要、文献、页数核验等</li>
@@ -121,20 +123,20 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/hash-palette-live.png">
           <img src="./assets/screenshots/01-workspace/hash-palette-live.png" alt="输入 # 唤起任务面板" />
-          <figcaption>图 6 · 输入 # 唤起任务面板</figcaption>
+          <figcaption>FIG.06 · 输入 # 唤起任务面板</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu.png">
           <img src="./assets/screenshots/01-workspace/task-mode-menu.png" alt="任务面板完整列表" />
-          <figcaption>图 7 · 任务面板完整列表</figcaption>
+          <figcaption>FIG.07 · 任务面板完整列表</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu2.png">
           <img src="./assets/screenshots/01-workspace/task-mode-menu2.png" alt="任务面板另一展开状态" />
-          <figcaption>图 8 · 任务面板展开状态</figcaption>
+          <figcaption>FIG.08 · 任务面板展开状态</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 模型与决策 -->
+    <!-- 04 模型与决策 -->
     <section class="fsection" id="decisions">
       <h2><span class="no">04</span>模型与决策</h2>
       <p>对话区提供一组运行参数：模型选择、思考强度、任务深度、决策方式、文件权限。参数在运行中可调整。</p>
@@ -148,28 +150,28 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/live-run-model-picker.png">
           <img src="./assets/screenshots/01-workspace/live-run-model-picker.png" alt="运行中模型与思考强度调节" />
-          <figcaption>图 9 · 运行中调整模型与思考强度</figcaption>
+          <figcaption>FIG.09 · 运行中调整模型与思考强度</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/menu-model.png">
           <img src="./assets/screenshots/01-workspace/menu-model.png" alt="模型选择菜单" />
-          <figcaption>图 10 · 模型选择</figcaption>
+          <figcaption>FIG.10 · 模型选择</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/menu-quality.png">
           <img src="./assets/screenshots/01-workspace/menu-quality.png" alt="任务深度菜单" />
-          <figcaption>图 11 · 任务深度</figcaption>
+          <figcaption>FIG.11 · 任务深度</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/menu-decision.png">
           <img src="./assets/screenshots/01-workspace/menu-decision.png" alt="决策方式菜单" />
-          <figcaption>图 12 · 决策方式</figcaption>
+          <figcaption>FIG.12 · 决策方式</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/menu-permission.png">
           <img src="./assets/screenshots/01-workspace/menu-permission.png" alt="文件权限菜单" />
-          <figcaption>图 13 · 文件权限</figcaption>
+          <figcaption>FIG.13 · 文件权限</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 多智能体协作 -->
+    <!-- 05 多智能体协作 -->
     <section class="fsection" id="agents">
       <h2><span class="no">05</span>多智能体协作</h2>
       <p>复杂任务由主助手拆分后分发给协作成员。每位成员有明确职责，执行过程与交回结果记录在工作流中。</p>
@@ -182,28 +184,28 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/03-agents/live-collab-tasks.png">
           <img src="./assets/screenshots/03-agents/live-collab-tasks.png" alt="协作任务现场" />
-          <figcaption>图 14 · 协作任务推进现场</figcaption>
+          <figcaption>FIG.14 · 协作任务推进现场</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/03-agents/agents-all-19.png">
           <img src="./assets/screenshots/03-agents/agents-all-19.png" alt="协作全景图" />
-          <figcaption>图 15 · 协作全景：成员、交回、技能与文件统计</figcaption>
+          <figcaption>FIG.15 · 协作全景：成员、交回、技能与文件统计</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/03-agents/agents-colored.png">
           <img src="./assets/screenshots/03-agents/agents-colored.png" alt="按职能着色的协作图" />
-          <figcaption>图 16 · 按职能着色</figcaption>
+          <figcaption>FIG.16 · 按职能着色</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/03-agents/agent-member-panel.png">
           <img src="./assets/screenshots/03-agents/agent-member-panel.png" alt="成员详情侧栏" />
-          <figcaption>图 17 · 成员详情侧栏</figcaption>
+          <figcaption>FIG.17 · 成员详情侧栏</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/03-agents/agent-member-zoom.png">
           <img src="./assets/screenshots/03-agents/agent-member-zoom.png" alt="成员节点特写" />
-          <figcaption>图 18 · 成员节点特写</figcaption>
+          <figcaption>FIG.18 · 成员节点特写</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 工作流 -->
+    <!-- 06 工作流 -->
     <section class="fsection" id="workflow">
       <h2><span class="no">06</span>工作流</h2>
       <p>工作流以节点与连线呈现一次协作的完整过程。提供演示视图与分析视图两种视角。</p>
@@ -216,28 +218,28 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/02-workflow/workflow-analysis-skills.png">
           <img src="./assets/screenshots/02-workflow/workflow-analysis-skills.png" alt="工作流分析视图技能统计" />
-          <figcaption>图 19 · 分析视图：技能统计与推进步骤</figcaption>
+          <figcaption>FIG.19 · 分析视图：技能统计与推进步骤</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/02-workflow/workflow-demo-view.png">
           <img src="./assets/screenshots/02-workflow/workflow-demo-view.png" alt="工作流演示视图" />
-          <figcaption>图 20 · 演示视图</figcaption>
+          <figcaption>FIG.20 · 演示视图</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/02-workflow/workflow-analysis-view.png">
           <img src="./assets/screenshots/02-workflow/workflow-analysis-view.png" alt="工作流分析视图" />
-          <figcaption>图 21 · 分析视图</figcaption>
+          <figcaption>FIG.21 · 分析视图</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/02-workflow/workflow-node-details.png">
           <img src="./assets/screenshots/02-workflow/workflow-node-details.png" alt="工作流节点详情" />
-          <figcaption>图 22 · 节点详情</figcaption>
+          <figcaption>FIG.22 · 节点详情</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/chat-running.png">
           <img src="./assets/screenshots/01-workspace/chat-running.png" alt="任务运行中的对话" />
-          <figcaption>图 23 · 对话内实时生成内容</figcaption>
+          <figcaption>FIG.23 · 对话内实时生成内容</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 数据绘图 -->
+    <!-- 07 数据绘图 -->
     <section class="fsection" id="dataplot">
       <h2><span class="no">07</span>数据绘图</h2>
       <p>数据绘图模块读取项目内 CSV 数据，选择字段后生成图表，可调整图表类型并导出。</p>
@@ -250,28 +252,28 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/data-plot-from-data.png">
           <img src="./assets/screenshots/04-data/data-plot-from-data.png" alt="数据绘图主界面" />
-          <figcaption>图 24 · 数据绘图：选择 CSV 与字段后渲染</figcaption>
+          <figcaption>FIG.24 · 数据绘图：选择 CSV 与字段后渲染</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/data-plot-second.png">
           <img src="./assets/screenshots/04-data/data-plot-second.png" alt="第二份数据的绘图" />
-          <figcaption>图 25 · 更换文件与字段</figcaption>
+          <figcaption>FIG.25 · 更换文件与字段</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/data-project-database.png">
           <img src="./assets/screenshots/04-data/data-project-database.png" alt="项目数据列表" />
-          <figcaption>图 26 · 项目数据列表</figcaption>
+          <figcaption>FIG.26 · 项目数据列表</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/data-csv-preview.png">
           <img src="./assets/screenshots/04-data/data-csv-preview.png" alt="CSV 表格预览" />
-          <figcaption>图 27 · CSV 表格预览</figcaption>
+          <figcaption>FIG.27 · CSV 表格预览</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/data-csv-1.png">
           <img src="./assets/screenshots/04-data/data-csv-1.png" alt="数据文件预览" />
-          <figcaption>图 28 · 数据文件预览</figcaption>
+          <figcaption>FIG.28 · 数据文件预览</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 图表库 -->
+    <!-- 08 图表库 -->
     <section class="fsection" id="gallery">
       <h2><span class="no">08</span>图表库</h2>
       <p>图表库按建模场景分类收录常用图表模板，提供总览视图与单图查看。</p>
@@ -283,56 +285,56 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/chart-gallery-overview.png">
           <img src="./assets/screenshots/04-data/chart-gallery-overview.png" alt="图表库总览" />
-          <figcaption>图 29 · 图表库总览</figcaption>
+          <figcaption>FIG.29 · 图表库总览</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-1.png">
           <img src="./assets/screenshots/04-data/gallery-1.png" alt="图表库单图视图" />
-          <figcaption>图 30 · 图表库单图视图</figcaption>
+          <figcaption>FIG.30 · 图表库单图视图</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-flow-chart.png">
           <img src="./assets/screenshots/04-data/gallery-flow-chart.png" alt="流程类图表" />
-          <figcaption>图 31 · 流程类</figcaption>
+          <figcaption>FIG.31 · 流程类</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-distribution.png">
           <img src="./assets/screenshots/04-data/gallery-distribution.png" alt="分布类图表" />
-          <figcaption>图 32 · 分布类</figcaption>
+          <figcaption>FIG.32 · 分布类</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-regression.png">
           <img src="./assets/screenshots/04-data/gallery-regression.png" alt="回归类图表" />
-          <figcaption>图 33 · 回归类</figcaption>
+          <figcaption>FIG.33 · 回归类</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-correlation-matrix.png">
           <img src="./assets/screenshots/04-data/gallery-correlation-matrix.png" alt="相关矩阵图表" />
-          <figcaption>图 34 · 相关矩阵</figcaption>
+          <figcaption>FIG.34 · 相关矩阵</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-trend-forecast.png">
           <img src="./assets/screenshots/04-data/gallery-trend-forecast.png" alt="趋势预测图表" />
-          <figcaption>图 35 · 趋势预测</figcaption>
+          <figcaption>FIG.35 · 趋势预测</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-comparison.png">
           <img src="./assets/screenshots/04-data/gallery-comparison.png" alt="比较类图表" />
-          <figcaption>图 36 · 比较类</figcaption>
+          <figcaption>FIG.36 · 比较类</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-evaluation.png">
           <img src="./assets/screenshots/04-data/gallery-evaluation.png" alt="评价类图表" />
-          <figcaption>图 37 · 评价类</figcaption>
+          <figcaption>FIG.37 · 评价类</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-network-flow.png">
           <img src="./assets/screenshots/04-data/gallery-network-flow.png" alt="网络流向图表" />
-          <figcaption>图 38 · 网络流向</figcaption>
+          <figcaption>FIG.38 · 网络流向</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-contour-3d.png">
           <img src="./assets/screenshots/04-data/gallery-contour-3d.png" alt="等高线三维图表" />
-          <figcaption>图 39 · 等高线与三维</figcaption>
+          <figcaption>FIG.39 · 等高线与三维</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/04-data/gallery-hierarchy.png">
           <img src="./assets/screenshots/04-data/gallery-hierarchy.png" alt="层级图表" />
-          <figcaption>图 40 · 层级</figcaption>
+          <figcaption>FIG.40 · 层级</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 论文交付 -->
+    <!-- 09 论文交付 -->
     <section class="fsection" id="paper">
       <h2><span class="no">09</span>论文交付</h2>
       <p>论文库集中管理成稿与投稿状态；比赛信息决定页数与格式检查规则；支持将论文分享归档为团队参考资产。</p>
@@ -343,16 +345,16 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/05-paper/paper-library.png">
           <img src="./assets/screenshots/05-paper/paper-library.png" alt="论文库" />
-          <figcaption>图 41 · 论文库</figcaption>
+          <figcaption>FIG.41 · 论文库</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/05-paper/paper-share-dialog.png">
           <img src="./assets/screenshots/05-paper/paper-share-dialog.png" alt="论文分享弹窗" />
-          <figcaption>图 42 · 分享弹窗</figcaption>
+          <figcaption>FIG.42 · 分享弹窗</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 竞赛日历 -->
+    <!-- 10 竞赛日历 -->
     <section class="fsection" id="contest">
       <h2><span class="no">10</span>竞赛日历</h2>
       <p>竞赛日历记录各比赛报名时间与截止时间，提供日历与列表两种视图；比赛工作台将交付要求拆为可检查项。</p>
@@ -364,20 +366,20 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/06-competition/competition-calendar.png">
           <img src="./assets/screenshots/06-competition/competition-calendar.png" alt="竞赛日历月视图" />
-          <figcaption>图 43 · 日历视图</figcaption>
+          <figcaption>FIG.43 · 日历视图</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/06-competition/competition-calendar-list.png">
           <img src="./assets/screenshots/06-competition/competition-calendar-list.png" alt="竞赛日历列表视图" />
-          <figcaption>图 44 · 列表视图</figcaption>
+          <figcaption>FIG.44 · 列表视图</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/06-competition/competition-workbench-details.png">
           <img src="./assets/screenshots/06-competition/competition-workbench-details.png" alt="比赛工作台明细" />
-          <figcaption>图 45 · 比赛工作台</figcaption>
+          <figcaption>FIG.45 · 比赛工作台</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 自动化 -->
+    <!-- 11 自动化 -->
     <section class="fsection" id="automation">
       <h2><span class="no">11</span>自动化</h2>
       <p>自动化模块按设定时间表触发任务，并记录每次运行的结果与耗时。</p>
@@ -388,16 +390,16 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/automation-tasks.png">
           <img src="./assets/screenshots/07-misc/automation-tasks.png" alt="自动化任务列表" />
-          <figcaption>图 46 · 任务列表</figcaption>
+          <figcaption>FIG.46 · 任务列表</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/automation-runs.png">
           <img src="./assets/screenshots/07-misc/automation-runs.png" alt="自动化运行历史" />
-          <figcaption>图 47 · 运行历史</figcaption>
+          <figcaption>FIG.47 · 运行历史</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 编辑器视图 -->
+    <!-- 12 编辑器视图 -->
     <section class="fsection" id="editor">
       <h2><span class="no">12</span>编辑器视图</h2>
       <p>编辑器视图将文件树、代码区与对话列同屏排列，代码区按文件类型提供语法高亮。</p>
@@ -408,11 +410,11 @@
       </ul>
       <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/editor-view.png">
         <img src="./assets/screenshots/01-workspace/editor-view.png" alt="编辑器视图" />
-        <figcaption>图 48 · 编辑器视图：文件树、代码区、对话列</figcaption>
+        <figcaption>FIG.48 · 编辑器视图：文件树、代码区、对话列</figcaption>
       </figure>
     </section>
 
-    <!-- 算法与扩展 -->
+    <!-- 13 算法与扩展 -->
     <section class="fsection" id="algo">
       <h2><span class="no">13</span>算法与扩展</h2>
       <p>算法库按建模场景收录常用方法；扩展页提供技能、算法、模板三类扩展项。</p>
@@ -425,24 +427,24 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/algorithms-library.png">
           <img src="./assets/screenshots/07-misc/algorithms-library.png" alt="算法库总览" />
-          <figcaption>图 49 · 算法库</figcaption>
+          <figcaption>FIG.49 · 算法库</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/extensions-skills.png">
           <img src="./assets/screenshots/07-misc/extensions-skills.png" alt="技能扩展页" />
-          <figcaption>图 50 · 技能库</figcaption>
+          <figcaption>FIG.50 · 技能库</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/extensions-algorithms.png">
           <img src="./assets/screenshots/07-misc/extensions-algorithms.png" alt="算法扩展页" />
-          <figcaption>图 51 · 算法扩展页</figcaption>
+          <figcaption>FIG.51 · 算法扩展页</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/extensions-templates.png">
           <img src="./assets/screenshots/07-misc/extensions-templates.png" alt="模板扩展页" />
-          <figcaption>图 52 · 模板库</figcaption>
+          <figcaption>FIG.52 · 模板库</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 设置分区 -->
+    <!-- 14 设置分区 -->
     <section class="fsection" id="settings">
       <h2><span class="no">14</span>设置分区</h2>
       <p>设置页按功能分区组织，共十六个分区，覆盖论文规则、质量交付、模型、供应商、对话、提示词、环境、网络、自动化、通知、竞赛日历、快捷键、统计、教程、关于、外观。</p>
@@ -467,76 +469,76 @@
       <div class="fgrid three">
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-paper-rules.png">
           <img src="./assets/screenshots/07-misc/settings-paper-rules.png" alt="论文默认规则设置" />
-          <figcaption>图 53 · 论文默认规则</figcaption>
+          <figcaption>FIG.53 · 论文默认规则</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-quality-delivery.png">
           <img src="./assets/screenshots/07-misc/settings-quality-delivery.png" alt="建模质量与交付设置" />
-          <figcaption>图 54 · 建模质量与交付</figcaption>
+          <figcaption>FIG.54 · 建模质量与交付</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-model.png">
           <img src="./assets/screenshots/07-misc/settings-model.png" alt="模型设置" />
-          <figcaption>图 55 · 模型与思考强度</figcaption>
+          <figcaption>FIG.55 · 模型与思考强度</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-providers.png">
           <img src="./assets/screenshots/07-misc/settings-providers.png" alt="模型供应商设置" />
-          <figcaption>图 56 · 模型供应商</figcaption>
+          <figcaption>FIG.56 · 模型供应商</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-chat.png">
           <img src="./assets/screenshots/07-misc/settings-chat.png" alt="对话与协作设置" />
-          <figcaption>图 57 · 对话与协作</figcaption>
+          <figcaption>FIG.57 · 对话与协作</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-sysprompt.png">
           <img src="./assets/screenshots/07-misc/settings-sysprompt.png" alt="高级提示词设置" />
-          <figcaption>图 58 · 高级提示词</figcaption>
+          <figcaption>FIG.58 · 高级提示词</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-environment.png">
           <img src="./assets/screenshots/07-misc/settings-environment.png" alt="环境与依赖设置" />
-          <figcaption>图 59 · 公共环境与依赖</figcaption>
+          <figcaption>FIG.59 · 公共环境与依赖</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-network.png">
           <img src="./assets/screenshots/07-misc/settings-network.png" alt="网络连接设置" />
-          <figcaption>图 60 · 网络连接</figcaption>
+          <figcaption>FIG.60 · 网络连接</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-automation.png">
           <img src="./assets/screenshots/07-misc/settings-automation.png" alt="自动化设置" />
-          <figcaption>图 61 · 比赛提醒与自动化</figcaption>
+          <figcaption>FIG.61 · 比赛提醒与自动化</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-notify.png">
           <img src="./assets/screenshots/07-misc/settings-notify.png" alt="通知设置" />
-          <figcaption>图 62 · 通知</figcaption>
+          <figcaption>FIG.62 · 通知</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-competitions.png">
           <img src="./assets/screenshots/07-misc/settings-competitions.png" alt="竞赛日历设置" />
-          <figcaption>图 63 · 竞赛日历</figcaption>
+          <figcaption>FIG.63 · 竞赛日历</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-keybindings.png">
           <img src="./assets/screenshots/07-misc/settings-keybindings.png" alt="快捷键设置" />
-          <figcaption>图 64 · 快捷键</figcaption>
+          <figcaption>FIG.64 · 快捷键</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-profile-stats.png">
           <img src="./assets/screenshots/07-misc/settings-profile-stats.png" alt="使用统计" />
-          <figcaption>图 65 · 使用统计</figcaption>
+          <figcaption>FIG.65 · 使用统计</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-tour.png">
           <img src="./assets/screenshots/07-misc/settings-tour.png" alt="新手教程设置" />
-          <figcaption>图 66 · 新手教程</figcaption>
+          <figcaption>FIG.66 · 新手教程</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-about.png">
           <img src="./assets/screenshots/07-misc/settings-about.png" alt="关于与诊断" />
-          <figcaption>图 67 · 关于与诊断</figcaption>
+          <figcaption>FIG.67 · 关于与诊断</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-appearance.png">
           <img src="./assets/screenshots/07-misc/settings-appearance.png" alt="界面与外观设置" />
-          <figcaption>图 68 · 界面与外观</figcaption>
+          <figcaption>FIG.68 · 界面与外观</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-appearance-bottom.png">
           <img src="./assets/screenshots/07-misc/settings-appearance-bottom.png" alt="外观设置下半部分" />
-          <figcaption>图 69 · 外观设置（续）</figcaption>
+          <figcaption>FIG.69 · 外观设置（续）</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 桌面小模 -->
+    <!-- 15 桌面小模 -->
     <section class="fsection" id="pet">
       <h2><span class="no">15</span>桌面小模</h2>
       <p>桌面小模以独立窗口显示陪伴角色，可在外观设置中选择角色形象。</p>
@@ -547,28 +549,28 @@
       <div class="fgrid">
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-pet-characters.png">
           <img src="./assets/screenshots/07-misc/settings-pet-characters.png" alt="桌面小模角色选择" />
-          <figcaption>图 70 · 角色选择</figcaption>
+          <figcaption>FIG.70 · 角色选择</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/desktop-pet-window.png">
           <img src="./assets/screenshots/07-misc/desktop-pet-window.png" alt="桌面小模独立窗口" />
-          <figcaption>图 71 · 独立窗口</figcaption>
+          <figcaption>FIG.71 · 独立窗口</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- 终端面板 -->
+    <!-- 16 终端面板 -->
     <section class="fsection" id="terminal">
       <h2><span class="no">16</span>终端面板</h2>
       <p>侧栏提供终端标签页，可在项目内直接执行命令，输出实时显示。</p>
       <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/panel-terminal.png">
         <img src="./assets/screenshots/01-workspace/panel-terminal.png" alt="终端面板" />
-        <figcaption>图 72 · 终端面板</figcaption>
+        <figcaption>FIG.72 · 终端面板</figcaption>
       </figure>
     </section>
 
     <footer class="ffoot">
-      <span>MModels · 数学建模竞赛工作台 · 功能清单</span>
-      <span>页面中的全部截图均来自软件真实运行画面</span>
+      <span>MModels::SYS · 数学建模竞赛工作台 · 功能规格</span>
+      <span>ALL CAPTURES FROM LIVE APP</span>
     </footer>
   </main>
 </div>
@@ -577,6 +579,6 @@
   <img src="" alt="截图放大查看" />
 </div>
 
-<script src="./features.js"></script>
+<script src="./binary.js"></script>
 </body>
 </html>
