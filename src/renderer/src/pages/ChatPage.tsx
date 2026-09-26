@@ -835,8 +835,14 @@ export function ChatPage(): JSX.Element {
         activeSessionIdRef.current,
       );
 
-      // ③ 只有"当前会话"才同步进 React state 触发重渲染（后台会话照写不误）
-      if (isCurrent && (ev.type === 'session-end' || ev.type === 'session-error')) {
+      // ③ 结构事件必须立即同步到 React：TaskCreate/TaskUpdate 在这里驱动任务面板，
+      //    Agent 事件在这里驱动协作状态。之前只等 session-end，模型第一次提问后
+      //    后续任务虽然已经写进 store，界面却一直不刷新，用户看起来就像卡住了。
+      if (isCurrent && (
+        ev.type === 'tool-use' || ev.type === 'tool-result' ||
+        ev.type === 'agent-start' || ev.type === 'agent-end' ||
+        ev.type === 'context-compacted' || ev.type === 'session-end' || ev.type === 'session-error'
+      )) {
         setStream(toView(entry));
       }
 
