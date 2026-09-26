@@ -1,157 +1,434 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#070a12" />
-  <meta name="description" content="MModels 数学建模工作台：从题目解析、数据图表、智能体协作到比赛论文交付，把每一步都沉淀为可复盘的证据。" />
-  <title>MModels · 数学建模工作台</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#ffffff" />
+<meta name="description" content="MModels 数学建模竞赛工作台：把题目放进来，一支多智能体队伍帮你读题、找数据、建模求解、绘图成稿、评阅交付。每一个环节都看得见。" />
+<title>MModels 数学建模工作台 —— 一道题，一支队伍，一篇论文</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <canvas id="math-field" class="math-field" aria-hidden="true"></canvas>
-  <div class="page-noise" aria-hidden="true"></div>
+<div class="math-field" aria-hidden="true" id="math-field"></div>
 
-  <div class="app-shell" id="top">
-    <aside class="product-sidebar">
-      <a class="brand" href="#top" aria-label="MModels 首页">
-        <span class="brand-mark">∑</span>
-        <span><strong>MModels</strong><small>MODEL THE UNKNOWN</small></span>
-      </a>
-      <div class="sidebar-kicker">PRODUCT TOUR <span>0.1.15</span></div>
-      <nav class="product-nav" aria-label="产品功能导航">
-        <button class="nav-item active" data-view="overview"><span class="nav-index">01</span><span><b>总览</b><small>Overview</small></span></button>
-        <button class="nav-item" data-view="workflow"><span class="nav-index">02</span><span><b>建模工作流</b><small>Modeling workflow</small></span></button>
-        <button class="nav-item" data-view="agents"><span class="nav-index">03</span><span><b>多智能体协作</b><small>Agent collaboration</small></span></button>
-        <button class="nav-item" data-view="data"><span class="nav-index">04</span><span><b>数据与图表</b><small>Data & charts</small></span></button>
-        <button class="nav-item" data-view="paper"><span class="nav-index">05</span><span><b>论文交付</b><small>Paper delivery</small></span></button>
-        <button class="nav-item" data-view="calendar"><span class="nav-index">06</span><span><b>赛事节奏</b><small>Competition rhythm</small></span></button>
-      </nav>
-      <div class="sidebar-bottom">
-        <div class="local-badge"><span class="status-dot"></span><div><strong>本地优先</strong><small>项目文件留在你的设备</small></div></div>
-        <a class="repo-link" href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">查看 MModels 仓库 <span>↗</span></a>
-      </div>
-    </aside>
+<header class="site-head">
+  <a class="brand" href="#top"><span class="brand-mark">∑</span><b>MModels</b><small>数学建模竞赛工作台</small></a>
+  <nav class="site-nav" aria-label="页面章节">
+    <a href="#start">开局</a>
+    <a href="#hash"># 任务面板</a>
+    <a href="#decide">决策台面</a>
+    <a href="#agents">多智能体</a>
+    <a href="#workflow">工作流</a>
+    <a href="#data">数据绘图</a>
+    <a href="#gallery">图表库</a>
+    <a href="#paper">论文交付</a>
+    <a href="#contest">比赛节奏</a>
+    <a href="#auto">自动化</a>
+    <a href="#editor">编辑器</a>
+    <a href="#algo">算法库</a>
+    <a href="#settings">偏好</a>
+  </nav>
+</header>
 
-    <main class="product-main">
-      <header class="topbar">
-        <div class="topbar-path"><span class="path-dot"></span><span>MModels / Product tour</span><span class="path-separator">/</span><strong id="view-title">总览</strong></div>
-        <div class="topbar-actions"><span class="view-count">VIEW <b id="view-counter">01 / 06</b></span><span class="system-state"><i></i> PRODUCT EVIDENCE</span><a class="topbar-github" href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">GitHub <span>↗</span></a></div>
-      </header>
-
-      <div class="view-stack">
-        <section class="view is-active" data-panel="overview" id="overview">
-          <div class="view-hero reveal">
-            <div>
-              <div class="eyebrow"><span class="pulse-dot"></span> 基于真实软件界面的产品演示</div>
-              <h1>把题目拆成结构，<br /><em>把结果交付成证据。</em></h1>
-              <p class="hero-lede">MModels 不是把答案丢给你的聊天窗口，而是一套围绕数学建模项目组织起来的工作台：项目、题意、数据、方法、实验、图表和论文始终在同一条可复盘链路上。</p>
-              <div class="hero-actions"><button class="button button-primary" data-go="workflow">沿着真实工作流看一遍 <span>→</span></button><button class="button button-quiet" data-go="data">看数据与图表能力 <span>↘</span></button></div>
-              <div class="hero-proof-line"><span>每一张截图都来自真实软件界面</span><i></i><span>点击任意截图可放大查看</span></div>
-            </div>
-            <figure class="hero-shot reveal reveal-delay-1" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
-              <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="MModels 建模对话工作台，展示项目侧栏、任务流和题目附件" />
-              <figcaption><span>01 / 建模对话</span><strong>题目、附件、任务流和模型运行状态在一个项目里</strong></figcaption>
-            </figure>
-          </div>
-
-          <div class="metric-grid reveal reveal-delay-1">
-            <div class="metric-card"><span class="metric-label">项目上下文</span><strong>01</strong><small>从当前赛题、附件到任务记录</small></div>
-            <div class="metric-card"><span class="metric-label">工作模式</span><strong>03</strong><small>自由对话 · 写论文 · 画图 · 评审</small></div>
-            <div class="metric-card"><span class="metric-label">图表资产</span><strong>157+</strong><small>按建模表达方式组织的图表模板</small></div>
-            <div class="metric-card accent"><span class="metric-label">LOCAL-FIRST</span><strong>100%</strong><small>项目资料优先保存在本机</small></div>
-          </div>
-
-          <div class="evidence-strip reveal">
-            <div><span class="evidence-num">A</span><div><strong>先整理问题</strong><p>从题目和附件中提取变量、约束、目标与待验证假设。</p></div></div>
-            <div><span class="evidence-num">B</span><div><strong>再组织证据</strong><p>用数据体检、图表、实验记录和复现材料支撑结论。</p></div></div>
-            <div><span class="evidence-num">C</span><div><strong>最后交付</strong><p>根据比赛模板检查正文、图表、引用、页数和提交清单。</p></div></div>
-          </div>
-
-          <div class="workspace-preview reveal reveal-delay-2">
-            <div class="preview-caption"><div><span class="eyebrow">PRODUCT MAP / 01</span><h2>你看到的是一个项目，不是一次孤立的问答</h2></div><span class="preview-chip">华为杯D题 · 真实截图已接入</span></div>
-            <div class="product-map-grid">
-              <article class="map-card"><span class="map-index">01</span><h3>建模对话</h3><p>题目与附件进入项目后，所有后续分析都能回到同一个上下文。</p><button data-go="workflow">看题意如何进入工作流 →</button></article>
-              <article class="map-card"><span class="map-index">02</span><h3>比赛工作台</h3><p>赛题模板、准备度、论文文件、图表数据和提交检查集中管理。</p><button data-go="calendar">看比赛准备如何被拆解 →</button></article>
-              <article class="map-card"><span class="map-index">03</span><h3>数据与图表</h3><p>从数据文件到投稿级图表，探索结果可以直接被论文复用。</p><button data-go="data">看图表资产如何沉淀 →</button></article>
-              <article class="map-card"><span class="map-index">04</span><h3>智能体协作</h3><p>项目主助手负责汇总，题意解析员、计算实验员和资料核验员分工推进。</p><button data-go="agents">看角色如何一起工作 →</button></article>
-            </div>
-          </div>
-        </section>
-
-        <section class="view" data-panel="workflow" id="workflow">
-          <div class="section-heading reveal"><div><span class="eyebrow">02 / MODELING WORKFLOW</span><h2>从一段原题，走到一份<br /><em>可以交付的答案。</em></h2></div><p>真实截图显示，MModels 已经把“题目—数据—模型—图表—论文”拆成可以追踪的任务节点。网页用同样的顺序解释每一步产生什么。</p></div>
-          <div class="workflow-evidence reveal">
-            <div class="workflow-evidence-copy"><span class="step-label">实际工作台里的任务入口</span><h3>不是从空白聊天开始，而是先选择任务目标</h3><p>截图中的模式菜单包含自由对话、写论文、画图、评审和找数据。用户可以根据当前阶段切换任务，避免每次都重新解释项目背景。</p><ul class="detail-list"><li><b>写论文</b><span>从题目出发组织完整建模论文</span></li><li><b>画图</b><span>从数据和实验结果生成论文图表</span></li><li><b>评审</b><span>按照竞赛标准检查并给出修改建议</span></li><li><b>找数据</b><span>查找、核验并下载公开数据集</span></li></ul></div>
-            <figure class="evidence-shot" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu.png"><img src="./assets/screenshots/01-workspace/task-mode-menu.png" alt="MModels 任务模式菜单，包含自由对话、写论文、画图、评审和找数据" /><figcaption>从一个入口切换不同的建模任务</figcaption></figure>
-          </div>
-          <div class="workflow-track">
-            <article class="workflow-node reveal"><span class="node-number">01</span><span class="node-tag">FRAME</span><h3>题意解析与假设</h3><p>把自然语言拆成目标函数、约束条件、决策变量和评价指标，生成可讨论的建模地图。</p><div class="tag-row"><span>题意解析</span><span>假设清单</span><span>变量关系</span></div><div class="node-proof">真实界面：项目附件、题目上下文、已整理思路</div></article>
-            <article class="workflow-node reveal"><span class="node-number">02</span><span class="node-tag">SOLVE</span><h3>方法选型与求解复现</h3><p>从技能库和算法模板中寻找适合的方法，记录运行参数、实验结果和可复现材料。</p><div class="tag-row"><span>算法技能</span><span>实验记录</span><span>运行验证</span></div><div class="node-proof">真实界面：技能、算法与模板中可见 58 项技能</div></article>
-            <article class="workflow-node reveal"><span class="node-number">03</span><span class="node-tag">CHECK</span><h3>数据检查与稳健性</h3><p>先识别数据问题，再用图表和参数扰动检查结论是否稳定，把边界写进论文。</p><div class="tag-row"><span>数据体检</span><span>误差区间</span><span>敏感性分析</span></div><div class="node-proof">真实界面：CSV 文件、字段选择、图表类型与导出按钮</div></article>
-            <article class="workflow-node reveal"><span class="node-number">04</span><span class="node-tag">DELIVER</span><h3>论文成稿与提交检查</h3><p>把模型、图表、引用和复现材料收拢进竞赛模板，再根据提交清单逐项复核。</p><div class="tag-row"><span>论文模板</span><span>评审修改</span><span>提交检查</span></div><div class="node-proof">真实界面：比赛准备度、页数、论文文件、结论依据和提交清单</div></article>
-          </div>
-          <div class="workflow-summary reveal"><div><span class="summary-kicker">每一步都留下可继续使用的产物</span><strong>题目结构 · 候选方法 · 数据证据 · 图表资产 · 论文草稿 · 提交状态</strong></div><button class="button button-primary" data-go="agents">看多智能体如何分工 <span>→</span></button></div>
-        </section>
-
-        <section class="view" data-panel="agents" id="agents">
-          <div class="section-heading reveal"><div><span class="eyebrow">03 / AGENT COLLABORATION</span><h2>一支围绕同一项目<br /><em>并行推进的建模小组。</em></h2></div><p>截图里的协作图不是抽象概念：项目主助手负责汇总，题意解析员、计算实验员、资料核验员等角色沿着任务树接收和回传结果。</p></div>
-          <div class="agent-evidence reveal">
-            <figure class="agent-shot" data-lightbox="./assets/screenshots/03-agents/agent-workflow-graph.png"><img src="./assets/screenshots/03-agents/agent-workflow-graph.png" alt="MModels 多智能体协作工作流图，展示项目主助手、任务节点和多个专业角色" /><figcaption>一个任务拆成多个角色后，状态和派发关系仍然可见</figcaption></figure>
-            <div class="agent-evidence-copy"><span class="step-label">COLLABORATION GRAPH</span><h3>每个角色都有责任边界和回传路径</h3><p>从截图可以看到，协作工作流包含项目主助手、任务节点、计算实验员、资料核验员、题意解析员以及已经交回结果的成员。用户可以沿着连线理解：谁在做什么，结果回到哪里。</p><div class="agent-stats"><div><strong>1</strong><span>项目主助手</span></div><div><strong>多角色</strong><span>并行处理</span></div><div><strong>可追踪</strong><span>成员详情与技能调用</span></div></div></div>
-          </div>
-          <div class="agent-grid">
-            <article class="agent-card lead reveal"><div class="agent-orb">M</div><span class="agent-role">PROJECT ORCHESTRATOR</span><h3>项目主助手</h3><p>统筹本轮目标与最终结果，把题意、数据、实验和论文任务串成一条主线。</p><div class="agent-status"><i></i> 汇总项目上下文</div></article>
-            <article class="agent-card reveal"><div class="agent-orb violet">∫</div><span class="agent-role">MODEL & EXPERIMENT</span><h3>计算实验员</h3><p>接收具体分工，运行计算或命令，保存实验结果并把可复现材料回传给项目。</p><div class="agent-status"><i></i> 正在运行计算命令</div></article>
-            <article class="agent-card reveal"><div class="agent-orb gold">文</div><span class="agent-role">RESEARCH & REVIEW</span><h3>资料核验员</h3><p>检索内容、阅读资料、核对来源，让论文里的方法和数据都有可解释的出处。</p><div class="agent-status"><i></i> 等待技能调用</div></article>
-          </div>
-          <div class="collab-detail reveal"><div><span class="step-label">MEMBER DETAIL</span><h3>协作不是黑盒，成员详情会留下责任和技能记录</h3><p>真实界面可以查看成员负责人、任务描述、使用的方法以及每项技能的调用次数。对于比赛复盘和论文核验，这些记录比一句“AI 已完成”更有价值。</p></div><figure><img src="./assets/screenshots/03-agents/agent-member-detail.png" alt="MModels 智能体成员详情，展示负责人、使用的方法和技能调用记录" data-lightbox="./assets/screenshots/03-agents/agent-member-detail.png" /><figcaption>成员详情：负责人、方法、技能调用与交付状态</figcaption></figure></div>
-          <div class="view-pager reveal">
-            <span class="pager-hint">← 上一板块 · 建模工作流</span>
-            <div class="pager-actions"><button class="button button-quiet" data-pager="-1">← 上一板块</button><button class="button button-primary" data-pager="1">数据与图表 <span>→</span></button></div>
-          </div>
-        </section>
-
-        <section class="view" data-panel="data" id="data">
-          <div class="section-heading reveal"><div><span class="eyebrow">04 / DATA & CHARTS</span><h2>让数据先说清楚，<br /><em>再让模型开始推理。</em></h2></div><p>截图展示的是实际的数据与图表模块：左侧保留项目中的 CSV 文件，右侧根据字段选择绘图，并支持 PNG、SVG 和复制结果。</p></div>
-          <div class="data-evidence reveal">
-            <div class="data-evidence-copy"><span class="step-label">DATA WORKBENCH</span><h3>从文件选择到图表导出，过程都在同一页完成</h3><p>真实截图里可以看到多个 q1 数据文件和边界数据文件，用户选择折线图、X/Y 字段和指标后，图表立即反映当前项目数据。这个界面适合强调“数据和模型实验不会散落在不同工具里”。</p><div class="tool-pill-row"><span>CSV / TSV</span><span>字段选择</span><span>折线图</span><span>PNG</span><span>SVG</span><span>复制</span></div></div><figure class="data-shot" data-lightbox="./assets/screenshots/04-data/data-chart-workbench.png"><img src="./assets/screenshots/04-data/data-chart-workbench.png" alt="MModels 数据与图表工作台，展示 CSV 文件、字段选择和折线图结果" /><figcaption>真实图表工作台：文件、字段、图例和导出操作同屏</figcaption></figure>
-          </div>
-          <div class="chart-proof-grid reveal">
-            <figure><img src="./assets/screenshots/04-data/chart-gallery-flow-network.png" alt="流程和网络关系图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-flow-network.png" /><figcaption><strong>网络与资源流向</strong><span>适合路径、分配和关系结构</span></figcaption></figure>
-            <figure><img src="./assets/screenshots/04-data/chart-gallery-distribution.png" alt="分布和统计图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-distribution.png" /><figcaption><strong>数据探索与分布</strong><span>直方图、箱线图、累积分布</span></figcaption></figure>
-            <figure><img src="./assets/screenshots/04-data/chart-gallery-regression.png" alt="回归和变量关系图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-regression.png" /><figcaption><strong>变量关系与拟合</strong><span>散点、回归、相关性和误差</span></figcaption></figure>
-            <figure><img src="./assets/screenshots/04-data/chart-gallery-contour-3d.png" alt="等高线和三维图表模板" data-lightbox="./assets/screenshots/04-data/chart-gallery-contour-3d.png" /><figcaption><strong>等高线与三维表达</strong><span>优化路径、曲面、场与三维结构</span></figcaption></figure>
-          </div>
-          <div class="data-note-panel reveal"><strong>图表不是装饰，而是论文中的证据单元。</strong><span>同一份实验数据可以继续被用于模型解释、结果对比、敏感性分析和正文插图。</span><button class="button button-primary" data-go="paper">看图表如何进入论文 <span>→</span></button></div>
-        </section>
-
-        <section class="view" data-panel="paper" id="paper">
-          <div class="section-heading reveal"><div><span class="eyebrow">05 / PAPER DELIVERY</span><h2>结果不是终点，<br /><em>交付才算完成。</em></h2></div><p>比赛工作台的真实截图已经把“论文交付”拆成了可检查的项目：比赛信息、页数要求、论文文件、图表与数据、模型方案、结论依据、复现材料、技能执行和提交清单。</p></div>
-          <div class="paper-evidence reveal">
-            <figure class="paper-shot" data-lightbox="./assets/screenshots/06-competition/competition-workbench-readiness.png"><img src="./assets/screenshots/06-competition/competition-workbench-readiness.png" alt="MModels 比赛工作台，展示项目准备度和论文交付检查项" /><figcaption>比赛工作台：准备度、论文交付检查项和待补齐内容</figcaption></figure>
-            <div class="paper-evidence-copy"><span class="step-label">SUBMISSION READINESS</span><h3>把“论文写完了吗”变成逐项可检查的问题</h3><p>截图中的检查卡片把交付拆成多个具体状态：已具备、待补充、待复核。这样用户可以先找到缺口，再继续回到建模、数据或论文环节补齐证据。</p><div class="check-grid"><span>比赛信息</span><span class="warn">页数要求</span><span>论文文件</span><span>图表与数据</span><span class="warn">模型方案</span><span class="warn">结论依据</span><span>复现材料</span><span>技能执行</span><span class="warn">提交清单</span></div></div>
-          </div>
-          <div class="paper-flow reveal"><div class="pipeline-step"><span>01</span><strong>确定赛事模板</strong><small>队伍、页数、正文范围</small></div><div class="pipeline-step"><span>02</span><strong>沉淀模型证据</strong><small>结果、图表、复现材料</small></div><div class="pipeline-step"><span>03</span><strong>生成论文内容</strong><small>摘要、正文、图表说明</small></div><div class="pipeline-step active"><span>04</span><strong>提交前复核</strong><small>格式、引用、清单</small></div></div>
-          <div class="paper-two-up reveal"><figure><img src="./assets/screenshots/06-competition/competition-info-modal.png" alt="MModels 比赛信息设置窗口，展示论文模板、参赛队号和页数要求" data-lightbox="./assets/screenshots/06-competition/competition-info-modal.png" /><figcaption><strong>赛事信息先设定，后续检查才有依据</strong><span>论文模板、参赛队号、页数与正文范围</span></figcaption></figure><figure><img src="./assets/screenshots/07-misc/skills-algorithms-templates.png" alt="MModels 技能、算法与模板页面，展示 abstract-writer 和数据审计技能" data-lightbox="./assets/screenshots/07-misc/skills-algorithms-templates.png" /><figcaption><strong>技能库把复杂方法变成可调用的项目能力</strong><span>摘要写作、数据审计、引用管理、竞赛检查</span></figcaption></figure></div>
-        </section>
-
-        <section class="view" data-panel="calendar" id="calendar">
-          <div class="section-heading reveal"><div><span class="eyebrow">06 / COMPETITION RHYTHM</span><h2>把全年比赛，<br /><em>排成一条可执行的节奏。</em></h2></div><p>真实产品里已经有比赛工作台和新手教程。营销页面要把它们解释为一条完整的备赛路径，而不是单独的日历功能。</p></div>
-          <div class="calendar-evidence reveal"><figure><img src="./assets/screenshots/01-workspace/onboarding-tutorials.png" alt="MModels 新手教程，展示从新建项目到提交前检查的完整路线" data-lightbox="./assets/screenshots/01-workspace/onboarding-tutorials.png" /><figcaption>新手路线：新建项目、录入比赛信息、导入题目与数据、拆题建模、图表论文、提交前检查</figcaption></figure><div class="calendar-evidence-copy"><span class="step-label">FROM FIRST OPEN TO COMPETITION DELIVERY</span><h3>让第一次使用也有一条清晰的路线</h3><p>截图里的新手教程已经把产品使用过程拆成 7 个入口：快速开始、选择任务模式、使用比赛模板、使用科研绘图模板、使用 Skills、多智能体和管理本地论文库。</p><ol class="route-list"><li><b>建立项目</b><span>保存比赛信息和附件</span></li><li><b>进入工作流</b><span>选择写论文、画图、评审或找数据</span></li><li><b>积累资产</b><span>把图表、论文和复盘留在本地项目里</span></li></ol></div></div>
-          <div class="event-grid reveal"><article class="event-card past"><div class="event-month">01</div><div><span class="event-type">准备</span><h3>确定比赛模板</h3><p>队伍信息、页数要求、论文范围和交付标准。</p></div><span class="event-state">项目建立</span></article><article class="event-card"><div class="event-month">02</div><div><span class="event-type">拆题</span><h3>导入题目与数据</h3><p>把附件、数据、假设和任务分工放进同一上下文。</p></div><span class="event-state">工作流启动</span></article><article class="event-card active"><div class="event-month">03</div><div><span class="event-type">建模</span><h3>实验、图表与复现</h3><p>用候选方法、数据图表和实验记录支撑结论。</p></div><span class="event-state">证据沉淀</span></article><article class="event-card"><div class="event-month">04</div><div><span class="event-type">交付</span><h3>论文检查与复盘</h3><p>按提交清单补齐缺口，再把项目留下供下一次复用。</p></div><span class="event-state">准备提交</span></article></div>
-          <div class="settings-note reveal"><div><span class="step-label">YOUR WORKSPACE, YOUR RHYTHM</span><h3>从外观到任务深度，都可以按自己的建模习惯调整</h3><p>软件还提供任务深度、技能自动选择、协作规模、主题和桌面小模等设置。营销页面会把这些放在“可持续使用”的产品能力里，而不是当成孤立的设置项。</p></div><div class="settings-thumbs"><img src="./assets/screenshots/07-misc/quality-delivery-settings.png" alt="建模质量与交付设置" data-lightbox="./assets/screenshots/07-misc/quality-delivery-settings.png" /><img src="./assets/screenshots/07-misc/appearance-desktop-widget.png" alt="界面与桌面小模设置" data-lightbox="./assets/screenshots/07-misc/appearance-desktop-widget.png" /></div></div>
-        </section>
-      </div>
-
-      <footer class="product-footer"><span>© 2026 MModels · Built for modelers</span><span>本地数学建模智能工作台</span><a href="https://github.com/taarseho-bit/Mmodels" target="_blank" rel="noreferrer">GitHub ↗</a></footer>
-    </main>
+<section class="hero" id="top">
+  <div class="hero-inner reveal is-visible">
+    <p class="eyebrow">为数学建模竞赛而生的桌面工作台</p>
+    <h1>一道题，一支队伍，<br /><em>一篇可以直接交的论文。</em></h1>
+    <p class="hero-sub">把赛题放进 MModels，一支多智能体队伍立刻开工：读题、找数据、选方法、求解、绘图、写论文、核引用、查交付——每一步做了什么、用了谁、交回什么，全部摆在你眼前。</p>
+    <div class="hero-cta">
+      <a class="btn-primary" href="#start">看看它是怎么干活的</a>
+      <a class="btn-ghost" href="#agents">先看这支队伍</a>
+    </div>
+    <p class="hero-note">以下所有截图均来自软件真实运行画面 · 浅色界面 · 中文优先</p>
   </div>
+</section>
 
-  <div class="lightbox" id="lightbox" aria-hidden="true"><button class="lightbox-close" aria-label="关闭图片">×</button><img alt="" /><p></p></div>
-  <script src="./main.js"></script>
+<main class="chapters">
+
+  <!-- 01 开局 -->
+  <section class="chapter" id="start">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">壹</span>
+      <div>
+        <h2>开局：把题目放进来，家就安好了</h2>
+        <p>新建一个项目，题目 PDF、数据文件、代码、论文全部归拢在一处。左侧是项目与任务，右侧是文件与版本——不用再管理一堆散落的文件夹。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
+      <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="建模对话主界面：项目侧栏、赛题附件、对话与任务入口" />
+      <figcaption>建模对话主界面：题目、附件、讨论、任务状态都在一个项目里</figcaption>
+    </figure>
+    <div class="shot-grid">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/menu-project.png">
+        <img src="./assets/screenshots/01-workspace/menu-project.png" alt="项目切换菜单" />
+        <figcaption>多个项目随时切换，每题一个独立空间</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/search-inline.png">
+        <img src="./assets/screenshots/01-workspace/search-inline.png" alt="工作项目栏内的小搜索框" />
+        <figcaption>项目和任务太多？就地搜一下</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/onboarding-tutorials.png">
+        <img src="./assets/screenshots/01-workspace/onboarding-tutorials.png" alt="新手教程：从新建项目到提交前检查" />
+        <figcaption>第一次用？新手教程带你从建项目走到交论文</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/dialog-contest-info.png">
+        <img src="./assets/screenshots/01-workspace/dialog-contest-info.png" alt="比赛信息弹窗：模板、页数要求、参赛信息" />
+        <figcaption>填一次比赛信息，页数与格式检查全有依据</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 02 # 任务面板 -->
+  <section class="chapter" id="hash">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">贰</span>
+      <div>
+        <h2>一个 #，选定这一轮的打法</h2>
+        <p>不用记指令。在输入框打一个 <b>#</b>，全部任务一列排开：全流程论文写作固定置顶，参赛冲刺、图表工坊、评阅诊断、数据勘探，以及摘要、文献、页数核验这些细分活儿。方向键选、回车确认。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/01-workspace/hash-palette-live.png">
+      <img src="./assets/screenshots/01-workspace/hash-palette-live.png" alt="输入 # 唤起任务面板，细分任务一列排开" />
+      <figcaption>输入 # 的瞬间：这一轮能做的所有事，一目了然</figcaption>
+    </figure>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu.png">
+      <img src="./assets/screenshots/01-workspace/task-mode-menu.png" alt="# 任务面板：全流程论文写作置顶，22 项任务可选" />
+      <figcaption>全流程论文写作永远置顶；往下是十几项细分任务</figcaption>
+    </figure>
+  </section>
+
+  <!-- 03 模型与决策 -->
+  <section class="chapter" id="decide">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">叁</span>
+      <div>
+        <h2>用哪个模型、做多细、谁说了算，都摆在台面上</h2>
+        <p>模型、思考强度、任务深度、决策方式、文件权限——每个按钮点开都有明确的选项，不用去猜软件会怎么干。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/01-workspace/live-run-model-picker.png">
+      <img src="./assets/screenshots/01-workspace/live-run-model-picker.png" alt="任务运行中：模型切换与思考强度调节" />
+      <figcaption>任务跑一半也能换模型、调思考强度——从快答到极深思考</figcaption>
+    </figure>
+    <div class="shot-grid">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/menu-model.png">
+        <img src="./assets/screenshots/01-workspace/menu-model.png" alt="模型选择菜单" />
+        <figcaption>换模型，一步到位</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/menu-quality.png">
+        <img src="./assets/screenshots/01-workspace/menu-quality.png" alt="任务深度菜单：快速/标准/深度" />
+        <figcaption>这轮做多细：快速出思路，深度交论文</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/menu-decision.png">
+        <img src="./assets/screenshots/01-workspace/menu-decision.png" alt="决策方式菜单：先规划/人工精细建模/AI 全流程自动" />
+        <figcaption>关键决策听你的，还是 AI 全程自动——你说了算</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/menu-permission.png">
+        <img src="./assets/screenshots/01-workspace/menu-permission.png" alt="文件权限菜单：完全访问/需批准" />
+        <figcaption>文件权限明明白白，改你盘里的东西前先问你</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 04 多智能体 -->
+  <section class="chapter chapter-highlight" id="agents">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">肆</span>
+      <div>
+        <h2>一支看不见的队伍，正在替你分工</h2>
+        <p>复杂的任务不再是单打独斗：主助手把题目拆开，题意解析、数据勘探、文献调研、建模求解、灵敏度核验、制图、写论文、核引用、交付检查——每位成员做什么、用了哪些方法、交回了什么，图上清清楚楚。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/03-agents/live-collab-tasks.png">
+      <img src="./assets/screenshots/03-agents/live-collab-tasks.png" alt="真实运行现场：协作组两位成员分头核对，任务清单逐项推进" />
+      <figcaption>真实任务现场：协作组分头核对，任务清单一项项打钩</figcaption>
+    </figure>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/03-agents/agents-all-19.png">
+      <img src="./assets/screenshots/03-agents/agents-all-19.png" alt="多智能体协作全景：19 名成员全员交回" />
+      <figcaption>一整轮比赛下来：19 名成员、31 位交回、33 项技能与流程、37 份文件成果</figcaption>
+    </figure>
+    <div class="shot-grid">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/03-agents/agents-colored.png">
+        <img src="./assets/screenshots/03-agents/agents-colored.png" alt="按成员着色的协作图" />
+        <figcaption>成员按职能着色，谁是谁一眼分明</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/03-agents/agent-member-zoom.png">
+        <img src="./assets/screenshots/03-agents/agent-member-zoom.png" alt="成员节点放大特写与详情面板" />
+        <figcaption>放大任何一位成员：负责什么、用了什么技能、调用了多少次</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/03-agents/agent-member-panel.png">
+        <img src="./assets/screenshots/03-agents/agent-member-panel.png" alt="成员详情侧栏：使用的方法与工作记录" />
+        <figcaption>详情面板里连用了哪个技能文件都有据可查</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 05 工作流 -->
+  <section class="chapter" id="workflow">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">伍</span>
+      <div>
+        <h2>工作流：谁在工作、交回了什么，全部可回放</h2>
+        <p>演示视图讲给队友和评委听，分析视图给你自己复盘：这轮调用了哪些技能、推进到哪一步、卡在哪里——不是黑盒。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/02-workflow/workflow-analysis-skills.png">
+      <img src="./assets/screenshots/02-workflow/workflow-analysis-skills.png" alt="分析视图：本轮调用技能、推进步骤与成员图" />
+      <figcaption>分析视图：技能调用统计 + 推进步骤 + 成员图，一次看全</figcaption>
+    </figure>
+    <div class="shot-grid">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/02-workflow/workflow-demo-view.png">
+        <img src="./assets/screenshots/02-workflow/workflow-demo-view.png" alt="演示视图：面向展示的协作工作图" />
+        <figcaption>演示视图：收起无关细节，直接讲给队友听</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/02-workflow/workflow-analysis-view.png">
+        <img src="./assets/screenshots/02-workflow/workflow-analysis-view.png" alt="分析视图：实际技能与工作记录" />
+        <figcaption>分析视图：显示实际技能与工作记录</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/02-workflow/workflow-node-details.png">
+        <img src="./assets/screenshots/02-workflow/workflow-node-details.png" alt="工作流节点详情面板" />
+        <figcaption>点开任意节点：工作记录逐条展开</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/01-workspace/chat-running.png">
+        <img src="./assets/screenshots/01-workspace/chat-running.png" alt="任务运行中：停止按钮与进行中的公式、表格" />
+        <figcaption>对话里实时长出公式和表格，随时可以喊停</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 06 数据绘图 -->
+  <section class="chapter" id="data">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">陆</span>
+      <div>
+        <h2>数据放进来，图就出来了</h2>
+        <p>把 CSV 交给它：左侧选文件，右侧立刻出图；X 轴 Y 轴随意换，折线、散点、箱线随你挑——不用写一行画图代码。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/04-data/data-plot-from-data.png">
+      <img src="./assets/screenshots/04-data/data-plot-from-data.png" alt="数据绘图：选择 CSV 与字段后自动渲染折线图" />
+      <figcaption>选一份 CSV、勾几个字段，图就画好了——还能一键导出 PNG/SVG</figcaption>
+    </figure>
+    <div class="shot-grid">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/data-plot-second.png">
+        <img src="./assets/screenshots/04-data/data-plot-second.png" alt="另一份数据的绘图" />
+        <figcaption>换个文件换个字段，几秒钟一张新图</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/data-project-database.png">
+        <img src="./assets/screenshots/04-data/data-project-database.png" alt="当前项目数据列表" />
+        <figcaption>项目里有哪些数据，这里全列着</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/data-csv-preview.png">
+        <img src="./assets/screenshots/04-data/data-csv-preview.png" alt="CSV 表格预览" />
+        <figcaption>先看数据长什么样，再决定怎么画</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/data-csv-1.png">
+        <img src="./assets/screenshots/04-data/data-csv-1.png" alt="数据文件预览" />
+        <figcaption>每一列都被读懂，画图才有依据</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 07 图表库 -->
+  <section class="chapter" id="gallery">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">柒</span>
+      <div>
+        <h2>图表库：建模论文里常见的图，这里都有样板</h2>
+        <p>不知道该画什么图？按建模场景挑：流程、分布、回归、相关、预测、比较、评价、网络、三维、层级——选一张就是起点。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/04-data/chart-gallery-overview.png">
+      <img src="./assets/screenshots/04-data/chart-gallery-overview.png" alt="图表库总览：按建模场景分类" />
+      <figcaption>图表库总览：十类建模场景，按需挑图</figcaption>
+    </figure>
+    <div class="shot-grid gallery-wall">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-flow-chart.png"><img src="./assets/screenshots/04-data/gallery-flow-chart.png" alt="流程类图表" /><figcaption>建模流程图</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-distribution.png"><img src="./assets/screenshots/04-data/gallery-distribution.png" alt="分布类图表" /><figcaption>数据探索与分布</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-regression.png"><img src="./assets/screenshots/04-data/gallery-regression.png" alt="回归类图表" /><figcaption>变量关系与拟合</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-correlation-matrix.png"><img src="./assets/screenshots/04-data/gallery-correlation-matrix.png" alt="相关矩阵图表" /><figcaption>相关与矩阵</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-trend-forecast.png"><img src="./assets/screenshots/04-data/gallery-trend-forecast.png" alt="趋势预测图表" /><figcaption>趋势与预测</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-comparison.png"><img src="./assets/screenshots/04-data/gallery-comparison.png" alt="比较类图表" /><figcaption>比较与构成</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-evaluation.png"><img src="./assets/screenshots/04-data/gallery-evaluation.png" alt="综合评价图表" /><figcaption>综合评价与决策</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-network-flow.png"><img src="./assets/screenshots/04-data/gallery-network-flow.png" alt="网络流向图表" /><figcaption>网络与资源流向</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-contour-3d.png"><img src="./assets/screenshots/04-data/gallery-contour-3d.png" alt="等高线与三维图表" /><figcaption>等高线、场与三维</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/04-data/gallery-hierarchy.png"><img src="./assets/screenshots/04-data/gallery-hierarchy.png" alt="层级图表" /><figcaption>层级与分解</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- 08 论文交付 -->
+  <section class="chapter" id="paper">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">捌</span>
+      <div>
+        <h2>论文成稿：写出来、查一遍、交出去</h2>
+        <p>论文库收着你的成稿与投稿状态；比赛信息决定页数与格式；分享弹窗把优秀论文归档成团队的参考资产。</p>
+      </div>
+    </div>
+    <div class="shot-grid two">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/05-paper/paper-library.png">
+        <img src="./assets/screenshots/05-paper/paper-library.png" alt="论文库" />
+        <figcaption>论文库：成稿、状态、往届优秀论文都在这</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/05-paper/paper-share-dialog.png">
+        <img src="./assets/screenshots/05-paper/paper-share-dialog.png" alt="上传优秀论文分享弹窗" />
+        <figcaption>好论文传上去，全队都看得见</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 09 比赛节奏 -->
+  <section class="chapter" id="contest">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">玖</span>
+      <div>
+        <h2>比赛节奏：日历提醒、交付检查，一条线管到底</h2>
+        <p>竞赛日历盯着报名时间与截止点；比赛工作台把「论文完成了吗」拆成一项项可检查的状态——缺什么回哪里补。</p>
+      </div>
+    </div>
+    <div class="shot-grid two">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/06-competition/competition-calendar.png">
+        <img src="./assets/screenshots/06-competition/competition-calendar.png" alt="竞赛日历月视图" />
+        <figcaption>日历视图：报名时间、截止点一目了然</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/06-competition/competition-calendar-list.png">
+        <img src="./assets/screenshots/06-competition/competition-calendar-list.png" alt="竞赛日历列表视图" />
+        <figcaption>列表视图：按时间排的比赛清单</figcaption>
+      </figure>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/06-competition/competition-workbench-details.png">
+      <img src="./assets/screenshots/06-competition/competition-workbench-details.png" alt="比赛工作台：交付检查明细" />
+      <figcaption>比赛工作台：准备度、交付检查、结论依据逐项过</figcaption>
+    </figure>
+  </section>
+
+  <!-- 10 自动化 -->
+  <section class="chapter" id="auto">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">拾</span>
+      <div>
+        <h2>自动化：定时的活儿，交给定时器</h2>
+        <p>每日数据复盘、每周论文进度检查——排好时间表，到点自己跑；跑没跑成、跑了多久，历史记录都在。</p>
+      </div>
+    </div>
+    <div class="shot-grid two">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/automation-tasks.png">
+        <img src="./assets/screenshots/07-misc/automation-tasks.png" alt="自动化任务列表" />
+        <figcaption>比赛提醒与自动化：把重复劳动排进日程</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/automation-runs.png">
+        <img src="./assets/screenshots/07-misc/automation-runs.png" alt="自动化运行历史" />
+        <figcaption>运行历史：成败与耗时都有记录</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 11 编辑器 -->
+  <section class="chapter" id="editor">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">拾壹</span>
+      <div>
+        <h2>编辑器视图：代码和论文并排放着改</h2>
+        <p>一键切进编辑器布局：文件树、代码区、对话同屏——代码有代码的颜色，文档有文档的样子，改完直接跑。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/01-workspace/editor-view.png">
+      <img src="./assets/screenshots/01-workspace/editor-view.png" alt="编辑器视图：文件树、语法高亮代码区与对话列" />
+      <figcaption>编辑器视图：左边看文件，右边聊着改——代码高亮、公式渲染都在</figcaption>
+    </figure>
+  </section>
+
+  <!-- 12 算法库 -->
+  <section class="chapter" id="algo">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">拾贰</span>
+      <div>
+        <h2>算法与模板：建模的老朋友，都在库里</h2>
+        <p>线性规划、遗传算法、AHP、TOPSIS、灰色预测、ARIMA……二十多个常用方法按场景分好类，依赖是否就绪一目了然；还有技能、模板、连接器随时可装。</p>
+      </div>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/07-misc/algorithms-library.png">
+      <img src="./assets/screenshots/07-misc/algorithms-library.png" alt="算法库：29 个建模算法按场景分类" />
+      <figcaption>算法库：按「决策评价 / 预测拟合 / 优化配置」分类，依赖状态透明</figcaption>
+    </figure>
+    <div class="shot-grid">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/extensions-skills.png">
+        <img src="./assets/screenshots/07-misc/extensions-skills.png" alt="技能扩展页" />
+        <figcaption>技能库：论文写作、绘图、审计各就各位</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/extensions-algorithms.png">
+        <img src="./assets/screenshots/07-misc/extensions-algorithms.png" alt="算法扩展页" />
+        <figcaption>算法页：每个方法附适用场景说明</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/extensions-templates.png">
+        <img src="./assets/screenshots/07-misc/extensions-templates.png" alt="模板扩展页" />
+        <figcaption>模板页：国赛美赛论文模板即装即用</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 13 偏好 -->
+  <section class="chapter" id="settings">
+    <div class="chapter-head reveal">
+      <span class="chapter-no">拾叁</span>
+      <div>
+        <h2>偏好：从模型到桌面小模，全按你的习惯来</h2>
+        <p>十六个设置分区覆盖所有偏好——每个开关都有说明，改完立刻生效。</p>
+      </div>
+    </div>
+    <div class="shot-grid settings-wall">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-paper-rules.png"><img src="./assets/screenshots/07-misc/settings-paper-rules.png" alt="论文默认规则设置" /><figcaption>论文默认规则</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-quality-delivery.png"><img src="./assets/screenshots/07-misc/settings-quality-delivery.png" alt="建模质量与交付设置" /><figcaption>建模质量与交付</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-model.png"><img src="./assets/screenshots/07-misc/settings-model.png" alt="模型与思考强度设置" /><figcaption>模型与思考强度</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-providers.png"><img src="./assets/screenshots/07-misc/settings-providers.png" alt="模型供应商设置" /><figcaption>模型供应商</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-chat.png"><img src="./assets/screenshots/07-misc/settings-chat.png" alt="对话与协作设置" /><figcaption>对话与协作</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-sysprompt.png"><img src="./assets/screenshots/07-misc/settings-sysprompt.png" alt="高级提示词设置" /><figcaption>高级提示词</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-environment.png"><img src="./assets/screenshots/07-misc/settings-environment.png" alt="公共环境与项目依赖设置" /><figcaption>公共环境与依赖</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-network.png"><img src="./assets/screenshots/07-misc/settings-network.png" alt="网络连接设置" /><figcaption>网络连接（高级）</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-automation.png"><img src="./assets/screenshots/07-misc/settings-automation.png" alt="比赛提醒与自动化设置" /><figcaption>比赛提醒与自动化</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-notify.png"><img src="./assets/screenshots/07-misc/settings-notify.png" alt="通知设置" /><figcaption>通知</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-competitions.png"><img src="./assets/screenshots/07-misc/settings-competitions.png" alt="竞赛日历设置" /><figcaption>竞赛日历</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-keybindings.png"><img src="./assets/screenshots/07-misc/settings-keybindings.png" alt="快捷键设置" /><figcaption>快捷键</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-profile-stats.png"><img src="./assets/screenshots/07-misc/settings-profile-stats.png" alt="使用统计" /><figcaption>使用统计</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-tour.png"><img src="./assets/screenshots/07-misc/settings-tour.png" alt="新手教程设置" /><figcaption>新手教程</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-about.png"><img src="./assets/screenshots/07-misc/settings-about.png" alt="关于与诊断" /><figcaption>关于与诊断</figcaption></figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-appearance.png"><img src="./assets/screenshots/07-misc/settings-appearance.png" alt="界面与外观设置" /><figcaption>界面与外观</figcaption></figure>
+    </div>
+    <div class="shot-grid two">
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/settings-pet-characters.png">
+        <img src="./assets/screenshots/07-misc/settings-pet-characters.png" alt="桌面小模角色选择：漫画研究员、太空建模员、3D 猫头鹰教授等" />
+        <figcaption>桌面小模：六位陪伴角色，陪你熬夜赶 DDL</figcaption>
+      </figure>
+      <figure class="shot-card reveal" data-lightbox="./assets/screenshots/07-misc/desktop-pet-window.png">
+        <img src="./assets/screenshots/07-misc/desktop-pet-window.png" alt="桌面小模独立窗口" />
+        <figcaption>小模独立成窗，挂在桌角陪你干活</figcaption>
+      </figure>
+    </div>
+    <figure class="shot-main reveal" data-lightbox="./assets/screenshots/07-misc/settings-appearance-bottom.png">
+      <img src="./assets/screenshots/07-misc/settings-appearance-bottom.png" alt="外观设置下半部分" />
+      <figcaption>主题、字体、动作频率——界面也要顺眼</figcaption>
+    </figure>
+  </section>
+
+  <!-- 结尾 -->
+  <section class="ending reveal">
+    <h2>从今晚拿到题目，<br />到后天早上交出论文。</h2>
+    <p>把题目放进 MModels，剩下的路，让它陪你一起走。</p>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <span>MModels · 数学建模竞赛工作台</span>
+  <span>页面中的全部截图均来自软件真实运行画面</span>
+</footer>
+
+<div class="lightbox" id="lightbox" aria-hidden="true">
+  <img src="" alt="截图放大查看" />
+</div>
+
+<script src="./main.js"></script>
 </body>
 </html>
