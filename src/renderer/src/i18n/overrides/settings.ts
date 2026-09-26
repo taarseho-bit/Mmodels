@@ -4,7 +4,7 @@ export const settingsOv: Record<string, string> = {
   '正在加载设置…': 'Loading settings…',
   '没有匹配的设置项': 'No matching settings',
   '显示名': 'Display name',
-  '永久 VIP · 本地版': 'Lifetime VIP · Local edition',
+  '普通用户 · 本地版': 'Standard user · Local edition',
   '数据不出本机': 'Data never leaves this machine',
   '{{n}} 天': '{{n}} days',
   '暂无数据 —— 开始第一次对话后这里会长出一片草原。':
