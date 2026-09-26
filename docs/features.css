@@ -96,7 +96,7 @@ body {
 /* ── 切换入口 ── */
 .lsb-switch {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
   padding: 0 2px;
 }

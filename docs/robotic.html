@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#05070b" />
+<meta name="description" content="MModels 数学建模竞赛工作台 · 系统运行日志：一支多智能体机组如何完成读题、建模、绘图、成稿、交付的完整记录。" />
+<title>MModels 运行日志 · 机组工作叙述</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./robotic.css" />
+</head>
+<body id="top">
+
+<canvas class="rain" id="rain" aria-hidden="true"></canvas>
+
+<div class="layout">
+
+  <!-- ==================== 左侧栏 ==================== -->
+  <aside class="lsb">
+    <div class="lsb-inner">
+      <a class="lsb-brand" href="index.html">
+        <span class="lsb-mark">Σ</span>
+        <b>MModels::LOG</b>
+        <small>数学建模竞赛工作台 · 运行日志</small>
+      </a>
+
+      <div class="lsb-switch" role="group" aria-label="页面风格切换">
+        <a class="lsb-switch-item" href="index.html">叙述版</a>
+        <a class="lsb-switch-item" href="features.html">功能清单</a>
+        <a class="lsb-switch-item" href="binary.html">二进制版</a>
+        <a class="lsb-switch-item is-active" href="robotic.html">机器人叙述</a>
+      </div>
+
+      <nav class="lsb-nav" aria-label="功能章节">
+        <a href="#boot">BOOT · 开局</a>
+        <a href="#palette">TASK · 任务面板</a>
+        <a href="#decide">CFG · 决策配置</a>
+        <a href="#agents">CREW · 机组</a>
+        <a href="#workflow">FLOW · 工作流</a>
+        <a href="#data">DATA · 数据绘图</a>
+        <a href="#gallery">GALLERY · 图表库</a>
+        <a href="#paper">OUTPUT · 论文交付</a>
+        <a href="#contest">CLOCK · 竞赛日历</a>
+        <a href="#auto">CRON · 自动化</a>
+        <a href="#editor">EDIT · 编辑器</a>
+        <a href="#algo">LIB · 算法库</a>
+        <a href="#settings">PREF · 偏好</a>
+      </nav>
+
+      <div class="lsb-foot">
+        <a href="index.html">← 返回叙述版</a>
+        <span>LOG v1.0 · ALL CAPTURES FROM LIVE APP</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ==================== 正文 ==================== -->
+  <main class="content">
+
+    <!-- HERO -->
+    <section class="hero" id="top">
+      <div class="hero-inner">
+        <p class="eyebrow">[BOOT] 数学建模竞赛工作台 · 系统日志</p>
+        <h1>题目进入系统，<br /><em>机组开始运转。</em></h1>
+        <p class="hero-sub">一份赛题被投入 MModels 后，一支多智能体机组自动分配任务：解析题意、勘探数据、选择方法、建立模型、求解计算、绘制图表、撰写论文、核验引用、检查交付。每一步的执行者、所用工具与交回结果，均记录在案。</p>
+        <div class="hero-cta">
+          <a class="btn-primary" href="#boot">[启动] 查看工作日志</a>
+          <a class="btn-ghost" href="#agents">[CREW] 查看机组名单</a>
+        </div>
+        <p class="hero-note">[SYS] 全部截图来自软件真实运行画面 · 浅色界面 · 中文优先</p>
+      </div>
+    </section>
+
+    <main class="chapters">
+
+      <!-- 01 开局 -->
+      <section class="chapter" id="boot">
+        <div class="chapter-head">
+          <span class="chapter-no">[01]</span>
+          <div>
+            <h2>开局：题目进入系统，空间建立</h2>
+            <p>系统为每一道赛题建立独立工作空间。题目 PDF、数据文件、代码、论文统一收纳；左侧为项目与任务索引，右侧为文件与版本记录。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
+          <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="建模对话主界面：项目侧栏、赛题附件、对话与任务入口" />
+          <figcaption>[REPORT] 建模对话主界面：题目、附件、讨论、任务状态集中于一项目</figcaption>
+        </figure>
+        <div class="shot-grid">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/menu-project.png">
+            <img src="./assets/screenshots/01-workspace/menu-project.png" alt="项目切换菜单" />
+            <figcaption>[OK] 多项目并行切换，每题独立空间</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/search-inline.png">
+            <img src="./assets/screenshots/01-workspace/search-inline.png" alt="工作项目栏内的小搜索框" />
+            <figcaption>[OK] 项目与任务就地检索</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/onboarding-tutorials.png">
+            <img src="./assets/screenshots/01-workspace/onboarding-tutorials.png" alt="新手教程：从新建项目到提交前检查" />
+            <figcaption>[OK] 新手引导：建项目 → 写论文 → 提交检查</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/dialog-contest-info.png">
+            <img src="./assets/screenshots/01-workspace/dialog-contest-info.png" alt="比赛信息弹窗：模板、页数要求、参赛信息" />
+            <figcaption>[OK] 比赛信息登记：模板、页数要求集中维护</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 02 任务面板 -->
+      <section class="chapter" id="palette">
+        <div class="chapter-head">
+          <span class="chapter-no">[02]</span>
+          <div>
+            <h2>任务面板：一个符号，唤出一轮指令</h2>
+            <p>在输入框键入 <b class="hl">#</b>，系统列出本轮可执行的全部任务：全流程论文写作置顶，参赛冲刺、图表工坊、评阅诊断、数据勘探、摘要、文献、页数核验等细分指令。方向键选择，回车确认。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/01-workspace/hash-palette-live.png">
+          <img src="./assets/screenshots/01-workspace/hash-palette-live.png" alt="输入 # 唤起任务面板，细分任务一列排开" />
+          <figcaption>[EVENT] 输入 # 的瞬间：本轮全部指令列表</figcaption>
+        </figure>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/01-workspace/task-mode-menu.png">
+          <img src="./assets/screenshots/01-workspace/task-mode-menu.png" alt="# 任务面板：全流程论文写作置顶，22 项任务可选" />
+          <figcaption>[LIST] 全流程论文写作置顶，其后为细分指令</figcaption>
+        </figure>
+      </section>
+
+      <!-- 03 模型与决策 -->
+      <section class="chapter" id="decide">
+        <div class="chapter-head">
+          <span class="chapter-no">[03]</span>
+          <div>
+            <h2>决策配置：模型、深度、权限全部可调</h2>
+            <p>模型、思考强度、任务深度、决策方式、文件权限——每项参数均有明确选项，运行中可动态调整。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/01-workspace/live-run-model-picker.png">
+          <img src="./assets/screenshots/01-workspace/live-run-model-picker.png" alt="任务运行中：模型切换与思考强度调节" />
+          <figcaption>[RUNNING] 任务执行中可切换模型、调节思考强度</figcaption>
+        </figure>
+        <div class="shot-grid">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/menu-model.png">
+            <img src="./assets/screenshots/01-workspace/menu-model.png" alt="模型选择菜单" />
+            <figcaption>[CFG] 模型选择</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/menu-quality.png">
+            <img src="./assets/screenshots/01-workspace/menu-quality.png" alt="任务深度菜单：快速/标准/深度" />
+            <figcaption>[CFG] 任务深度：快速 / 标准 / 深度</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/menu-decision.png">
+            <img src="./assets/screenshots/01-workspace/menu-decision.png" alt="决策方式菜单：先规划/人工精细建模/AI 全流程自动" />
+            <figcaption>[CFG] 决策方式：先规划 / 人工精细 / AI 自动</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/menu-permission.png">
+            <img src="./assets/screenshots/01-workspace/menu-permission.png" alt="文件权限菜单：完全访问/需批准" />
+            <figcaption>[CFG] 文件权限：完全访问 / 需批准</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 04 多智能体 -->
+      <section class="chapter" id="agents">
+        <div class="chapter-head">
+          <span class="chapter-no">[04]</span>
+          <div>
+            <h2>机组：一支看不见的队伍，分工明确</h2>
+            <p>主助手将复杂任务拆分，分发给机组各成员：题意解析、数据勘探、文献调研、建模求解、灵敏度核验、制图、写论文、核引用、交付检查。每位成员职责、所用方法与交回结果全程记录。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/03-agents/live-collab-tasks.png">
+          <img src="./assets/screenshots/03-agents/live-collab-tasks.png" alt="真实运行现场：协作组两位成员分头核对，任务清单逐项推进" />
+          <figcaption>[RUNNING] 协作机组分头核对，任务清单逐项推进</figcaption>
+        </figure>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/03-agents/agents-all-19.png">
+          <img src="./assets/screenshots/03-agents/agents-all-19.png" alt="多智能体协作全景：19 名成员全员交回" />
+          <figcaption>[SUMMARY] 一轮比赛：19 名成员、31 位交回、33 项技能与流程、37 份文件成果</figcaption>
+        </figure>
+        <div class="shot-grid">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/03-agents/agents-colored.png">
+            <img src="./assets/screenshots/03-agents/agents-colored.png" alt="按成员着色的协作图" />
+            <figcaption>[MAP] 成员按职能着色</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/03-agents/agent-member-zoom.png">
+            <img src="./assets/screenshots/03-agents/agent-member-zoom.png" alt="成员节点放大特写与详情面板" />
+            <figcaption>[DETAIL] 成员节点特写：职责、技能、调用次数</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/03-agents/agent-member-panel.png">
+            <img src="./assets/screenshots/03-agents/agent-member-panel.png" alt="成员详情侧栏：使用的方法与工作记录" />
+            <figcaption>[LOG] 详情面板：使用技能文件与工作记录</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 05 工作流 -->
+      <section class="chapter" id="workflow">
+        <div class="chapter-head">
+          <span class="chapter-no">[05]</span>
+          <div>
+            <h2>工作流：谁在工作、交回了什么，可回放</h2>
+            <p>演示视图用于向队友与评委展示协作过程；分析视图用于复盘：本轮调用的技能、推进步骤与停留位置。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/02-workflow/workflow-analysis-skills.png">
+          <img src="./assets/screenshots/02-workflow/workflow-analysis-skills.png" alt="分析视图：本轮调用技能、推进步骤与成员图" />
+          <figcaption>[TRACE] 分析视图：技能调用统计 + 推进步骤 + 成员图</figcaption>
+        </figure>
+        <div class="shot-grid">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/02-workflow/workflow-demo-view.png">
+            <img src="./assets/screenshots/02-workflow/workflow-demo-view.png" alt="演示视图：面向展示的协作工作图" />
+            <figcaption>[VIEW] 演示视图：面向展示的协作工作图</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/02-workflow/workflow-analysis-view.png">
+            <img src="./assets/screenshots/02-workflow/workflow-analysis-view.png" alt="分析视图：实际技能与工作记录" />
+            <figcaption>[VIEW] 分析视图：实际技能与工作记录</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/02-workflow/workflow-node-details.png">
+            <img src="./assets/screenshots/02-workflow/workflow-node-details.png" alt="工作流节点详情面板" />
+            <figcaption>[DETAIL] 节点详情：工作记录逐条展开</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/01-workspace/chat-running.png">
+            <img src="./assets/screenshots/01-workspace/chat-running.png" alt="任务运行中：停止按钮与进行中的公式、表格" />
+            <figcaption>[LIVE] 对话实时生成公式与表格，可中止</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 06 数据绘图 -->
+      <section class="chapter" id="data">
+        <div class="chapter-head">
+          <span class="chapter-no">[06]</span>
+          <div>
+            <h2>数据绘图：数据输入，图表输出</h2>
+            <p>将 CSV 数据交由系统：左侧选择文件，右侧立即出图；X/Y 轴可切换，折线、散点、箱线等类型可选。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/04-data/data-plot-from-data.png">
+          <img src="./assets/screenshots/04-data/data-plot-from-data.png" alt="数据绘图：选择 CSV 与字段后自动渲染折线图" />
+          <figcaption>[OUTPUT] 选 CSV、勾字段 → 自动渲染折线图，可导出 PNG/SVG</figcaption>
+        </figure>
+        <div class="shot-grid">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/data-plot-second.png">
+            <img src="./assets/screenshots/04-data/data-plot-second.png" alt="另一份数据的绘图" />
+            <figcaption>[OUTPUT] 换文件换字段，数秒出图</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/data-project-database.png">
+            <img src="./assets/screenshots/04-data/data-project-database.png" alt="当前项目数据列表" />
+            <figcaption>[LIST] 项目数据清单</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/data-csv-preview.png">
+            <img src="./assets/screenshots/04-data/data-csv-preview.png" alt="CSV 表格预览" />
+            <figcaption>[PREVIEW] CSV 表格预览</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/data-csv-1.png">
+            <img src="./assets/screenshots/04-data/data-csv-1.png" alt="数据文件预览" />
+            <figcaption>[PREVIEW] 数据文件逐列解析</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 07 图表库 -->
+      <section class="chapter" id="gallery">
+        <div class="chapter-head">
+          <span class="chapter-no">[07]</span>
+          <div>
+            <h2>图表库：建模论文常见图表，皆有样板</h2>
+            <p>按建模场景分类：流程、分布、回归、相关、预测、比较、评价、网络、三维、层级。选一张作为起点。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/04-data/chart-gallery-overview.png">
+          <img src="./assets/screenshots/04-data/chart-gallery-overview.png" alt="图表库总览：按建模场景分类" />
+          <figcaption>[INDEX] 图表库总览：十类建模场景</figcaption>
+        </figure>
+        <div class="shot-grid gallery-wall">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-flow-chart.png"><img src="./assets/screenshots/04-data/gallery-flow-chart.png" alt="流程类图表" /><figcaption>流程</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-distribution.png"><img src="./assets/screenshots/04-data/gallery-distribution.png" alt="分布类图表" /><figcaption>分布</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-regression.png"><img src="./assets/screenshots/04-data/gallery-regression.png" alt="回归类图表" /><figcaption>回归</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-correlation-matrix.png"><img src="./assets/screenshots/04-data/gallery-correlation-matrix.png" alt="相关矩阵图表" /><figcaption>相关</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-trend-forecast.png"><img src="./assets/screenshots/04-data/gallery-trend-forecast.png" alt="趋势预测图表" /><figcaption>预测</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-comparison.png"><img src="./assets/screenshots/04-data/gallery-comparison.png" alt="比较类图表" /><figcaption>比较</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-evaluation.png"><img src="./assets/screenshots/04-data/gallery-evaluation.png" alt="综合评价图表" /><figcaption>评价</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-network-flow.png"><img src="./assets/screenshots/04-data/gallery-network-flow.png" alt="网络流向图表" /><figcaption>网络</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-contour-3d.png"><img src="./assets/screenshots/04-data/gallery-contour-3d.png" alt="等高线与三维图表" /><figcaption>三维</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/04-data/gallery-hierarchy.png"><img src="./assets/screenshots/04-data/gallery-hierarchy.png" alt="层级图表" /><figcaption>层级</figcaption></figure>
+        </div>
+      </section>
+
+      <!-- 08 论文交付 -->
+      <section class="chapter" id="paper">
+        <div class="chapter-head">
+          <span class="chapter-no">[08]</span>
+          <div>
+            <h2>论文交付：成稿、检查、归档</h2>
+            <p>论文库管理成稿与投稿状态；比赛信息决定页数与格式；分享弹窗将优秀论文归档为团队参考资产。</p>
+          </div>
+        </div>
+        <div class="shot-grid two">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/05-paper/paper-library.png">
+            <img src="./assets/screenshots/05-paper/paper-library.png" alt="论文库" />
+            <figcaption>[LIB] 论文库：成稿、状态、往届优秀论文</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/05-paper/paper-share-dialog.png">
+            <img src="./assets/screenshots/05-paper/paper-share-dialog.png" alt="上传优秀论文分享弹窗" />
+            <figcaption>[SHARE] 分享弹窗：归档为团队资产</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 09 竞赛日历 -->
+      <section class="chapter" id="contest">
+        <div class="chapter-head">
+          <span class="chapter-no">[09]</span>
+          <div>
+            <h2>竞赛日历：节点提醒、交付检查</h2>
+            <p>竞赛日历记录报名与截止时间；比赛工作台将「论文是否完成」拆为可检查状态项。</p>
+          </div>
+        </div>
+        <div class="shot-grid two">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/06-competition/competition-calendar.png">
+            <img src="./assets/screenshots/06-competition/competition-calendar.png" alt="竞赛日历月视图" />
+            <figcaption>[CLOCK] 日历视图：报名与截止节点</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/06-competition/competition-calendar-list.png">
+            <img src="./assets/screenshots/06-competition/competition-calendar-list.png" alt="竞赛日历列表视图" />
+            <figcaption>[CLOCK] 列表视图：按时间排序</figcaption>
+          </figure>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/06-competition/competition-workbench-details.png">
+          <img src="./assets/screenshots/06-competition/competition-workbench-details.png" alt="比赛工作台：交付检查明细" />
+          <figcaption>[CHECK] 比赛工作台：准备度、交付检查逐项过</figcaption>
+        </figure>
+      </section>
+
+      <!-- 10 自动化 -->
+      <section class="chapter" id="auto">
+        <div class="chapter-head">
+          <span class="chapter-no">[10]</span>
+          <div>
+            <h2>自动化：定时任务，自动执行</h2>
+            <p>每日数据复盘、每周论文进度检查——设定时间表，到点自动运行；成败与耗时记录在案。</p>
+          </div>
+        </div>
+        <div class="shot-grid two">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/automation-tasks.png">
+            <img src="./assets/screenshots/07-misc/automation-tasks.png" alt="自动化任务列表" />
+            <figcaption>[CRON] 任务列表：周期任务配置</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/automation-runs.png">
+            <img src="./assets/screenshots/07-misc/automation-runs.png" alt="自动化运行历史" />
+            <figcaption>[CRON] 运行历史：成败与耗时</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 11 编辑器 -->
+      <section class="chapter" id="editor">
+        <div class="chapter-head">
+          <span class="chapter-no">[11]</span>
+          <div>
+            <h2>编辑器视图：代码与论文并排编辑</h2>
+            <p>一键切换编辑器布局：文件树、代码区、对话同屏；代码按语言高亮。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/01-workspace/editor-view.png">
+          <img src="./assets/screenshots/01-workspace/editor-view.png" alt="编辑器视图：文件树、语法高亮代码区与对话列" />
+          <figcaption>[EDIT] 编辑器视图：文件树 + 代码区 + 对话列</figcaption>
+        </figure>
+      </section>
+
+      <!-- 12 算法库 -->
+      <section class="chapter" id="algo">
+        <div class="chapter-head">
+          <span class="chapter-no">[12]</span>
+          <div>
+            <h2>算法与模板：建模方法库</h2>
+            <p>线性规划、遗传算法、AHP、TOPSIS、灰色预测、ARIMA……二十余种常用方法按场景分类，依赖状态透明；技能、模板、连接器可随时装载。</p>
+          </div>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/07-misc/algorithms-library.png">
+          <img src="./assets/screenshots/07-misc/algorithms-library.png" alt="算法库：29 个建模算法按场景分类" />
+          <figcaption>[LIB] 算法库：决策评价 / 预测拟合 / 优化配置</figcaption>
+        </figure>
+        <div class="shot-grid">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/extensions-skills.png">
+            <img src="./assets/screenshots/07-misc/extensions-skills.png" alt="技能扩展页" />
+            <figcaption>[LIB] 技能库：论文写作、绘图、审计</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/extensions-algorithms.png">
+            <img src="./assets/screenshots/07-misc/extensions-algorithms.png" alt="算法扩展页" />
+            <figcaption>[LIB] 算法页：适用场景说明</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/extensions-templates.png">
+            <img src="./assets/screenshots/07-misc/extensions-templates.png" alt="模板扩展页" />
+            <figcaption>[LIB] 模板页：国赛美赛论文模板</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 13 偏好 -->
+      <section class="chapter" id="settings">
+        <div class="chapter-head">
+          <span class="chapter-no">[13]</span>
+          <div>
+            <h2>偏好：从模型到桌面小模，按习惯配置</h2>
+            <p>十六个设置分区覆盖全部偏好，每个开关带说明，改动立即生效。</p>
+          </div>
+        </div>
+        <div class="shot-grid settings-wall">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-paper-rules.png"><img src="./assets/screenshots/07-misc/settings-paper-rules.png" alt="论文默认规则设置" /><figcaption>论文规则</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-quality-delivery.png"><img src="./assets/screenshots/07-misc/settings-quality-delivery.png" alt="建模质量与交付设置" /><figcaption>质量交付</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-model.png"><img src="./assets/screenshots/07-misc/settings-model.png" alt="模型与思考强度设置" /><figcaption>模型</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-providers.png"><img src="./assets/screenshots/07-misc/settings-providers.png" alt="模型供应商设置" /><figcaption>供应商</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-chat.png"><img src="./assets/screenshots/07-misc/settings-chat.png" alt="对话与协作设置" /><figcaption>对话协作</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-sysprompt.png"><img src="./assets/screenshots/07-misc/settings-sysprompt.png" alt="高级提示词设置" /><figcaption>提示词</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-environment.png"><img src="./assets/screenshots/07-misc/settings-environment.png" alt="公共环境与项目依赖设置" /><figcaption>环境依赖</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-network.png"><img src="./assets/screenshots/07-misc/settings-network.png" alt="网络连接设置" /><figcaption>网络</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-automation.png"><img src="./assets/screenshots/07-misc/settings-automation.png" alt="比赛提醒与自动化设置" /><figcaption>自动化</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-notify.png"><img src="./assets/screenshots/07-misc/settings-notify.png" alt="通知设置" /><figcaption>通知</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-competitions.png"><img src="./assets/screenshots/07-misc/settings-competitions.png" alt="竞赛日历设置" /><figcaption>竞赛日历</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-keybindings.png"><img src="./assets/screenshots/07-misc/settings-keybindings.png" alt="快捷键设置" /><figcaption>快捷键</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-profile-stats.png"><img src="./assets/screenshots/07-misc/settings-profile-stats.png" alt="使用统计" /><figcaption>统计</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-tour.png"><img src="./assets/screenshots/07-misc/settings-tour.png" alt="新手教程设置" /><figcaption>教程</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-about.png"><img src="./assets/screenshots/07-misc/settings-about.png" alt="关于与诊断" /><figcaption>关于</figcaption></figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-appearance.png"><img src="./assets/screenshots/07-misc/settings-appearance.png" alt="界面与外观设置" /><figcaption>外观</figcaption></figure>
+        </div>
+        <div class="shot-grid two">
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/settings-pet-characters.png">
+            <img src="./assets/screenshots/07-misc/settings-pet-characters.png" alt="桌面小模角色选择：漫画研究员、太空建模员、3D 猫头鹰教授等" />
+            <figcaption>[PET] 桌面小模：六位角色可选</figcaption>
+          </figure>
+          <figure class="shot-card" data-lightbox="./assets/screenshots/07-misc/desktop-pet-window.png">
+            <img src="./assets/screenshots/07-misc/desktop-pet-window.png" alt="桌面小模独立窗口" />
+            <figcaption>[PET] 小模独立成窗</figcaption>
+          </figure>
+        </div>
+        <figure class="shot-main" data-lightbox="./assets/screenshots/07-misc/settings-appearance-bottom.png">
+          <img src="./assets/screenshots/07-misc/settings-appearance-bottom.png" alt="外观设置下半部分" />
+          <figcaption>[PREF] 主题、字体、动作频率</figcaption>
+        </figure>
+      </section>
+
+      <!-- 结尾 -->
+      <section class="ending">
+        <h2>从拿到题目，<br />到交出论文。</h2>
+        <p>把题目放入 MModels，其余交由系统运转。</p>
+        <p class="ending-log">[STATUS: OK] · [SHUTDOWN]</p>
+      </section>
+    </main>
+
+    <footer class="ffoot">
+      <span>MModels::LOG · 数学建模竞赛工作台 · 运行日志</span>
+      <span>ALL CAPTURES FROM LIVE APP</span>
+    </footer>
+  </main>
+</div>
+
+<div class="lightbox" id="lightbox" aria-hidden="true">
+  <img src="" alt="截图放大查看" />
+</div>
+
+<script src="./robotic.js"></script>
+</body>
+</html>
