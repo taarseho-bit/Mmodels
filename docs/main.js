@@ -1,75 +1,128 @@
-(function () {
-  const canvas = document.getElementById('math-field');
-  const ctx = canvas && canvas.getContext('2d');
-  if (!canvas || !ctx) return;
-
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+(() => {
+  const canvas = document.getElementById("math-field");
+  const ctx = canvas?.getContext("2d");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let width = 0;
   let height = 0;
-  let dpr = Math.min(window.devicePixelRatio || 1, 2);
-  let tick = 0;
-  const points = Array.from({ length: 24 }, (_, i) => ({
-    x: Math.random(), y: Math.random(), speed: 0.00008 + Math.random() * 0.00013,
-    phase: i * 0.55, radius: 1 + Math.random() * 1.8,
+  let dpr = 1;
+  let frame = 0;
+  const particles = Array.from({ length: 34 }, (_, index) => ({
+    x: Math.random(),
+    y: Math.random(),
+    phase: index * .47,
+    speed: .00005 + Math.random() * .00009,
+    radius: .6 + Math.random() * 1.5
   }));
 
-  function resize() {
-    width = window.innerWidth; height = window.innerHeight;
+  function resizeCanvas() {
+    if (!canvas || !ctx) return;
+    width = window.innerWidth;
+    height = window.innerHeight;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = width * dpr; canvas.height = height * dpr;
-    canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function drawContour(t) {
-    const spacing = Math.max(36, Math.min(58, width / 26));
+  function drawField(time = 0) {
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, width, height);
     ctx.save();
-    ctx.translate(width * 0.52, height * 0.48);
-    ctx.rotate(-0.14);
-    ctx.strokeStyle = 'rgba(108, 137, 195, .11)';
-    ctx.lineWidth = 0.7;
-    for (let i = -16; i <= 16; i++) {
+    ctx.translate(width * .64, height * .44);
+    ctx.rotate(-.18);
+    ctx.strokeStyle = "rgba(122, 153, 211, .08)";
+    ctx.lineWidth = .7;
+    const spacing = Math.max(34, Math.min(58, width / 27));
+    for (let row = -18; row <= 18; row += 1) {
       ctx.beginPath();
-      for (let x = -width * .8; x <= width * .8; x += 18) {
-        const y = i * spacing + Math.sin(x * .008 + t * .00025 + i) * 20 + Math.sin(x * .0027 - t * .00016) * 30;
-        if (x === -width * .8) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      for (let x = -width * .78; x <= width * .78; x += 18) {
+        const y = row * spacing
+          + Math.sin(x * .008 + time * .00022 + row) * 18
+          + Math.sin(x * .0025 - time * .00012) * 28;
+        if (x === -width * .78) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       }
       ctx.stroke();
     }
     ctx.restore();
-  }
 
-  function drawGrid() {
-    const size = 70;
-    ctx.strokeStyle = 'rgba(108, 137, 195, .055)'; ctx.lineWidth = .6;
-    ctx.beginPath();
-    for (let x = 0; x < width; x += size) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
-    for (let y = 0; y < height; y += size) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
-    ctx.stroke();
-  }
-
-  function drawParticles(t) {
-    points.forEach((p, i) => {
-      p.y -= p.speed * 0.35; if (p.y < -.05) p.y = 1.05;
-      const x = p.x * width + Math.sin(t * .00025 + p.phase) * 40;
-      const y = p.y * height + Math.cos(t * .0002 + p.phase) * 30;
-      ctx.beginPath(); ctx.fillStyle = i % 4 === 0 ? 'rgba(89,229,208,.7)' : 'rgba(140,123,255,.35)';
-      ctx.arc(x, y, p.radius, 0, Math.PI * 2); ctx.fill();
+    particles.forEach((point, index) => {
+      const x = point.x * width + Math.sin(time * point.speed + point.phase) * 20;
+      const y = point.y * height + Math.cos(time * point.speed * 1.2 + point.phase) * 16;
+      ctx.beginPath();
+      ctx.fillStyle = index % 5 === 0 ? "rgba(156, 140, 255, .32)" : "rgba(112, 230, 209, .27)";
+      ctx.arc(x, y, point.radius, 0, Math.PI * 2);
+      ctx.fill();
     });
   }
 
-  function frame(t) {
-    ctx.clearRect(0, 0, width, height); drawGrid(); drawContour(t); drawParticles(t);
-    if (!reduced) requestAnimationFrame(frame);
+  function animate(time) {
+    drawField(time);
+    if (!reduceMotion) frame = requestAnimationFrame(animate);
   }
-  resize(); window.addEventListener('resize', resize, { passive: true }); frame(tick);
 
-  const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
-    if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); }
-  }), { threshold: .13 });
-  document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+  if (canvas && ctx) {
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas, { passive: true });
+    animate(0);
+  }
 
-  const header = document.querySelector('[data-header]');
-  const onScroll = () => header && header.classList.toggle('is-scrolled', window.scrollY > 16);
-  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  const navItems = [...document.querySelectorAll("[data-view]")];
+  const panels = [...document.querySelectorAll("[data-panel]")];
+  const title = document.getElementById("view-title");
+  const titles = {
+    overview: "总览",
+    workflow: "建模工作流",
+    agents: "多智能体协作",
+    data: "数据与图表",
+    paper: "论文交付",
+    calendar: "赛事节奏"
+  };
+
+  function setView(name, updateHash = true) {
+    const target = titles[name] ? name : "overview";
+    navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === target));
+    panels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === target));
+    if (title) title.textContent = titles[target];
+    if (updateHash) history.replaceState(null, "", "#" + target);
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    document.querySelectorAll(".view.is-active .reveal").forEach((el, index) => {
+      el.classList.remove("is-visible");
+      window.setTimeout(() => el.classList.add("is-visible"), Math.min(index * 55, 260));
+    });
+  }
+
+  navItems.forEach((item) => item.addEventListener("click", () => setView(item.dataset.view)));
+  document.querySelectorAll("[data-go]").forEach((button) => {
+    button.addEventListener("click", () => setView(button.dataset.go));
+  });
+
+  const initial = window.location.hash.replace("#", "");
+  setView(initial || "overview", false);
+
+  const revealObserver = "IntersectionObserver" in window
+    ? new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: .13 })
+    : null;
+
+  if (revealObserver) {
+    document.querySelectorAll(".reveal").forEach((el) => revealObserver.observe(el));
+  } else {
+    document.querySelectorAll(".reveal").forEach((el) => el.classList.add("is-visible"));
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    const current = navItems.findIndex((item) => item.classList.contains("active"));
+    const next = event.key === "ArrowRight" ? current + 1 : current - 1;
+    if (next >= 0 && next < navItems.length) setView(navItems[next].dataset.view);
+  });
 })();
