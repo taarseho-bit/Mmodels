@@ -4,7 +4,7 @@
  * 页面结构：**一张卡**里依次是
  *   ① 「运行环境检查」头（左侧标题 + 「上次检查：时间」，右侧「重新检查」按钮）
  *   ② 「让 Agent 配置运行环境」说明行（长描述 + 绿色「让 Agent 配置」按钮）
- *   ③ 5 行工具明细（uv / Python / Git / LaTeX / draw.io）
+ *   ③ 工具明细（uv / Python / Git / LaTeX / draw.io / R / Octave）
  *   ④ 「模型供应商」状态行
  *
  * ⚠️ 应用约定工具行是**粗粒度 5 行**，而 `env.check()` 返回的是 15 项细粒度探测结果，
@@ -25,6 +25,7 @@ import { openRoute } from '../../lib/settings-nav';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { Icon } from '../Icon';
 import { friendlyError } from '../../lib/friendly-error';
+import type { ConnectorTestResult } from '@shared/types';
 
 interface EnvItem {
   id: string;
@@ -66,6 +67,8 @@ const TOOL_ROWS = [
   { id: 'git', name: 'Git' },
   { id: 'latex', name: 'LaTeX' },
   { id: 'drawio', name: 'draw.io' },
+  { id: 'r', name: 'R 语言' },
+  { id: 'octave', name: 'Octave' },
 ] as const;
 
 /** Python 科学计算包在 `env.check()` 里的 id 前缀 */
@@ -109,10 +112,22 @@ function drawioInstallCommand(): string {
   return tx('integrations.environmentSection.fixPrompt.drawioLinuxCommand');
 }
 
+function localComputeInstallCommand(id: 'r' | 'octave'): string {
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) {
+    return id === 'r'
+      ? 'winget install --id RProject.R --exact --silent --accept-source-agreements --accept-package-agreements'
+      : 'winget install --id GNU.Octave --exact --silent --accept-source-agreements --accept-package-agreements';
+  }
+  if (/Mac/i.test(ua)) return id === 'r' ? 'brew install --cask r' : 'brew install --cask octave';
+  return id === 'r' ? 'sudo apt install r-base' : 'sudo apt install octave';
+}
+
 export function EnvSection(): JSX.Element {
   const createSession = useApp((s) => s.createSession);
   const providers = useApp((s) => s.providers);
   const settings = useApp((s) => s.settings);
+  const currentProject = useApp((s) => s.currentProject);
   const [items, setItems] = useState<EnvItem[] | null>(null);
   const [checking, setChecking] = useState(false);
   const [lastChecked, setLastChecked] = useState<string | null>(readLastChecked);
@@ -122,6 +137,8 @@ export function EnvSection(): JSX.Element {
   const [installing, setInstalling] = useState(false);
   /** 页内轻提示：失败时用户还停在本页就看得见 */
   const [toast, setToast] = useState<{ title: string; detail?: string } | null>(null);
+  const [connectorResults, setConnectorResults] = useState<Record<string, ConnectorTestResult>>({});
+  const [testingConnector, setTestingConnector] = useState<string | null>(null);
 
   const notify = useCallback((title: string, detail?: string): void => {
     setToast({ title, detail });
@@ -178,7 +195,9 @@ export function EnvSection(): JSX.Element {
 
   /** 5 行工具明细（应用约定粒度） */
   const rows: ToolRow[] = TOOL_ROWS.map(({ id, name }) => {
-    const purpose = tx(`integrations.environmentSection.toolDescriptions.${id}`);
+    const purpose = id === 'r' ? '统计检验、回归、时间序列与科研绘图'
+      : id === 'octave' ? '优化、仿真与矩阵计算'
+      : tx(`integrations.environmentSection.toolDescriptions.${id}`);
     if (id === 'latex') {
       // 三项合并成一行：主项 xelatex（版本与路径都用它），latexmk/bibtex 只参与状态
       const xe = byId.get('xelatex');
@@ -215,6 +234,28 @@ export function EnvSection(): JSX.Element {
       };
     }
 
+    if (id === 'r' || id === 'octave') {
+      const it = byId.get(id);
+      const status = statusOf(it);
+      return {
+        id,
+        name,
+        status,
+        purpose,
+        spec: specOf(it),
+        note: status === 'warn' ? tx('integrations.environmentSection.notFoundOptional') : undefined,
+        action: status === 'warn'
+          ? { label: '复制安装命令', onClick: () => {
+            const command = localComputeInstallCommand(id);
+            void navigator.clipboard?.writeText(command).then(
+              () => notify('安装命令已复制', '请在 PowerShell 或终端运行，完成后重新检查。'),
+              () => notify('复制失败', '请手动安装后重新检查。'),
+            );
+          } }
+          : undefined,
+      };
+    }
+
     const it = byId.get(id);
     const status = id === 'python' && missingPyPkgs.length > 0 ? 'warn' : statusOf(it);
     return {
@@ -240,7 +281,33 @@ export function EnvSection(): JSX.Element {
   const providerSpec = providerConfigured
     ? [settings?.defaultModel ?? activeProvider?.models?.[0], activeProvider?.baseUrl].filter(Boolean).join(' · ')
     : undefined;
-  const providerStatus = providerSpec ?? 'No model API configured — connect a provider in Settings → Providers';
+  const providerStatus = providerSpec ?? '尚未连接模型，请到“设置 → 模型与协作”配置。';
+  const activeConnectors = (settings?.mcpServers ?? []).filter(connector => connector.enabled !== false
+    && (!connector.projectIds?.length || connector.projectIds.includes(currentProject?.id ?? '')));
+  const connectorStatus = (result: ConnectorTestResult | undefined): string => {
+    if (!result) return '尚未测试';
+    switch (result.status) {
+      case 'ready': return '可以使用';
+      case 'launcher-ready': return '入口可用';
+      case 'needs-setup': return '需要配置';
+      case 'missing-runtime': return '缺少程序';
+      case 'retry': return '稍后重试';
+      default: return result.ok ? '可以使用' : '需要检查';
+    }
+  };
+  const testConnector = async (name: string): Promise<void> => {
+    setTestingConnector(name);
+    try {
+      const result = await window.mathmodel.connectors.test(name);
+      setConnectorResults(previous => ({ ...previous, [name]: result }));
+    } catch (error) {
+      setConnectorResults(previous => ({ ...previous, [name]: {
+        ok: false, status: 'failed', name, checkedAt: Date.now(), detail: friendlyError(error, '测试没有完成，请重试。'),
+      } }));
+    } finally {
+      setTestingConnector(null);
+    }
+  };
 
   const checkedClock = lastChecked ? formatClock(lastChecked) : null;
 
@@ -253,10 +320,11 @@ export function EnvSection(): JSX.Element {
       `请修复本机建模运行环境。环境检测发现以下问题：\n${broken}\n` +
       `我已经在运行环境页确认允许安装，不要再次询问是否开始。\n` +
       `要求：\n1. 所有首次下载默认走国内镜像：Python 包和 uv 用清华源 https://pypi.tuna.tsinghua.edu.cn/simple，Git 用 npmmirror，LaTeX 用清华 CTAN；镜像不可用时再自动换官方源；\n` +
-      `2. draw.io 优先走可信的国内加速并核对官方哈希与签名；不可用时再用 winget。Windows 安装包必须通过 PowerShell 调用，不要从 Git Bash 直接运行 msiexec；\n` +
-      `3. 只安装检测到的缺失项，使用当前用户级安装；每完成一类就重新检测，安装完成后自动做一次完整复检；\n` +
-      `4. 对话中的过程和总结全部使用简短中文。不要逐条展示命令、下载速度、PATH、退出码或大段日志；可恢复的问题说“正在重试”或“正在换一种办法”，原始信息只在需要排查时提供；\n` +
-      `5. 最后只用几句话说明装好了什么、还有什么没完成。只有需要密码或新的用户选择时才停下来询问。`
+      `2. R 语言在 Windows 优先使用 winget 的 RProject.R，R 包使用清华 CRAN 镜像 https://mirrors.tuna.tsinghua.edu.cn/CRAN/；Octave 优先使用 winget 的 GNU.Octave。先检测已有安装，不要重复安装；\n` +
+      `3. draw.io 优先走可信的国内加速并核对官方哈希与签名；不可用时再用 winget。Windows 安装包必须通过 PowerShell 调用，不要从 Git Bash 直接运行 msiexec；\n` +
+      `4. 只安装检测到的缺失项，使用当前用户级安装；每完成一类就重新检测，安装完成后自动做一次完整复检；\n` +
+      `5. 对话中的过程和总结全部使用简短中文。不要逐条展示命令、下载速度、PATH、退出码或大段日志；可恢复的问题说“正在重试”或“正在换一种办法”，原始信息只在需要排查时提供；\n` +
+      `6. 最后只用几句话说明装好了什么、还有什么没完成。只有需要密码或新的用户选择时才停下来询问。`
     );
   };
 
@@ -388,6 +456,32 @@ export function EnvSection(): JSX.Element {
             <span className="env-row-desc">{providerStatus}</span>
           </div>
         </div>
+      </div>
+
+      <div className="panel env-card">
+        <div className="env-head">
+          <div className="col" style={{ minWidth: 0 }}>
+            <span className="env-head-title">已启用连接器</span>
+            <span className="env-head-meta">逐个检查真实入口。缺程序、缺凭据和暂时断网会分别提示；不会自动安装或发送项目数据。</span>
+          </div>
+          <span className="badge">{activeConnectors.length} 个</span>
+        </div>
+        {activeConnectors.length ? activeConnectors.map(connector => {
+          const result = connectorResults[connector.name];
+          return <div className="env-row" key={connector.name}>
+            <div className="env-row-main">
+              <div className="env-row-head">
+                <span className={`env-dot ${result?.ok ? 'ok' : result?.status === 'failed' ? 'warn' : 'pending'}`} />
+                <span className="env-row-title">{connector.displayName || connector.name}</span>
+                <span className="env-row-note">{connectorStatus(result)}</span>
+              </div>
+              <span className="env-row-desc">{result?.detail ?? '点击“测试”检查当前配置；不会运行建模脚本。'}</span>
+            </div>
+            <button className="btn env-btn env-row-action" disabled={testingConnector !== null} onClick={() => void testConnector(connector.name)}>
+              {testingConnector === connector.name ? '测试中…' : '测试'}
+            </button>
+          </div>;
+        }) : <div className="env-row"><span className="env-row-desc">当前项目还没有启用连接器。可在“设置 → 连接器”按需要添加。</span></div>}
       </div>
 
       {/* 检测彻底失败（IPC 报错）时的兜底：正常路径下走不到这里 */}

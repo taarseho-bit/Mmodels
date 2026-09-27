@@ -593,6 +593,8 @@ describe('item 契约（界面按 id 分组，改 id 会让分组错位）', () 
       'py:seaborn',
       'py:python-dateutil',
       'uv',
+      'r',
+      'octave',
       'drawio',
       'pdftoimage',
       'cjkfont',

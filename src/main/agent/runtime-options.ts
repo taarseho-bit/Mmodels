@@ -1,5 +1,7 @@
 import type { McpServerConfig, ProviderConfig } from '@shared/types';
 import type { McpServerConfig as SdkMcpConfig } from '@anthropic-ai/claude-agent-sdk';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 /** Endpoint-specific model hint. Never apply it to arbitrary gateways. */
 export function sdkModel(provider: ProviderConfig, model: string): string {
@@ -31,6 +33,19 @@ export function boundedContextWindow(value: number): number {
   return Number.isFinite(value) && value > 0 ? Math.min(1_000_000, Math.floor(value)) : 200_000;
 }
 
+export function resolveStdioLauncher(
+  command: string,
+  args: string[] = [],
+  roots: string[] = [process.resourcesPath, join(process.cwd(), 'resources')],
+): { command: string; args: string[] } {
+  if (command.trim().toLowerCase() !== 'uvx') return { command, args };
+  for (const root of roots.filter(Boolean)) {
+    const executable = join(root, 'bin', process.platform === 'win32' ? 'uv.exe' : 'uv');
+    if (existsSync(executable)) return { command: executable, args: ['tool', 'run', ...args] };
+  }
+  return { command, args };
+}
+
 export function userMcpOptions(servers: McpServerConfig[]): Record<string, SdkMcpConfig> {
   const result: Record<string, SdkMcpConfig> = Object.create(null);
   for (const m of servers) {
@@ -43,7 +58,8 @@ export function userMcpOptions(servers: McpServerConfig[]): Record<string, SdkMc
       result[name] = { type: 'http', url: m.url!, headers: m.headers };
     } else {
       if (!m.command?.trim()) throw new Error(`连接器 ${name} 缺少启动命令`);
-      result[name] = { type: 'stdio', command: m.command, args: m.args, env: m.env };
+      const launcher = resolveStdioLauncher(m.command, m.args);
+      result[name] = { type: 'stdio', command: launcher.command, args: launcher.args, env: m.env };
     }
   }
   return result;

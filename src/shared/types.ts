@@ -564,6 +564,8 @@ export type ConnectorPermission = 'read' | 'project-write' | 'external-write';
 
 export interface ConnectorTestResult {
   ok: boolean;
+  /** Distinguishes an unavailable network from a missing local dependency or credentials. */
+  status?: 'ready' | 'launcher-ready' | 'needs-setup' | 'missing-runtime' | 'retry' | 'failed';
   name: string;
   displayName?: string;
   detail: string;

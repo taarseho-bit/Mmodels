@@ -1,5 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { lookup } from 'node:dns/promises';
@@ -8,8 +7,9 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import type { McpServerConfig } from '@shared/types';
 import type { RunOptions } from './session';
+import { findLocalCompute } from '../runtime/local-compute';
+import { findPython } from '../scan/environment';
 
-const execFileAsync = promisify(execFile);
 type Result = { content: [{ type: 'text'; text: string }]; isError?: boolean };
 const text = (value: unknown): Result => ({ content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
 const publicCache = new Map<string, { expiresAt: number; value: any }>();
@@ -350,10 +350,12 @@ async function runLocal(command: string, args: string[], cwd: string, signal?: A
 }
 
 function localCompute(name: 'python' | 'r' | 'octave', opts: RunOptions, allowWrite: boolean) {
-  const command = name === 'python' ? (process.platform === 'win32' ? 'python' : 'python3') : name === 'r' ? 'Rscript' : (process.platform === 'win32' ? 'octave-cli.exe' : 'octave');
   const extension = name === 'python' ? 'py' : name === 'r' ? 'R' : 'm';
   return server(name, [tool('run', `在当前项目中运行 ${name} 脚本，输出会保存到项目运行记录。`, { script: z.string().min(1).max(LOCAL_SCRIPT_LIMIT), filename: z.string().optional() }, wrap(async (a, signal) => {
     if (!allowWrite) throw new Error('这个本地计算连接器当前是只读状态，请先切换为“项目可写”');
+    const runtime = name === 'python' ? await findPython(opts.cwd) : await findLocalCompute(name);
+    if (!runtime) throw new Error(`${name === 'r' ? 'R 语言' : name === 'octave' ? 'Octave' : 'Python'} 尚未安装或无法运行，请到“设置 → 运行环境”检查。`);
+    const command = 'cmd' in runtime ? runtime.cmd : runtime.command;
     const file = projectRunFile(opts.cwd, a.filename || `connector-run-${Date.now()}.${extension}`, extension);
     await mkdir(join(opts.cwd, '.mathmodel'), { recursive: true }); await writeFile(file, a.script, 'utf8');
     if (name === 'octave') return runLocal(command, ['--quiet', file], opts.cwd, signal);
@@ -406,7 +408,16 @@ export async function testNativeConnector(config: McpServerConfig): Promise<stri
     case 'gitee': { const token = env(config, 'GITEE_TOKEN'); if (!token) throw new Error('请先配置 Gitee 访问令牌'); await json(`https://gitee.com/api/v5/user?access_token=${encodeURIComponent(token)}`); return 'Gitee 可以访问'; }
     case 'webhook': { const raw = env(config, 'WEBHOOK_URL'); if (!raw) throw new Error('请先配置 Webhook 地址'); const url = await validateWebhookUrl(raw); const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(12_000) }); if (!response.ok && response.status !== 405) throw new Error(`Webhook 返回 ${response.status}`); return 'Webhook 地址可以访问'; }
     case 'time': return `当前时间连接器可用（${new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'short' }).format(new Date())}）`;
-    case 'python': case 'r': case 'octave': await execFileAsync(config.name === 'python' ? (process.platform === 'win32' ? 'python' : 'python3') : config.name === 'r' ? 'Rscript' : (process.platform === 'win32' ? 'octave-cli.exe' : 'octave'), ['--version'], { timeout: 10_000, windowsHide: true }); return `${config.name} 已安装`;
+    case 'python': {
+      const runtime = await findPython();
+      if (!runtime) throw new Error('Python 尚未安装或无法运行，请到“设置 → 运行环境”检查。');
+      return 'Python 已就绪';
+    }
+    case 'r': case 'octave': {
+      const runtime = await findLocalCompute(config.name);
+      if (!runtime) throw new Error(`${config.name === 'r' ? 'R 语言' : 'Octave'} 尚未安装或无法运行，请到“设置 → 运行环境”检查。`);
+      return `${config.name === 'r' ? 'R 语言' : 'Octave'} 已就绪：${runtime.version}`;
+    }
     default: return '该连接器将在下一轮以 MCP 方式启动';
   }
 }

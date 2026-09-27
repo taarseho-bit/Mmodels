@@ -17,6 +17,7 @@ import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { sharedPythonPath, managedPythonPath } from '../runtime/shared-environment';
+import { findLocalCompute } from '../runtime/local-compute';
 
 export type CheckLevel = 'required' | 'recommended';
 export type CheckStatus = 'ok' | 'missing' | 'unknown';
@@ -503,6 +504,32 @@ export async function checkEnvironment(
       const v = await probe(uvPath, ['--version']);
       it.version = v.ok ? numericVersion(firstLine(v.stdout)) : undefined;
     }
+  }
+
+  // ── 建议：R / Octave 本地计算连接器 ──
+  // 这两项不属于所有用户的必需依赖，但只要用户选择对应连接器，必须在这里
+  // 做真实的可执行检测，而不是只看 PATH 上有没有一个文件名。
+  let rRuntime: Awaited<ReturnType<typeof findLocalCompute>> = null;
+  for (const [id, name, purpose] of [
+    ['r', 'R 语言', '统计检验、回归、时间序列与科研绘图'],
+    ['octave', 'Octave', '优化、仿真与矩阵计算'],
+  ] as const) {
+    const found = await findLocalCompute(id);
+    if (id === 'r') rRuntime = found;
+    const it = push(id, name, 'recommended', purpose, found ? 'ok' : 'missing', found?.version);
+    if (found) it.path = found.command;
+  }
+
+  // R 的常用科研绘图库单独列出，方便用户知道“R 已安装”与“R 可以画图”是两件事。
+  if (rRuntime) {
+    const packages = ['ggplot2', 'patchwork', 'ggrepel', 'svglite', 'ragg'];
+    const code = `pkgs <- c(${packages.map(p => JSON.stringify(p)).join(',')}); cat(vapply(pkgs, function(p) if (requireNamespace(p, quietly=TRUE)) as.character(packageVersion(p)) else '', character(1)), sep='\\n')`;
+    const result = await probe(rRuntime.command, ['-e', code]);
+    const versions = result.ok ? result.stdout.trim().split(/\r?\n/) : [];
+    packages.forEach((pkg, index) => {
+      const version = versions[index] || undefined;
+      push(`r:${pkg}`, `R 包 ${pkg}`, 'recommended', 'R 科研绘图与论文图表', version ? 'ok' : 'missing', version);
+    });
   }
 
   // ── 建议：drawio ──

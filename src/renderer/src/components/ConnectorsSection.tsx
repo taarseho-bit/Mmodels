@@ -12,7 +12,7 @@
  * 注入点：agent/session.ts 把 mcpServers 映射为 SDK 的 mcpServers 选项。
  */
 import { useCallback, useMemo, useState } from 'react';
-import type { McpServerConfig } from '@shared/types';
+import type { ConnectorTestResult, McpServerConfig } from '@shared/types';
 import { CONNECTOR_CATALOG, CONNECTOR_CATEGORY_LABELS, type ConnectorCatalogEntry } from '@shared/connector-catalog';
 import { useApp } from '../store/app';
 import { Icon } from './Icon';
@@ -29,6 +29,7 @@ export function ConnectorsSection(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null);
   const [projectOnly, setProjectOnly] = useState(true);
   const [testing, setTesting] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, ConnectorTestResult>>({});
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogCategory, setCatalogCategory] = useState<string>('all');
 
@@ -145,7 +146,7 @@ export function ConnectorsSection(): JSX.Element {
                   <button className="btn btn-sm btn-ghost" disabled={testing === s.name} onClick={() => {
                     setTesting(s.name);
                     void window.mathmodel.connectors.test(s.name)
-                      .then(result => setNotice(`${result.displayName ?? s.name}：${result.detail}`))
+                      .then(result => setTestResults(previous => ({ ...previous, [s.name]: result })))
                       .catch(error => setNotice(error instanceof Error ? error.message : '连接测试失败'))
                       .finally(() => setTesting(null));
                   }}>{testing === s.name ? '测试中…' : '测试连接'}</button>
@@ -158,6 +159,12 @@ export function ConnectorsSection(): JSX.Element {
                     ) : null;
                   })()}
                   <button className="btn btn-sm btn-ghost" onClick={() => remove(s.name)}>{t('移除')}</button>
+                  {testResults[s.name] && (
+                    <div className="muted" style={{ flexBasis: '100%', fontSize: 11.5, lineHeight: 1.5 }}>
+                      {testResults[s.name].ok ? '✓ ' : testResults[s.name].status === 'retry' ? '↻ ' : '• '}
+                      {testResults[s.name].detail}
+                    </div>
+                  )}
                   {presetCred?.key === s.name && presetCred.credentials?.length ? (
                     <div className="col" style={{ gap: 8, flexBasis: '100%', paddingTop: 6 }} onClick={(e) => e.stopPropagation()}>
                       {presetCred.credentials.map((c) => (
