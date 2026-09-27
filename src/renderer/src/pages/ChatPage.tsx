@@ -22,6 +22,7 @@
  *   主进程落库后 id 会变。如果不重新拉，用户滚动到上方再切回来会看到重复消息。
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ChatMessage, ContentBlock, InflightTurn, StreamEvent } from '@shared/types';
 import { decideFollowUpAction, followUpHeadFor, readFollowUpBehavior, useApp } from '../store/app';
 import { latestTaskBlocks } from '../store/tasks';
@@ -461,7 +462,7 @@ function BrandMark({ size = 40 }: { size?: number }): JSX.Element {
   );
 }
 
-export function ChatPage(): JSX.Element {
+export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
   const taskView = useApp(s => s.taskView);
   const setTaskView = useApp(s => s.setTaskView);
   const returnToChat = useCallback(() => setTaskView('chat'), [setTaskView]);
@@ -1286,13 +1287,16 @@ export function ChatPage(): JSX.Element {
 
   return (
     <div className="chat-page">
-      <div className="chat-page-context topbar-context-path" aria-label="当前项目与任务">
-        <span title={currentProject.name}>{currentProject.name}</span>
-        <Icon name="chevron-right" size={12} aria-hidden="true" />
-        <strong title={activeSession?.title ?? '新任务'}>
-          {activeSession?.title || '新任务'}
-        </strong>
-      </div>
+      {actions ? (
+        <div className="chat-page-context">
+          <div className="chat-page-context-path" aria-label="当前项目与任务">
+            <span title={currentProject.name}>{currentProject.name}</span>
+            <Icon name="chevron-right" size={11} />
+            <strong title={activeSession?.title ?? '新任务'}>{activeSession?.title || '新任务'}</strong>
+          </div>
+          <div className="chat-page-context-actions">{actions}</div>
+        </div>
+      ) : null}
       {taskView === 'workflow' && <WorkflowView key={currentProject.id} projectId={currentProject.id} onReturn={returnToChat} />}
       <div className="chat-scroll" style={taskView === 'workflow' ? { display: 'none' } : undefined} ref={scrollRef} onScroll={onScroll}>
         <div className={`chat-inner${isEmpty ? ' is-empty' : ''}`}>

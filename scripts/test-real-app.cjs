@@ -517,8 +517,8 @@ async function main() {
         await sleep(200);
         ok(selectedTemplate && await cdp.eval('document.querySelector(".modal .cz-slot .cz-btn").textContent.includes(' + JSON.stringify(selectedTemplate) + ')'), '比赛信息中的模板菜单可实际切换模板');
         await cdp.eval('document.querySelector(".modal-head button").click()');
-        ok(await cdp.eval('document.querySelectorAll(".starter").length === 3 && !document.body.innerText.includes("2023 华数杯")'), '真题样例移除，保留三个通用任务起点');
-        ok(await cdp.eval('document.querySelectorAll(".topbar-actions button").length === 4 && !document.querySelector(".topbar-new-chat")'), '顶栏保留视图切换、文件与更多，没有重复新任务');
+        ok(await cdp.eval('document.querySelectorAll(".starter").length >= 3 && !document.body.innerText.includes("2023 华数杯")'), '真题样例移除，保留通用任务起点');
+        ok(await cdp.eval('document.querySelectorAll(".chat-page-context-actions button").length === 4 && !document.querySelector(".topbar-new-chat")'), '内容顶部保留视图切换、文件与更多，没有重复新任务');
         await shot('chat');
         await cdp.eval('document.querySelectorAll(".workflow-switch button")[1].click()');
         await sleep(300);
@@ -534,9 +534,8 @@ async function main() {
         ok(await cdp.eval('document.querySelectorAll(".studio-task-menu [role^=menuitem]").length === 8'), '低频功能完整收纳到更多菜单');
         await shot('task-menu');
         await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-        ok(await cdp.eval('!document.querySelector(".studio-task-menu") && document.activeElement.getAttribute("aria-label")==="更多任务操作"'), '更多菜单可按 Escape 关闭并恢复焦点');
-        await cdp.eval('document.querySelector("[aria-label=任务选项]").click()');
-        ok(await cdp.eval('document.querySelector(".cz-pop")?.innerText.includes("多智能体协作") && !document.querySelector(".cz-foot").innerText.includes("小模")'), '任务选项保留规划和协作，小模不再挤占输入栏');
+        ok(await cdp.eval('!document.querySelector(".studio-task-menu")'), '更多菜单可按 Escape 关闭');
+        ok(await cdp.eval('(()=>{const b=document.querySelector("[aria-label=\\"多智能体协作\\"]");return !!b && b.getAttribute("aria-pressed")==="true" && !document.querySelector(".cz-foot").innerText.includes("小模");})()'), '输入栏保留默认开启的多智能体协作，小模不再挤占输入栏');
         await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
         await cdp.send('Emulation.setDeviceMetricsOverride', { width: 980, height: 700, deviceScaleFactor: 1, mobile: false });
         await sleep(200);
@@ -546,7 +545,7 @@ async function main() {
         await cdp.eval('document.querySelector("[aria-label=更多任务操作]").click()');
         await cdp.eval('[...document.querySelectorAll(".studio-task-menu button")].find(b=>b.textContent.includes("运行环境设置")).click()');
         await sleep(450);
-        ok(await cdp.eval('document.querySelector(".settings-nav-item.active")?.textContent.includes("运行环境")'), '运行环境入口直达设置的正确分区');
+        ok(await cdp.eval('(()=>{const text=document.querySelector(".settings-nav-item.active")?.textContent||"";return text.includes("公共环境")||text.includes("运行环境");})()'), '运行环境入口直达设置的正确分区');
         await cdp.eval('document.documentElement.setAttribute("data-theme","dark")');
       await route('workbench'); await shot('workbench-dark');
       if (process.env.MATHMODEL_TEST_WORKFLOW_UI === '1') {

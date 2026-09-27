@@ -71,6 +71,15 @@ function normalizeSection(value: string | null | undefined): SectionId | null {
   return ids.includes(value as SectionId) ? (value as SectionId) : null;
 }
 
+function groupForSection(section: SectionId): string {
+  if (['competitions', 'paper', 'quality'].includes(section)) return 'competition';
+  if (['extensions', 'datasets'].includes(section)) return 'resources';
+  if (['model', 'providers', 'chat', 'sysprompt'].includes(section)) return 'model';
+  if (['env', 'network'].includes(section)) return 'runtime';
+  if (['automation', 'notify'].includes(section)) return 'automation';
+  return 'appearance';
+}
+
 export function SettingsPage({
   onBack,
   requestedSection,
@@ -99,7 +108,10 @@ export function SettingsPage({
   // 冷启动进设置页时把 App 带进来的分区用上（此时下面的事件监听还没注册）
   useEffect(() => {
     const next = normalizeSection(requestedSection);
-    if (next) setSection(next);
+    if (next) {
+      setSection(next);
+      setCollapsed((prev) => ({ ...prev, [groupForSection(next)]: false }));
+    }
   }, [requestedSection]);
 
   // 外部（如扩展页的「跳到运行环境」）通过事件总线指定分区

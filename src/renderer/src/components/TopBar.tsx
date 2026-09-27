@@ -1,18 +1,28 @@
 /**
- * studio 路由（gallery/competitions/papers…）的条状顶栏。
+ * 应用最上方的细上下文栏。
  *
- * 2026-09-26 布局终态：chat 路由**无顶栏行**——主内容顶到窗口顶，
- * 按钮组（对话/工作流/文件/更多）由 App 里的 `.chat-floating-bar` 悬浮在右上角
- * （编辑器视图则在 editorview-head 右侧复用 ChatQuickBar）。
- * 本组件只剩 studio 页面的项目名展示。
+ * 这里只保留一行项目/任务路径；对话页的视图切换、文件面板和更多操作由调用方
+ * 放在同一行右侧。它不是一个覆盖内容的浮动卡片，正文从这条细线下面开始。
  */
+import type { ReactNode } from 'react';
+import { Icon } from './Icon';
 import { useApp } from '../store/app';
 
-export function TopBar(): JSX.Element {
+export function TopBar({ actions }: { actions?: ReactNode }): JSX.Element {
   const project = useApp(s => s.currentProject);
+  const sessions = useApp(s => s.sessions);
+  const activeSessionId = useApp(s => s.activeSessionId);
+  const activeSession = sessions.find((session) => session.id === activeSessionId) ?? null;
   return (
-    <header className="topbar">
-      <div className="studio-top-context"><span>{project?.name ?? 'MModels'}</span></div>
+    <header className="topbar topbar-compact">
+      <div className="topbar-context studio-top-context">
+        <div className="topbar-context-path" aria-label="当前项目与任务">
+          <span title={project?.name ?? 'MModels'}>{project?.name ?? 'MModels'}</span>
+          <Icon name="chevron-right" size={11} />
+          <strong title={activeSession?.title ?? '新任务'}>{activeSession?.title || '新任务'}</strong>
+        </div>
+      </div>
+      {actions ? <div className="topbar-actions topbar-chat-actions">{actions}</div> : null}
     </header>
   );
 }

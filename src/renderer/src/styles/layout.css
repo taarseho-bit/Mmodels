@@ -33,32 +33,25 @@
   background: var(--bg-canvas);
 }
 
+/* 对话与工作台顶部只留一条细线，控制项与项目路径共用这一行。 */
+.competition-shell { --topbar-h: 38px; }
+
 .app-shell.no-topbar {
   grid-template-rows: 1fr;
 }
 
-/* chat 路由：无顶栏行，主内容顶到窗口顶；
-   窗口顶部 8px 拖拽安全带（按钮均在下方，不误伤） */
-.app-shell.chat-floating::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 8px;
-  -webkit-app-region: drag;
-  z-index: 45;
-}
-
-/* ── ChatQuickBar：chat 路由快捷工具条（右上悬浮 / 编辑器视图头部右侧）── */
+/* ── ChatQuickBar：对话页顶栏 / 编辑器视图头部的快捷工具条 ── */
 .chat-quickbar {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 0 8px 6px;
 }
-.chat-floating-bar .chat-quickbar {
-  padding: 0;
+.chat-quickbar-view,
+.chat-quickbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .chat-quickbar .workflow-switch {
   display: inline-flex;
@@ -68,9 +61,6 @@
   overflow: hidden;
   background: var(--bg-panel);
   margin-right: auto;
-}
-.chat-floating-bar .chat-quickbar .workflow-switch {
-  margin-right: 0;
 }
 .chat-quickbar .workflow-switch button {
   border: 0;
@@ -190,39 +180,49 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 0 16px;
-  background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
+  height: var(--topbar-h);
+  min-height: 0;
+  padding: 0 12px;
+  background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(24px) saturate(165%);
+  box-shadow: none;
+  backdrop-filter: none;
   -webkit-app-region: drag;
 }
 
-/* chat 路由悬浮工具条（2026-09-26 终态）：主内容顶到窗口顶，
-   工具条悬浮在右上角空白区；胶囊底 + blur 保证压到内容上也可读。
-   自身 drag（拖窗口用），内部按钮全部 no-drag。 */
-.chat-floating-bar {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  z-index: 60;
+.topbar-compact .topbar-context-copy { display: block; }
+.topbar-compact .topbar-context-status { display: none; }
+.topbar-compact .topbar-context-path { font-size: 11.5px; line-height: 1; }
+.topbar-compact .topbar-context-path strong { font-size: 12px; font-weight: 600; }
+
+/* 对话页也使用顶栏布局：视图切换与面板入口占自己的区域，
+   不再以悬浮层覆盖聊天内容。 */
+.topbar-chat-actions {
+  flex: 0 0 auto;
+  max-width: none;
+  margin-left: auto;
+}
+.topbar-chat-actions .chat-quickbar {
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+}
+.topbar-chat-actions .chat-quickbar-view {
   display: flex;
   align-items: center;
-  padding: 3px 6px;
-  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-app-region: drag;
+  flex: 0 0 auto;
 }
-.chat-floating-bar button,
-.chat-floating-bar input {
-  -webkit-app-region: no-drag;
+.topbar-chat-actions .chat-quickbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-weak);
 }
-.chat-floating-bar .chat-quickbar .workflow-switch {
+.topbar-chat-actions .chat-quickbar .workflow-switch {
   margin-right: 0;
 }
+.topbar-chat-actions .chat-quickbar-tools { padding-left: 6px; }
 
 .topbar-context {
   min-width: 0;
@@ -880,40 +880,54 @@
   flex-direction: column;
 }
 
-/* 对话与工作流共用的轻量面包屑：不再依赖被隐藏的传统顶栏，
-   始终告诉用户当前项目和任务；高度固定，避免覆盖内容或制造大块空白。 */
+/* 对话页顶部的细上下文条：与侧栏同一层，从主内容内部开始，不额外增加应用顶栏。 */
 .chat-page-context {
-  flex: 0 0 32px;
+  flex: 0 0 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+.chat-page-context-path {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 20px;
+  gap: 6px;
   color: var(--fg-muted);
-  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
-  border-bottom: 1px solid var(--border-weak);
   font-size: 11.5px;
   line-height: 1;
 }
-.chat-page-context > span,
-.chat-page-context > strong {
-  min-width: 0;
-  max-width: min(34vw, 320px);
+.chat-page-context-path > span,
+.chat-page-context-path > strong {
+  max-width: min(34vw, 280px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.chat-page-context > strong {
-  color: var(--fg-primary);
-  font-weight: 600;
+.chat-page-context-path strong { color: var(--fg-primary); font-weight: 600; }
+.chat-page-context-actions { margin-left: auto; flex: 0 0 auto; }
+.chat-page-context-actions .chat-quickbar {
+  align-items: center;
+  gap: 10px;
+  padding: 0;
 }
-.chat-page-context > svg { flex: 0 0 auto; color: var(--fg-muted); }
+.chat-page-context-actions .chat-quickbar .workflow-switch { margin-right: 0; }
+.chat-page-context-actions .chat-quickbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border-weak);
+}
 
 .chat-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 22px 0 26px;
+  padding: 32px 0 26px;
   background: var(--bg-canvas);
 }
 

@@ -18,7 +18,8 @@
 .studio-brand strong { font-size: 14px; font-weight: 600; letter-spacing: 0; }.studio-brand small { display: none; }
 .sidebar.collapsed .studio-brand div { display: none; }.sidebar.collapsed .studio-brand { padding: 0; justify-content: center; }
 .competition-shell .topbar { border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--studio-line); background: var(--bg-panel); }
-.studio-top-context { display: flex; align-items: center; gap: 14px; color: var(--fg-muted); font-size: 12px; }.studio-top-context strong { color: var(--studio-ink); font-size: 16px; }
+.studio-top-context { display: flex; align-items: center; gap: 0; color: var(--fg-muted); font-size: 12px; }
+.studio-top-context strong { color: var(--studio-ink); font-size: 12px; }
 .competition-shell .rail-account-name { color: var(--fg-primary); }.competition-shell .rail-account-sub { color: var(--fg-muted); }
 .competition-shell .topbar-new-chat { background: var(--fg-primary); color: var(--bg-panel); border-color: var(--fg-primary); }
 .competition-shell .btn { border-radius: 6px; transition: background-color 120ms ease-out, color 120ms ease-out, transform 80ms ease-out; min-height: 33px; }

@@ -300,6 +300,23 @@ export function App(): JSX.Element {
     if (root) void window.mathmodel.app.showItemInFolder(root);
   }, []);
 
+  // 对话页把上下文与工具入口放进主内容顶部的细条，侧栏和正文从窗口内容区直接开始。
+  const showTopbar = route !== 'settings' && route !== 'chat';
+  const chatActions = route === 'chat' && !editorView ? (
+    <ChatQuickBar
+      onTogglePanel={() => setSidePanel(sidePanel === null ? 'files' : null)}
+      onOpenVersions={() => setSidePanel('versions')}
+      onOpenEnvironment={() => { setSettingsSection('env'); setRoute('settings'); }}
+      onOpenShare={() => setShowShare(true)}
+      onOpenCollab={() => setShowCollab(true)}
+      editorView={editorView}
+      onToggleEditorView={() => setEditorView(!editorView)}
+      hasProject={currentProject !== null}
+      onOpenProjectIn={openProjectIn}
+      onRevealInFolder={revealProjectInFolder}
+    />
+  ) : undefined;
+
   if (!ready) {
     return (
       <div className="boot-splash">
@@ -336,33 +353,13 @@ export function App(): JSX.Element {
 
   return (
     <ErrorBoundary key={lang}>
-      {/* 2026-09-26 终态：chat 路由**无顶栏行**——主内容直接顶到窗口顶，
-          按钮组（对话/工作流/文件/更多）悬浮在右上角空白区（.chat-floating-bar）。
-          工作流的演示/分析切换已挪进标题旁，右上角在两种视图下都是空白，不再遮挡。 */}
-      <div className={`app-shell competition-shell${route === 'settings' || route === 'chat' ? ' no-topbar' : ''}${route === 'chat' ? ' chat-floating' : ''}`}>
+      {/* 工作台等页面使用条状顶栏；对话页的上下文条由 ChatPage 紧贴正文渲染。 */}
+      <div className={`app-shell competition-shell${showTopbar ? '' : ' no-topbar'}`}>
         {/*
           ⚠️ 设置页是**全屏接管**：设置导航从左侧边缘开始，不重复显示应用侧栏。
           所以进设置页要收起顶栏与应用侧栏，否则会变成"双栏并排"。
         */}
-        {route !== 'settings' && route !== 'chat' && <TopBar />}
-
-        {/* chat 路由的悬浮工具条：app-shell 是 position:relative，直接绝对定位右上角 */}
-        {route === 'chat' && !editorView && (
-          <div className="chat-floating-bar">
-            <ChatQuickBar
-              onTogglePanel={() => setSidePanel(sidePanel === null ? 'files' : null)}
-              onOpenVersions={() => setSidePanel('versions')}
-              onOpenEnvironment={() => { setSettingsSection('env'); setRoute('settings'); }}
-              onOpenShare={() => setShowShare(true)}
-              onOpenCollab={() => setShowCollab(true)}
-              editorView={editorView}
-              onToggleEditorView={() => setEditorView(!editorView)}
-              hasProject={currentProject !== null}
-              onOpenProjectIn={openProjectIn}
-              onRevealInFolder={revealProjectInFolder}
-            />
-          </div>
-        )}
+        {showTopbar && <TopBar actions={chatActions} />}
 
         <div className="app-body">
           {/*
@@ -594,7 +591,7 @@ export function App(): JSX.Element {
                       </div>
                     )}
 
-                    <ChatPage />
+                    <ChatPage actions={chatActions} />
                   </div>
                 </>
               ) : (
