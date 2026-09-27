@@ -13,7 +13,7 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-/** 最多返回多少张（对齐项目契约「流程图太多，只显示了最近修改的一部分」） */
+/** 最多返回多少张（对齐应用约定「流程图太多，只显示了最近修改的一部分」） */
 export const MAX_DIAGRAMS = 60;
 /** 扫描深度上限，避免在巨型目录里卡死 */
 const MAX_DEPTH = 6;

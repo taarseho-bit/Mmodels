@@ -107,7 +107,7 @@ function makeDeps(over: Partial<PlusMenuDeps> = {}): PlusMenuDeps {
       { relPath: 'data/a.csv', name: 'a.csv' },
       { relPath: 'data/b.tsv', name: 'b.tsv' },
       { relPath: 'data/c.xlsx', name: 'c.xlsx' },
-      // 第 4 个：用来证明列表真的**截到 3 条**（项目契约也只有 3 条）
+      // 第 4 个：用来证明列表真的**截到 3 条**（应用约定也只有 3 条）
       { relPath: 'data/d.csv', name: 'd.csv' },
     ],
     connectors: ['arXiv', 'Zotero'],
@@ -360,7 +360,7 @@ function mutate(src: string, from: string, to: string): string {
 /**
  * 裁决二的结构侧闸门：`research` / `webSearch` **不许**再变回"能拨的开关"。
  *
- * 为什么单独一条：这两行的语义在**项目契约里就不存在**（取证贴在 `PlusMenu.tsx` 文件头），
+ * 为什么单独一条：这两行的语义在**应用约定里就不存在**（取证贴在 `PlusMenu.tsx` 文件头），
  * 只靠 `static: true` 一个字段容易被后人顺手删掉 —— 删掉之后所有元素树断言仍会
  * "因为行还在"而通过，用户却能拨一个什么都不干的开关。
  */
@@ -398,7 +398,7 @@ function checkPlusPopoverHeight(
     return 'Popover 的 maxHeight 默认值不是 320 —— 那会连带改掉另外 5 个选择器的高度';
   }
   if (!p.includes('Math.min(maxHeight, avail)')) {
-    return 'Popover 没有把 maxHeight 接进"可用空间"上限计算（项目契约是 min(可用高度, 28rem)）';
+    return 'Popover 没有把 maxHeight 接进"可用空间"上限计算（应用约定是 min(可用高度, 28rem)）';
   }
   if (!/maxHeight:\s*pos \? pos\.maxH : maxHeight/.test(p)) {
     return 'Popover 没有把 maxHeight 接进内联样式（那参数就是死的）';
@@ -464,9 +464,9 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
     }
   });
 
-  it('★ 判据②：9 个入口齐全（项目契约实为 10 行 —— research / webSearch 是两条并列开关行）', () => {
+  it('★ 判据②：9 个入口齐全（应用约定实为 10 行 —— research / webSearch 是两条并列开关行）', () => {
     const rows = buildPlusRows(makeDeps());
-    // 顺序 = 项目契约渲染顺序；`openFilesPanel` 是当前实现新增的（见 PlusMenu.tsx 文件头）
+    // 顺序 = 应用约定渲染顺序；`openFilesPanel` 是当前实现新增的（见 PlusMenu.tsx 文件头）
     expect(rows.map((r) => r.id)).toEqual([
       'addFiles',
       'addToProject',
@@ -481,7 +481,7 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
       'openFilesPanel',
     ]);
     // BACKLOG §3-2 那句枚举里的 9 个入口逐个点名 —— 口径换成"9 项都在"，
-    // 而不是"总行数 = 9"，因为项目契约真的是 10 行（`research` / `webSearch` 各占一行）
+    // 而不是"总行数 = 9"，因为应用约定真的是 10 行（`research` / `webSearch` 各占一行）
     const spec9 = [
       'addFiles',
       'addToProject',
@@ -496,7 +496,7 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
     for (const id of spec9) {
       expect(rows.map((r) => r.id), `少了 ${id}`).toContain(id);
     }
-    // 有二级菜单的那 5 行（项目契约是 Radix Sub）必须真的带 submenu
+    // 有二级菜单的那 5 行（应用约定是 Radix Sub）必须真的带 submenu
     expect(rows.filter((r) => r.submenu).map((r) => r.id)).toEqual([
       'addToProject',
       'datasets',
@@ -539,7 +539,7 @@ describe('① 行表与文案（文案本身就是规格，不许自己编）', 
     expect(webSearch?.static, 'webSearch 不是展示项').toBe(true);
     // ② 数据层不许再挂状态回调：整个行表里只有这两行是 static，其余都是真动作
     expect(rows.filter((r) => r.static).map((r) => r.id)).toEqual(['research', 'webSearch']);
-    // ③ 勾选态是**项目契约默认态**的镜像（`useState(!1)` / `useState(!0)`），与入参无关
+    // ③ 勾选态是**应用约定默认态**的镜像（`useState(!1)` / `useState(!0)`），与入参无关
     expect(research?.checked).toBe(false);
     expect(webSearch?.checked).toBe(true);
     expect(PLUS_STATIC_SWITCH_DEFAULT).toEqual({ research: false, webSearch: true });
@@ -669,7 +669,7 @@ describe('② 元素树：真的点到那些按钮上', () => {
     expect(noSkills[0].disabled).toBe(true);
     expect(noSkills[0].label).toBe(tx('composer.composerPlusMenu.noSkillsEnabled'));
 
-    // 禁用行：点它**不许**关弹层（项目契约 Radix 的 disabled item 不触发 onSelect）
+    // 禁用行：点它**不许**关弹层（应用约定 Radix 的 disabled item 不触发 onSelect）
     const onClose = vi.fn();
     activatePlusSubItem(noProjects[0], { onClose });
     expect(onClose).not.toHaveBeenCalled();
@@ -678,7 +678,7 @@ describe('② 元素树：真的点到那些按钮上', () => {
     expect(findEl(tree, 'data-plus-sub-item', 'noProjects')?.props.disabled).toBe(true);
   });
 
-  it('项目契约那三类"纯展示"条目不自作主张加动作（项目名 / 连接器名点了不做事）', () => {
+  it('应用约定那三类"纯展示"条目不自作主张加动作（项目名 / 连接器名点了不做事）', () => {
     const d = makeDeps();
     const before = JSON.stringify(d);
     for (const sub of ['project', 'connectors'] as PlusSubmenuId[]) {
@@ -740,9 +740,9 @@ describe('③ 真总线 + 真 store（不是读源码）', () => {
       }
     }
     off();
-    // 顺序 = ALL_SUBS 的顺序（datasets 在 gallery 前面，与项目契约行序一致）。
+    // 顺序 = ALL_SUBS 的顺序（datasets 在 gallery 前面，与应用约定行序一致）。
     // ⚠️ `extensions/skills` 出现**两次**：`manageSkills` 与 `browseSkills` 是两行，
-    //    项目契约里它们都跳 `k("skills")`（同一分区，不因为文案不同就编一个假分区）。
+    //    应用约定里它们都跳 `k("skills")`（同一分区，不因为文案不同就编一个假分区）。
     expect(events.map((e) => [e.route, e.section ?? null])).toEqual([
       ['datasets', null],
       ['gallery', null],
@@ -835,7 +835,7 @@ describe('④ 静态渲染（文案 / 图标 / 角标真的进了标记）', () 
       const icon = collect(el).find((e) => e.props.name === row.icon);
       expect(icon, `${row.id} 的图标 ${row.icon} 没渲染出来`).toBeTruthy();
     }
-    // 顺带钉一下写死的名字：项目契约 chunk 里逐个读出来的那几个
+    // 顺带钉一下写死的名字：应用约定 chunk 里逐个读出来的那几个
     expect(PLUS_ICON.addFiles).toBe('paperclip');
     expect(PLUS_ICON.skills).toBe('sparkles');
     expect(PLUS_ICON.connectors).toBe('plug');
@@ -872,14 +872,14 @@ describe('④ 静态渲染（文案 / 图标 / 角标真的进了标记）', () 
     expect(renderToStaticMarkup(<Icon name="这个图标名不存在" />)).toContain('data-missing-icon');
   });
 
-  it('分隔线跟着 `group` 换（项目契约 3 处 + 当前实现新增那行前 1 处 = 4 条）', () => {
+  it('分隔线跟着 `group` 换（应用约定 3 处 + 当前实现新增那行前 1 处 = 4 条）', () => {
     const groups = buildPlusRows(makeDeps()).map((r) => r.group);
     const seps = groups.filter((g, i) => i > 0 && g !== groups[i - 1]).length;
     expect(seps).toBe(4);
     expect(html().split('cz-pop-sep').length - 1).toBe(4);
   });
 
-  it('★ ✓ 只画在 `webSearch` 那一行上（项目契约默认开）—— 展示项的静态镜像', () => {
+  it('★ ✓ 只画在 `webSearch` 那一行上（应用约定默认开）—— 展示项的静态镜像', () => {
     const tree = PlusMenu(props());
     const checkedRows = ['research', 'webSearch'].filter((id) =>
       collect(findEl(tree, 'data-plus-row', id)).some((el) =>
@@ -938,7 +938,7 @@ describe('⑤ 接线结构断言：「＋」按钮 / 点外部关闭 / ⌘U', ()
 
   it('★ 裁决三：高度走的是「＋」菜单专用通道，设计系统的 .cz-pop 没被动', () => {
     expect(checkPlusPopoverHeight(RAW.composer, RAW.popover, RAW.css)).toBeNull();
-    // 448 = 28rem —— 项目契约 `max-h-[var(--available-height,28rem)]` 的兜底，不是随手拍的
+    // 448 = 28rem —— 应用约定 `max-h-[var(--available-height,28rem)]` 的兜底，不是随手拍的
     expect(PLUS_POPOVER_MAX_HEIGHT).toBe(448);
     // 这条通道真的只给「＋」用：另外 5 个选择器一个都没传
     const s = stripComments(RAW.composer);

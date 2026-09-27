@@ -1,7 +1,7 @@
 /**
  * 应用外壳。
  *
- * 布局（当前实现项目契约的三栏结构）：
+ * 布局（当前实现应用约定的三栏结构）：
  *   ┌─────────────────────────────────────────────────┐
  *   │ TopBar  项目名 · 模型 · 侧栏开关                 │
  *   ├──────────┬──────────────────────────┬───────────┤
@@ -10,7 +10,7 @@
  *   │ 会话列表 │                          │ /技能     │
  *   └──────────┴──────────────────────────┴───────────┘
  *
- * ⚠️ 与界面检查对齐：**没有底部状态栏**（项目契约所有页面都没有），
+ * ⚠️ 与界面检查对齐：**没有底部状态栏**（应用约定所有页面都没有），
  *    顶栏也没有品牌块与多余图标。
  * ⚠️ 没有登录页、没有账户菜单、没有额度显示 —— 按要求排除计费功能。
  */
@@ -44,7 +44,7 @@ import { setLang, t, tx, useLang } from './i18n';
 import { onOpenRoute, onOpenSettings } from './lib/settings-nav';
 import { installKeybindings, registerCommand, RULES, APP_COMMANDS } from './keybindings/dispatch';
 
-/** 路由 —— 与项目契约顶栏导航一致（不含账号相关页面） */
+/** 路由 —— 与应用约定顶栏导航一致（不含账号相关页面） */
 export type Route =
   | 'workbench'
   | 'chat'
@@ -65,7 +65,7 @@ export function App(): JSX.Element {
   const patchSettings = useApp((s) => s.patchSettings);
   const sidePanel = useApp((s) => s.sidePanel);
   const setSidePanel = useApp((s) => s.setSidePanel);
-  /** 「编辑器视图」模式（项目契约是模式，不是「打开文件面板」一次性动作） */
+  /** 「编辑器视图」模式（应用约定是模式，不是「打开文件面板」一次性动作） */
   const editorView = useApp((s) => s.editorView);
   const setEditorView = useApp((s) => s.setEditorView);
   const pendingPrompt = useApp((s) => s.pendingPrompt);
@@ -75,7 +75,7 @@ export function App(): JSX.Element {
   const activeSessionId = useApp((s) => s.activeSessionId);
   const beginNewChat = useApp((s) => s.beginNewChat);
   const selectSession = useApp((s) => s.selectSession);
-  /** 编辑器视图·编辑区里内联打开的文件（项目契约：文件树选中 → 编辑区） */
+  /** 编辑器视图·编辑区里内联打开的文件（应用约定：文件树选中 → 编辑区） */
   const activeArtifact = useApp((s) => s.activeArtifact);
   const openArtifact = useApp((s) => s.openArtifact);
   const [route, setActualRoute] = useState<Route>('chat');
@@ -89,8 +89,8 @@ export function App(): JSX.Element {
   /**
    * 编辑器视图的三栏状态（文件树 | 编辑区 | 对话）。
    *  - `editorCol`：第二栏显示什么（活动栏切换；再点一次收起第二栏）
-   *  - `editorChatOpen`：第三栏「对话」列的显隐（项目契约 `showChat` / `hideChat`）
-   *  - `editorHistoryOpen`：「项目会话」列表是否展开（项目契约 `chatHistory`）
+   *  - `editorChatOpen`：第三栏「对话」列的显隐（应用约定 `showChat` / `hideChat`）
+   *  - `editorHistoryOpen`：「项目会话」列表是否展开（应用约定 `chatHistory`）
    */
   const [editorCol, setEditorCol] = useState<'files' | 'changes' | 'versions' | null>('files');
   const [editorChatOpen, setEditorChatOpen] = useState(true);
@@ -103,7 +103,7 @@ export function App(): JSX.Element {
    * （设置页「新手教程」7 张卡各一个 id，见 shared/types 的 TourId）。
    */
   const [showTour, setShowTour] = useState<{ tourId?: TourId } | null>(null);
-  /** 顶栏浮层：分享论文 / 局域网协作（项目契约是浮层，不是路由页） */
+  /** 顶栏浮层：分享论文 / 局域网协作（应用约定是浮层，不是路由页） */
   const [showShare, setShowShare] = useState(false);
   const [showCollab, setShowCollab] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -121,7 +121,7 @@ export function App(): JSX.Element {
     });
   }, []);
 
-  // 界面语言跟随设置（项目契约：i18next 默认 zh-CN 可切 en）
+  // 界面语言跟随设置（应用约定：i18next 默认 zh-CN 可切 en）
   const lang = useLang();
   useEffect(() => {
     if (settings?.locale) setLang(settings.locale);
@@ -135,7 +135,7 @@ export function App(): JSX.Element {
     if (!settings.onboardingDone) void patchSettings({ onboardingDone: true });
   }, [ready, settings, patchSettings]);
 
-  // 有「待填入的提示词」→ 自动切回对话页（项目契约：选模板后进入新会话并填好输入框）
+  // 有「待填入的提示词」→ 自动切回对话页（应用约定：选模板后进入新会话并填好输入框）
   useEffect(() => {
     if (pendingPrompt) setRoute('chat');
   }, [pendingPrompt]);
@@ -279,7 +279,7 @@ export function App(): JSX.Element {
 
   /**
    * 环境浮层里的「在 <编辑器> 中打开」/「默认应用」。
-   * 项目契约能探测本机编辑器并按名字拉起（`openInEditorNamed` 是插值键）；当前版本
+   * 应用约定能探测本机编辑器并按名字拉起（`openInEditorNamed` 是插值键）；当前版本
    * 没有编辑器探测/拉起 IPC，两个启动器都交给主进程 `shell.openPath`，由系统按
    * 「目录」的注册程序打开。真正拉起 Cursor 需要主进程 spawn —— 见汇报遗留点。
    */

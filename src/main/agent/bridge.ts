@@ -4,10 +4,10 @@
  * ⚠️ 为什么需要它：
  *   Claude Agent SDK 只会说 Anthropic Messages API。
  *   但国内绝大多数模型（DeepSeek / 通义 / Kimi / 智谱）只提供 OpenAI Chat Completions。
- *   项目契约引入 `@jtabet/anthropic-openai-bridge` 做这件事。
+ *   应用约定引入 `@jtabet/anthropic-openai-bridge` 做这件事。
  *
  * 我们自己实现一份，理由：
- *   1. 项目契约那个包不在公开 npm 上，无法依赖
+ *   1. 应用约定那个包不在公开 npm 上，无法依赖
  *   2. 自己实现才能控制**流式转换的边界情况**（这是最容易出错的地方）
  *   3. 可以按需裁剪，只支持真正需要的字段
  *

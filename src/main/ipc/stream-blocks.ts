@@ -63,7 +63,7 @@ export function applyStreamEvent(collected: ContentBlock[], ev: StreamEvent): vo
      *   ⇒ 渲染层与数据库里这个字段恒为 `undefined`，
      *     失败的 Bash/Write 在界面上和成功的长得一模一样。
      *   同一轮里把它补上（导出侧 `flattenToolResult` 也跟着带上，
-     *   项目契约 `Vn` 的形状里本来就有 `isError`）。
+     *   应用约定 `Vn` 的形状里本来就有 `isError`）。
      *
      * 用 `Boolean(...)` 而不是直接赋值：`ContentBlock.isError` 是 `boolean | undefined`，
      * 收紧成明确的 `true/false`，下游判 `if (block.isError)` 与 `=== true` 都成立。

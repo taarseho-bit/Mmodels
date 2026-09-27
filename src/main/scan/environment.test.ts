@@ -142,7 +142,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('版本号解析：非标准版本串（项目契约只显示前三段）', () => {
+describe('版本号解析：非标准版本串（应用约定只显示前三段）', () => {
   it('git 的 `2.55.0.windows.3` → 只取 `2.55.0`（这是本机真实版本串）', async () => {
     present('git', 'git version 2.55.0.windows.3');
     const r = await checkEnvironment();
@@ -180,7 +180,7 @@ describe('版本号解析：非标准版本串（项目契约只显示前三段�
     const r = await checkEnvironment();
     expect(item(r, 'xelatex').version).toBe('TeX Live 2024');
     // 回归护栏：若 `id === 'xelatex'` 那个分支把 else 吞了（早期实现就是这样），
-    // 这两条会回到 undefined → 红。字段注释说 version 是"项目契约会显示的那一段"，
+    // 这两条会回到 undefined → 红。字段注释说 version 是"应用约定会显示的那一段"，
     // 而它们的输出里明摆着有版本号 —— 恒缺一半是没道理的。
     expect(item(r, 'latexmk').version).toBe('4.86'); // 注意**不是** `2024`（那年月日也在串里）
     expect(item(r, 'bibtex').version).toBe('0.99');
@@ -433,7 +433,7 @@ describe('PDF 转图：任一可用即可（firstAvailable）', () => {
   });
 });
 
-describe('uv：随包优先于 PATH（项目契约把 uv 随包分发）', () => {
+describe('uv：随包优先于 PATH（应用约定把 uv 随包分发）', () => {
   it('resourcesDir 里有 `bin/uv` → ok，且 detail 标明"随包"，path 指向随包那份', async () => {
     const res = mkdtempSync(join(tmpdir(), 'mm-env-res-'));
     mkdirSync(join(res, 'bin'), { recursive: true });

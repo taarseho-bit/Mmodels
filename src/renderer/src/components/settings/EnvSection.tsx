@@ -7,14 +7,14 @@
  *   ③ 5 行工具明细（uv / Python / Git / LaTeX / draw.io）
  *   ④ 「模型供应商」状态行
  *
- * ⚠️ 项目契约工具行是**粗粒度 5 行**，而 `env.check()` 返回的是 15 项细粒度探测结果，
+ * ⚠️ 应用约定工具行是**粗粒度 5 行**，而 `env.check()` 返回的是 15 项细粒度探测结果，
  * 所以这里要归并（映射关系见 `TOOL_ROWS`）：
  *   - `uv`      ← `uv`
  *   - `Python`  ← `python`
  *   - `Git`     ← `git`
  *   - `LaTeX`   ← `xelatex` + `latexmk` + `bibtex` 三项合并成一行，主项取 `xelatex`
  *   - `draw.io` ← `drawio`
- * Python 科学计算包（numpy/scipy/pandas/matplotlib/seaborn/python-dateutil）项目契约
+ * Python 科学计算包（numpy/scipy/pandas/matplotlib/seaborn/python-dateutil）应用约定
  * **不单列一行**；为了不丢信息，只在有缺失时于 Python 行内补一行提示，
  * 同时原样进入「让 Agent 配置」的任务描述与确认框清单。
  */
@@ -39,17 +39,17 @@ interface EnvItem {
   purpose: string;
 }
 
-/** 工具行状态：ok=绿点，warn=橙点（项目契约的「未找到（可选）」），pending=检测中 */
+/** 工具行状态：ok=绿点，warn=橙点（应用约定的「未找到（可选）」），pending=检测中 */
 type RowStatus = 'ok' | 'warn' | 'pending';
 
 interface ToolRow {
   id: string;
-  /** 行标题（项目契约逐字） */
+  /** 行标题（应用约定逐字） */
   name: string;
   status: RowStatus;
-  /** 标题右侧的补充说明（项目契约只在未找到时显示「未找到（可选）」） */
+  /** 标题右侧的补充说明（应用约定只在未找到时显示「未找到（可选）」） */
   note?: string;
-  /** 用途说明（项目契约逐字） */
+  /** 用途说明（应用约定逐字） */
   purpose: string;
   /** 次行「版本 · 绝对路径」；未找到或检测中为空 */
   spec?: string;
@@ -59,7 +59,7 @@ interface ToolRow {
   action?: { label: string; onClick: () => void };
 }
 
-/** 项目契约顺序与标题 */
+/** 应用约定顺序与标题 */
 const TOOL_ROWS = [
   { id: 'uv', name: 'uv' },
   { id: 'python', name: 'Python' },
@@ -71,7 +71,7 @@ const TOOL_ROWS = [
 /** Python 科学计算包在 `env.check()` 里的 id 前缀 */
 const PY_PKG_PREFIX = 'py:';
 
-/** 「上次检查」时间戳的落点：localStorage（项目契约这个时间是持久化的，不随重进设置页丢失） */
+/** 「上次检查」时间戳的落点：localStorage（应用约定这个时间是持久化的，不随重进设置页丢失） */
 const LAST_CHECKED_KEY = 'mathmodel.env.lastChecked';
 
 function readLastChecked(): string | null {
@@ -91,7 +91,7 @@ function writeLastChecked(iso: string): void {
   }
 }
 
-/** ISO 时间 → 项目契约的 `03:02:51` */
+/** ISO 时间 → 应用约定的 `03:02:51` */
 function formatClock(iso: string): string | null {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
@@ -158,7 +158,7 @@ export function EnvSection(): JSX.Element {
     return it.status === 'ok' ? 'ok' : 'warn';
   };
 
-  /** 项目契约次行格式：`版本 · 绝对路径`（拿不到 version 时退化成 detail） */
+  /** 应用约定次行格式：`版本 · 绝对路径`（拿不到 version 时退化成 detail） */
   const specOf = (it: EnvItem | undefined): string | undefined => {
     if (!it || it.status !== 'ok') return undefined;
     return [it.version, it.path].filter(Boolean).join(' · ') || it.detail;
@@ -176,7 +176,7 @@ export function EnvSection(): JSX.Element {
     );
   };
 
-  /** 5 行工具明细（项目契约粒度） */
+  /** 5 行工具明细（应用约定粒度） */
   const rows: ToolRow[] = TOOL_ROWS.map(({ id, name }) => {
     const purpose = tx(`integrations.environmentSection.toolDescriptions.${id}`);
     if (id === 'latex') {
@@ -195,7 +195,7 @@ export function EnvSection(): JSX.Element {
         purpose,
         spec: specOf(xe),
         // 合并项里主项（xelatex）缺失时给一行说明；只缺 latexmk/bibtex 时
-        // 只留橙点（项目契约没有这种组合，不额外造文案）
+        // 只留橙点（应用约定没有这种组合，不额外造文案）
         note: xe && xe.status !== 'ok' ? tx('integrations.environmentSection.notFound') : undefined,
       };
     }
@@ -209,7 +209,7 @@ export function EnvSection(): JSX.Element {
         status,
         purpose,
         spec: specOf(it),
-        // 项目契约：draw.io 未找到时标题后就地显示「未找到（可选）」，且不给版本行
+        // 应用约定：draw.io 未找到时标题后就地显示「未找到（可选）」，且不给版本行
         note: status === 'warn' ? tx('integrations.environmentSection.notFoundOptional') : undefined,
         action: status === 'warn' ? { label: tx('integrations.environmentSection.copyInstallCommand'), onClick: copyDrawioCommand } : undefined,
       };
@@ -233,7 +233,7 @@ export function EnvSection(): JSX.Element {
     };
   });
 
-  // ── 模型供应商（项目契约列表末行）──
+  // ── 模型供应商（应用约定列表末行）──
   const activeProvider = providers.find((p) => p.id === settings?.activeProviderId) ?? null;
   const providerConfigured = Boolean(activeProvider?.apiKey);
   const providerName = activeProvider?.name ?? 'Anthropic';
@@ -244,7 +244,7 @@ export function EnvSection(): JSX.Element {
 
   const checkedClock = lastChecked ? formatClock(lastChecked) : null;
 
-  /** 把缺失项拼成一段「交给 Agent 的安装任务」（对应项目契约 fixPrompt 的语义） */
+  /** 把缺失项拼成一段「交给 Agent 的安装任务」（对应应用约定 fixPrompt 的语义） */
   const buildRepairPrompt = (): string => {
     const broken = missing.length
       ? missing.map((it) => `- ${it.name}（${it.level === 'required' ? '必需' : '推荐'}）：${it.purpose}`).join('\n')
@@ -324,7 +324,7 @@ export function EnvSection(): JSX.Element {
       <div className="panel env-card">
         {/* ── ① 运行环境检查 + 上次检查 + 重新检查 ── */}
         <div className="env-head">
-          {/* 标题与「上次检查」之间不加 gap：项目契约两行的间距就是两行盒的高度（见 pages.css 注释） */}
+          {/* 标题与「上次检查」之间不加 gap：应用约定两行的间距就是两行盒的高度（见 pages.css 注释） */}
           <div className="col" style={{ minWidth: 0 }}>
             <span className="env-head-title">{tx('integrations.environmentSection.runtimeCheck')}</span>
             <span className="env-head-meta">
@@ -356,7 +356,7 @@ export function EnvSection(): JSX.Element {
           </button>
         </div>
 
-        {/* ── ③ 5 行工具明细（项目契约粒度）── */}
+        {/* ── ③ 5 行工具明细（应用约定粒度）── */}
         {rows.map((r) => (
           <div className="env-row" key={r.id}>
             <div className="env-row-main">

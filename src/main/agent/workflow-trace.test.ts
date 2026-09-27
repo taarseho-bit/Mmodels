@@ -203,6 +203,14 @@ describe('真实事件工作流观察器', () => {
     expect(JSON.stringify(trace.run)).not.toContain('SECRET');
     trace.finish('completed');
   });
+  it('技能候选与真实调用分开记录，不把预加载方向误报成已执行', async () => {
+    const trace = new WorkflowTrace('a', true, () => {});
+    trace.recordSkillPrelude([{ id: 'paper-page-fit', label: '正文页数优化', reason: '检查正文页数和排版' }]);
+    expect(trace.run.nodes[0].tools[0]).toMatchObject({ skill: 'paper-page-fit', skillSource: 'preload', verified: false, status: 'unknown' });
+    await invoke(trace, pre('real-skill', undefined, 'Skill', { skill: 'paper-page-fit' }));
+    expect(trace.run.nodes[0].tools[1]).toMatchObject({ skill: 'paper-page-fit', verified: true, status: 'running' });
+    trace.finish('completed');
+  });
   it('发布节流，不跟随 token 刷新，每轮记录有界', async () => {
     vi.useFakeTimers();
     const publish = vi.fn();

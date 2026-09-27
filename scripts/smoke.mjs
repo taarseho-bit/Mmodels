@@ -744,7 +744,7 @@ app.whenReady().then(async () => {
   );
 
   // ── 逐个切换顶栏 tab（只对存在的 tab 点）──
-  // ⚠️ 「对话」不是导航项（项目契约通过「新建会话」或点会话进入），
+  // ⚠️ 「对话」不是导航项（应用约定通过「新建会话」或点会话进入），
   //    所以给每个标签配一个选择器，而不是一律按文字找导航项。
   const ROUTE_SELECTORS = {
     对话: '#tour-new-thread',
@@ -835,7 +835,7 @@ app.whenReady().then(async () => {
   );
   await new Promise((r) => setTimeout(r, 900));
 
-  // ⚠️ 右栏默认隐藏（遵循项目契约），先点顶栏「打开面板」把它打开
+  // ⚠️ 右栏默认隐藏（遵循应用约定），先点顶栏「打开面板」把它打开
   await win.webContents.executeJavaScript(
     `(() => {
       const b = [...document.querySelectorAll('.topbar-action')].find(x => x.textContent.trim() === '打开面板');
@@ -848,7 +848,7 @@ app.whenReady().then(async () => {
   );
   await new Promise((r) => setTimeout(r, 600));
 
-  // ⚠️ 右栏默认隐藏（遵循项目契约），先点顶栏「打开面板」把它打开
+  // ⚠️ 右栏默认隐藏（遵循应用约定），先点顶栏「打开面板」把它打开
   await win.webContents.executeJavaScript(
     `(() => {
       const b = [...document.querySelectorAll('.topbar-action')].find(x => x.textContent.trim() === '打开面板');

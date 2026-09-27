@@ -1,8 +1,8 @@
 /**
- * 左侧栏 —— 当前实现项目契约的**竖排导航栏 + 项目 + 会话**三合一结构。
+ * 左侧栏 —— 当前实现应用约定的**竖排导航栏 + 项目 + 会话**三合一结构。
  *
  * ⚠️ 这是对比界面检查截图后的**结构性修正**：
- *    之前做成了「顶栏横向 tab」，而项目契约是**左侧竖排列表**：
+ *    之前做成了「顶栏横向 tab」，而应用约定是**左侧竖排列表**：
  *      搜索 / 新建会话 / 科研绘图 / 数模广场 / 竞赛日历 / 自动化 / 扩展 / 打开工作区
  *      ── 项目（+ 新建）
  *      ── 会话
@@ -72,12 +72,12 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
   const refreshSessions = useApp((s) => s.refreshSessions);
 
   const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(true);
-  /** 正在内联重命名的项目 id（对齐项目契约：项目行 hover 出「重命名 / 删除」两个图标） */
+  /** 正在内联重命名的项目 id（对齐应用约定：项目行 hover 出「重命名 / 删除」两个图标） */
   const [renameFor, setRenameFor] = useState<string | null>(null);
   const [renameText, setRenameText] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
-  /** 侧栏级提示（项目契约用 toast 提示"会话已导出 / 已导入 / 导出失败"） */
+  /** 侧栏级提示（应用约定用 toast 提示"会话已导出 / 已导入 / 导出失败"） */
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const showToast = useCallback((msg: string): void => {
@@ -102,7 +102,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
     | { kind: 'sessions-more'; x: number; y: number }
     | null
   >(null);
-  /** 侧栏收起状态（项目契约顶部第一个图标按钮 = 收起/展开侧栏），本地持久化 */
+  /** 侧栏收起状态（应用约定顶部第一个图标按钮 = 收起/展开侧栏），本地持久化 */
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('mm-sidebar-collapsed') === '1');
   useEffect(() => {
     localStorage.setItem('mm-sidebar-collapsed', collapsed ? '1' : '0');
@@ -161,7 +161,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
 
   /**
    * 结束重命名。`commit = false` 表示取消（Esc）。
-   * 空名或没改动视作取消 —— 项目契约没有独立的确认键，回车/失焦即生效。
+   * 空名或没改动视作取消 —— 应用约定没有独立的确认键，回车/失焦即生效。
    */
   const finishRename = (id: string, original: string, commit: boolean): void => {
     if (renameDoneRef.current) return;
@@ -198,16 +198,16 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
   );
 
   /**
-   * 导出会话 JSON —— 对应项目契约「导出数据（.json）」。
+   * 导出会话 JSON —— 对应应用约定「导出数据（.json）」。
    *
-   * 两截分工直接采用项目契约（这两个通道**当前实现早就有了**，未新增任何通道）：
+   * 两截分工直接采用应用约定（这两个通道**当前实现早就有了**，未新增任何通道）：
    *   1. `http.request('/api/sessions/:id/export')` —— 主进程只产 JSON，**不弹框**
    *   2. `file.saveText(默认文件名, JSON.stringify(payload, null, 2))` —— 弹保存框落盘
    *
    * 为什么不在主进程弹框：那样"用户点了取消"和"导出真的失败"就分不开了。
    * 分成两截后，`saveText` 返回 `null` = 用户取消（**不提示**），抛错才算失败。
    *
-   * ⚠️ 缩进 2 空格 —— 项目契约是 `JSON.stringify(n, null, 2)`（与打包 ZIP 里那份一致）。
+   * ⚠️ 缩进 2 空格 —— 应用约定是 `JSON.stringify(n, null, 2)`（与打包 ZIP 里那份一致）。
    */
   const exportSession = useCallback(
     async (session: SessionMeta): Promise<void> => {
@@ -274,9 +274,9 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
   }, [loadExport, showToast]);
 
   /**
-   * 导入会话 —— 对应项目契约「导入会话…」（侧栏级菜单项 `shell.sidebar.importChat`）。
+   * 导入会话 —— 对应应用约定「导入会话…」（侧栏级菜单项 `shell.sidebar.importChat`）。
    *
-   * 链路直接采用项目契约的两截分工（**两个已有通道**，未新增）：
+   * 链路直接采用应用约定的两截分工（**两个已有通道**，未新增）：
    *   1. `file.openText()` 弹「打开」对话框，拿 `{path, content}`
    *   2. `http.request('/api/sessions/import', {method:'POST', body})` 落库（**永远新建**）
    *
@@ -285,7 +285,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
    *   - **JSON 解析失败** → `chat.useChat.invalidImportFile`（"不是有效的会话导出文件"）
    *   - **服务端校验/落库失败** → `shell.sidebar.importFailed`
    *
-   * 冲突：项目契约**永不冲突**（`cs` 里没有 session.id，一律新 uuid，标题也不去重），
+   * 冲突：应用约定**永不冲突**（`cs` 里没有 session.id，一律新 uuid，标题也不去重），
    * 所以这里**不需要**任何"覆盖 / 跳过"的询问。
    */
   const importSession = useCallback(async (): Promise<void> => {
@@ -312,14 +312,14 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
         setRoute('chat');
       }
       /**
-       * ⚠️ 这里**只**用现成的项目契约键，不拼任何中文后缀。
+       * ⚠️ 这里**只**用现成的应用约定键，不拼任何中文后缀。
        *
        * 「降级」不是"丢内容"：装不下的 part 被转成了文本，**文字全在会话里**，
        * 用户往下翻就能看见。所以"绝不静默丢内容"这条判据**不靠 toast 承担**，
        * 它由"降级后的文本确实落在 blocks 里"承担（`import.test.ts` 有断言）。
        *
        * 降级段数仍从接口回传（`degradedParts`），这里写进控制台方便排查 ——
-       * 界面文案不硬编码中文（i18n 纪律）。项目契约有 count 后缀的先例
+       * 界面文案不硬编码中文（i18n 纪律）。应用约定有 count 后缀的先例
        * （`shell.sidebar.bundleExported: '… · {{assets}} 个素材'`），
        * 将来要显示的话按那个模式加一条键即可，不必改这里。
        */
@@ -332,7 +332,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
     }
   }, [refreshSessions, selectSession, setRoute, showToast]);
 
-  /** 「会话」区标题右侧的「更多…」菜单（项目契约：导入会话… 是侧栏级入口，不在会话行菜单里） */
+  /** 「会话」区标题右侧的「更多…」菜单（应用约定：导入会话… 是侧栏级入口，不在会话行菜单里） */
   const openSessionsMore = useCallback((e: React.MouseEvent): void => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setCtxMenu({ kind: 'sessions-more', x: r.left, y: r.bottom + 4 });
@@ -469,7 +469,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
               onSelect: () => copyText(ctxMenu.session.id),
             },
             {
-              // 项目契约文案：`shell.sidebar.exportDataJson`（词典里已有，调用点为 0）
+              // 应用约定文案：`shell.sidebar.exportDataJson`（词典里已有，调用点为 0）
               label: tx('shell.sidebar.exportDataJson'),
               icon: 'download',
               divider: true,
@@ -557,7 +557,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
       {!collapsed && <ResizeHandle storageKey="mm-sidebar-width" label="调整左侧栏宽度" min={220} max={380} fraction={.32} />}
       <div className="rail-header">
       <div className="studio-brand"><span>模</span><div><strong>MModels</strong><small>数学建模 · 写作与求解</small></div></div>
-      {/* ── 顶部图标行（项目契约：收起侧栏 + 搜索，两个图标在导航项上方）── */}
+      {/* ── 顶部图标行（应用约定：收起侧栏 + 搜索，两个图标在导航项上方）── */}
         <button
           className="rail-icon-btn"
           aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
@@ -568,7 +568,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
           //    title = o(r ? "shell.titleBarControls.expandSidebar" : "shell.titleBarControls.collapseSidebar")
           //    这里没有 `shell.sidebar.*` 这套键 —— 早期写成 `shell.sidebar.collapseSidebar`
           //    取不到值，tx() 会把键路径原样渲染到 tooltip 上（静默失败，已被 i18n 护栏测试抓到）。
-          //    顺带对齐项目契约：收起/展开两种状态用不同文案。
+          //    顺带对齐应用约定：收起/展开两种状态用不同文案。
           title={tx(
             collapsed ? 'shell.titleBarControls.expandSidebar' : 'shell.titleBarControls.collapseSidebar',
           )}
@@ -799,7 +799,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
           <span className="muted" style={{ fontSize: 10 }}>
             {sessions.length || ''}
           </span>
-          {/* 项目契约：会话区标题右侧的「更多…」菜单，里面是**侧栏级**入口（导入会话…） */}
+          {/* 应用约定：会话区标题右侧的「更多…」菜单，里面是**侧栏级**入口（导入会话…） */}
           <button
             className="rail-sec-btn"
             title={tx('shell.sidebar.more')}
@@ -812,7 +812,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
         </div>
         <div className="rail-list">
           {visibleSessions.length === 0 ? (
-            // 项目契约这里没有空态文案（截图确认），只有搜索无结果时给提示
+            // 应用约定这里没有空态文案（截图确认），只有搜索无结果时给提示
             q ? <div className="rail-empty">{tx('shell.searchPalette.noResults')}</div> : null
           ) : (
             visibleSessions.map((s) => (
@@ -898,7 +898,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
       </div>
       </div>
 
-      {/* ── 底部：账号区（项目契约：头像 + 名称 + 徽章行）+ 设置齿轮 ── */}
+      {/* ── 底部：账号区（应用约定：头像 + 名称 + 徽章行）+ 设置齿轮 ── */}
       <div className="rail-foot rail-account">
         <button
           className="rail-account-chip"

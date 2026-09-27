@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────────────────────
  * 页壳 / 骨架屏 / 空态 / 新增页面
- * 视觉遵循项目契约 tailwind 写法（项目契约 PageShell / Skeleton / SettingsPrimitives）
+ * 视觉遵循应用约定 tailwind 写法（应用约定 PageShell / Skeleton / SettingsPrimitives）
  * ───────────────────────────────────────────────────────────── */
 
 /* ── 页壳 ── */
@@ -157,7 +157,7 @@
   gap: var(--sp-2);
 }
 
-/* ── 设置分组原语（遵循项目契约 SettingsPrimitives） ── */
+/* ── 设置分组原语（遵循应用约定 SettingsPrimitives） ── */
 
 .sgroup {
   display: flex;
@@ -403,14 +403,14 @@
 }
 
 /* ── 绘图模板库（科研绘图）──
- * 视觉参数逐条遵循项目契约 tailwind：
+ * 视觉参数逐条遵循应用约定 tailwind：
  *   胶囊 `rounded-full border px-3 py-1 text-xs` / 网格 `minmax(240px,1fr) gap-4`
  *   卡片 `rounded-xl border bg-card` + `aspect-[4/3] bg-white p-2` + `line-clamp-2`
  *   详情 `w-[min(1180px,94vw)] h-[min(720px,88vh)]`，右栏 `w-72`
- * 强调色：`theme.css` 已全局遵循项目契约（深色 `#5e7c69` / 浅色 `#2f4a3b`），
+ * 强调色：`theme.css` 已全局遵循应用约定（深色 `#5e7c69` / 浅色 `#2f4a3b`），
  * 故这里**不再本地覆盖色值**，一律透传 `--accent*`——
  * 这样设置页「外观 → 强调色」写进 `:root` 的内联变量也能作用到本页。
- * 分类胶囊底色取项目契约 `--secondary`（深 `#2a2a29` / 浅 `#ece9e3`）与 `--secondary-fg`，
+ * 分类胶囊底色取应用约定 `--secondary`（深 `#2a2a29` / 浅 `#ece9e3`）与 `--secondary-fg`，
  * 不属于强调色，不随用户改色。
  */
 
@@ -922,6 +922,8 @@
   border-bottom: 1px solid var(--border-weak);
   flex-shrink: 0;
 }
+.workbook-tabs { display:flex; gap:6px; padding:7px 10px 0; overflow:auto; flex-shrink:0; }
+.workbook-tabs .btn { white-space:nowrap; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
 
 .pv-name {
   font-size: var(--fs-sm);
@@ -1721,7 +1723,7 @@
 }
 
 /* 全屏压暗。用超大 box-shadow 在目标处「挖洞」，
-   这样目标元素本身**仍可被真实点击**（项目契约教程要求用户点它）。 */
+   这样目标元素本身**仍可被真实点击**（应用约定教程要求用户点它）。 */
 .tour-hole {
   position: fixed;
   border-radius: var(--radius);
@@ -1789,7 +1791,7 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
- * 新建会话页（空会话时的居中布局，遵循项目契约 chat.newChatPage.*）
+ * 新建会话页（空会话时的居中布局，遵循应用约定 chat.newChatPage.*）
  * ───────────────────────────────────────────────────────────── */
 
 /* 对话页沿用当前设计系统，不再保留历史版本的绿灰专用色。 */
@@ -1802,7 +1804,7 @@
   --cz-send-idle: #48484a;
 }
 
-/* 项目契约首屏是**垂直居中**的（hero 顶边 ≈ 21% 视口高、内容底 ≈ 70%）。
+/* 应用约定首屏是**垂直居中**的（hero 顶边 ≈ 21% 视口高、内容底 ≈ 70%）。
    当前实现早期只写了 align-items:center，但 .chat-inner 的高度等于内容高度，
    居中无从谈起 —— 内容整体贴在顶部。这里补上 100% 最小高度把它撑满
    .chat-scroll 的内容盒，居中才真正生效。 */
@@ -1870,7 +1872,7 @@
   font-size: 11.5px;
   color: var(--fg-muted);
 }
-/* 项目契约规定的是暗橄榄绿的低对比次要链接色，不是主题亮蓝（采自界面样例 #5E7C69） */
+/* 应用约定规定的是暗橄榄绿的低对比次要链接色，不是主题亮蓝（采自界面样例 #5E7C69） */
 .newchat-beta-link {
   color: var(--cz-accent);
   text-decoration: none;
@@ -1880,7 +1882,7 @@
   text-decoration: underline;
 }
 
-/* 示例卡片标签 —— 项目契约规定的是**透明底 + 1px 描边**的 pill，尺寸比当前实现早期更大 */
+/* 示例卡片标签 —— 应用约定规定的是**透明底 + 1px 描边**的 pill，尺寸比当前实现早期更大 */
 .starter-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1897,7 +1899,7 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
- * 输入区（Composer）—— 遵循项目契约中的三层结构
+ * 输入区（Composer）—— 遵循应用约定中的三层结构
  *   ① 上下文栏（项目/模式/模板 + 比赛信息）
  *   ② 附件 chips + 文本框
  *   ③ 底部栏（＋ · 权限 · 模型·强度 · 发送）
@@ -1947,7 +1949,7 @@
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
   color: var(--fg-secondary);
-  /* 项目契约上下文栏的 chip 是**透明底**，只在 hover 时浮出底色；
+  /* 应用约定上下文栏的 chip 是**透明底**，只在 hover 时浮出底色；
      当前实现早期每个 chip 都挂着一块深色 pill，一眼可见差异（00-main P2-4）。 */
   background: transparent;
   border: 1px solid transparent;
@@ -2032,7 +2034,7 @@
   .paper-page-limit-grid { grid-template-columns: 1fr; }
 }
 
-/* 模型 chip 里的思考强度（项目契约中的次级信息，如「claude-sonnet-5 高」） */
+/* 模型 chip 里的思考强度（应用约定中的次级信息，如「claude-sonnet-5 高」） */
 .cz-effort {
   color: var(--fg-muted);
   flex-shrink: 0;
@@ -2172,7 +2174,7 @@
   padding: 7px 9px;
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
-  /* 项目契约菜单项文字是前景色（近白），不是次要灰 */
+  /* 应用约定菜单项文字是前景色（近白），不是次要灰 */
   color: var(--fg-primary);
   background: transparent;
   border: 0;
@@ -2180,9 +2182,9 @@
   text-align: left;
 }
 /* `:not(:disabled)` 是必须的：`disabled` 的按钮在 CSS 里默认**照样会 hover 高亮**，
-   看起来像能点。项目契约「＋」菜单里 research / webSearch 两行就是"只有状态、
+   看起来像能点。应用约定「＋」菜单里 research / webSearch 两行就是"只有状态、
    没有消费者"的假开关（取证见 PlusMenu.tsx 文件头），当前实现把这类行降级成展示项，
-   它们必须看起来也不能点。`noProjects` / `noSkillsEnabled`（项目契约就是 disabled）同样受益。 */
+   它们必须看起来也不能点。`noProjects` / `noSkillsEnabled`（应用约定就是 disabled）同样受益。 */
 .cz-pop-item:hover:not(:disabled) {
   background: var(--bg-hover);
 }
@@ -2198,7 +2200,7 @@
   margin-top: 3px;
 }
 
-/* 选中项：项目契约用**中性灰底 + 右侧独立 ✓**，不是蓝色底 + 蓝色字
+/* 选中项：应用约定用**中性灰底 + 右侧独立 ✓**，不是蓝色底 + 蓝色字
    （12-menu-project / 13-menu-mode / 15-menu-permission 三处一致）。 */
 .cz-pop-item.selected {
   background: var(--bg-hover);
@@ -2217,7 +2219,7 @@
   flex-shrink: 0;
 }
 
-/* 右侧上下文徽标（项目契约模型项的 1M / 200K） */
+/* 右侧上下文徽标（应用约定模型项的 1M / 200K） */
 .cz-pop-badge {
   font-size: 10.5px;
   color: var(--fg-muted);
@@ -2240,7 +2242,7 @@
   min-width: 120px;
 }
 /* 「＋」菜单的子菜单比「思考强度」那个宽：里面是项目名 / 技能名 / 数据集文件名，
-   项目契约给的是 min-w-48/52/56（192~224px）。只加宽这一种，不动 .cz-flyout 本身。 */
+   应用约定给的是 min-w-48/52/56（192~224px）。只加宽这一种，不动 .cz-flyout 本身。 */
 .cz-flyout.plus-sub {
   min-width: 208px;
 }
@@ -2497,7 +2499,7 @@
 }
 
 /* 附件图标：替代早期的文字徽标。
-   项目契约只用图标区分类型，不显示 "PDF"/"file" 之类的文字 ——
+   应用约定只用图标区分类型，不显示 "PDF"/"file" 之类的文字 ——
    文字徽标在无扩展名时会退化成英文单词，和中文界面格格不入。 */
 .cz-chip > svg {
   flex-shrink: 0;
@@ -2523,7 +2525,7 @@
 }
 
 /* ── 粘贴长文本的折叠 chip ───────────────────────────────────
-   逐条遵循项目契约 Tailwind：h-14 max-w-64 rounded-lg border border-border
+   逐条遵循应用约定 Tailwind：h-14 max-w-64 rounded-lg border border-border
    bg-secondary/50 px-2.5（56px / 256px / 12px 圆角 / 1px 边框 / 浅底 / 10px 内边距）。
    ⚠️ 不要复用上面的 .cz-chip —— 那是 22px 单行附件 chip，几何完全不同。 */
 .cz-paste-chip {
@@ -2537,7 +2539,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg-sunken);
-  /* 项目契约走 framer-motion（initial opacity:0/scale:.8 → animate 1/1，
+  /* 应用约定走 framer-motion（initial opacity:0/scale:.8 → animate 1/1，
      transition duration .16 ease [.16,1,.3,1]）；这里用 CSS 等价实现，不引依赖。 */
   animation: cz-paste-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -2569,11 +2571,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px; /* 项目契约 text-xs */
+  font-size: 12px; /* 应用约定 text-xs */
   color: var(--fg-primary);
 }
 
-/* 「显示在输入框中」—— 项目契约 aU：11px、下划线、hover 加深 */
+/* 「显示在输入框中」—— 应用约定 aU：11px、下划线、hover 加深 */
 .cz-paste-chip-act {
   display: inline-flex;
   width: fit-content;
@@ -2595,7 +2597,7 @@
   color: var(--fg-primary);
 }
 
-/* 删除按钮：默认透明，悬停 chip 才出现（项目契约 opacity-0 group-hover:opacity-100） */
+/* 删除按钮：默认透明，悬停 chip 才出现（应用约定 opacity-0 group-hover:opacity-100） */
 .cz-paste-chip-x {
   position: absolute;
   top: -6px;
@@ -2728,7 +2730,7 @@
   transform: translateY(-1px) scale(1.035);
   box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 30%, transparent);
 }
-/* 项目契约输入框为空时发送按钮是**低饱和深绿/灰的禁用观感**（实心，不透明），
+/* 应用约定输入框为空时发送按钮是**低饱和深绿/灰的禁用观感**（实心，不透明），
    而当前实现早期是「亮蓝实心 + opacity .4」—— 依然是蓝色，一眼可辨（00-main P2-10）。 */
 .cz-send:disabled {
   background: var(--cz-send-idle);
@@ -3632,7 +3634,7 @@ audio.ap-media {
 }
 
 .settings-side {
-  /* 与项目契约实测一致：复用主侧栏宽度 token（239px），不再写死 216px */
+  /* 与应用约定实测一致：复用主侧栏宽度 token（239px），不再写死 216px */
   width: var(--sidebar-w, 239px);
   flex-shrink: 0;
   border-right: 1px solid var(--border-weak);
@@ -3878,7 +3880,7 @@ audio.ap-media {
 
 /* ─────────────────────────────────────────────────────────────
  * 扩展页：三栏 master-detail（类型栏 | 条目列表 | 详情面板）
- * 对应项目契约 05-extensions 的 sidebar / list / detail 三段式
+ * 对应应用约定 05-extensions 的 sidebar / list / detail 三段式
  * ───────────────────────────────────────────────────────────── */
 
 .ext-page {
@@ -4177,7 +4179,7 @@ audio.ap-media {
   flex-shrink: 0;
 }
 
-/* 操作结果提示（项目契约 forkCreated / deleted 那种一次性反馈） */
+/* 操作结果提示（应用约定 forkCreated / deleted 那种一次性反馈） */
 .ext-detail-notice {
   margin: 10px 20px 0;
   padding: 8px 10px;
@@ -5459,7 +5461,7 @@ audio.ap-media {
   gap: 8px;
 }
 
-/* 房主地址：等宽字体，方便照着念给队友 */
+/* 房主地址：等宽字体，方便复制给队友 */
 .collab-code {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 12.5px;
@@ -6513,7 +6515,7 @@ audio.ap-media {
      · 上下内边距 11px、左右 12px（最右按钮到卡片内边距也是 12px）
      · 行距（行盒高度）逐行反推：标题 19.2px、说明 16.8px、版本行 16px
        → 三行内容的行高 74.0px、两行 58.0px、头部 57.7px，
-         与项目契约实测 74.4 / 58.4 / 58.4 各差不到 0.5px
+         与应用约定实测 74.4 / 58.4 / 58.4 各差不到 0.5px
      · 状态点直径 ≈ 8px，绿点 RGB(0,188,125)、橙点 RGB(254,154,0)
      · 按钮高 ≈ 33px、字号 13px，且在行内**竖直居中**（不是顶端对齐）
      · 行标题 13px/600，说明与路径同为 12px（路径**非等宽字体**：79 字符 471px
@@ -6575,8 +6577,8 @@ audio.ap-media {
   min-width: 0;
 }
 
-/* 状态点：项目契约绿点=已找到，橙点=未找到（可选）。
-   颜色取自界面样例实采（不是主题 token —— 项目契约中的成功/警告色与当前实现的
+/* 状态点：应用约定绿点=已找到，橙点=未找到（可选）。
+   颜色取自界面样例实采（不是主题 token —— 应用约定中的成功/警告色与当前实现的
    `--success`/`--warning` 不同族，见上方注释）。 */
 .env-dot {
   width: 8px;
@@ -6621,20 +6623,20 @@ audio.ap-media {
   word-break: break-all;
 }
 
-/* Python 行在「解释器可用但建模包不全」时补的一行（项目契约无此行，见组件头注释） */
+/* Python 行在「解释器可用但建模包不全」时补的一行（应用约定无此行，见组件头注释） */
 .env-row-extra {
   font-size: var(--fs-sm);
   line-height: 1.4;
   color: #fe9a00;
 }
 
-/* 行尾按钮：项目契约在行内竖直居中 */
+/* 行尾按钮：应用约定在行内竖直居中 */
 .env-row-action {
   align-self: center;
   flex-shrink: 0;
 }
 
-/* 项目契约按钮比 `.btn`(28px) 高、比 `.btn-lg`(34px) 略矮 */
+/* 应用约定按钮比 `.btn`(28px) 高、比 `.btn-lg`(34px) 略矮 */
 .env-btn {
   height: 33px;
   padding: 0 10px;
@@ -7141,7 +7143,7 @@ body.desktop-pet-document #root {
 /* ═══════════════════════════════════════════════════════════════
    消息级操作行（msg-ops-*）
    ───────────────────────────────────────────────────────────────
-   项目契约每条消息下面都有一行操作（复制 / 编辑后重发 / 回到此消息之前 /
+   应用约定每条消息下面都有一行操作（复制 / 编辑后重发 / 回到此消息之前 /
    从此分叉），**不是 hover 才出现** —— 所以这里也用常显。
 
    缩进 28px = 头像 20px + `.msg` 的 gap（--sp-2），让按钮与消息正文左对齐。
@@ -7204,7 +7206,7 @@ body.desktop-pet-document #root {
   gap: var(--sp-2);
 }
 
-/* 操作结果条（项目契约规定的是 toast；这里用一条可关闭的常驻提示） */
+/* 操作结果条（应用约定规定的是 toast；这里用一条可关闭的常驻提示） */
 .msg-ops-notice {
   display: flex;
   align-items: center;

@@ -1,7 +1,7 @@
 /**
  * 消息级操作 —— 「编辑后重发 / 回到此消息之前 / 从此分叉」的业务核心。
  *
- * 项目契约把这三件事做成**两条本地 HTTP 路由**（不是 IPC 通道）：
+ * 应用约定把这三件事做成**两条本地 HTTP 路由**（不是 IPC 通道）：
  *   `POST /api/checkpoint/revert`      —— 回滚工作区 + 删掉这条及之后的消息
  *   `POST /api/sessions/:id/fork`      —— 从某条消息分叉出一个新会话
  * 「编辑后重发」没有独立路由：它是渲染层把「回退到这条之前 + 把改好的文本填回输入框」
@@ -16,8 +16,8 @@
  *
  * ── 当前实现的三处兼容差异（集中记录，便于维护） ──
  *
- *  ① **回滚必须带 `confirm: true`（加固，项目契约没有这个字段）。**
- *     项目契约的确认只在渲染层的对话框里 —— 路由本身对"没确认"的请求照做。
+ *  ① **回滚必须带 `confirm: true`（加固，应用约定没有这个字段）。**
+ *     应用约定的确认只在渲染层的对话框里 —— 路由本身对"没确认"的请求照做。
  *     对当前实现这不够：`/api/*` 挂载点对**同机任何进程**开放（带 token 即可），
  *     而这条路由会**覆盖并删除用户的工作区文件**。所以当前实现把确认位做成
  *     请求体的一部分：没有 `confirm: true` 一律 400，且**在读数据库/碰文件之前**返回。
@@ -27,14 +27,14 @@
  *     当前实现的 `checkpoint_ref` 存的是 `git/saveVersion()` 的 commit sha（P0 已落地），
  *     所以走 `restoreVersion()`：它**先写 restore-backup 备份**、再 checkout 目标版本、
  *     最后删掉「当时被跟踪、但目标版本里没有」的文件。见 `git/index.ts` 的注释。
- *     项目契约的 checkpoint 存在自己的 `project_versions` 表里，不碰项目目录 ——
+ *     应用约定的 checkpoint 存在自己的 `project_versions` 表里，不碰项目目录 ——
  *     当前实现复用 git 的副作用（会自动 git init）在 P0-5 已报备，这里不改行为。
  *
  *  ③ **fork 复制消息时保留 `checkpoint_ref` 原值，并显式清掉 `sdk_session_id`。**
- *     · ref：项目契约把 ref 复制进**新会话的命名空间**（`refFor(newId, msgId)`）。
+ *     · ref：应用约定把 ref 复制进**新会话的命名空间**（`refFor(newId, msgId)`）。
  *       当前实现的 ref 是仓库级 commit sha，对同一项目下的任何会话都直接有效 ——
- *       等价于项目契约的"remap"，而且是同一个快照本身。
- *     · sdk_session_id：项目契约在 `resumable === false` 时**原样复制** agentSessionId。
+ *       等价于应用约定的"remap"，而且是同一个快照本身。
+ *     · sdk_session_id：应用约定在 `resumable === false` 时**原样复制** agentSessionId。
  *       当前实现的 `agent_msg_uuid` 目前恒为 NULL（P0 只加列，值等 agent 侧接出来），
  *       即 resumable 恒为 false ⇒ 直接采用就会把父会话的 SDK 会话 id 复制过去，
  *       两个会话**共用同一个 agent 上下文**：分叉后继续聊会把消息写进父会话的上下文里，
@@ -43,7 +43,7 @@
  *
  * ── 最容易踩错的一句话 ──
  *   这三件事都会**改用户的文件**，所以：① 确认门槛必须排在**所有**副作用之前；
- *   ② 回滚失败时**不许**进入删消息那一步（项目契约的顺序就是"先恢复文件、再删消息"），
+ *   ② 回滚失败时**不许**进入删消息那一步（应用约定的顺序就是"先恢复文件、再删消息"），
  *   否则用户会得到"文件没回来、对话却没了"的半改状态。
  */
 import { z } from 'zod';
@@ -53,13 +53,13 @@ import type { ContentBlock } from '@shared/types';
 // 契约
 // ─────────────────────────────────────────────────────────────
 
-/** 分叉出来的会话标题后缀 —— 与项目契约字段一致（项目契约这个常量是 7 个字符） */
+/** 分叉出来的会话标题后缀 —— 与应用约定字段一致（应用约定这个常量是 7 个字符） */
 export const FORK_TITLE_SUFFIX = ' · fork';
 
 /**
  * `POST /api/checkpoint/revert` 的请求体。
  *
- * ⚠️ `confirm: z.literal(true)` 是**当前实现的加固**，不是项目契约字段（见文件头 ①）。
+ * ⚠️ `confirm: z.literal(true)` 是**当前实现的加固**，不是应用约定字段（见文件头 ①）。
  * 用 `literal(true)` 而不是 `boolean()` 是刻意的：`confirm: false` 必须**解析失败**，
  * 不能出现"传了 confirm 就算数"的漏洞。
  */
@@ -69,13 +69,13 @@ export const revertRequestSchema = z.object({
   confirm: z.literal(true),
 });
 
-/** `POST /api/sessions/:id/fork` 的请求体 —— 与项目契约 `ds` 字段一致（只有 messageId） */
+/** `POST /api/sessions/:id/fork` 的请求体 —— 与应用约定 `ds` 字段一致（只有 messageId） */
 export const forkRequestSchema = z.object({ messageId: z.string().min(1) });
 
 export type RevertRequest = z.infer<typeof revertRequestSchema>;
 export type ForkRequest = z.infer<typeof forkRequestSchema>;
 
-/** 项目契约的错误码，直接采用（渲染层按这些字符串查 i18n，见 `chat.useChat.revert*`） */
+/** 应用约定的错误码，直接采用（渲染层按这些字符串查 i18n，见 `chat.useChat.revert*`） */
 export type RevertErrorCode =
   | 'confirm_required'
   | 'bad_request'
@@ -91,13 +91,13 @@ export type ForkErrorCode = 'bad_request' | 'session_not_found' | 'message_not_f
  * 一条消息在**本模块内的口径**。
  *
  * ⚠️ 与 `ChatMessage` 的差别只有一处：`content` 是**派生**出来的（由 text 块拼成），
- *    因为项目契约的 `messages` 有 `content` 与 `parts` 两列，当前实现只有 `blocks` 一列。
+ *    因为应用约定的 `messages` 有 `content` 与 `parts` 两列，当前实现只有 `blocks` 一列。
  *    fork 要把整块负载原样复制给新会话，所以 `blocks` 也一起带着。
  */
 export interface OpsMessage {
   id: string;
   role: 'user' | 'assistant';
-  /** 项目契约 `content` 列：只含 text 块（不含 thinking / 工具） */
+  /** 应用约定 `content` 列：只含 text 块（不含 thinking / 工具） */
   content: string;
   /** 原样复制给新会话的负载 */
   blocks: ContentBlock[];
@@ -172,10 +172,10 @@ export type RevertPlan =
 /**
  * 找出「回到此消息之前」的目标与要删的消息。
  *
- * 与项目契约一致的三处判断：
+ * 与应用约定一致的三处判断：
  *   1. 下标 < 0（消息不存在）            → 404 message_not_found
  *   2. role 不是 user（含下标为 -1 时取到 undefined 的情况）→ 404 message_not_found
- *      —— 项目契约对"非 user 行"和对"没有这条"用的是**同一个错误码**，直接采用。
+ *      —— 应用约定对"非 user 行"和对"没有这条"用的是**同一个错误码**，直接采用。
  *   3. `checkpointRef` 为空              → 400 no_checkpoint
  *      —— 这一条是 P0 的设计判断：工作区干净时 `saveVersion()` 返回 `committed:false`
  *         且没有 sha，`captureCheckpoint` 会记 `null`。**不能**退用更早的快照当目标，
@@ -209,7 +209,7 @@ export type ForkPlan =
       kept: OpsMessage[];
       /** 用户消息分叉时要预填到输入框的原文；助手消息分叉时为 null */
       draft: string | null;
-      /** agent 上下文能不能续上 —— 项目契约判据：kept 里有带 agentMsgUuid 的 assistant 行 */
+      /** agent 上下文能不能续上 —— 应用约定判据：kept 里有带 agentMsgUuid 的 assistant 行 */
       resumable: boolean;
     }
   | { ok: false; status: 404; error: 'message_not_found' };
@@ -217,7 +217,7 @@ export type ForkPlan =
 /**
  * 算出分叉要保留哪些消息。
  *
- * 项目契约的切片规则（**两个方向不对称，这是刻意的**）：
+ * 应用约定的切片规则（**两个方向不对称，这是刻意的**）：
  *   · 从**用户**消息分叉 → `slice(0, idx)`：本条**不含**，它的原文作为 `draft` 预填输入框
  *     （用户接下来要改一改再发，所以不能已经出现在历史里）；
  *   · 从**助手**回复分叉 → `slice(0, idx + 1)`：本条**含**（"从此回复分叉"就是要带上这条回复）。
@@ -239,7 +239,7 @@ export function planFork(messages: OpsMessage[], messageId: string): ForkPlan {
 /**
  * 分叉会话的标题。
  *
- * 项目契约：`title.endsWith(SUFFIX) ? title.slice(0, -7) : title` 再拼 `SUFFIX`。
+ * 应用约定：`title.endsWith(SUFFIX) ? title.slice(0, -7) : title` 再拼 `SUFFIX`。
  * 用 `SUFFIX.length` 而不是硬编码的 7（等价，但后缀改了不会跟着错）。
  * 净效果 = 「结尾没有后缀才追加」——连分叉两次不会得到 `· fork · fork`。
  */
@@ -258,7 +258,7 @@ export function forkTitle(title: string): string {
  * 因为编辑重发会删掉这条之后的全部对话，只有尾部那条才符合直觉。
  * 这里把这个 id 的算法抽出来：**最后一条 role === 'user' 的消息**。
  *
- * ⚠️ 不要求"这条之后没有 assistant 消息"：项目契约也不要求。若它后面已有回复，
+ * ⚠️ 不要求"这条之后没有 assistant 消息"：应用约定也不要求。若它后面已有回复，
  *    那条回复会一并被移除 —— 这正是 `revertDialogBody` 那句话要写清楚的事
  *    （"这条消息及之后的对话也会一并移除"）。
  */
@@ -301,7 +301,7 @@ export type RevertResult =
 export interface RevertContext {
   /** 目标会话是否存在；存在则带上它的工作区根目录 */
   session: { cwd: string } | null;
-  /** 该会话是否正在跑一轮（项目契约在这里回 409 turn_running） */
+  /** 该会话是否正在跑一轮（应用约定在这里回 409 turn_running） */
   running: boolean;
   /** 该会话的全部消息，按 createdAt 升序 */
   messages: OpsMessage[];
@@ -315,7 +315,7 @@ export interface RevertContext {
  * `restoreVersion` 会回 `ok:false`，此时它已经写下的 restore-backup 备份是只增不减的，
  * 不会丢用户数据；见 git/index.ts 的三条注释）。
  *
- * 顺序与项目契约一致（项目契约也是 session → turn_running → message → restore）：
+ * 顺序与应用约定一致（应用约定也是 session → turn_running → message → restore）：
  *   ① 确认门槛（**当前实现新增，排在最前**）
  *   ② 会话不存在            → 404 session_not_found
  *   ③ 回合在跑              → 409 turn_running
@@ -403,12 +403,12 @@ export interface ForkResult {
     createdAt: number;
     updatedAt: number;
   };
-  /** 复制过来的消息条数（项目契约响应字段名字段一致） */
+  /** 复制过来的消息条数（应用约定响应字段名字段一致） */
   copiedMessages: number;
-  /** 从用户消息分叉时预填输入框的原文（项目契约响应字段名字段一致） */
+  /** 从用户消息分叉时预填输入框的原文（应用约定响应字段名字段一致） */
   draft: string | null;
   /**
-   * ⚠️ 当前实现**多加**的一个字段（项目契约响应只有上面三项）。
+   * ⚠️ 当前实现**多加**的一个字段（应用约定响应只有上面三项）。
    * 它回答"新会话能不能接上 agent 上下文"——当前实现的 `agent_msg_uuid` 目前恒为 NULL，
    * 所以恒为 false。加出来是为了让渲染层/排查的人**不必去读代码才知道**这件事。
    */
@@ -462,7 +462,7 @@ export function executeFork(
     createdAt: from.createdAt,
     inputTokens: from.inputTokens,
     outputTokens: from.outputTokens,
-    // 见文件头 ③：ref 是仓库级 sha，原样带过去就是项目契约 remap 的等价物
+    // 见文件头 ③：ref 是仓库级 sha，原样带过去就是应用约定 remap 的等价物
     checkpointRef: from.checkpointRef,
     agentMsgUuid: from.agentMsgUuid,
   }));

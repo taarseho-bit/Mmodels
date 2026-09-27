@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 interface Props {
   open: boolean;
   title: string;
-  /** 正文说明（项目契约风格的一句话解释） */
+  /** 正文说明（应用约定风格的一句话解释） */
   description?: ReactNode;
   /** 要点清单（如缺失项逐条列出）；空数组则不渲染这一段 */
   items?: string[];

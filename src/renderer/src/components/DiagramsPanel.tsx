@@ -1,7 +1,7 @@
 /**
- * 流程图面板 —— 当前实现项目契约 `DiagramsPanel`。
+ * 流程图面板 —— 当前实现应用约定 `DiagramsPanel`。
  *
- * 项目契约这块是**基于文件系统**的：扫描项目里的 `.drawio` 源文件，
+ * 应用约定这块是**基于文件系统**的：扫描项目里的 `.drawio` 源文件，
  * 与同名导出图（PNG/PDF）配对，比较 mtime 判断「源文件比导出图新」，
  * 显示为「待导出」。点「导出并更新论文图」把一段指令填进输入框，
  * 交给 Agent 用 `paper-diagram` 技能重新导出。
@@ -162,7 +162,7 @@ export function DiagramsPanel(): JSX.Element {
     void window.mathmodel.app.openPath(`${project.root}\\${rel.replace(/\//g, '\\')}`);
   };
 
-  /** 把项目契约的导出指令填进输入框，交给 Agent 执行 */
+  /** 把应用约定的导出指令填进输入框，交给 Agent 执行 */
   const askExport = (d: DiagramEntry): void => {
     fillPrompt(tx('dock.diagramsPanel.exportPrompt', { path: d.relPath }));
   };

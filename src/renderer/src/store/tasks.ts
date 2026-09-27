@@ -58,7 +58,7 @@ export const EMPTY_TASK_STATE: TaskState = { list: [], idToKey: new Map(), seq: 
 /**
  * 工具名简短化：`mcp__server__TaskCreate` → `TaskCreate`。
  * 认的三个名字：TaskCreate / TaskUpdate（运行测试里的真名）
- * 与 TodoWrite（项目契约字符串表 `scripts/string-table.tsv` 里也有这一条）。
+ * 与 TodoWrite（应用约定字符串表 `scripts/string-table.tsv` 里也有这一条）。
  */
 function shortToolName(name: string): string {
   return name.split('__').pop() ?? name;

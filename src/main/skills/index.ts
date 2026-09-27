@@ -255,6 +255,25 @@ export function readSkillDoc(dirName: string): string {
 }
 
 /**
+ * 读取技能的短前置说明，供任务路由在首轮工作前稳定加载。
+ *
+ * 这里只带入技能的操作要点，不把整份 SKILL.md 塞进上下文；完整技能仍由
+ * SDK 的插件注册和 Skill 工具按需读取。这样路由命中的技能一定会进入本轮
+ * 的可见执行计划，同时不会因为技能参考资料过长挤占题目和数据上下文。
+ */
+export function readSkillPrelude(dirName: string, maxChars = 2200): { dirName: string; name: string; text: string } | null {
+  const skill = listSkills().find((s) => s.dirName === dirName && s.enabled);
+  if (!skill) return null;
+  try {
+    const raw = readFileSync(join(skill.path, 'SKILL.md'), 'utf8');
+    const body = raw.replace(/^---[\s\S]*?\n---\s*/m, '').trim();
+    return { dirName: skill.dirName, name: skill.name, text: body.slice(0, Math.max(400, maxChars)) };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 导入用户技能。
  *
  * 只接受**目录**：技能必须带 SKILL.md，否则导入了也不会被识别，
@@ -276,7 +295,7 @@ export function importSkill(srcDir: string): SkillMeta[] {
 }
 
 /**
- * 删除技能（项目契约 `deleteConfirm` 语义：只删用户技能目录下的这个文件夹）。
+ * 删除技能（应用约定 `deleteConfirm` 语义：只删用户技能目录下的这个文件夹）。
  *
  * 内置技能随包分发，删了会在重新扫描时又出现，所以直接拒绝并给明确原因。
  */

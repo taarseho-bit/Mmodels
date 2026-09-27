@@ -1,4 +1,4 @@
-/** 应用外壳 / 对话 / 自动化 / 欢迎页等新增界面的英文覆盖 —— 无项目契约键的文案 */
+/** 应用外壳 / 对话 / 自动化 / 欢迎页等新增界面的英文覆盖 —— 无应用约定键的文案 */
 export const coreOv: Record<string, string> = {
   // ── App.tsx ──
   '正在启动 MModels…': 'Starting MModels…',
@@ -105,7 +105,7 @@ export const coreOv: Record<string, string> = {
   '下次运行：': 'Next run: ',
   '还没有运行记录。': 'No runs yet.',
 
-  // ── CompetitionsPage.tsx（项目契约无对应键的少量界面文案） ──
+  // ── CompetitionsPage.tsx（应用约定无对应键的少量界面文案） ──
   '展开': 'Expand',
   '收起': 'Collapse',
   '{{year}}年{{month}}月': '{{month}}/{{year}}',
@@ -204,7 +204,7 @@ export const coreOv: Record<string, string> = {
   '产物': 'Artifacts',
 
   // ── TaskProgress.tsx（任务进度面板，用户点名新增）──
-  // 面板本身的文案用项目契约已有的 composer.composerTaskListCard.*（见 zh.ts/en.ts），
+  // 面板本身的文案用应用约定已有的 composer.composerTaskListCard.*（见 zh.ts/en.ts），
   // 这里只登记当前没有的两条。
   '全部任务已完成': 'All tasks completed',
   '未命名任务': 'Untitled task',

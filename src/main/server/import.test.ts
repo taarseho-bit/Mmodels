@@ -5,13 +5,13 @@
  *
  *   1. **坏文件不能毁库** —— 校验必须在**动数据库之前**。所以这里正面测 schema 的拒绝面，
  *      并从结构上断言路由里 `safeParse` 出现在 `db.transaction` 之前。
- *   2. **冲突处理直接采用项目契约** —— `cs` 里没有 `session.id`，导入一律新 uuid，**永不覆盖**。
+ *   2. **冲突处理直接采用应用约定** —— `cs` 里没有 `session.id`，导入一律新 uuid，**永不覆盖**。
  *      所以 `planImport` 必须用**传入的新 id**，而不是文件里的 id（文件里压根没有）。
  *   3. **装不下的 part 不静默丢** —— 当前实现的 `ContentBlock` 只有 5 种 kind，
- *      项目契约有 7 种 part。降级的四种必须**内容可读**且**计数回报**。
+ *      应用约定有 7 种 part。降级的四种必须**内容可读**且**计数回报**。
  *
  * 另外还有一条最容易写错的：`providerId` / `model` 在当前实现是 `NOT NULL DEFAULT ''`，
- * 项目契约可空 —— `null` 必须落成 `''`，不是字符串 `'null'`、也不是漏写。
+ * 应用约定可空 —— `null` 必须落成 `''`，不是字符串 `'null'`、也不是漏写。
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -26,7 +26,7 @@ import {
   type SessionPart,
 } from './export';
 
-/** 一份合法的导出文件（项目契约 `cs` 形状） */
+/** 一份合法的导出文件（应用约定 `cs` 形状） */
 function file(over: Partial<SessionExportPayload> = {}): SessionExportPayload {
   return {
     format: 'mathmodel-session',
@@ -93,7 +93,7 @@ describe('sessionImportSchema —— 信封严格（坏文件必须在这里被�
     expect(sessionImportSchema.safeParse(bad3).success).toBe(false);
   });
 
-  it('允许：providerId / model 为 null（项目契约是 nullable）', () => {
+  it('允许：providerId / model 为 null（应用约定是 nullable）', () => {
     const f = file({
       session: { ...file().session, providerId: null, model: null },
     });
@@ -105,10 +105,10 @@ describe('sessionImportSchema —— 信封严格（坏文件必须在这里被�
     expect(sessionImportSchema.safeParse(file({ messages: [] })).success).toBe(true);
   });
 
-  it('**parts 逐段宽松**：不认识的一段不该让整个文件被拒（项目契约会拒，这里有意放宽）', () => {
+  it('**parts 逐段宽松**：不认识的一段不该让整个文件被拒（应用约定会拒，这里有意放宽）', () => {
     const f = file({ messages: [msg([{ type: 'brand-new-part-from-the-future', x: 1 }]) as never] });
 
-    // 回归护栏：项目契约是 z.array(Zn)，这一段会让整个文件 400
+    // 回归护栏：应用约定是 z.array(Zn)，这一段会让整个文件 400
     expect(sessionImportSchema.safeParse(f).success).toBe(true);
   });
 });
@@ -176,11 +176,11 @@ describe('partsToBlocks —— 7 种 part 的映射与降级', () => {
     expect(text).toContain('a.tex');
     expect(text).toContain('b.py');
     expect(text).toContain('+3');
-    expect(text).toContain('−1'); // U+2212，与项目契约 share HTML 一致
+    expect(text).toContain('−1'); // U+2212，与应用约定 share HTML 一致
     expect(r.degraded).toBe(1);
   });
 
-  it('turn-end：interrupted → `_Stopped_`；failed → 带错误信息（逐字用项目契约字面量）', () => {
+  it('turn-end：interrupted → `_Stopped_`；failed → 带错误信息（逐字用应用约定字面量）', () => {
     const a = partsToBlocks([{ type: 'turn-end', state: 'interrupted' }]);
     const b = partsToBlocks([{ type: 'turn-end', state: 'failed', errorMessage: '连接中断' }]);
     const c = partsToBlocks([{ type: 'turn-end', state: 'failed' }]);
@@ -220,7 +220,7 @@ describe('partsToBlocks —— 7 种 part 的映射与降级', () => {
   });
 });
 
-describe('planImport —— 冲突处理与列换算（直接采用项目契约的"只增不改"）', () => {
+describe('planImport —— 冲突处理与列换算（直接采用应用约定的"只增不改"）', () => {
   it('会话 id 用**传入的新 id**（文件里根本没有 id ⇒ 永不覆盖）', () => {
     const plan = planImport(file(), 'brand-new-id', seqIds(), 999);
 
@@ -388,7 +388,7 @@ describe('往返：导出的文件能被导入，且从第二次导出起是不�
         createdAt: 1_700_000_000_000,
       },
     ];
-    // 手工往导出结果里塞一段 attachment，模拟"项目契约导出的文件"
+    // 手工往导出结果里塞一段 attachment，模拟"应用约定导出的文件"
     const first = buildExportPayload(meta, original, 1);
     first.messages[0].parts.unshift({
       type: 'attachment',
@@ -437,7 +437,7 @@ describe('结构级判据 —— 路由里"先校验、后动库"', () => {
     expect(txAt).toBeGreaterThan(guardAt);
   });
 
-  it('导入包在事务里（项目契约没包；中途失败会留半条会话）', () => {
+  it('导入包在事务里（应用约定没包；中途失败会留半条会话）', () => {
     expect(ROUTES_SRC).toContain('db.transaction(');
     expect(ROUTES_SRC).toContain("})();");
   });

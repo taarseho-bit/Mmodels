@@ -1,10 +1,10 @@
 /**
- * 图标组件 —— 渲染从项目契约提取的 Lucide 路径数据（见 `./icons/lucide-data.ts`）。
+ * 图标组件 —— 渲染从应用约定提取的 Lucide 路径数据（见 `./icons/lucide-data.ts`）。
  *
  * 为什么不用 `lucide-react`：
- *   项目契约用 lucide-react，但本项目只需要其中一百多个图标，
- *   而路径数据已从项目契约 chunk 里**逐字提取**。自己渲染零依赖、体积可控，
- *   视觉与项目契约一致（同样的 viewBox、stroke、路径）。
+ *   应用约定用 lucide-react，但本项目只需要其中一百多个图标，
+ *   而路径数据已从应用约定 chunk 里**逐字提取**。自己渲染零依赖、体积可控，
+ *   视觉与应用约定一致（同样的 viewBox、stroke、路径）。
  *
  * 默认参数对齐 lucide 的默认值：
  *   viewBox 0 0 24 24 / fill none / stroke currentColor / stroke-width 2
@@ -21,7 +21,7 @@ function normalize(name: string): string {
 }
 
 export interface IconProps {
-  /** 图标名（kebab-case，与项目契约一致，如 `chart-column`） */
+  /** 图标名（kebab-case，与应用约定一致，如 `chart-column`） */
   name: string;
   size?: number | string;
   /** 线宽，lucide 默认 2 */

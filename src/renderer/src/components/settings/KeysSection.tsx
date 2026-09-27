@@ -7,7 +7,7 @@
  *   - 4 组共 14 条快捷键（全局 3 / 会话 8 / 文件预览 1 / 图库 2）
  *   - 点击行进入录制态：捕获组合键、Esc 取消、冲突提示、恢复默认
  *
- * 条目、分组、默认键位、键帽文案**全部取自项目契约**：
+ * 条目、分组、默认键位、键帽文案**全部取自应用约定**：
  *   文案   → zh.ts `shell.keymap.*` / `settings.keyboardShortcutsSection.*`
  *   默认键 → 当前渲染层常量（mod+slash / mod+k / mod+b / mod+u / mod+enter /
  *            mod+f / mod+o / left / right；其余 5 条为不可自定义的展示键）
@@ -65,7 +65,7 @@ export function KeysSection(): JSX.Element {
   const [filePath, setFilePath] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
 
-  /** 当前键位：覆盖值优先，否则用项目契约默认 */
+  /** 当前键位：覆盖值优先，否则用应用约定默认 */
   const bindingOf = (rule: KeyRule): string =>
     overrides[rule.command] || rule.defaultBinding || '';
   const isOverridden = (rule: KeyRule): boolean =>
@@ -73,7 +73,7 @@ export function KeysSection(): JSX.Element {
     !!overrides[rule.command] &&
     normalizeBinding(overrides[rule.command]) !== normalizeBinding(rule.defaultBinding);
 
-  // keybindings.json 落盘（项目契约「编辑」打开的就是这份文件）
+  // keybindings.json 落盘（应用约定「编辑」打开的就是这份文件）
   const syncFile = (rules: Record<string, string>): void => {
     void window.mathmodel.app
       .keybindingsFile(rules)
@@ -99,7 +99,7 @@ export function KeysSection(): JSX.Element {
       .catch(() => setSaveFailed(true));
   };
 
-  // 录制态：捕获阶段监听 window，Esc 取消（项目契约 lo 的做法）
+  // 录制态：捕获阶段监听 window，Esc 取消（应用约定 lo 的做法）
   const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(() => {
@@ -117,7 +117,7 @@ export function KeysSection(): JSX.Element {
         setPreview(previewParts(e));
         return;
       }
-      // 冲突检测：与其它条目的当前键位相同则拒绝保存（项目契约 Qi）
+      // 冲突检测：与其它条目的当前键位相同则拒绝保存（应用约定 Qi）
       const hit = RULES.find(
         (r) => r.command !== recording && !!r.defaultBinding && normalizeBinding(bindingOf(r)) === normalizeBinding(binding),
       );

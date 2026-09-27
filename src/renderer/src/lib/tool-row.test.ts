@@ -118,13 +118,13 @@ describe('tool-row · 键族里那几类工具都有动作文案', () => {
     expect(labelOf(tool('WebSearch', {}))).toBe('搜索网页');
     expect(labelOf(tool('WebFetch', {}))).toBe('抓取网页');
     expect(labelOf(tool('Task', {}))).toBe('运行子任务');
-    // read / edited / wrote 项目契约没给通用键 ⇒ 落 genericTool（见 lib/tool-row.ts 头注）
+    // read / edited / wrote 应用约定没给通用键 ⇒ 落 genericTool（见 lib/tool-row.ts 头注）
     expect(labelOf(tool('Read', {}))).toBe('使用工具');
     expect(labelOf(tool('Edit', {}))).toBe('使用工具');
     expect(labelOf(tool('Write', {}))).toBe('使用工具');
   });
 
-  it('超长 value 截断到 ROW_VALUE_MAX 且带省略号（展示口径，不是项目契约明文）', () => {
+  it('超长 value 截断到 ROW_VALUE_MAX 且带省略号（展示口径，不是应用约定明文）', () => {
     const long = 'x'.repeat(ROW_VALUE_MAX + 50);
     const label = labelOf(done('Bash', { command: long }));
     expect(label).toBe(`运行 ${'x'.repeat(ROW_VALUE_MAX)}…`);

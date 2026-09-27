@@ -1,4 +1,4 @@
-/** 设置页（SettingsPage）新增界面的英文覆盖 —— 无项目契约键的文案 */
+/** 设置页（SettingsPage）新增界面的英文覆盖 —— 无应用约定键的文案 */
 export const settingsOv: Record<string, string> = {
   '设置': 'Settings',
   '正在加载设置…': 'Loading settings…',
@@ -31,7 +31,7 @@ export const settingsOv: Record<string, string> = {
   '队员名单（每行一位）': 'Member list (one per line)',
   '张三\n李四\n王五': 'Zhang San\nLi Si\nWang Wu',
   '默认任务模式': 'Default task mode',
-  '新会话输入区默认选中的模式（与项目契约一致：默认「写论文」）。':
+  '新会话输入区默认选中的模式（与应用约定一致：默认「写论文」）。':
     'Mode preselected in the composer for new sessions (recommended default: "Write paper").',
   'Agent 权限': 'Agent permissions',
   '对应输入区右下角的权限选择器。': 'Matches the permission picker at the bottom-right of the composer.',
@@ -105,7 +105,7 @@ export const settingsOv: Record<string, string> = {
   '快速添加（内置预设）': 'Quick add (built-in presets)',
   '＋ 自定义供应商': '＋ Custom provider',
   '检测中…': 'Checking…',
-  // 原 `'⟳ 重新检测'` 已删除：EnvSection 的按钮文案已改回项目契约「重新检查」，
+  // 原 `'⟳ 重新检测'` 已删除：EnvSection 的按钮文案已改回应用约定「重新检查」，
   // 且全仓 grep 无 `t('⟳ 重新检测')` 调用点 —— 留着就是孤儿键（i18n 护栏只管 tx()，
   // 查不到这类孤儿，靠人工清理）。
   '{{count}} 项待处理': '{{count}} to fix',
@@ -125,13 +125,13 @@ export const settingsOv: Record<string, string> = {
   '登录、云端分享、自动更新等在线服务按需求未实现。':
     'Online services such as login, cloud sharing and auto-update are not implemented by design.',
   '附加系统提示词': 'Additional system prompt',
-  '追加在 Agent 系统层末尾的自定义指令（项目契约同位置功能）。每个新会话生效，只保存在本机。':
+  '追加在 Agent 系统层末尾的自定义指令（应用约定同位置功能）。每个新会话生效，只保存在本机。':
     'Custom instructions appended to the end of the agent system layer. Takes effect for each new session; stored locally only.',
   '例：所有图表统一使用科技期刊配色；代码注释用中文…':
     'e.g. All figures use sci-journal color schemes; code comments in Chinese…',
   '已保存 ✓ 下一个会话生效': 'Saved ✓ takes effect next session',
   '主题与语言': 'Theme & language',
-  '外观主题与界面语言（项目契约：zh-CN 默认，可切 English）':
+  '外观主题与界面语言（应用约定：zh-CN 默认，可切 English）':
     'Appearance theme and UI language (zh-CN by default, English available)',
   '换行': 'Newline',
   '打开设置': 'Open settings',
@@ -155,7 +155,7 @@ export const settingsOv: Record<string, string> = {
   '发送失败': 'Failed to send',
   '发送测试通知': 'Send test notification',
   '自动化机器人': 'Automation bots',
-  '按 cron 定时跑任务的机器人（对应项目契约「机器人」）。完成时会发系统通知。':
+  '按 cron 定时跑任务的机器人（对应应用约定「机器人」）。完成时会发系统通知。':
     'Bots that run tasks on a cron schedule. Sends a system notification on completion.',
   '读取中…': 'Loading…',
   '已创建 {{count}} 个自动化任务': '{{count}} automations created',
@@ -203,8 +203,8 @@ export const settingsOv: Record<string, string> = {
   '已重新检测': 'Re-detected',
 
   // ── 机器人（飞书 / 微信）────────────────────────────────────
-  // 飞书侧文案走项目契约键 integrations.feishuSection.*；
-  // 微信侧项目契约键（integrations.weChatSection.*）尚未进 zh.ts/en.ts，先用中文即键。
+  // 飞书侧文案走应用约定键 integrations.feishuSection.*；
+  // 微信侧应用约定键（integrations.weChatSection.*）尚未进 zh.ts/en.ts，先用中文即键。
   '微信机器人': 'WeChat bot',
   '扫码登录微信': 'Log in with WeChat QR code',
   '当前版本不支持扫码授权': 'QR-code authorization is not available in the local edition',
@@ -228,11 +228,11 @@ export const settingsOv: Record<string, string> = {
     'Cloud sharing is not available in the local edition; this tutorial is unavailable',
 
   // ── 外观 / 键盘快捷键（s08 / s09）─────────────────────────────
-  // 项目契约条目的文案一律走 zh.ts 里的项目契约键（tx），这里只登记新增文案。
+  // 应用约定条目的文案一律走 zh.ts 里的应用约定键（tx），这里只登记新增文案。
   '打开所在目录': 'Show in folder',
 
-  // ── 运行环境「一键安装」确认框（新增界面，项目契约无对应键）────────
-  // 标题 / 正文 / 按钮分别是项目契约键 configureTitle / issuesDetectedDescription / common.cancel，
+  // ── 运行环境「一键安装」确认框（新增界面，应用约定无对应键）────────
+  // 标题 / 正文 / 按钮分别是应用约定键 configureTitle / issuesDetectedDescription / common.cancel，
   // 这里只登记确认框自己新造的文案。
   '将交给 Agent 安装以下缺失项：': 'The agent will install the following missing items:',
   'Agent 会在本机执行安装：Python 包走清华镜像；uv / Git / LaTeX 等按当前平台给出最小安装方案。需要你决定时（例如输入密码）它会先问你。':
@@ -243,15 +243,15 @@ export const settingsOv: Record<string, string> = {
   '让 Agent 复核': 'Have the agent re-check',
   '启动安装失败：{{msg}}': 'Failed to start the installation: {{msg}}',
 
-  // ── 运行环境（遵循项目契约 s05-env 5 行结构后新增）────────────────
-  // Python 行在「解释器可用但建模包不全」时补的一行（项目契约无此行）。
+  // ── 运行环境（遵循应用约定 s05-env 5 行结构后新增）────────────────
+  // Python 行在「解释器可用但建模包不全」时补的一行（应用约定无此行）。
   '建模包不完整，缺少 {{count}} 个：{{names}}':
     'Modeling packages incomplete, {{count}} missing: {{names}}',
   '复制失败，请手动安装 draw.io 桌面版。':
     'Copy failed — please install draw.io Desktop manually.',
 
-  // ── 论文与比赛 ·「自定义模板」区（新增界面，项目契约无对应键）──────
-  // 项目契约把模板来源存在项目配置里（template.source='custom' + sourcePath），
+  // ── 论文与比赛 ·「自定义模板」区（新增界面，应用约定无对应键）──────
+  // 应用约定把模板来源存在项目配置里（template.source='custom' + sourcePath），
   // 但从没给过「选一个本地目录当模板源」的入口；这段是补的。
   '自定义模板': 'Custom template',
   '把任意本地目录作为论文模板源。Agent 写论文时会按 write-paper 的规则把该目录整体复制到项目里，从入口文件开始写。不选则使用内置比赛模板。':

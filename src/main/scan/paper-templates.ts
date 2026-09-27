@@ -46,15 +46,15 @@ import {
 export const TEMPLATE_REL_DIR = 'builtin-skills/write-paper/assets/template';
 
 // 文案解析统一走 `pickLocalizedText`（`@shared/types`）—— template.json 的
-// `name` / `description` / `fields[].label` 本来就是项目契约 `Np` 对象，
+// `name` / `description` / `fields[].label` 本来就是应用约定 `Np` 对象，
 // 与项目配置文件里的 `template.name` / `contestFields[].label` 是同一种形状。
 // 历史上这里有一份本地 `pickLang`，与共享版重复 —— 已合并，不再各写一遍。
 
 /**
- * 解析模板元数据的 `fields[].options`（项目契约 `Sre.options: ht(wre).max(30)`）。
+ * 解析模板元数据的 `fields[].options`（应用约定 `Sre.options: ht(wre).max(30)`）。
  *
- * 项目契约靠 `options.length > 0` 决定这个字段渲染**下拉框**还是文本框；
- * 这里丢了 `options`，长三角 / 东三省 / 五一杯三个比赛就只能填文本框（项目契约是下拉）。
+ * 应用约定靠 `options.length > 0` 决定这个字段渲染**下拉框**还是文本框；
+ * 这里丢了 `options`，长三角 / 东三省 / 五一杯三个比赛就只能填文本框（应用约定是下拉）。
  *
  * 规则：逐项要 `value`（非空字符串）与 `label`（`Np`，中文缺则回退 `value`）；
  * **非法项直接丢掉**；一项都不剩就**返回 `undefined` 而不是 `[]`** ——
@@ -82,7 +82,7 @@ export const PAPER_TEMPLATE_MANIFEST = 'template.json';
  * 扫描**一个**模板根目录。
  *
  * 内置库与受管自定义库用的是同一套目录约定（`<root>/<id>/template.json`），
- * 所以两处共用这一个函数 —— 项目契约也是同一个 `scanRoot(root, source)` 被调用两次。
+ * 所以两处共用这一个函数 —— 应用约定也是同一个 `scanRoot(root, source)` 被调用两次。
  *
  * @param root   模板根目录
  * @param source 这批模板的来源标记（内置 `'builtin'` / 自定义 `'custom'`）
@@ -123,13 +123,13 @@ export function scanTemplateRoot(root: string, source: 'builtin' | 'custom'): Pa
         label: pickLocalizedText(o.label) || id,
         required: o.required === true,
       };
-      // 英文标签单独留一份：写 `contestFields` 时要落成项目契约 `Np` 对象，`en` 就取这里
+      // 英文标签单独留一份：写 `contestFields` 时要落成应用约定 `Np` 对象，`en` 就取这里
       // （内置 template.json 自带，如 cumcm 的「题号」→「Problem」）。
       const labelEn = pickLocalizedText(o.label, 'en');
       if (labelEn) item.labelEn = labelEn;
       const ph = pickLocalizedText(o.placeholder);
       if (ph) item.placeholder = ph;
-      // 可选项 —— 项目契约靠它决定下拉框还是文本框。模板数据本来就带
+      // 可选项 —— 应用约定靠它决定下拉框还是文本框。模板数据本来就带
       // （如长三角赛「赛道」的 本科生 / 研究生），之前在这里被丢掉。
       const options = parseFieldOptions(o.options);
       if (options) item.options = options;
@@ -139,9 +139,9 @@ export function scanTemplateRoot(root: string, source: 'builtin' | 'custom'): Pa
     /**
      * 模板 id：**清单里的 `id` 优先，没有才退回目录名**。
      *
-     * 为什么不能只用目录名：项目契约 fork 出来的模板，目录名是
+     * 为什么不能只用目录名：应用约定 fork 出来的模板，目录名是
      * `sanitize(名称)-<id 后 8 位>`（为了在资源管理器里可读），而 `id` 是
-     * `custom-<随机>` —— 两者**不相等**。项目契约 fork 结束后就是靠
+     * `custom-<随机>` —— 两者**不相等**。应用约定 fork 结束后就是靠
      * `scanRoot(root,'custom').find(t => t.id === id)` 找回新建的那条，
      * 只认目录名会让它找不到、直接把刚建好的模板回滚删掉。
      *
@@ -160,7 +160,7 @@ export function scanTemplateRoot(root: string, source: 'builtin' | 'custom'): Pa
       entryFile: typeof raw.entryFile === 'string' ? raw.entryFile : 'document.tex',
       order: typeof raw.order === 'number' ? raw.order : 999,
       // `defaultFor` 标出这个模板是哪些语言的默认项（如 cumcm → ['zh-CN']、
-      // mcm → ['en']）。项目契约就是靠它决定首屏默认选中哪个比赛 ——
+      // mcm → ['en']）。应用约定就是靠它决定首屏默认选中哪个比赛 ——
       // 丢了它，界面就只能显示"暂无模板"，用户看不到比赛选择。
       defaultFor: Array.isArray(raw.defaultFor)
         ? raw.defaultFor.filter((x): x is string => typeof x === 'string')
@@ -190,10 +190,10 @@ export function listPaperTemplates(resourcesDir: string): PaperTemplate[] {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 受管自定义模板库（项目契约 `customTemplatesRoot` + fork / delete）
+// 受管自定义模板库（应用约定 `customTemplatesRoot` + fork / delete）
 //
 // ⚠️ 与设置页那个「指一个本地目录当模板源」的增强入口**不是一回事**，两者并存：
-//   · 这里 = 项目契约语义的**受管库** —— fork 出来的模板归我们管，存在用户数据目录下，
+//   · 这里 = 应用约定语义的**受管库** —— fork 出来的模板归我们管，存在用户数据目录下，
 //     与项目无关，任何项目都能用（就是扩展页「我的模板」分组里那些）。
 //   · 设置页那个 = 本项目**有意偏离**的增强 —— 用户指一个已有目录，
 //     路径写进当前项目的 `.mathmodel/paper/config.json`（`source='custom'` + `sourcePath`），
@@ -203,19 +203,19 @@ export function listPaperTemplates(resourcesDir: string): PaperTemplate[] {
 /** 受管自定义模板库在用户数据目录下的子目录名 */
 export const CUSTOM_TEMPLATES_DIR_NAME = 'paper-templates';
 
-/** 自定义模板 id 前缀（项目契约 `'custom-' + <随机>`） */
+/** 自定义模板 id 前缀（应用约定 `'custom-' + <随机>`） */
 export const CUSTOM_TEMPLATE_PREFIX = 'custom-';
 
 /**
- * 自定义模板的排序权重（项目契约写死 `order: 1000`）。
+ * 自定义模板的排序权重（应用约定写死 `order: 1000`）。
  * 内置模板的 order 是 10～130 —— 所以「我的模板」天然排在内置之后。
  */
 export const CUSTOM_TEMPLATE_ORDER = 1000;
 
-/** 模板名上限（项目契约 `name.length > 0x50` 即拒绝） */
+/** 模板名上限（应用约定 `name.length > 0x50` 即拒绝） */
 export const MAX_TEMPLATE_NAME_LENGTH = 80;
 
-/** 目录名里名称部分的长度上限（项目契约 `slice(0, 0x30)`） */
+/** 目录名里名称部分的长度上限（应用约定 `slice(0, 0x30)`） */
 const MAX_TEMPLATE_DIR_STEM = 48;
 
 /** 受管库根目录 —— 由调用方给出用户数据目录（纯函数，便于单测） */
@@ -224,9 +224,9 @@ export function customTemplatesRootIn(userDataDir: string): string {
 }
 
 /**
- * 错误码 → 项目契约 HTTP 状态码。
+ * 错误码 → 应用约定 HTTP 状态码。
  *
- * 项目契约是 REST（`DELETE /api/paper-templates/:id` 等），当前实现走 IPC 没有状态码，
+ * 应用约定是 REST（`DELETE /api/paper-templates/:id` 等），当前实现走 IPC 没有状态码，
  * 但**分派关系要保住**（403 = 内置只读、404 = 找不到、500 = 删失败、503 = 库不可用），
  * 否则「被拒绝」和「删失败了」会混成同一个错误，用户看到的提示就错了。
  */
@@ -245,7 +245,7 @@ export function paperTemplateError(code: PaperTemplateErrorCode): PaperTemplateE
 }
 
 /**
- * 内置 + 自定义合并成**一个模板库**（项目契约 `records()`）。
+ * 内置 + 自定义合并成**一个模板库**（应用约定 `records()`）。
  *
  * · 内置先扫、自定义后扫，同 id **内置优先**（与 `records()` 里的 Set 去重同序）
  * · 按 order 升序 → 自定义（1000）排在内置（10～130）之后
@@ -269,14 +269,14 @@ export function listPaperTemplateLibrary(opts: {
   return deduped;
 }
 
-/** `child` 是否就是 `parent` 本身或在其内部（项目契约 fork/delete 的路径围栏） */
+/** `child` 是否就是 `parent` 本身或在其内部（应用约定 fork/delete 的路径围栏） */
 export function isInsideDir(parent: string, child: string): boolean {
   const rel = relative(parent, child);
   return rel === '' || (rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel));
 }
 
 /**
- * 目录树里有没有符号链接/联接 —— 有就不许 fork（项目契约 `unsafe_template`）。
+ * 目录树里有没有符号链接/联接 —— 有就不许 fork（应用约定 `unsafe_template`）。
  *
  * 理由：复制时 `dereference: false` 会把链接原样带过去，指向模板目录外面的文件；
  * 之后 Agent 把模板复制进项目，等于把一个不受控的路径引进了用户项目。
@@ -315,12 +315,12 @@ const RESERVED_DIR_NAMES = new Set([
 ]);
 
 /**
- * 把模板名变成一个**可读且安全**的目录名片段（项目契约 fork 里那串 replace 的等价物）。
+ * 把模板名变成一个**可读且安全**的目录名片段（应用约定 fork 里那串 replace 的等价物）。
  *
  * 规则：控制字符 → 空格；`< > : " / \ | ? *` → 空格；折叠空白；去掉开头的点；
  * 截断到 48 字符；去掉结尾的空格与点；空则回落 `template`；命中保留设备名则加下划线。
  *
- * ⚠️ 与项目契约有一处**有意**差异：项目契约按行 split 后再 `join('')`，多行名称会被
+ * ⚠️ 与应用约定有一处**有意**差异：应用约定按行 split 后再 `join('')`，多行名称会被
  *    **拼成一坨**（"国赛\n模板" → "国赛模板"）；这里换成"换行 → 空格"（→ "国赛 模板"）。
  *    影响面只有目录名，显示名存的是原样的名字，不丢信息。
  */
@@ -337,15 +337,15 @@ export function sanitizeTemplateDirName(name: string): string {
   return s;
 }
 
-/** 受管库里的模板 id（项目契约 `'custom-' + 随机`） */
+/** 受管库里的模板 id（应用约定 `'custom-' + 随机`） */
 function newCustomTemplateId(): string {
   return `${CUSTOM_TEMPLATE_PREFIX}${randomBytes(6).toString('hex')}`;
 }
 
 /**
- * **基于某条模板派生一条自定义模板**（项目契约 `POST /api/paper-templates/fork`）。
+ * **基于某条模板派生一条自定义模板**（应用约定 `POST /api/paper-templates/fork`）。
  *
- * 顺序逐条对齐项目契约 `PaperTemplateService.fork()`：
+ * 顺序逐条对齐应用约定 `PaperTemplateService.fork()`：
  *   ① 没有受管库 → `custom_template_library_unavailable`(503)
  *   ② 来源模板找不到 → `template_not_found`(404)
  *   ③ 来源含符号链接 → `unsafe_template`(400)
@@ -354,7 +354,7 @@ function newCustomTemplateId(): string {
  *   ⑥ 复制/写盘失败 → 清掉半成品 + `custom_template_library_unavailable`(503)
  *
  * 复制走**临时目录 + rename**：中途失败不会在库里留下半个模板
- * （项目契约也是先拷到 `.custom-xxx.tmp` 再 rename）。
+ * （应用约定也是先拷到 `.custom-xxx.tmp` 再 rename）。
  *
  * @param idFactory 仅测试注入用；默认 `custom-<12 位随机>`
  */
@@ -398,8 +398,8 @@ export function forkPaperTemplate(opts: {
       errorOnExist: true,
       dereference: false,
     });
-    // 清单字段对齐项目契约 fork 写下的那份：
-    // name 是项目契约 `Np` 对象（用户只输一个名字 → zh-CN 与 en 同值）、
+    // 清单字段对齐应用约定 fork 写下的那份：
+    // name 是应用约定 `Np` 对象（用户只输一个名字 → zh-CN 与 en 同值）、
     // order 1000（排在内置之后）、defaultFor 空（新模板不抢任何语言的默认位）。
     const meta = {
       schemaVersion: 1,
@@ -439,7 +439,7 @@ export function forkPaperTemplate(opts: {
 }
 
 /**
- * **删除一条自定义模板**（项目契约 `DELETE /api/paper-templates/:id`）。
+ * **删除一条自定义模板**（应用约定 `DELETE /api/paper-templates/:id`）。
  *
  * ★★ 这是本功能的关键那道闸（BACKLOG §3-3 的风险段）★★
  *
@@ -448,7 +448,7 @@ export function forkPaperTemplate(opts: {
  * 「这是自定义模板」标记 —— 从任何地方（含直接调通道）拿内置模板的 id 进来，
  * 都会在第 ② 步被 `builtin_template_readonly`(403) 挡掉，**一个字节都不动**。
  *
- * 顺序逐条对齐项目契约：① 找不到 → 404；② 不是 custom → **403**；
+ * 顺序逐条对齐应用约定：① 找不到 → 404；② 不是 custom → **403**；
  * ③ 库不可用 → 503；④ 路径越界/被解析改写 → `unsafe_template`；⑤ 删不掉 → 500。
  */
 export function deletePaperTemplate(opts: {
@@ -456,7 +456,7 @@ export function deletePaperTemplate(opts: {
   customRoot: string | null;
   templateId: string;
 }): PaperTemplateDeleteResult {
-  // ① + ② 先查库再判只读 —— 顺序与项目契约一致：内置的库不可用也照样回 403
+  // ① + ② 先查库再判只读 —— 顺序与应用约定一致：内置的库不可用也照样回 403
   const rec = listPaperTemplateLibrary(opts).find((t) => t.id === opts.templateId);
   if (!rec) return { ok: false, error: paperTemplateError('template_not_found') };
   if (rec.source !== 'custom') {
@@ -476,7 +476,7 @@ export function deletePaperTemplate(opts: {
     if (dir !== rec.dir || dirname(dir) !== root || !isInsideDir(root, dir)) {
       return { ok: false, error: paperTemplateError('unsafe_template') };
     }
-    // ⑤ 删不掉（被占用 / 权限）→ 500。项目契约同样是"围栏错误原样上抛、其它归 delete_failed"，
+    // ⑤ 删不掉（被占用 / 权限）→ 500。应用约定同样是"围栏错误原样上抛、其它归 delete_failed"，
     //    这里围栏那步是 return 不是 throw，所以 catch 只剩"真的没删掉"这一种。
     rmSync(dir, { recursive: true, force: false });
   } catch {
@@ -486,18 +486,18 @@ export function deletePaperTemplate(opts: {
 }
 
 /**
- * 项目内的配置目录名 —— **`.mathmodel`，与项目契约字段一致**。
+ * 项目内的配置目录名 —— **`.mathmodel`，与应用约定字段一致**。
  *
- * 依据（项目契约 asar）：
+ * 依据（应用约定 asar）：
  *   · 协议实现 `Li = '.mathmodel/paper/config.json'`
  *   · 协议实现 `const Tre = ".mathmodel/paper/config.json"`
- *   · 项目契约 zod 枚举 `['.mathmodel/paper/config.json','AGENTS.md','CLAUDE.md']`
- *   · 项目契约中文文案 「项目中已有 .mathmodel/paper/config.json。为避免覆盖你的文件…」
+ *   · 应用约定 zod 枚举 `['.mathmodel/paper/config.json','AGENTS.md','CLAUDE.md']`
+ *   · 应用约定中文文案 「项目中已有 .mathmodel/paper/config.json。为避免覆盖你的文件…」
  *
  * ⚠️ 这里曾经用 `.mmodels`（本项目早期自造的名字），导致两个真实后果：
- *   1. 用户拿项目契约建过的项目，我们用 `.mmodels` 找不到、项目契约也读不到我们写的；
+ *   1. 用户拿应用约定建过的项目，我们用 `.mmodels` 找不到、应用约定也读不到我们写的；
  *   2. 同一个项目被两个应用各写一份，比赛信息"分成两半"。
- *   现在 canonical 对齐项目契约；`.mmodels` 降级为**遗留只读兼容**（见 `LEGACY_MM_DIR`）。
+ *   现在 canonical 对齐应用约定；`.mmodels` 降级为**遗留只读兼容**（见 `LEGACY_MM_DIR`）。
  */
 export const MM_DIR = '.mathmodel';
 
@@ -544,14 +544,14 @@ export function resolvePaperConfigFile(
 export type PaperConfigOwnership = 'ours' | 'foreign' | 'broken';
 
 /**
- * 判定一份配置文件的归属 —— 对齐项目契约 `project_config_conflict` 的判据。
+ * 判定一份配置文件的归属 —— 对齐应用约定 `project_config_conflict` 的判据。
  *
- * 项目契约（协议实现，见 capability-diff.md B19）：写项目配置前，
+ * 应用约定（协议实现，见 capability-diff.md B19）：写项目配置前，
  * 若文件已存在且 `JSON.parse(...).managedBy !== 'mathmodel'` → 抛
  * `project_config_conflict`；渲染层映射成 `chat.newChatPage.paperConfigConflict`
  * （：`n?.error==="project_config_conflict"?new Error(ft("...paperConfigConflict"))`）。
  *
- * 为什么要这么判：`managedBy: 'mathmodel'`（项目契约 zod 是 `literal("mathmodel")`）
+ * 为什么要这么判：`managedBy: 'mathmodel'`（应用约定 zod 是 `literal("mathmodel")`）
  * 是**我们写的**唯一标记；缺这个标记的文件是用户手写的，**改它就等于偷改用户的文件**。
  */
 export function paperConfigOwnership(text: string): PaperConfigOwnership {
@@ -570,13 +570,13 @@ export function paperConfigOwnership(text: string): PaperConfigOwnership {
 export type { PaperConfig, PaperTemplateRef };
 
 // ─────────────────────────────────────────────────────────────
-// 读写 —— 项目契约 schema 见 @shared/types 的 PaperConfig 注释
+// 读写 —— 应用约定 schema 见 @shared/types 的 PaperConfig 注释
 // ─────────────────────────────────────────────────────────────
 
 /**
  * 配置目录安全性检查 —— **从 `ipc/paper.ts` 原样搬来，两处共用一份**。
  *
- * 项目契约也拦这个（`chat.newChatPage.paperConfigUnsafePath`：
+ * 应用约定也拦这个（`chat.newChatPage.paperConfigUnsafePath`：
  * 「项目中的 .mathmodel 配置目录不能是软链接或目录联接」）——
  * 否则等于把配置写到项目外面去。
  *
@@ -598,7 +598,7 @@ export function mmodelsDirIsSafe(projectRoot: string): boolean {
 /**
  * 原子写：先写 .tmp 再 rename，避免中途失败留下半截文件（原样搬自 `ipc/paper.ts`）。
  *
- * `mode` 对齐项目契约：项目契约写这份配置用 `0o600`、建目录用 `0o700`
+ * `mode` 对齐应用约定：应用约定写这份配置用 `0o600`、建目录用 `0o700`
  * （见 capability-diff.md B19）—— 比赛信息含队伍联系方式，不该对同机其他账号可读。
  * Windows 上 mode 被忽略（无副作用），macOS/Linux 上是真实收紧。
  */
@@ -633,7 +633,7 @@ function toTemplateRef(
   const meta = templates?.find((t) => t.id === id);
   return {
     id,
-    // 项目契约 `Np`：中文用模板显示名、英文取 template.json 的 `name.en`
+    // 应用约定 `Np`：中文用模板显示名、英文取 template.json 的 `name.en`
     // （如 cumcm → {'zh-CN':'国赛 CUMCM', en:'CUMCM'}）。
     // 模板挑不到时（自定义模板源 / 空 id 占位）退回目录名 —— 仍是两个非空键。
     name: makeLocalizedText(meta?.name ?? id, meta?.nameEn),
@@ -679,8 +679,8 @@ function parsePageLimit(value: unknown): PaperPageLimit | null {
  * 把磁盘上的原始 JSON 规整成 `PaperConfig`。
  *
  * 兼容两种历史写法（否则老项目一读就 null，用户的比赛信息会"消失"）：
- *   · 项目契约结构：`{ template:{...}, contestFields:[{id,label,value}], teamProfile }` —— 直接用
- *   · 本项目早期结构：`{ templateId, fields:{k:v}, profileId }` —— 就地换算成项目契约结构
+ *   · 应用约定结构：`{ template:{...}, contestFields:[{id,label,value}], teamProfile }` —— 直接用
+ *   · 本项目早期结构：`{ templateId, fields:{k:v}, profileId }` —— 就地换算成应用约定结构
  */
 export function normalizePaperConfig(
   raw: Record<string, unknown>,
@@ -697,8 +697,8 @@ export function normalizePaperConfig(
       typeof rawTpl.sourcePath === 'string' && rawTpl.sourcePath ? rawTpl.sourcePath : null,
       templates,
     );
-    // 项目契约的 name / entryFile 是写进文件的，优先用文件里的值（自定义模板目录名 ≠ 显示名）。
-    // ⚠️ `name` 两种形态都收：项目契约 `Np` 对象 / 早期版本写下的普通字符串 ——
+    // 应用约定的 name / entryFile 是写进文件的，优先用文件里的值（自定义模板目录名 ≠ 显示名）。
+    // ⚠️ `name` 两种形态都收：应用约定 `Np` 对象 / 早期版本写下的普通字符串 ——
     //    只认一种就会把用户磁盘上已有的模板名读没。
     const nameZh = pickLocalizedText(rawTpl.name);
     if (nameZh) template.name = makeLocalizedText(nameZh, pickLocalizedText(rawTpl.name, 'en'));
@@ -711,7 +711,7 @@ export function normalizePaperConfig(
     template = toTemplateRef('', 'builtin', null, templates);
   }
 
-  // contestFields：项目契约数组 > 早期 map
+  // contestFields：应用约定数组 > 早期 map
   let contestFields: PaperContestField[] = [];
   if (Array.isArray(raw.contestFields)) {
     contestFields = raw.contestFields
@@ -719,7 +719,7 @@ export function normalizePaperConfig(
         const o = (f ?? {}) as Record<string, unknown>;
         const id = typeof o.id === 'string' ? o.id : '';
         if (!id) return null;
-        // `label` 同样两种形态都收（项目契约 `Np` 对象 / 早期字符串）；
+        // `label` 同样两种形态都收（应用约定 `Np` 对象 / 早期字符串）；
         // 缺了就退回字段 id —— 有 id 可用，绝不编造一个字段名。
         const labelZh = pickLocalizedText(o.label) || id;
         return {
@@ -789,7 +789,7 @@ export type PaperConfigSavePlan =
 /**
  * 算出「这次保存该怎么办」。
  *
- * 三种结果，与项目契约 `project_config_conflict` 的分派一一对应：
+ * 三种结果，与应用约定 `project_config_conflict` 的分派一一对应：
  *   · 文件不存在 / 是我们写的（`managedBy === 'mathmodel'`）→ `merge`（在原文上打补丁）
  *   · 文件存在但**不是我们写的**（缺 `managedBy`，用户手写的）→ `conflict`，**一个字节都不动**
  *   · 文件解析不了 → 仍 `merge`，但把原文交回去让调用方先备份（坏 JSON ≠ 别人的文件）
@@ -840,7 +840,7 @@ export function profileToSnapshot(p: {
     school: p.school ?? '',
     members: (p.members ?? []).filter((m) => m.trim()),
     advisor: p.advisor ?? '',
-    // 档案里的 `contact`（单字段）落到快照的 `phone`（项目契约 Mre 的字段名）
+    // 档案里的 `contact`（单字段）落到快照的 `phone`（应用约定 Mre 的字段名）
     phone: p.contact ?? '',
     email: '',
   };
@@ -849,7 +849,7 @@ export function profileToSnapshot(p: {
 /**
  * 论文任务发起时**自动初始化**项目配置 —— 让设置项 `paperInitProjectConfig` 真正生效。
  *
- * 约束（与 `ipc/paper.ts` 顶部的安全约定一致，项目契约 `project_config_conflict` 同义）：
+ * 约束（与 `ipc/paper.ts` 顶部的安全约定一致，应用约定 `project_config_conflict` 同义）：
  *   · canonical 配置**已存在就原样不动**（返回 `skipped`，绝不覆盖用户已有配置）
  *   · 只有**遗留目录**（`.mmodels`）里有配置时 → **迁移**：内容带到 canonical，
  *     旧文件原样留着不删（见 `LEGACY_MM_DIR` 的规则）
@@ -938,7 +938,7 @@ export function initPaperProjectConfig(opts: {
   const templateId = tpl.id;
 
   // 队伍档案预填：只填模板 `profileFields` 声明要的键（如 cumcm → school/members/advisor），
-  // 不把联系方式硬塞进正文 —— 项目契约 contactHint 明确「不会直接拼进聊天正文」。
+  // 不把联系方式硬塞进正文 —— 应用约定 contactHint 明确「不会直接拼进聊天正文」。
   const need = opts.templates.find((t) => t.id === templateId)?.profileFields ?? [];
   const contestFields: PaperContestField[] = [];
   const prof = opts.profile ?? null;
@@ -951,8 +951,8 @@ export function initPaperProjectConfig(opts: {
     };
     for (const key of need) {
       const v = value[key];
-      // 档案预填出来的这三个字段名是**我们起的**（项目契约没有先例），只有中文，
-      // 所以 `en` 走原文兜底 —— 但两个键都必须非空（项目契约 `Np` 是 `min(1)`）。
+      // 档案预填出来的这三个字段名是**我们起的**（应用约定没有先例），只有中文，
+      // 所以 `en` 走原文兜底 —— 但两个键都必须非空（应用约定 `Np` 是 `min(1)`）。
       if (v && v.trim()) contestFields.push({ id: key, label: makeLocalizedText(label[key] ?? key), value: v });
     }
   }
@@ -967,7 +967,7 @@ export function initPaperProjectConfig(opts: {
   };
 
   try {
-    // 目录 0o700 / 文件 0o600 —— 对齐项目契约（比赛信息含队伍联系方式）
+    // 目录 0o700 / 文件 0o600 —— 对齐应用约定（比赛信息含队伍联系方式）
     mkdirSync(join(opts.projectRoot, MM_DIR, 'paper'), { recursive: true, mode: 0o700 });
     writeAtomic(path, JSON.stringify({ ...config, createdAt: new Date().toISOString() }, null, 2));
     return { ok: true, created: true, path, templateId };

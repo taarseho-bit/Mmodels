@@ -35,7 +35,7 @@ export const TASK_TEMPLATES: Record<TaskKind, string> = {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * ⚠️ 类型定义搬到了 `@shared/types`（单一真相源）—— 项目契约里这个结构同时是
+ * ⚠️ 类型定义搬到了 `@shared/types`（单一真相源）—— 应用约定里这个结构同时是
  *    **项目配置文件的字段**（`template: {id,name,entryFile,source,sourcePath}`），
  *    主进程写盘、提示词组装、渲染层弹层三处都要引同一份，放在 main 里会让
  *    渲染层无法复用。这里只做一次 re-export，保持既有 import 路径不变。

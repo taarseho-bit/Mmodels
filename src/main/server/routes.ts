@@ -32,7 +32,7 @@ import {
 /**
  * 导入的会话挂到哪个项目。
  *
- * ⚠️ 这是**必须偏离项目契约**的一处：项目契约导入时写死 `projectId: null`（），
+ * ⚠️ 这是**必须偏离应用约定**的一处：应用约定导入时写死 `projectId: null`（），
  *    而当前实现的 `sessions.project_id` 是 `TEXT NOT NULL REFERENCES projects(id)`
  *    —— 直接采用会直接违反约束。用户导入后就应该在**眼前的项目**里看到它，所以：
  *
@@ -186,14 +186,14 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 导出会话 JSON —— 对应项目契约 `GET /api/sessions/:id/export`（协议实现）。
+   * 导出会话 JSON —— 对应应用约定 `GET /api/sessions/:id/export`（协议实现）。
    *
-   * ⚠️ 这里**只产出 JSON，不弹保存框**。项目契约也是这么分的两截：
+   * ⚠️ 这里**只产出 JSON，不弹保存框**。应用约定也是这么分的两截：
    *    渲染层先 HTTP 拿到 JSON，再用 IPC `file:saveText` 落盘。
    *    这样"用户点了取消"这个结果能回到渲染层去决定提示什么 ——
    *    如果在主进程弹框，取消与失败就分不开了。
    *
-   * 404 的形状直接采用项目契约：`{error:'not_found'}`（下划线命名，不是驼峰）。
+   * 404 的形状直接采用应用约定：`{error:'not_found'}`（下划线命名，不是驼峰）。
    */
   app.get('/api/sessions/:id/export', (c) => {
     const id = c.req.param('id');
@@ -205,21 +205,21 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 导入会话 —— 对应项目契约 `POST /api/sessions/import`（协议实现）。
+   * 导入会话 —— 对应应用约定 `POST /api/sessions/import`（协议实现）。
    *
-   * ── 冲突处理：**永不冲突，永远 201**（直接采用项目契约，已机器确证） ──
+   * ── 冲突处理：**永不冲突，永远 201**（直接采用应用约定，已机器确证） ──
    *   ① `cs` schema 里**根本没有 `session.id`**（只有 title/providerId/model/createdAt/updatedAt），
    *      导入端一律 `uuid()` 新生成 ⇒ **不可能覆盖任何已有会话**，也没有 409/覆盖分支。
-   *   ② `title` 不做去重 —— 同一个文件导两次就是两条同名会话。这是项目契约行为，不是 bug。
+   *   ② `title` 不做去重 —— 同一个文件导两次就是两条同名会话。这是应用约定行为，不是 bug。
    *
-   * ── 有意比项目契约**更安全**的两处 ──
-   *   ① 项目契约是"先 insert session、再循环 insert messages"，**没有包事务**，
+   * ── 有意比应用约定**更安全**的两处 ──
+   *   ① 应用约定是"先 insert session、再循环 insert messages"，**没有包事务**，
    *      中途失败会留下半条会话（有会话、没消息）。这里包 `db.transaction`。
-   *   ② 项目契约是 `z.array(Zn)`，任何一段 part 不认识就**整个文件 400**。
+   *   ② 应用约定是 `z.array(Zn)`，任何一段 part 不认识就**整个文件 400**。
    *      这里信封严格、parts 逐段宽松，坏的那段降级成文本并计入 `degradedParts`。
    *
-   * ── 偏离项目契约的地方（见 resolveImportProjectId 的注释） ──
-   *   `projectId` 必须挂到一个真实项目；项目契约写死 `null`，当前实现的列是 NOT NULL。
+   * ── 偏离应用约定的地方（见 resolveImportProjectId 的注释） ──
+   *   `projectId` 必须挂到一个真实项目；应用约定写死 `null`，当前实现的列是 NOT NULL。
    */
   app.post('/api/sessions/import', async (c) => {
     const raw = (await c.req.json().catch(() => null)) as unknown;
@@ -278,7 +278,7 @@ export function mountRoutes(app: Hono): void {
 
     return c.json(
       {
-        // ⚠️ 与项目契约的返回体不同：项目契约直接回 session DTO。这里包一层是为了带上
+        // ⚠️ 与应用约定的返回体不同：应用约定直接回 session DTO。这里包一层是为了带上
         //    `degradedParts` —— 用户需要知道"这次导入有几段被降级了"。
         session: getSession(plan.session.id),
         importedMessages: plan.messages.length,
@@ -289,22 +289,22 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 「回到此消息之前」—— 对应项目契约 `POST /api/checkpoint/revert`（协议实现）。
+   * 「回到此消息之前」—— 对应应用约定 `POST /api/checkpoint/revert`（协议实现）。
    *
    * ⚠️ 三个必须说清楚的点：
    *
    *  1. **这是本文件里唯一会改用户文件的路由。** 恢复走 `git/restoreVersion()`：
    *     先写 `restore-backup` 备份 → 再 checkout 目标版本 → 再删「当时被跟踪、
-   *     但目标版本里没有」的文件。项目契约的 checkpoint 在它自己的 `project_versions`
+   *     但目标版本里没有」的文件。应用约定的 checkpoint 在它自己的 `project_versions`
    *     表里、不碰项目目录；当前实现复用 git（副作用已在 P0-5 报备）。
    *
-   *  2. **确认门槛（`confirm: true`）是当前实现的加固**，项目契约没有这个字段。
+   *  2. **确认门槛（`confirm: true`）是当前实现的加固**，应用约定没有这个字段。
    *     `revertToMessage()` 把它排在**第一位**：没确认的请求连一次数据库读都不做。
    *
    *  3. **顺序不能反**：先恢复文件，成功了才删消息。反过来的话恢复失败会留下
    *     "文件没回来、对话却没了"的半改状态。
    *
-   * 错误码按字段对齐项目契约（渲染层按这些字符串查 `chat.useChat.revert*` 的 i18n）。
+   * 错误码按字段对齐应用约定（渲染层按这些字符串查 `chat.useChat.revert*` 的 i18n）。
    */
   app.post('/api/checkpoint/revert', async (c) => {
     const raw = (await c.req.json().catch(() => null)) as unknown;
@@ -355,7 +355,7 @@ export function mountRoutes(app: Hono): void {
       ).run(probe.value.sessionId);
 
       /**
-       * agent 会话 id：保留剩下的对话里还有 assistant 消息时才留着 —— 项目契约的写法是
+       * agent 会话 id：保留剩下的对话里还有 assistant 消息时才留着 —— 应用约定的写法是
        * `hasAssistantBefore ? {} : {agentSessionId: null}`（协议实现）。
        * 直接采用，不自己发明规则。
        */
@@ -383,9 +383,9 @@ export function mountRoutes(app: Hono): void {
   });
 
   /**
-   * 「从此分叉」—— 对应项目契约 `POST /api/sessions/:id/fork`（协议实现）。
+   * 「从此分叉」—— 对应应用约定 `POST /api/sessions/:id/fork`（协议实现）。
    *
-   * 响应体 `{session, copiedMessages, draft}` 的字段名按字段对齐项目契约
+   * 响应体 `{session, copiedMessages, draft}` 的字段名按字段对齐应用约定
    * （当前实现多加一个 `resumable`，见 message-ops.ts 的说明）。
    *
    * ⚠️ **原会话必须一个字节都不变**：这里只做 INSERT，一条 UPDATE/DELETE 都没有。

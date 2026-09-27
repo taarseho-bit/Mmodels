@@ -5,7 +5,12 @@ export interface WorkflowTool {
   name: string;
   label: string;
   skill?: string;
-  skillSource?: 'call' | 'entry' | 'read';
+  skillSource?: 'call' | 'entry' | 'read' | 'preload';
+  /**
+   * 是否有真实 SDK 事件证明技能被执行。
+   * 路由器只提供候选时为 false，避免演示图把“推荐”误报成“已调用”。
+   */
+  verified?: boolean;
   status: 'running' | 'completed' | 'unsuccessful' | 'stopped' | 'unknown';
   startedAt: number;
   endedAt?: number;
@@ -128,10 +133,10 @@ export function workflowToolLabel(name: string, skill?: string): string {
 /** 给旧工作流记录补一个有事实依据的展示名，不改动原始记录。 */
 export function workflowAgentDisplayName(node: WorkflowNode): string {
   if (!/^(?:专项研究员|协作研究员|综合研究员)(?:\s*[·#]?\s*\d+)?$/.test(node.name)) return node.name;
-  const skills = node.tools.map(tool => `${tool.skill ?? ''} ${tool.label}`).join(' ');
+  const skills = node.tools.filter(tool => tool.verified !== false && tool.skillSource !== 'preload').map(tool => `${tool.skill ?? ''} ${tool.label}`).join(' ');
   const skillName = taskAgentName(skills);
   if (skillName) return skillName;
-  const names = new Set(node.tools.map(tool => tool.name));
+  const names = new Set(node.tools.filter(tool => tool.verified !== false && tool.skillSource !== 'preload').map(tool => tool.name));
   if (names.has('Bash') || names.has('NotebookEdit')) return '计算实验员';
   if (names.has('Write') || names.has('Edit')) return '成果整理员';
   if (names.has('Read') || names.has('Glob') || names.has('Grep')) return '资料核验员';

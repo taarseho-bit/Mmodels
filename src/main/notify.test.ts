@@ -9,7 +9,7 @@
  * 判据设计（每条都带**回归护栏**，只看"没报错"不算数）：
  *   - 开关 `false` → 断言**通知构造器调用 0 次**、返回 `null`；
  *   - 开关 `true` → 断言**调用 1 次**、入参逐字对上；
- *   - 开关"未设置" → 断言仍然创建（对齐项目契约 `?.notifications ?? true` 的默认值）；
+ *   - 开关"未设置" → 断言仍然创建（对齐应用约定 `?.notifications ?? true` 的默认值）；
  *   - 再加一条**结构级**断言：主进程里"绕过门禁直接 new Notification"要能被测出来
  *     —— 这正是「漏一个等于没修」的失守形态，靠人眼 review 是靠不住的。
  */
@@ -121,8 +121,8 @@ beforeEach(() => {
 });
 
 describe('notificationsEnabled —— 开关语义与默认值', () => {
-  it('默认值对齐项目契约：只有显式 false 才拦，未设置视为开启', () => {
-    // 项目契约 asar dump: `function YI(t){return t.getQueryData(["settings"])?.notifications??!0}`
+  it('默认值对齐应用约定：只有显式 false 才拦，未设置视为开启', () => {
+    // 应用约定 asar dump: `function YI(t){return t.getQueryData(["settings"])?.notifications??!0}`
     expect(notificationsEnabled({})).toBe(true);
     expect(notificationsEnabled({ notifyEnabled: undefined })).toBe(true);
     expect(notificationsEnabled({ notifyEnabled: true })).toBe(true);
@@ -179,7 +179,7 @@ describe('createSystemNotification —— 关掉开关必须【不创建】通�
     expect(clicks).toBe(1);
   });
 
-  it('notifyEnabled 未设置 → 仍然创建（项目契约默认开启）', () => {
+  it('notifyEnabled 未设置 → 仍然创建（应用约定默认开启）', () => {
     h.settings = {};
     const f = fakeFactory();
 
@@ -241,7 +241,7 @@ describe('未读徽标 —— 当前主进程通知创建路径里的那一段',
     expect(h.badgeCalls).toEqual([1]);
   });
 
-  it('用户正看着窗口 → 不加未读，连系统调用都不发（项目契约 `||` 的另一支）', () => {
+  it('用户正看着窗口 → 不加未读，连系统调用都不发（应用约定 `||` 的另一支）', () => {
     h.settings = { notifyEnabled: true };
     h.windows = [fakeWindow({})]; // 三项皆真
     const f = fakeFactory();
@@ -252,13 +252,13 @@ describe('未读徽标 —— 当前主进程通知创建路径里的那一段',
     expect(h.badgeCalls).toEqual([]);
   });
 
-  it('封顶 99：连加 120 次仍是 99（项目契约 `Math.min(MA + 1, 0x63)`）', () => {
+  it('封顶 99：连加 120 次仍是 99（应用约定 `Math.min(MA + 1, 0x63)`）', () => {
     expect(MAX_BADGE_COUNT).toBe(99);
     for (let i = 0; i < 120; i += 1) bumpUnreadBadge();
 
     expect(unreadBadgeCount()).toBe(99);
     expect(h.badgeCalls[h.badgeCalls.length - 1]).toBe(99);
-    expect(h.badgeCalls.length).toBe(120); // 每次都刷（项目契约没有去抖）
+    expect(h.badgeCalls.length).toBe(120); // 每次都刷（应用约定没有去抖）
   });
 
   it('点击通知 → 清零；已经是 0 时**不再**重复刷系统调用', () => {
@@ -274,7 +274,7 @@ describe('未读徽标 —— 当前主进程通知创建路径里的那一段',
     expect(unreadBadgeCount()).toBe(0);
     expect(h.badgeCalls).toEqual([1, 0]);
 
-    // 回归护栏：清零后再点一次 —— 项目契约 `0 !== MA && (...)` 短路，不该再刷一次 0
+    // 回归护栏：清零后再点一次 —— 应用约定 `0 !== MA && (...)` 短路，不该再刷一次 0
     f.handle.fireClick();
     expect(h.badgeCalls).toEqual([1, 0]);
   });

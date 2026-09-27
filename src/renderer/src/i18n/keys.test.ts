@@ -69,8 +69,8 @@ const EXCLUDE_DIRS = [path.join(SRC_ROOT, 'i18n')];
  *
  * 历史：v1 时代这里放过 2 个真缺陷（`shell.sidebar.collapseSidebar`、
  * `extensions.paperTemplatesSection.builtinSource`），都已按项目资源包 实证修掉：
- *   - 前者项目契约规定的是按折叠状态取 `shell.titleBarControls.expandSidebar / collapseSidebar` 一对键；
- *   - 后者**这个键根本不该存在** —— 项目契约那行是
+ *   - 前者应用约定规定的是按折叠状态取 `shell.titleBarControls.expandSidebar / collapseSidebar` 一对键；
+ *   - 后者**这个键根本不该存在** —— 应用约定那行是
  *     `{来源} · {source === "custom" ? customSource : "write-paper"}`，
  *     照我最初的提法「补一个 builtinSource」会凭空造出当前没有的键。
  * 用例「豁免零名单」会断言本集合为空：**放行只能靠上面两条通用规则**。

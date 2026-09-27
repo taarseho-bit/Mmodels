@@ -1,10 +1,10 @@
 /**
  * 设置页 ⑬ 新手教程
  *
- * 项目契约（`onboarding.tutorialCenter.*`）：介绍段 + 「已完成 n / 7」进度 + 7 张教程卡
+ * 应用约定（`onboarding.tutorialCenter.*`）：介绍段 + 「已完成 n / 7」进度 + 7 张教程卡
  * 两列网格，每卡：图标、标题、描述、时长步数、右侧「开始教程 / 重新学习」。
  *
- * 当前实现原先只有 1 张「界面巡览」卡（对应 quickStart）。本文件按项目契约重建 7 卡网格。
+ * 当前实现原先只有 1 张「界面巡览」卡（对应 quickStart）。本文件按应用约定重建 7 卡网格。
  *
  * 每张卡跑的是**自己那一段短教程**（`requestTour(id)` → GuidedTour 按 tourId 选步骤），
  * 不再一律跑 11 步完整导览。
@@ -31,7 +31,7 @@ const PENDING_KEY = 'mm-tour-pending';
 interface TourCard {
   id: TourId;
   icon: string;
-  /** 项目契约标记「建议先看」的卡（运行测试为第一张） */
+  /** 应用约定标记「建议先看」的卡（运行测试为第一张） */
   recommended?: boolean;
   /** 内容涉及云端分享 → 按既定决策排除，保留骨架 + 置灰 */
   disabled?: boolean;

@@ -17,7 +17,10 @@ export function registerConnectorHandlers(_ctx: IpcContext): void {
     const entry = connectorEntry(name);
     try {
       let detail: string;
-      if (config.native) detail = await testNativeConnector(config);
+      // 历史配置保存的 arXiv / GitHub / 时间连接器可能没有 native 标记；
+      // 与运行器保持同一套目录判断，升级后无需用户删掉再重新添加。
+      const nativeNames = new Set(['arxiv', 'crossref', 'openalex', 'semantic-scholar', 'world-bank', 'open-meteo', 'huggingface-datasets', 'zenodo', 'orcid', 'google-drive', 'github', 'gitlab', 'gitee', 'python', 'r', 'octave', 'webhook', 'time']);
+      if (config.native || nativeNames.has(config.name)) detail = await testNativeConnector(config);
       else if (config.transport === 'stdio') {
         await execFileAsync(config.command!, ['--version'], { timeout: 12_000, windowsHide: true });
         detail = '本地命令可以启动；完整工具会在下一轮对话加载';
@@ -29,9 +32,16 @@ export function registerConnectorHandlers(_ctx: IpcContext): void {
       return { ok: true, name, displayName: entry?.displayName, detail, checkedAt: Date.now(), latencyMs: Date.now() - started };
     } catch (error) {
       const raw = error instanceof Error ? error.message : '';
-      const detail = /fetch failed|network|socket|timed out|timeout/i.test(raw)
-        ? '网络暂时不可用，已自动重试；请检查网络或代理设置'
-        : raw || '连接失败，请稍后重试';
+      const status = raw.match(/(?:返回|HTTP)\s*(\d{3})/)?.[1];
+      const detail = /fetch failed|network|socket|timed out|timeout|超时/i.test(raw)
+        ? '网络暂时不可用，已自动重试；请检查网络或代理设置。'
+        : status === '401' || status === '403'
+          ? '访问凭据没有通过验证，请检查密钥或权限。'
+          : status === '404'
+            ? '没有找到这个连接器地址，请检查接口路径。'
+            : status === '429'
+              ? '请求太频繁，服务正在限流，稍后再试。'
+              : '连接器暂时没有响应，已保留配置，可以重试。';
       return { ok: false, name, displayName: entry?.displayName, detail, checkedAt: Date.now(), latencyMs: Date.now() - started };
     }
   }, '测试连接器'));

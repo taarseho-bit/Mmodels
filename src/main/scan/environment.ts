@@ -31,12 +31,12 @@ export interface EnvCheckItem {
   /** 探测到的版本或路径 */
   detail?: string;
   /**
-   * 归一化后的版本号（项目契约「运行环境」工具行显示 `版本 · 绝对路径`）。
+   * 归一化后的版本号（应用约定「运行环境」工具行显示 `版本 · 绝对路径`）。
    * 与 `detail` 的区别：`detail` 是探测命令的原始首行（如 `git version 2.55.0.windows.3`），
-   * 这里只保留项目契约会显示的那一段（`2.55.0`）。探测不到时为 undefined。
+   * 这里只保留应用约定会显示的那一段（`2.55.0`）。探测不到时为 undefined。
    */
   version?: string;
-  /** 可执行文件绝对路径（项目契约工具行显示）。探测不到时为 undefined。 */
+  /** 可执行文件绝对路径（应用约定工具行显示）。探测不到时为 undefined。 */
   path?: string;
   /** 用途说明 */
   purpose: string;
@@ -151,13 +151,13 @@ function toolLine(s: string, cmd: string, max = 60): string {
   return max > 0 ? own.slice(0, max) : own;
 }
 
-/** 取前 N 段数字构成的版本号：`2.55.0.windows.3` → `2.55.0`（项目契约只显示前三段） */
+/** 取前 N 段数字构成的版本号：`2.55.0.windows.3` → `2.55.0`（应用约定只显示前三段） */
 function numericVersion(s: string): string | undefined {
   return /(\d+(?:\.\d+)+)/.exec(s)?.[1];
 }
 
 /**
- * 把命令名解析成**绝对路径**（项目契约工具行的次行显示 `版本 · C:\...\git.EXE`）。
+ * 把命令名解析成**绝对路径**（应用约定工具行的次行显示 `版本 · C:\...\git.EXE`）。
  * Windows 用 `where`（可能多行，取第一条），其余平台用 `which`。解析不到返回 null。
  */
 async function which(cmd: string): Promise<string | null> {
@@ -342,7 +342,7 @@ export async function checkEnvironment(
   projectRoot?: string,
   /**
    * 随包二进制目录（Electron 的 `process.resourcesPath`）。
-   * 项目契约把 `uv` 随包分发，因此不能只看 PATH —— 否则会误报「uv 缺失」。
+   * 应用约定把 `uv` 随包分发，因此不能只看 PATH —— 否则会误报「uv 缺失」。
    */
   resourcesDir?: string,
 ): Promise<EnvCheckResult> {
@@ -359,7 +359,7 @@ export async function checkEnvironment(
   ): EnvCheckItem => {
     const item: EnvCheckItem = { id, name, level, status, purpose, detail };
     items.push(item);
-    // 返回引用：调用方可以随后补 version / path（项目契约工具行的 `版本 · 绝对路径`）
+    // 返回引用：调用方可以随后补 version / path（应用约定工具行的 `版本 · 绝对路径`）
     return item;
   };
 
@@ -382,7 +382,7 @@ export async function checkEnvironment(
     } else if (v) {
       pyDetail = v;
     }
-    // `Python 3.13.14` → `3.13.14`（项目契约不显示 `Python ` 前缀）
+    // `Python 3.13.14` → `3.13.14`（应用约定不显示 `Python ` 前缀）
     pyVersion = numericVersion(v);
     if (pyOk) {
       // 绝对路径必须问解释器自己：PATH 上叫 `python`，解析出的可能不是同一个
@@ -429,7 +429,7 @@ export async function checkEnvironment(
     const line = toolLine(r.stdout, cmd) || firstLine(r.stderr);
     const it = push(id, name, 'required', purpose, r.ok ? 'ok' : 'missing', line || undefined);
     if (id === 'xelatex') {
-      // `XeTeX 3.141592653-2.6-0.999996 (TeX Live 2024)` → 项目契约显示 `TeX Live 2024`
+      // `XeTeX 3.141592653-2.6-0.999996 (TeX Live 2024)` → 应用约定显示 `TeX Live 2024`
       // （xelatex 自身那串版本号是 XeTeX 引擎版本，对用户没有意义）
       const tex = /\(([^)]*TeX[^)]*)\)/i.exec(line)?.[1]?.trim();
       it.version = tex || numericVersion(line) || undefined;
@@ -437,7 +437,7 @@ export async function checkEnvironment(
     } else {
       // ⚠️ latexmk / bibtex 之前**恒无 `version`** —— 只因为这里写着 `if (id === 'xelatex')`。
       //    可它们的输出里明摆着有版本号：`Version 4.86a` / `BibTeX 0.99d`。
-      //    字段注释说这个值是"项目契约会显示的那一段"，恒缺一半是没道理的。
+      //    字段注释说这个值是"应用约定会显示的那一段"，恒缺一半是没道理的。
       it.version = numericVersion(line) || undefined;
     }
   }
@@ -469,7 +469,7 @@ export async function checkEnvironment(
     let found = false;
     let uvPath: string | undefined;
     // 随包分发：打包后 uv 在 `<resourcesPath>/bin/uv.exe`
-    // （项目契约布局就是 resources/bin/uv.exe），开发期在 `<proj>/resources/bin/uv.exe`。
+    // （应用约定布局就是 resources/bin/uv.exe），开发期在 `<proj>/resources/bin/uv.exe`。
     // 兼容性地也看一眼资源根目录。
     if (resourcesDir) {
       for (const rel of [

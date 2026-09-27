@@ -8,7 +8,7 @@
  *
  *   ★ 内置模板的"删除"必须是**拒绝**，不是"UI 上不渲染按钮"。
  *
- * 项目契约把它做成了服务端错误码 `builtin_template_readonly`(403)，意思就是
+ * 应用约定把它做成了服务端错误码 `builtin_template_readonly`(403)，意思就是
  * 「这条约束在**服务端**成立，界面藏按钮只是顺带」。如果只在渲染层不渲染按钮，
  * 从别处直接调通道仍然能删掉内置模板（本仓的模板目录就是 `resources/` 下的
  * 真实文件，删了要重装才能回来）。
@@ -193,7 +193,7 @@ describe('① fork 模板', () => {
     expect(r.template.id.startsWith(CUSTOM_TEMPLATE_PREFIX)).toBe(true);
     expect(r.template.source).toBe('custom');
 
-    // 派生出来的元数据对齐项目契约 fork：名字用用户输入、order 1000、defaultFor 空
+    // 派生出来的元数据对齐应用约定 fork：名字用用户输入、order 1000、defaultFor 空
     expect(r.template.name).toBe('我的国赛模板');
     expect(r.template.order).toBe(1000);
     expect(r.template.defaultFor).toEqual([]);
@@ -221,7 +221,7 @@ describe('① fork 模板', () => {
     expect(meta.order).toBe(1000);
     expect(meta.name).toEqual({ 'zh-CN': '复制检查', en: '复制检查' });
 
-    // 目录名可读：以「清洗后的名字-id 后 8 位」结尾（项目契约就是这么起名的）
+    // 目录名可读：以「清洗后的名字-id 后 8 位」结尾（应用约定就是这么起名的）
     expect(basename(r.template.dir)).toBe(
       `${sanitizeTemplateDirName('复制检查')}-${r.template.id.slice(-8)}`,
     );
@@ -333,7 +333,7 @@ describe('② 内置模板删除必须被拒绝（通道体这一层，不是 UI
     expect(builtinDiskSnapshot()).toEqual(beforeDisk);
   });
 
-  it('即使受管库不可用，内置模板仍是 403 而不是 503（顺序与项目契约一致）', () => {
+  it('即使受管库不可用，内置模板仍是 403 而不是 503（顺序与应用约定一致）', () => {
     const r = deletePaperTemplate({
       resourcesDir: RESOURCES_DIR,
       customRoot: null,
@@ -536,7 +536,7 @@ describe('④ 结构断言（通道接线，真 IPC 往返不在此覆盖范围�
     expect(src).toContain('window.mathmodel.paper.forkTemplate(');
     expect(src).toContain('window.mathmodel.paper.deleteTemplate(');
     expect(src).toContain('window.mathmodel.paper.saveConfig({ template: ref })');
-    // 文案键来自项目契约那一族，且都是已存在的键（i18n 的零豁免名单会另测一遍）
+    // 文案键来自应用约定那一族，且都是已存在的键（i18n 的零豁免名单会另测一遍）
     expect(src).toContain('extensions.paperTemplatesSection.useTemplate');
     expect(src).toContain('extensions.paperTemplatesSection.forkTemplate');
     expect(src).toContain('extensions.paperTemplatesSection.customGroup');

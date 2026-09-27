@@ -1,7 +1,7 @@
 /**
- * 默认文件名的回归测试 —— 按规则实现项目契约 `uw()`（协议实现）。
+ * 默认文件名的回归测试 —— 按规则实现应用约定 `uw()`（协议实现）。
  *
- * 这条规则是**用户可见**的：导出的文件名对不上，用户在项目契约与当前实现之间来回导就会
+ * 这条规则是**用户可见**的：导出的文件名对不上，用户在应用约定与当前实现之间来回导就会
  * 得到两套命名。而且它有几个容易"顺手改坏"的点（见下），所以钉死。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -17,14 +17,14 @@ function freeze(): void {
   vi.setSystemTime(new Date('2026-09-17T12:00:00Z'));
 }
 
-describe('exportFileName —— 项目契约 uw() 规则', () => {
+describe('exportFileName —— 应用约定 uw() 规则', () => {
   it('常规：mathmodel-chat-{标题}-{YYYYMMDD}.{ext}', () => {
     freeze();
 
     expect(exportFileName('2026 年 A 题', 'json')).toBe('mathmodel-chat-2026 年 A 题-20260917.json');
   });
 
-  it('**保留中文与空格**（项目契约只清 Windows 非法字符，不做 slug 化）', () => {
+  it('**保留中文与空格**（应用约定只清 Windows 非法字符，不做 slug 化）', () => {
     freeze();
 
     expect(exportFileName('数学建模 国赛', 'json')).toBe('mathmodel-chat-数学建模 国赛-20260917.json');
@@ -63,7 +63,7 @@ describe('exportFileName —— 项目契约 uw() 规则', () => {
     expect(exportFileName('t', 'zip')).toContain('.zip');
   });
 
-  it('日期取 UTC —— 与本地时区无关（直接采用项目契约，别改成 toLocaleDateString）', () => {
+  it('日期取 UTC —— 与本地时区无关（直接采用应用约定，别改成 toLocaleDateString）', () => {
     // UTC 的 2026-09-17 23:30 在 UTC+8 已是 18 日，但文件名仍应是 20260917
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-17T23:30:00Z'));

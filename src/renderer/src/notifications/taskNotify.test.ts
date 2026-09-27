@@ -110,7 +110,7 @@ const CALLSITES: Callsite[] = [
 
 describe('三态 × 调用点：开关开 + 正看着这个会话 → 不弹', () => {
   for (const cs of CALLSITES) {
-    it(`${cs.name}：三者皆真时不弹（项目契约 n4 的核心一格）`, async () => {
+    it(`${cs.name}：三者皆真时不弹（应用约定 n4 的核心一格）`, async () => {
       const s = spy();
       const fired = await cs.run(env(SAME, s.show), 's1');
 
@@ -191,9 +191,9 @@ describe('反恒真：把三维真值表整个走一遍，判据必须只在"该
   });
 });
 
-// ── ② 文案组装（项目契约 t4 / i4 / Ice / zce）────────────────────
+// ── ② 文案组装（应用约定 t4 / i4 / Ice / zce）────────────────────
 
-describe('condense —— 项目契约 t4（压空白 / ≤140 / 空串 → null）', () => {
+describe('condense —— 应用约定 t4（压空白 / ≤140 / 空串 → null）', () => {
   it('空串与纯空白都返回 null（不是空字符串）', () => {
     expect(condense('')).toBeNull();
     expect(condense('   \n\t ')).toBeNull();
@@ -217,7 +217,7 @@ describe('condense —— 项目契约 t4（压空白 / ≤140 / 空串 → null
   });
 });
 
-describe('lastAssistantText —— 项目契约 Ice（从后往前找非空 assistant）', () => {
+describe('lastAssistantText —— 应用约定 Ice（从后往前找非空 assistant）', () => {
   it('取最后一条 assistant 的 text 块，thinking 不算正文（换行被压成一个空格）', () => {
     // 夹具里那条正文是 `'  跑完了，\n结果在 out/report.pdf  '`：
     // 去首尾空白 + 换行压空格 ⇒ 中间那个空格**是**预期的一部分
@@ -262,7 +262,7 @@ describe('messageText —— blocks 拼纯文本（当前实现独有的结构�
   });
 });
 
-describe('sessionTitleFor —— 项目契约 i4（空标题回落「未命名会话」）', () => {
+describe('sessionTitleFor —— 应用约定 i4（空标题回落「未命名会话」）', () => {
   it('找得到就用标题', () => {
     expect(sessionTitleFor(SESSIONS, 's1')).toBe('会话一');
   });
@@ -273,7 +273,7 @@ describe('sessionTitleFor —— 项目契约 i4（空标题回落「未命名�
   });
 });
 
-describe('approvalKindKey —— 项目契约 zce（三个类别 + **故意不兜底**）', () => {
+describe('approvalKindKey —— 应用约定 zce（三个类别 + **故意不兜底**）', () => {
   it('三个类别各自映射到自己的文案键', () => {
     expect(approvalKindKey('command')).toBe('integrations.taskCompletion.approvalCommand');
     expect(approvalKindKey('file-read')).toBe('integrations.taskCompletion.approvalFileRead');
@@ -336,7 +336,7 @@ describe('notifyTurnFinished 的 loadMessages 必须惰性', () => {
     expect(s.calls[0].sessionId).toBe('s1');
   });
 
-  it('本轮没有任何 assistant 正文 → 也是 finishedWorking 兜底（语义同项目契约 Ice 返回 null）', async () => {
+  it('本轮没有任何 assistant 正文 → 也是 finishedWorking 兜底（语义同应用约定 Ice 返回 null）', async () => {
     const s = spy();
     void (await notifyTurnFinished(env(BACKGROUND, s.show), 's1', async () => []));
 

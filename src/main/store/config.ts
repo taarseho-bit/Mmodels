@@ -8,7 +8,7 @@
  *      —— 这些会增长、需要查询，用数据库
  *
  * ⚠️ 密钥处理：
- *   项目契约用 Electron `safeStorage` 加密。
+ *   应用约定用 Electron `safeStorage` 加密。
  *   我们这里先做**明文存储 + 明确告知**，因为：
  *     - safeStorage 在 Linux 上可能退化为明文（取决于 keyring）
  *     - 加密后密钥无法被用户手动迁移/备份，反而更痛
@@ -24,6 +24,7 @@ import type {
   ProxySettings,
 } from '@shared/types';
 import { setProxyRuntime } from '../agent/env';
+import { normalizeContextWindow, normalizeModelIds } from '../../shared/model-pool';
 
 /** 设置 → 网络：默认与界面样例一致（开关开、来源=系统代理） */
 export const DEFAULT_PROXY: ProxySettings = { enabled: true, mode: 'system', manualUrl: '' };
@@ -52,8 +53,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   maxParallelAgents: 2,
   maxTotalAgents: 4,
   modelingPetEnabled: true,
-  // ⚠️ 必须是 'paper'，与项目契约一致。
-  //    项目契约的 zod schema 与运行时兜底都是 "paper"。
+  // ⚠️ 必须是 'paper'，与应用约定一致。
+  //    应用约定的 zod schema 与运行时兜底都是 "paper"。
   //    只有 paper 模式才显示「比赛模板 + 比赛信息」、并把占位文字换成
   //    「粘贴题目，或拖入题目 PDF / 附件…」。写成 'chat' 会让首屏
   //    看不到任何比赛相关内容 —— 用户会以为整个功能没做。
@@ -63,12 +64,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   paperTemplateId: null,
   paperProfiles: [],
   paperDefaultProfileId: null,
-  // 项目契约：新论文默认**不**自动带入队伍档案，需要显式打开
+  // 应用约定：新论文默认**不**自动带入队伍档案，需要显式打开
   paperProfileEnabled: false,
-  // 项目契约：初始化论文项目配置默认开启
+  // 应用约定：初始化论文项目配置默认开启
   paperInitProjectConfig: true,
   tourDone: false,
-  // 项目契约：任务完成通知默认**开启**。依据是当前渲染层的判据
+  // 应用约定：任务完成通知默认**开启**。依据是当前渲染层的判据
   //   `function YI(t){return t.getQueryData(["settings"])?.notifications??!0}`
   //   —— `??!0` 即"未设置 = 开"。消费方在 src/main/notify.ts（唯一门禁）。
   notifyEnabled: true,
@@ -148,6 +149,16 @@ function decryptSecret(stored: string): string {
 
 export function getSettings(): AppSettings {
   const settings = { ...DEFAULT_SETTINGS, ...store.get('settings') };
+  // 旧 DeepSeek 名称仅在同一 DeepSeek 供应商且已发现 flash 时迁移，避免改写其他兼容接口。
+  if (settings.defaultModel === 'deepseek-chat' && settings.activeProviderId) {
+    const provider = listProviders().find(p => p.id === settings.activeProviderId);
+    const deepseek = provider && (/deepseek/i.test(provider.name) || /api\.deepseek\.com/i.test(provider.baseUrl));
+    if (deepseek && (provider.models ?? []).includes('deepseek-flash')) {
+      settings.defaultModel = 'deepseek-flash';
+      settings.modelPool = Array.from(new Set((settings.modelPool ?? []).map(m => m === 'deepseek-chat' ? 'deepseek-flash' : m)));
+      store.set('settings', settings);
+    }
+  }
   // 渲染层只需要知道哪些字段已经配置，不应收到真实令牌。
   if (settings.mcpServers) {
     const secretStore = { ...(store.get('mcpSecrets') ?? {}) };
@@ -274,7 +285,7 @@ export function getBotSecretStatus(): BotSecretStatus {
 
 export function setBotSecret(kind: BotSecretKind, plain: string): BotSecretStatus {
   const all = { ...store.get('botSecrets') };
-  // 空串 = 用户没改（项目契约占位「已配置，留空则保留当前密钥」）
+  // 空串 = 用户没改（应用约定占位「已配置，留空则保留当前密钥」）
   if (plain === '') return botSecretStatus(kind);
   all[kind] = encryptSecret(plain);
   store.set('botSecrets', all);
@@ -294,16 +305,36 @@ export function clearBotSecret(kind: BotSecretKind): BotSecretStatus {
 
 /** 对外的形态：密钥已解密 */
 export function listProviders(): ProviderConfig[] {
-  return store.get('providers').map((p) => ({ ...p, apiKey: decryptSecret(p.apiKey) }));
+  return store.get('providers').map((p) => ({
+    ...p,
+    apiKey: decryptSecret(p.apiKey),
+    models: normalizeModelIds(p.models),
+    modelPool: normalizeModelIds(p.modelPool).filter((id) => !p.models?.length || p.models.includes(id)),
+    fallbackModels: normalizeModelIds(p.fallbackModels).filter((id) => !p.models?.length || p.models.includes(id)),
+  }));
 }
 
 /** 落库前加密 */
 export function upsertProvider(input: ProviderConfig): ProviderConfig[] {
-  if (input.contextWindows && Object.values(input.contextWindows).some(n => !Number.isInteger(n) || n < 128_000 || n > 1_000_000)) {
+  const contextWindows = Object.fromEntries(
+    Object.entries(input.contextWindows ?? {}).flatMap(([model, value]) => {
+      const normalized = normalizeContextWindow(value);
+      return normalized ? [[model, normalized] as const] : [];
+    }),
+  );
+  if (input.contextWindows && Object.keys(contextWindows).length !== Object.keys(input.contextWindows).length) {
     throw new Error('模型上下文容量请设置在 128K 到 1M 之间，或选择自动识别');
   }
   const all = store.get('providers');
-  const stored: ProviderConfig = { ...input, apiKey: encryptSecret(input.apiKey) };
+  const models = normalizeModelIds(input.models);
+  const stored: ProviderConfig = {
+    ...input,
+    models,
+    modelPool: normalizeModelIds(input.modelPool).filter((id) => !models.length || models.includes(id)),
+    fallbackModels: normalizeModelIds(input.fallbackModels).filter((id) => !models.length || models.includes(id)),
+    ...(Object.keys(contextWindows).length ? { contextWindows } : { contextWindows: undefined }),
+    apiKey: encryptSecret(input.apiKey),
+  };
   const idx = all.findIndex((p) => p.id === input.id);
   if (idx >= 0) all[idx] = stored;
   else all.push(stored);

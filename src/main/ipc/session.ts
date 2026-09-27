@@ -53,6 +53,7 @@ import { saveVersion } from '../git';
 import { resolveResourcesRoot } from '../resources';
 import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS, skillRouteDecision } from '../agent/orchestration-policy';
 import { modelingAgentRouteForPrompt, modelingAgentsForRoute } from '../agent/modeling-agents';
+import { chooseModelRoute } from '../../shared/model-pool';
 
 /** 全局会话注册表（整个应用一份） */
 export const sessionRegistry = new SessionRegistry();
@@ -278,11 +279,17 @@ function resolveSessionModel(s: SessionMeta) {
       '尚未配置任何模型供应商。请到「设置 → 模型供应商」添加一个（内置了 MiniMax / DeepSeek / 智谱 / 通义等预设）。',
     );
   }
-  const model = settings.defaultModel || (s.providerId === provider.id ? s.model : '') || provider.models?.[0] || '';
-  if (!model) {
+  const route = chooseModelRoute({
+    models: provider.models,
+    modelPool: settings.activeProviderId === provider.id ? settings.modelPool : provider.modelPool,
+    fallbackModels: provider.fallbackModels,
+    defaultModel: settings.defaultModel,
+    sessionModel: s.providerId === provider.id ? s.model : '',
+  });
+  if (!route.primary) {
     throw new Error('尚未指定模型。请在设置中选择默认模型，或在该供应商下填写模型名。');
   }
-  return { settings, provider, model };
+  return { settings, provider, model: route.primary, fallbackModels: route.fallbacks };
 }
 
 /**
@@ -416,12 +423,12 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
   const { publishWorkflow } = await import('./workflow');
   const s = getSession(sessionId);
   if (!s) throw new Error('会话不存在');
-  const { settings, provider, model } = resolveSessionModel(s);
+  const { settings, provider, model, fallbackModels } = resolveSessionModel(s);
 
   const bridgeBaseUrl = await bridgeRegistry.ensureFor(provider, { model, effort: settings.effort ?? undefined, disableThinking: settings.disableThinking });
   getDb().prepare('UPDATE sessions SET provider_id = ?, model = ? WHERE id = ?').run(provider.id, model, sessionId);
 
-  // 项目根写入项目契约的 AGENTS.md 工作约定（不覆盖已有内容）
+  // 项目根写入应用约定的 AGENTS.md 工作约定（不覆盖已有内容）
   ensureProjectInstructions(cwd);
   // 论文任务：按设置自动初始化项目论文配置（`.mathmodel/paper/config.json`）
   ensurePaperProjectConfig(cwd, prompt);
@@ -477,6 +484,7 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
     prompt,
     provider,
     model,
+    ...(fallbackModels.length ? { fallbackModels } : {}),
     cwd,
     session: s,
     builtinMcpEnabled: settings.builtinMcpEnabled,
@@ -500,12 +508,15 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
     ...(settings.multiAgentEnabled !== false ? {
       collaborationBudget,
       ...(collaborationPolicy ? { workflowStages: collaborationPolicy.stages } : {}),
-      ...(agentRoute.agentIds.length ? { agentRoster: modelingAgentsForRoute(agentRoute) } : {}),
+      // 明确传入空注册表表示普通任务只由主智能体处理；只有命中协作路由时
+      // 才开放对应角色，避免 SDK 每轮都把整套临时成员暴露给模型。
+      agentRoster: agentRoute.agentIds.length ? modelingAgentsForRoute(agentRoute) : {},
     } : {}),
+    ...(skillDecision?.hints?.length ? { skillPlan: skillDecision.hints } : {}),
     onWorkflow: publishWorkflow,
     /**
      * 权限模式（当前实现口径 `'full' | 'approval'`）—— **原样透传，不在这里改名**。
-     * 换算成项目契约口径 / SDK 口径的那一步只在 `agent/permissions.ts` 里做一次。
+     * 换算成应用约定口径 / SDK 口径的那一步只在 `agent/permissions.ts` 里做一次。
      *
      * 这一行就是"输入区那个选择器"与"实际行为"之间**唯一**的连接点：
      * 在此之前 `settings.permissionMode` 没有任何主进程读取点，
@@ -523,18 +534,18 @@ export async function buildRunOptions(sessionId: string, prompt: string, cwd: st
 }
 
 /**
- * 组装系统提示词 —— 逐字还原项目契约。
+ * 组装系统提示词 —— 逐字还原应用约定。
  *
- * 项目契约并没有一个「人格设定」式的长 system prompt；它靠三件事给模型定调：
+ * 应用约定并没有一个「人格设定」式的长 system prompt；它靠三件事给模型定调：
  *  1. 项目根写入 `AGENTS.md` / `CLAUDE.md`（PROJECT_INSTRUCTIONS），SDK 自动读入
  *  2. 每条用户消息由 `composePrompt()` 按任务类型预置起始指令
  *  3. 技能（SKILL.md）通过 plugins 挂载 —— 由 `agent/skills-plugin.ts` 物化成
  *     完整插件目录后挂载，斜杠命令（/write-paper 等）因此才会被注册
  *
  * 因此这里只注入**工作目录**与**项目配置文件路径**这类机器事实，
- * 不自创「你是某某助手」的措辞 —— 那是项目契约没有的东西。
+ * 不自创「你是某某助手」的措辞 —— 那是应用约定没有的东西。
  *
- * ⚠️ 唯一一处**有意偏离项目契约**的追加：末尾的「交流语言与过程解说」「提问与继续执行」
+ * ⚠️ 唯一一处**有意偏离应用约定**的追加：末尾的「交流语言与过程解说」「提问与继续执行」
  *    「长时任务：不要交还回合去等通知」三节。
  *    依据是用户运行测试反馈（2026-09-17）：
  *      1. agent 的过程解说全英文（"I'll start by reading the project config…"），中文用户读不懂；
@@ -553,7 +564,7 @@ export type MultiAgentTrigger = 'paper' | 'review' | 'audit' | 'multi-file' | 'c
  *
  * 与任务模式（composerMode）正交：任务模式决定做什么，决策模式决定
  * AI 怎么做决定（2026-09-20，用户需求）。
- *   - `manual`（精细人工，默认）：关键决策逐项弹窗征求用户 —— 收紧项目契约
+ *   - `manual`（精细人工，默认）：关键决策逐项弹窗征求用户 —— 收紧应用约定
  *     「模型自主决定何时提问」的自由度，明确列出必须问的五类决策点；
  *   - `auto`（AI 自动）：自主完成全部决策、禁止提问 —— 与 session 侧的
  *     AskUserQuestion deny 兜底配套（提示词在前，deny 在后）；
@@ -680,7 +691,7 @@ export function buildSystemPrompt(
     // `agent/main-agent-personas.ts` 头注。
     ...mainAgentPersonaSection(turnPrompt),
 
-    // ── 当前版本要求（用户运行测试反馈，非项目契约内容）────────────────────
+    // ── 当前版本要求（用户运行测试反馈，非应用约定内容）────────────────────
     // 当前任务规则默认使用简洁的英文技术表达；中文用户明确要求「全中文 + 讲人话」。
     // 另：AskUserQuestion 答完又反问「需要我继续吗」——用户点名要求去掉这道二次确认。
     '',
@@ -787,7 +798,7 @@ export function buildSystemPrompt(
         ]
       : []),
 
-    // ── 长时任务：不要交还回合去等通知（用户运行测试反馈，非项目契约内容）────
+    // ── 长时任务：不要交还回合去等通知（用户运行测试反馈，非应用约定内容）────
     // 实测两次：模型在后台下载 28/77、抓取 45/77 时交还回合，明确写着
     // 「它跑完会自动通知我接着做」，结果后台任务随进程一起被收掉，用户只能自己敲「继续」。
     // 常驻 SessionInputQueue 已接通 SDK 自动续跑；这里约束模型不要提前下最终结论。
@@ -797,15 +808,15 @@ export function buildSystemPrompt(
     '- 等全部结果回来后再汇总、核验并完成当前任务，不要让用户额外回复“继续”。',
     '- 必须等待用户提供新信息时才停下来，并清楚说明缺少什么；不要假装仍在后台工作。',
   ];
-  // 用户在「设置 → 系统提示词」里写的附加指令（本地存储，项目契约同位置功能）
+  // 用户在「设置 → 系统提示词」里写的附加指令（本地存储，应用约定同位置功能）
   const custom = getSettings().systemPrompt?.trim();
   if (custom) lines.push('【用户附加指令】', custom);
   return lines.join('\n');
 }
 
 /**
- * 确保项目根存在 `AGENTS.md`（内容取项目契约 PROJECT_INSTRUCTIONS）。
- * 已存在则不覆盖 —— 项目契约明确要求「不覆盖已有论文或项目配置」。
+ * 确保项目根存在 `AGENTS.md`（内容取应用约定 PROJECT_INSTRUCTIONS）。
+ * 已存在则不覆盖 —— 应用约定明确要求「不覆盖已有论文或项目配置」。
  */
 function ensureProjectInstructions(cwd: string): void {
   const target = join(cwd, 'AGENTS.md');
@@ -827,7 +838,7 @@ function resourcesDir(): string {
 }
 
 /**
- * 「初始化论文项目配置」（设置 → 论文与比赛，对应项目契约 `writeProjectConfig` 的全局版）。
+ * 「初始化论文项目配置」（设置 → 论文与比赛，对应应用约定 `writeProjectConfig` 的全局版）。
  *
  * ⚠️ 修复的是一个**死开关**：`paperInitProjectConfig` 之前只有默认值、类型和界面开关，
  *    全仓没有任何地方消费它 —— 用户点了「初始化论文项目配置」，项目里不会出现
@@ -869,7 +880,7 @@ function ensurePaperProjectConfig(cwd: string, prompt: string): void {
     profile: prof,
   });
 
-  // 留一条日志便于取证（项目契约也有 `[paper-config] skipped `）
+  // 留一条日志便于取证（应用约定也有 `[paper-config] skipped `）
   if (r.created) {
     console.log(
       `[paper-config] created ${paperConfigPath(cwd)} template=${r.templateId} source=builtin` +
@@ -976,7 +987,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
   /**
    * 用户在「工具审批」框里做出决定（权限模式 = 需要批准时才会出现）。
    *
-   * 对应项目契约 `resolveApproval()` 。四个决定的语义见 `ApprovalDecision`
+   * 对应应用约定 `resolveApproval()` 。四个决定的语义见 `ApprovalDecision`
    * 的注释；`'cancel'` 会**中断本轮**，所以渲染层那个按钮是「取消回合」不是「关闭」。
    */
   ipcMain.handle(
@@ -1015,6 +1026,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       runner.removeAllListeners('event');
       runner.removeAllListeners('sdk-session');
       runner.removeAllListeners('ask-user');
+      runner.removeAllListeners('model');
 
       // Agent 调 AskUserQuestion → 推给渲染层弹确认框。
       // 用户在弹窗里选完 → SESSION_ANSWER_USER → runner.answerUserQuestion()，
@@ -1024,7 +1036,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       });
 
       // 工具审批请求（权限模式 = 需要批准时，canUseTool 拦下工具调用后发出的）。
-      // 对应项目契约 `approval-request` 流事件；用户在审批框里选完 → SESSION_ANSWER_APPROVAL
+      // 对应应用约定 `approval-request` 流事件；用户在审批框里选完 → SESSION_ANSWER_APPROVAL
       // → runner.answerApproval()，那边挂着的 promise 才 resolve，SDK 才拿到决定。
       runner.on('approval-ask', (req: ApprovalRequest) => {
         pushToRenderer(IPC.SESSION_APPROVAL_ASK, req);
@@ -1102,6 +1114,13 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
           .run(sdkId, sessionId);
       });
 
+      runner.on('model', (modelName: string) => {
+        const model = typeof modelName === 'string' ? modelName.trim() : '';
+        if (!model) return;
+        activeTurn.model = model;
+        getDb().prepare('UPDATE sessions SET model = ?, updated_at = ? WHERE id = ?').run(model, Date.now(), sessionId);
+      });
+
       // 3) 跑（不 await，立即返回让界面进入流式状态）
       let opts: Awaited<ReturnType<typeof buildRunOptions>>;
       try {
@@ -1133,7 +1152,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
           const blocks = collected.filter(Boolean);
           if (blocks.length) {
             // ⚠️ P0 只加列，这里**故意不传 agentMsgUuid**：它的值来自 agent 侧回的
-            //    assistant 消息 uuid（项目契约取 `lastAssistantUuid`），要等 P7（分叉）
+            //    assistant 消息 uuid（应用约定取 `lastAssistantUuid`），要等 P7（分叉）
             //    把 agent/session.ts 的那个字段接出来才能填。在那之前该列恒为 NULL，
             //    表现为"分叉只能复制消息、不能续传 agent 上下文"。
             //    `id` 用的是回合开头生成的 assistantMsgId —— 与进行中快照同源，
@@ -1143,7 +1162,9 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
               role: 'assistant',
               blocks,
               createdAt: Date.now(),
-              model: opts.model,
+              // 模型池回退可能在本轮内切换模型；以实际开始输出的模型为准，
+              // 让历史记录、统计和下次续传都能追溯到真正使用的模型。
+              model: activeTurn.model || opts.model,
               usage: runner.totalUsage,
             });
           }

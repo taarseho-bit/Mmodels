@@ -1,15 +1,15 @@
 /**
  * 设置页 ② 论文与比赛
  *
- * 对齐项目契约 s01-paper 的三段结构：
+ * 对齐应用约定 s01-paper 的三段结构：
  *   ① 「队伍资料默认仅保存在本机」说明卡
  *   ② 「使用方式」：新论文默认使用队伍档案 / 初始化论文项目配置
  *   ③ 「队伍档案」：列表管理（新建 / 编辑 / 设为默认 / 删除）+ 空态卡
  *
  * ⚠️ 本项目追加一段 ③「自定义模板」——
- *    项目契约把模板来源存在**项目配置**里（`template.source='custom'` + `sourcePath`，
- *    见项目契约 `PaperTemplateService` / `customTemplatesRoot` / `builtin_template_readonly`），
- *    但项目契约只在扩展页提供「基于内置模板自定义」，没有「选一个本地目录当模板源」的入口；
+ *    应用约定把模板来源存在**项目配置**里（`template.source='custom'` + `sourcePath`，
+ *    见应用约定 `PaperTemplateService` / `customTemplatesRoot` / `builtin_template_readonly`），
+ *    但应用约定只在扩展页提供「基于内置模板自定义」，没有「选一个本地目录当模板源」的入口；
  *    用户运行测试抱怨"模板字段读不到、也不知道怎么自己加模板"，故补这个入口。
  *    写入的是当前项目的 `.mathmodel/paper/config.json`（agent 真正读的那份）。
  */
@@ -30,7 +30,7 @@ function newId(): string {
   return `tp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** 新建档案时的队员槽位数量（项目契约按 3 人起） */
+/** 新建档案时的队员槽位数量（应用约定按 3 人起） */
 const MEMBER_SLOTS = 3;
 
 function blankProfile(): PaperTeamProfile {
@@ -57,7 +57,7 @@ export function PaperSection(): JSX.Element {
       const r = await window.mathmodel.paper.templates();
       const hit = r.templates?.find((x) => x.id === id) ?? r.templates?.[0];
       if (!hit) return null;
-      // 项目契约 `Np`：en 取 template.json 的 name.en（不带就原文兜底，但必须非空）
+      // 应用约定 `Np`：en 取 template.json 的 name.en（不带就原文兜底，但必须非空）
       return {
         id: hit.id,
         name: makeLocalizedText(hit.name, hit.nameEn),
@@ -95,7 +95,7 @@ export function PaperSection(): JSX.Element {
       try {
         const r = await window.mathmodel.paper.saveConfig({ template: ref });
         if (!r?.ok) {
-          // 项目契约同款语义（`chat.newChatPage.paperConfigConflict` / `paperConfigUnsafePath` /
+          // 应用约定同款语义（`chat.newChatPage.paperConfigConflict` / `paperConfigUnsafePath` /
           // `paperConfigSaveFailed`）—— 冲突=文件是用户手写的，我们拒绝覆盖（B19）
           setTplNotice(
             r?.reason === 'no-project'
@@ -122,7 +122,7 @@ export function PaperSection(): JSX.Element {
   const pickCustomDir = useCallback(async (): Promise<void> => {
     const dir = await window.mathmodel.file.selectDirectory();
     if (!dir) return;
-    // 目录名当 id：与内置模板「目录名即 id」的约定一致（项目契约 `/:templateId` 同理）
+    // 目录名当 id：与内置模板「目录名即 id」的约定一致（应用约定 `/:templateId` 同理）
     const name = dir.split(/[\\/]/).filter(Boolean).pop() ?? 'custom-template';
     await saveTpl(
       // 目录名当显示名（用户自选目录，只有这一种语言）→ en 走原文兜底，两键都非空

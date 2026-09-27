@@ -13,7 +13,7 @@
  *      所以必须断言**没走到兜底分支**（`data-missing-icon` 不出现），
  *      而不是只断言"名字在资源表里"；
  *   ② **文案必须来自词典**：断言渲染结果里**不含键路径** `chat.pastedText`；
- *   ③ **交互接线**：`onMouseDown` 必须真的调 `preventDefault()`（项目契约 `Sxe`）——
+ *   ③ **交互接线**：`onMouseDown` 必须真的调 `preventDefault()`（应用约定 `Sxe`）——
  *      漏了它，点「显示在输入框中」会让输入框失焦，用户接着打字打不进去。
  *
  * ## 环境说明
@@ -135,7 +135,7 @@ describe('PastedTextChip · 图标与文案都真的到位（防静默失败）'
 });
 
 describe('PastedTextChip · 交互接线', () => {
-  it('★ 点「显示在输入框中」前会 preventDefault（否则输入框失焦，见项目契约 Sxe）', () => {
+  it('★ 点「显示在输入框中」前会 preventDefault（否则输入框失焦，见应用约定 Sxe）', () => {
     const onShow = vi.fn();
     const tree = PastedTextChip({ item: chip(LONG), onShowInTextField: onShow, onRemove: () => {} });
     const act = findByClass(tree, 'cz-paste-chip-act');

@@ -1,8 +1,8 @@
 /**
- * 更新日志（whatsnew）—— 对应项目契约 whatsNewDialog / whatsNewPopoutCard / changelogAccordion。
+ * 更新日志（whatsnew）—— 对应应用约定 whatsNewDialog / whatsNewPopoutCard / changelogAccordion。
  *
- * 项目契约从服务器拉 changelog；当前版本改为**随包内置**（本文件），离线可用。
- * 展示逻辑对齐项目契约：
+ * 应用约定从服务器拉 changelog；当前版本改为**随包内置**（本文件），离线可用。
+ * 展示逻辑对齐应用约定：
  *   - 新版本首次启动 → 主界面右下角弹出卡片「此版本有什么新功能」
  *   - 点开 → 对话框：按版本折叠的更新记录（当前版本标记 + 条数）
  *   - 点「知道了」→ 写入 lastSeenVersion，不再打扰
@@ -29,7 +29,7 @@ export const CHANGELOG: WhatsNewEntry[] = [
       '系统通知：自动化任务后台完成时弹通知，点击直达对应会话',
       '浏览器面板新增 DevTools 开关与拖拽调宽',
       '环境「一键修复」：缺失项自动交给 Agent 配置',
-      '输入区对齐项目契约：项目 / 模式 / 比赛模板选择器、比赛信息、附件 chips、权限与模型选择器',
+      '输入区对齐应用约定：项目 / 模式 / 比赛模板选择器、比赛信息、附件 chips、权限与模型选择器',
     ],
   },
 ];
@@ -55,7 +55,7 @@ export function WhatsNew(): JSX.Element | null {
     void window.mathmodel.app.version().then((v) => {
       setVersion(v.app);
       setLastSeen(localStorage.getItem('mm-whatsnew-seen'));
-      // 非首次启动且版本变了 → 自动展开对话框（项目契约 popout 行为的简化：直接给内容）
+      // 非首次启动且版本变了 → 自动展开对话框（应用约定 popout 行为的简化：直接给内容）
       const seen = localStorage.getItem('mm-whatsnew-seen');
       if (seen && seen !== v.app) setOpen(true);
     });
@@ -67,7 +67,7 @@ export function WhatsNew(): JSX.Element | null {
   };
 
   if (!version || !open) {
-    // 版本变了但用户没点开 → 右下角小卡片（项目契约 popoutCard 语义）
+    // 版本变了但用户没点开 → 右下角小卡片（应用约定 popoutCard 语义）
     if (version && lastSeen && lastSeen !== version && !open) {
       const e = entryFor(version);
       return (

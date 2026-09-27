@@ -1,12 +1,12 @@
 /**
- * 本地用量统计 —— 对应项目契约「个人资料」页的数据层。
+ * 本地用量统计 —— 对应应用约定「个人资料」页的数据层。
  *
  * ⚠️ 全部从本地 SQLite 聚合，**一次网络请求都不发**：
  *   - 累计 Token / 提示词总数 / 会话总数 ← sessions、messages 表
  *   - 活跃度热力图 / 连续天数 ← messages 按天聚合（本地时区）
  *   - 最活跃时段 / 最常用供应商 / 最常处理项目 ← 分组聚合
  *
- * 项目契约这些数字来自云端账号体系；本项目没有账号（也不做），
+ * 应用约定这些数字来自云端账号体系；本项目没有账号（也不做），
  * 所以改由本地会话库计算 —— 数字口径一致，来源不同。
  */
 import { ipcMain } from 'electron';
@@ -170,7 +170,7 @@ export function registerStatsHandlers(): void {
       }
 
       // ── 最常用插件（Skill / Agent / 连接器）──
-      // 项目契约从云端账号统计；当前版本改为扫描本地消息块里的 tool_use。
+      // 应用约定从云端账号统计；当前版本改为扫描本地消息块里的 tool_use。
       const pluginRuns = new Map<string, { runs: number; sessions: Set<string> }>();
       try {
         const rows = db
@@ -233,7 +233,7 @@ export function registerStatsHandlers(): void {
 /**
  * 从一个 tool_use 块里取出「插件名」——不是插件（普通 Bash/Read/Edit 等）返回 null。
  *
- * 判定口径对齐项目契约「最常用插件」：Skill 调用、子 Agent 调用、MCP 连接器工具。
+ * 判定口径对齐应用约定「最常用插件」：Skill 调用、子 Agent 调用、MCP 连接器工具。
  */
 function pluginName(b: ContentBlock): string | null {
   const tool = String(b.toolName ?? '');

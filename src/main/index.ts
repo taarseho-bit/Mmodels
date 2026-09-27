@@ -11,7 +11,7 @@
  *   6. 创建主窗口
  *
  * ⚠️ 关于 `--mathmodel-server-port` / `--mathmodel-server-token`
- *    项目契约通过命令行参数把服务信息传给渲染层进程。
+ *    应用约定通过命令行参数把服务信息传给渲染层进程。
  *    我们这里改为：服务信息存在模块级变量里，preload 通过
  *    同步 IPC（`ipcRenderer.sendSync`）读取。原因：命令行参数在
  *    Windows 上容易被引号/编码问题坑到，且渲染层无法通过
@@ -45,7 +45,7 @@ const localServer = new LocalServer();
 let mainWindow: BrowserWindow | null = null;
 let quittingCompletely = false;
 
-// 与项目契约并存：Windows 应用身份、通知和任务栏分组均使用独立品牌。
+// 与应用约定并存：Windows 应用身份、通知和任务栏分组均使用独立品牌。
 app.setName('MModels');
 if (process.platform === 'win32') app.setAppUserModelId('com.mmodels.desktop');
 
@@ -120,7 +120,7 @@ function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
     title: 'MModels',
     /**
-     * ⚠️ 尺寸与界面检查**逐像素对齐**：项目契约网页视口实测 1266×804 CSS px
+     * ⚠️ 尺寸与界面检查**逐像素对齐**：应用约定网页视口实测 1266×804 CSS px
      *    （DPR 1.25，CDP `Runtime.evaluate innerWidth/innerHeight` 取证）。
      *    用 useContentSize 让内容区精确等于这个值，否则截图对比会因视口不同
      *    产生大量假差异（换行位置、列数、间距全部对不上）。
@@ -281,7 +281,7 @@ async function bootstrap(): Promise<void> {
   }
 
   // ── 1.5 默认项目 ──
-  // 项目契约在启动时必定保证「有且有一个可用的默认项目」，否则
+  // 应用约定在启动时必定保证「有且有一个可用的默认项目」，否则
   // env:check / git:info / file:* 这些依赖项目根目录的通道全部不可用，
   // 界面首屏就是一堆「尚未打开任何项目」。
   // 失败**不阻断启动**：最多是首屏没有项目，用户可以自己建。

@@ -36,7 +36,7 @@ export interface MigrationHost {
 /**
  * `messages` 表要补的列。
  *
- * 列名用**项目契约的 snake_case**（证据：项目契约 drizzle schema
+ * 列名用**应用约定的 snake_case**（证据：应用约定 drizzle schema
  * `messages` 表里是 `checkpointRef: text('checkpoint_ref')` /
  * `agentMsgUuid: text('agent_msg_uuid')`，协议实现）。
  * 当前实现的内部约定本来就是 snake_case，正好一致。

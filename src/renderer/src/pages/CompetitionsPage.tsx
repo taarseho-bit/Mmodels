@@ -1,7 +1,7 @@
 /**
- * 竞赛日历页 —— 本地设计 `CompetitionsPage`（项目契约最大的页面 chunk，218 KB）。
+ * 竞赛日历页 —— 本地设计 `CompetitionsPage`（应用约定最大的页面 chunk，218 KB）。
  *
- * 项目契约用 FullCalendar 做月历（zh-cn locale，周一为首列）+ 右侧栏
+ * 应用约定用 FullCalendar 做月历（zh-cn locale，周一为首列）+ 右侧栏
  * （近期赛事 / 全部赛事 + 筛选 + 赛事卡）。本项目不引该依赖，
  * 用自实现的月历网格 + 右栏达到同等信息呈现：
  *   - 周一起始（对齐 FullCalendar zh-cn 的 `week:{dow:1,doy:4}`）
@@ -27,7 +27,7 @@ import {
 import { PageShell } from '../components/PageShell';
 import { t, tx } from '../i18n';
 
-/** 收藏键名沿用项目契约 localStorage 约定 */
+/** 收藏键名沿用应用约定 localStorage 约定 */
 const FAV_KEY = 'mmodels:competition-favorites:v1';
 
 function loadFavorites(): string[] {
@@ -92,7 +92,7 @@ function rangeText(c: Competition): string {
   return `${ymd(s)} — ${mmdd(e)}`;
 }
 
-/** 近期赛事 / 月历横条上的事件短标签（项目契约：比赛 → 「开赛」，其余用事件类型名） */
+/** 近期赛事 / 月历横条上的事件短标签（应用约定：比赛 → 「开赛」，其余用事件类型名） */
 function eventShortLabel(ev: CompetitionEvent): string {
   return ev.kind === 'competition'
     ? tx('competitions.start')
@@ -100,7 +100,7 @@ function eventShortLabel(ev: CompetitionEvent): string {
 }
 
 /**
- * 星期表头。项目契约此处用 FullCalendar 的 zh-cn locale
+ * 星期表头。应用约定此处用 FullCalendar 的 zh-cn locale
  * （该 locale 对象就在 CompetitionsPage chunk 内，`week:{dow:1,doy:4}` 写死周一为首列），
  * 这里直接采用其 `weekText` 值「周」并按周一开头排列。
  */
@@ -461,7 +461,7 @@ function DetailPanel({
 // 主页面
 // ─────────────────────────────────────────────────────────────
 
-/** 页头「所有对象」下拉的取值（项目契约 `competitions.allAudiences`） */
+/** 页头「所有对象」下拉的取值（应用约定 `competitions.allAudiences`） */
 const AUDIENCES: CompetitionAudience[] = [
   'undergraduate',
   'vocational',
@@ -471,7 +471,7 @@ const AUDIENCES: CompetitionAudience[] = [
   'other',
 ];
 
-/** 页头「所有状态」下拉：项目契约按展示阶段筛（即将开始 / 比赛中 / 已结束 …） */
+/** 页头「所有状态」下拉：应用约定按展示阶段筛（即将开始 / 比赛中 / 已结束 …） */
 const STAGES = [
   'upcoming',
   'ongoing',
@@ -483,7 +483,7 @@ const STAGES = [
 ] as const;
 type StageFilter = (typeof STAGES)[number] | 'all';
 
-/** 月历图例（项目契约三色点，顺序与 FullCalendar 事件类一致） */
+/** 月历图例（应用约定三色点，顺序与 FullCalendar 事件类一致） */
 const LEGEND: CompetitionEvent['kind'][] = ['registration', 'competition', 'submission'];
 
 export function CompetitionsPage(): JSX.Element {
@@ -538,7 +538,7 @@ export function CompetitionsPage(): JSX.Element {
     [base, cat, year],
   );
 
-  /** 月历只画「已公布赛程」（项目契约行为），并保证跨天横条优先占道 */
+  /** 月历只画「已公布赛程」（应用约定行为），并保证跨天横条优先占道 */
   const monthItems = useMemo(() => {
     const raw: Array<{ ev: CompetitionEvent; comp: Competition }> = [];
     for (const c of listItems) {
@@ -555,7 +555,7 @@ export function CompetitionsPage(): JSX.Element {
     });
   }, [listItems]);
 
-  /** 本月无已公布赛程时，退回显示预计赛程（项目契约「本月预计赛事」） */
+  /** 本月无已公布赛程时，退回显示预计赛程（应用约定「本月预计赛事」） */
   const estimatedThisMonth = useMemo(() => {
     const ym = `${cursor.y}-${String(cursor.m + 1).padStart(2, '0')}`;
     return listItems.filter(
@@ -563,7 +563,7 @@ export function CompetitionsPage(): JSX.Element {
     );
   }, [listItems, cursor]);
 
-  /** 近期赛事：按事件开始时间升序取接下来 N 场（项目契约默认 3 条，展开后更多） */
+  /** 近期赛事：按事件开始时间升序取接下来 N 场（应用约定默认 3 条，展开后更多） */
   const recent = useMemo(() => {
     const nowMs = Date.now();
     const out: Array<{ ev: CompetitionEvent; comp: Competition }> = [];

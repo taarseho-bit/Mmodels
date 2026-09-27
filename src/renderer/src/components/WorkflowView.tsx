@@ -41,17 +41,19 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
   const tools = run?.nodes.flatMap(n => n.tools) ?? [];
   const workingCount = run?.nodes.filter(n => n.status === 'running').length ?? 0;
   const finishedCount = (run?.nodes.length ?? 0) - workingCount;
-  const skillCount = new Set(tools.flatMap(t => t.skill ? [t.skill] : [])).size;
+  const skillCount = new Set(tools.filter(t => t.verified !== false).flatMap(t => t.skill ? [t.skill] : [])).size;
+  const suggestedSkillCount = new Set(tools.filter(t => t.verified === false).flatMap(t => t.skill ? [t.skill] : [])).size;
   const fileCount = new Set(tools.flatMap(t => t.artifact ? [t.artifact] : [])).size;
   const activeNodeId = run?.nodes.find(item => item.status === 'running')?.id ?? run?.nodes.find(item => item.id === 'main')?.id ?? null;
   const detailAction = (tool: WorkflowTool) => privateView ? tool.label : tool.action ?? tool.label;
   const skillOverview = (() => {
-    const bySkill = new Map<string, { label: string; calls: number; running: number; failed: number; members: Set<string>; nodeId: string }>();
+    const bySkill = new Map<string, { label: string; calls: number; candidates: number; running: number; failed: number; members: Set<string>; nodeId: string }>();
     for (const owner of run?.nodes ?? []) {
       for (const tool of owner.tools) {
         if (!tool.skill) continue;
-        const current = bySkill.get(tool.skill) ?? { label: tool.label.replace(/^(载入入口指令|参考技能) · /, ''), calls: 0, running: 0, failed: 0, members: new Set<string>(), nodeId: owner.id };
-        current.calls += 1;
+        const current = bySkill.get(tool.skill) ?? { label: tool.label.replace(/^(载入入口指令|参考技能|已载入技能) · /, ''), calls: 0, candidates: 0, running: 0, failed: 0, members: new Set<string>(), nodeId: owner.id };
+        if (tool.verified === false || tool.skillSource === 'preload') current.candidates += 1;
+        else current.calls += 1;
         if (tool.status === 'running') current.running += 1;
         if (tool.status === 'unsuccessful' || tool.status === 'stopped') current.failed += 1;
         current.members.add(owner.id);
@@ -65,14 +67,18 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
       calls: value.calls,
       members: value.members.size,
       nodeId: value.nodeId,
-      status: value.running > 0 ? '进行中' : value.failed > 0 ? '需要复核' : '已完成',
+      status: value.running > 0 ? '进行中' : value.failed > 0 ? '需要复核' : value.calls > 0 ? '已调用' : '待确认',
+      candidates: value.candidates,
     })).sort((a, b) => (a.status === '进行中' ? -1 : b.status === '进行中' ? 1 : b.calls - a.calls));
   })();
   const skills = [...new Set(node?.tools.flatMap(t => t.skill ? [t.skill] : []) ?? [])].map(id => {
     const calls = node!.tools.filter(t => t.skill === id);
-    const status = calls.some(t => t.status === 'running') ? '进行中' : toolLabel[calls[calls.length - 1].status];
-    const source = calls[0].skillSource === 'entry' ? '写作流程已加载' : calls[0].skillSource === 'read' ? '已阅读技能说明' : '已调用技能';
-    return { id, label: calls[0].label.replace(/^(载入入口指令|参考技能) · /, ''), count: calls.length, status, source };
+    const verified = calls.filter(t => t.verified !== false && t.skillSource !== 'preload');
+    const status = calls.some(t => t.status === 'running') ? '进行中' : calls.some(t => t.status === 'unsuccessful' || t.status === 'stopped') ? '需要复核' : verified.length ? '已调用' : '待确认';
+    const source = verified.length
+      ? (calls[0].skillSource === 'entry' ? '入口已加载' : calls[0].skillSource === 'read' ? '已阅读技能说明' : '已调用技能')
+      : '任务开始前推荐';
+    return { id, label: calls[0].label.replace(/^(载入入口指令|参考技能|已载入技能) · /, ''), count: verified.length, candidates: calls.length - verified.length, status, source };
   });
   return <section className={`workflow-view is-${presentation}`} aria-label="任务工作流">
     <div className="workflow-heading">
@@ -91,20 +97,20 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
     <p className="workflow-note">看看谁在做什么，用了哪些方法，交回了什么成果。</p>
     {notice && <p role="status">{notice} <button className="btn btn-ghost" onClick={() => setRetry(v => v + 1)}>重新读取</button></p>}
     {!run ? <div className="workflow-empty"><Icon name="git-branch" size={32} /><h3>{loading ? '正在读取工作记录' : '从下一次任务开始，协作过程会出现在这里'}</h3>
-      <p>旧对话没有完整的成员与技能关联记录，不会补造工作流。复杂任务按需协作，简单任务可由主助手独立完成。</p>
+      <p>历史对话没有完整的成员与技能关联记录，不会补造工作流。复杂任务按需协作，简单任务可由主助手独立完成。</p>
       <button className="btn btn-primary" onClick={onReturn}>回到对话，开始任务</button></div> : <>
       <div className="workflow-summary">
         <span>{runs.length} 个项目任务</span>
         <span className={`workflow-status is-${run.status}`}>{runLabel[run.status]}</span>
-        <span>{workingCount} 位正在工作</span><span>{finishedCount} 位已收起</span><span>{skillCount} 项技能与流程</span><span>{fileCount} 份文件成果</span>
+        <span>{workingCount} 位正在工作</span><span>{finishedCount} 位已收起</span><span>{skillCount} 项已调用技能{suggestedSkillCount ? ` · ${suggestedSkillCount} 项待确认` : ''}</span><span>{fileCount} 份文件成果</span>
       </div>
-      {skillOverview.length > 0 && <section className="workflow-skill-overview" aria-label="本轮技能调用概览">
-        <div className="workflow-skill-overview-head"><strong>本轮调用的技能</strong><span>点击查看负责成员和工作记录</span></div>
+      {skillOverview.length > 0 && <section className="workflow-skill-overview" aria-label="本轮技能概览">
+        <div className="workflow-skill-overview-head"><strong>本轮技能</strong><span>已调用和待确认的方向都列在这里</span></div>
         <div className="workflow-skill-overview-list">
-          {skillOverview.slice(0, 10).map(skill => <button key={skill.id} className={`workflow-skill-chip is-${skill.status === '进行中' ? 'running' : skill.status === '需要复核' ? 'review' : 'done'}`} onClick={() => { setSelectedNode(skill.nodeId); setDetailsOpen(true); }}>
+          {skillOverview.slice(0, 10).map(skill => <button key={skill.id} className={`workflow-skill-chip is-${skill.status === '进行中' ? 'running' : skill.status === '需要复核' ? 'review' : skill.status === '待确认' ? 'suggested' : 'done'}`} onClick={() => { setSelectedNode(skill.nodeId); setDetailsOpen(true); }}>
             <span className="workflow-skill-chip-dot" />
             <strong>{skill.label}</strong>
-            <small>{skill.status} · {skill.calls} 次 · {skill.members} 位成员</small>
+            <small>{skill.status} · {skill.calls ? `${skill.calls} 次` : '尚未确认'}{skill.candidates ? ` · ${skill.candidates} 项候选` : ''} · {skill.members} 位成员</small>
           </button>)}
         </div>
         {skillOverview.length > 10 && <span className="workflow-skill-overview-more">还有 {skillOverview.length - 10} 项技能，点击成员后可查看全部</span>}
@@ -129,7 +135,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
           <p className="workflow-assignment"><strong>负责内容</strong>{node.assignment ?? (node.id === 'main' ? '统筹本轮任务、核验成员结果并给出最终答复' : '本轮没有记录到明确分工')}</p>
           <section className="flow-skill-section" aria-label="这个成员调用的技能">
             <h4><Icon name="sparkles" size={13} />使用的方法 <span>{skills.length} 项</span></h4>
-            {skills.length ? <ul>{skills.map(skill => <li key={skill.id}><div><strong>{skill.label}</strong><small>{skill.status}</small></div><span>{skill.source} · {skill.count} 次</span><details><summary>查看技能名称</summary><code>{skill.id}</code></details></li>)}</ul> : <p>暂未使用专门技能，可以展开下面的工作记录看看进展。</p>}
+            {skills.length ? <ul>{skills.map(skill => <li key={skill.id}><div><strong>{skill.label}</strong><small>{skill.status}</small></div><span>{skill.source} · {skill.count ? `${skill.count} 次` : '尚未确认'}{skill.candidates ? ` · ${skill.candidates} 项候选` : ''}</span><details><summary>查看技能名称</summary><code>{skill.id}</code></details></li>)}</ul> : <p>暂未使用专门技能，可以展开下面的工作记录看看进展。</p>}
           </section>
           <details className="flow-records"><summary>展开工作记录</summary>
           {!node.tools.length && <p className="workflow-note">已记录到成员启动，尚无工具调用记录。未调用工具不代表没有处理任务。</p>}
@@ -146,7 +152,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
         </aside>}
       </div>
       {run.nodes.length === 1 && <p className="workflow-note">本轮目前由主助手处理，协作成员实际启动后会自动加入画布。</p>}
-      <details className="workflow-explainer"><summary>关于这张工作图</summary><p>从上到下表示真实的派发层级，同一层超过四位会自动换行，不再无限横向拉长。虚线表示成员确实参与了，但旧记录里没有可靠的上级信息，因此只挂在主助手下，不补造关系。已完成成员默认缩小、褪色；没有技能、操作和分工说明的结束记录会按上级合并成一个摘要，点“展开已结束”仍能查看原始成员。“已返回”只表示结果已经交回，仍需主助手核验。</p></details>
+              <details className="workflow-explainer"><summary>关于这张工作图</summary><p>从上到下表示真实的派发层级，同一层超过四位会自动换行，画布会尽量保持接近舒适的横纵比例。虚线表示成员确实参与了，但没有可靠的上级信息，因此只挂在主助手下，不补造关系。已完成成员默认缩小、褪色；没有技能、操作和分工说明的结束记录会按上级合并成一个摘要，点“展开已结束”仍能查看原始成员。“已返回”只表示结果已经交回，仍需主助手核验。</p></details>
       {run.truncated && <p className="workflow-note">本轮事件较多，展示记录已达到上限（40 位成员、500 次工具调用），实际执行不受影响。</p>}
     </>}
   </section>;

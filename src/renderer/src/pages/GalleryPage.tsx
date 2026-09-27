@@ -32,7 +32,7 @@ import { registerCommand } from '../keybindings/dispatch';
 
 type DiagramTheme = 'mono' | 'color';
 
-/** 项目契约「全部」胶囊的内部值（与 `shell.galleryPage.all` 文案区分） */
+/** 应用约定「全部」胶囊的内部值（与 `shell.galleryPage.all` 文案区分） */
 const ALL = 'All';
 
 /** 模板缩略图：vite 在构建时解析为 URL（⚠️ svg 必须在列 —— 流程图参考全是 svg） */
@@ -46,7 +46,7 @@ function thumbOf(file: string): string | undefined {
   return THUMBS[`../assets/gallery/${file}`];
 }
 
-/** 项目契约 `Yr`：缩略图加载完成后淡入，卡片 hover 时轻微放大 */
+/** 应用约定 `Yr`：缩略图加载完成后淡入，卡片 hover 时轻微放大 */
 function Thumb({ src, alt }: { src?: string; alt: string }): JSX.Element {
   const [loaded, setLoaded] = useState(false);
   const ref = useRef<HTMLImageElement | null>(null);
@@ -108,7 +108,7 @@ function Detail({
    *    否则用户在任何输入框里按方向键移动光标都会被吃掉。
    *    （这正是"一个分发器 + 组件内登记"比"全局挂 14 个监听"强的地方。）
    *
-   * Esc 不走分发器：它不是 `RULES` 里的条目，是灯箱自己的关闭键（项目契约亦然）。
+   * Esc 不走分发器：它不是 `RULES` 里的条目，是灯箱自己的关闭键（应用约定亦然）。
    *
    * 回调放 ref：`onPrev/onNext/onClose` 每次渲染都是新函数，直接进依赖数组会让登记
    * 每渲染一次就注销重登一次（中间那一小段窗口里命令是"没注册"的 = 偶发失灵）。
@@ -247,7 +247,7 @@ export function GalleryPage(): JSX.Element {
   const [theme, setTheme] = useState<DiagramTheme>(DEFAULT_DIAGRAM_THEME);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  /** 项目契约：`new Map([["All", Ot.length]])` + 逐条累加分类计数 */
+  /** 应用约定：`new Map([["All", Ot.length]])` + 逐条累加分类计数 */
   const counts = useMemo(() => {
     const m = new Map<string, number>([[ALL, MATHMODEL_GALLERY.length]]);
     for (const g of MATHMODEL_GALLERY) m.set(g.category, (m.get(g.category) ?? 0) + 1);
@@ -286,7 +286,7 @@ export function GalleryPage(): JSX.Element {
 
   const use = useCallback(
     (item: GalleryTemplate) => {
-      // 项目契约行为：把绘图提示词填进输入框（流程图按所选主题发 /paper-diagram）
+      // 应用约定行为：把绘图提示词填进输入框（流程图按所选主题发 /paper-diagram）
       fillPrompt(templatePrompt(item, theme));
       setOpenId(null);
     },

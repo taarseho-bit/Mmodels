@@ -9,13 +9,13 @@
  *   所以门禁只写这一份，`src/main/notify.test.ts` 里还有一条结构级断言盯着
  *   「主进程里不许绕过本文件直接 new Notification」。
  *
- * 默认值对齐项目契约 —— **结论**：当前渲染层"**开关未设置 = 开启**"（空值合并到 true），
+ * 默认值对齐应用约定 —— **结论**：当前渲染层"**开关未设置 = 开启**"（空值合并到 true），
  *   只有显式关掉才拦；并且发送前还要「窗口可见且有焦点就不弹」。
  *   本项目沿用「未设置 = 开启」（判的是"不等于 `false`"），
  *   后半条由各调用点自己判（`automation.ts` 已经只在窗口失焦时才弹）。
- *   项目契约这个开关的界面文案是「任务完成通知」+「聊天完成或在后台等待工具审批时发送系统通知」。
+ *   应用约定这个开关的界面文案是「任务完成通知」+「聊天完成或在后台等待工具审批时发送系统通知」。
  *
- * 除了开关，本文件还承担**未读徽标**（项目契约那段也在主进程的通知创建路径里，
+ * 除了开关，本文件还承担**未读徽标**（应用约定那段也在主进程的通知创建路径里，
  * 和开关一样"只写一份"）：见下方 `bumpUnreadBadge` / `clearUnreadBadge`。
  *
  * 通知判据集中在下方的共享函数中，注释只记录行为约束，避免重复实现细节。
@@ -43,7 +43,7 @@ export type NotificationFactory = (init: SystemNotificationInit) => SystemNotifi
 /**
  * 开关是否允许弹系统通知。
  *
- * **未设置视为开启**（项目契约默认值），只有显式 `false` 才拦 ——
+ * **未设置视为开启**（应用约定默认值），只有显式 `false` 才拦 ——
  * 老用户设置里没有这个字段时不能因为"读不到"就把通知全掐了。
  */
 export function notificationsEnabled(
@@ -83,7 +83,7 @@ export function unreadBadgeCount(): number {
 
 /**
  * 主窗口此刻是不是"用户正看着"：`isVisible() && !isMinimized() && isFocused()` ——
- * 三项按字段对齐项目契约那段判据；取的是**单个主窗口**，所以用 `find` 而不是 `some`。
+ * 三项按字段对齐应用约定那段判据；取的是**单个主窗口**，所以用 `find` 而不是 `some`。
  *
  * ⚠️ 这是**主进程侧**的"注意力"判断，与渲染层的 `ZI()`（`document.visibilityState` +
  *    `hasFocus()`）是同一件事的两个视角：渲染层只看得到被遮挡，主进程还多知道"最小化"。
@@ -113,7 +113,7 @@ export function bumpUnreadBadge(): number {
   return unreadBadge;
 }
 
-/** 清零并刷新徽标 —— 项目契约在**点击通知**时调；已经是 0 时不重复刷系统调用 */
+/** 清零并刷新徽标 —— 应用约定在**点击通知**时调；已经是 0 时不重复刷系统调用 */
 export function clearUnreadBadge(): void {
   if (unreadBadge === 0) return;
   unreadBadge = 0;
@@ -148,7 +148,7 @@ export function createSystemNotification(
 ): SystemNotificationHandle | null {
   if (!notificationsEnabled()) return null;
   if (!Notification.isSupported()) return null;
-  // 项目契约写法是 `(...三者皆真) || (未读+1)` —— 即"用户看着就不加，否则加"
+  // 应用约定写法是 `(...三者皆真) || (未读+1)` —— 即"用户看着就不加，否则加"
   if (!attentive()) bumpUnreadBadge();
   const inner = factory(init);
   return {

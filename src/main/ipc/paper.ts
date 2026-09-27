@@ -4,16 +4,16 @@
  * ⚠️ 扫描与读写逻辑在 `src/main/scan/paper-templates.ts`（纯 Node，可被验证脚本直接 import）。
  *    本文件只做「取资源目录 → 调 scan → 包 IPC 结果」。
  *
- * 安全约定（对齐项目契约 `chat.newChatPage.paperConfig*` 那几条文案）：
+ * 安全约定（对齐应用约定 `chat.newChatPage.paperConfig*` 那几条文案）：
  *   - **绝不覆盖用户手写的配置**：已存在的 config.json 若 `managedBy !== 'mathmodel'`
- *     就拒绝写入并回 `config-conflict`（项目契约 `project_config_conflict`，见 capability-diff.md B19）。
+ *     就拒绝写入并回 `config-conflict`（应用约定 `project_config_conflict`，见 capability-diff.md B19）。
  *     判定见 `paperConfigOwnership`。
  *   - `.mathmodel` 已存在但不是普通目录（软链/联接）时拒绝写入
- *     （项目契约 `project_config_unsafe_path` / `paperConfigUnsafePath`）
+ *     （应用约定 `project_config_unsafe_path` / `paperConfigUnsafePath`）
  *   - 保存时**只更新本次真正要改的键**，其余字段原样保留（含用户手写的额外键）
  *   - 只写 `.mathmodel/paper/` 下的文件；遗留目录 `.mmodels` **只读不写**（见 `LEGACY_MM_DIR`）
  *
- * schema 见 `@shared/types` 的 `PaperConfig`（按字段对齐项目契约 zod schema）。
+ * schema 见 `@shared/types` 的 `PaperConfig`（按字段对齐应用约定 zod schema）。
  */
 import { ipcMain, app } from 'electron';
 import { mkdirSync } from 'node:fs';
@@ -58,12 +58,12 @@ function resourcesDir(): string {
 }
 
 /**
- * 受管自定义模板库根目录（项目契约 `customTemplatesRoot`）——
+ * 受管自定义模板库根目录（应用约定 `customTemplatesRoot`）——
  * 存在**用户数据目录**下，与项目无关，每个项目都能用。
  *
  * ⚠️ 这与设置页「自定义模板」那个"指一个本地目录当模板源"的入口**不是一回事**：
  *    那个把路径写进当前项目的 `.mathmodel/paper/config.json`（只对该项目生效，
- *    是我们有意的增强）；这里是项目契约语义的受管库（fork 出来的模板存这儿）。
+ *    是我们有意的增强）；这里是应用约定语义的受管库（fork 出来的模板存这儿）。
  *    两套并存，谁都不替换谁。
  */
 function customTemplatesRoot(): string {
@@ -104,7 +104,7 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
   );
 
   /**
-   * 受管模板库的**合并**列表（内置 + 我的模板）—— 项目契约 `PaperTemplateService.list()`
+   * 受管模板库的**合并**列表（内置 + 我的模板）—— 应用约定 `PaperTemplateService.list()`
    * 返回的就是 `records()`（两个根一起扫、同 id 去重）。
    *
    * 只有扩展页读它：那里的详情区要按 `source` 分「内置 · write-paper」与「我的模板」两段。
@@ -121,7 +121,7 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
   );
 
   /**
-   * 基于某条模板派生一条自定义模板（项目契约 `POST /api/paper-templates/fork`）。
+   * 基于某条模板派生一条自定义模板（应用约定 `POST /api/paper-templates/fork`）。
    *
    * 实现全在 `scan/paper-templates.ts#forkPaperTemplate`（纯 Node，单测直接钉它）——
    * 这里只负责把「资源目录 + 受管库根目录」这两个 electron 侧的事实喂进去。
@@ -141,7 +141,7 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
   );
 
   /**
-   * 删除一条**自定义**模板（项目契约 `DELETE /api/paper-templates/:id`）。
+   * 删除一条**自定义**模板（应用约定 `DELETE /api/paper-templates/:id`）。
    *
    * ⚠️ 内置模板必须在这里被**拒绝**（`builtin_template_readonly` → 403），
    *    不是"UI 上不渲染按钮"。拒绝的判断在 `deletePaperTemplate` 内部
@@ -182,7 +182,7 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
       const root = projectRootForPaper(projectId);
       if (!root) return { ok: false, reason: 'no-project' };
 
-      // 项目契约 project_config_unsafe_path：`.mathmodel` 不能是软链/目录联接
+      // 应用约定 project_config_unsafe_path：`.mathmodel` 不能是软链/目录联接
       if (!mmodelsDirIsSafe(root)) return { ok: false, reason: 'unsafe-path' };
 
       const dir = join(root, MM_DIR, 'paper');
@@ -191,8 +191,8 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
       /**
        * 保存决策（纯逻辑在 `planPaperConfigSave`，单测直接钉它）：
        *   · conflict —— 已存在的 config.json 不是我们写的（`managedBy !== 'mathmodel'`）⇒
-       *     项目契约 `project_config_conflict`：**拒绝写入**，把决定权交回用户
-       *     （项目契约文案就是「先移走或重命名该文件后重试」）。
+       *     应用约定 `project_config_conflict`：**拒绝写入**，把决定权交回用户
+       *     （应用约定文案就是「先移走或重命名该文件后重试」）。
        *   · merge —— 不存在 / 我们写的 / 坏 JSON（坏的原文件先备份成 `.broken.bak`）。
        *   基线若来自遗留 `.mmodels`（`legacy: true`），这次写入顺带完成迁移，**旧文件不删**。
        */
@@ -207,7 +207,7 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
       }
       const merged = plan.merged;
 
-      // 先按项目契约 schema 规整（老结构就地换算），再把本次补丁盖上去
+      // 先按应用约定 schema 规整（老结构就地换算），再把本次补丁盖上去
       const templates = listPaperTemplates(resourcesDir());
       const base = normalizePaperConfig(merged, templates);
       const settings = getSettings();
@@ -231,7 +231,7 @@ export function registerPaperHandlers(_ctx: IpcContext): void {
         pageLimit: patch?.pageLimit !== undefined ? patch.pageLimit : base.pageLimit,
       };
 
-      // 写入前再拦一次项目契约那条约束：custom 必须有 sourcePath，builtin 不能带 sourcePath
+      // 写入前再拦一次应用约定那条约束：custom 必须有 sourcePath，builtin 不能带 sourcePath
       if (next.template.source === 'custom' && !next.template.sourcePath) {
         return { ok: false, reason: 'custom-needs-sourcePath' };
       }

@@ -33,11 +33,13 @@ const FOLDED_WIDTH = 190;
 const FOLDED_HEIGHT = 66;
 const GROUP_WIDTH = 196;
 const GROUP_HEIGHT = 58;
-const COLUMN_GAP = 34;
-const ROW_GAP = 26;
-const LEVEL_GAP = 66;
+const COLUMN_GAP = 28;
+const ROW_GAP = 22;
+const LEVEL_GAP = 52;
 const MARGIN_X = 30;
 const MARGIN_Y = 18;
+// 四列能让常见的 4~8 个成员保持接近黄金比例；超过四列时向下分行，
+// 避免演示画布被横向拉长、节点文字被压缩到看不清。
 const MAX_COLUMNS = 4;
 
 interface LayoutItem {

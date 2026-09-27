@@ -1,8 +1,8 @@
 /**
  * 执行环境准备：把 Claude Agent SDK 需要的环境变量组装好。
  *
- * 这一层是**当前实现项目契约行为的关键**：
- * 项目契约的 `claudeExecutablePath` / `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN` 三件套
+ * 这一层是**当前实现应用约定行为的关键**：
+ * 应用约定的 `claudeExecutablePath` / `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN` 三件套
  * 就是在这里被注入子进程的。
  */
 import { existsSync, readdirSync } from 'node:fs';
@@ -119,7 +119,7 @@ function packagedResourceRoots(): string[] {
  *
  * ⚠️ **打包后不能再用 `process.cwd()`** —— 运行时 cwd 是启动目录
  * （快捷方式可能指向任意位置），不是 app 根。
- * 优先取随包分发的 `resources/claude-code/claude.exe`（**与项目契约布局一致**），
+ * 优先取随包分发的 `resources/claude-code/claude.exe`（**与应用约定布局一致**），
  * 再退回 SDK 平台包。
  *
  * @param projectRootOverride 开发期可显式传入项目根（验证脚本用）
@@ -128,7 +128,7 @@ export function resolveClaudeExecutable(projectRootOverride?: string): string | 
   const cands: string[] = [];
   const roots = candidateRoots(projectRootOverride);
 
-  // ── 1. 随包分发（打包后优先，也是项目契约的布局）──
+  // ── 1. 随包分发（打包后优先，也是应用约定的布局）──
   //    electron-builder 的 extraResources 配成 `to: .`，
   //    所以内容直接落在 process.resourcesPath 下。
   for (const resourceRoot of packagedResourceRoots()) {
@@ -258,7 +258,7 @@ export function buildChildEnv(overrides: EnvOverrides): NodeJS.ProcessEnv {
 //
 // 为什么放在这个文件：**这里是子进程环境的唯一出口**。
 // Agent 会话本身（claude 子进程）和它在 Bash 里跑的 git/curl 都继承这份 env，
-// 所以把 HTTP_PROXY/HTTPS_PROXY/NO_PROXY 写在这里，就等于按项目契约承诺
+// 所以把 HTTP_PROXY/HTTPS_PROXY/NO_PROXY 写在这里，就等于按应用约定承诺
 // 「Agent 会话以及 Agent 在 Bash 中运行的命令都会通过此代理访问网络」。
 //
 // 数据流：
@@ -306,7 +306,7 @@ function withHttpScheme(u: string): string {
 /**
  * 把「代理设置 + 系统检测结果」翻译成**当前生效**的代理地址。
  *
- * 项目契约语义：子进程只支持 HTTP 代理，SOCKS 地址会被忽略
+ * 应用约定语义：子进程只支持 HTTP 代理，SOCKS 地址会被忽略
  * （`settings.proxySection.socksUnsupported`），所以 socks 一律判为 unsupported。
  */
 export function resolveEffectiveProxy(

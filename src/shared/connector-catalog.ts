@@ -23,9 +23,9 @@ export const CONNECTOR_CATALOG: ConnectorCatalogEntry[] = [
   {
     key: 'arxiv', displayName: 'arXiv 论文', category: 'literature',
     description: '检索数学、统计和计算机方向的预印本论文。',
-    capabilities: ['论文搜索', '摘要与元数据', '全文下载'], native: false, readOnly: true, auth: 'none',
+    capabilities: ['论文搜索', '摘要与元数据', '全文下载'], native: true, readOnly: true, auth: 'none',
     sourceUrl: 'https://arxiv.org/',
-    server: { transport: 'stdio', command: 'uvx', args: ['arxiv-mcp-server'], env: {} },
+    server: { transport: 'http', url: 'local://arxiv', env: {}, native: true },
   },
   {
     key: 'context7', displayName: 'Context7 技术文档', category: 'research',
@@ -129,9 +129,9 @@ export const CONNECTOR_CATALOG: ConnectorCatalogEntry[] = [
   {
     key: 'github', displayName: 'GitHub 项目协作', category: 'code',
     description: '读取仓库、Issue、提交记录和建模脚本。',
-    capabilities: ['仓库文件', 'Issue', '提交记录'], native: false, readOnly: true, auth: 'token',
+    capabilities: ['仓库文件', 'Issue', '提交记录'], native: true, readOnly: true, auth: 'token',
     credentials: [{ key: 'GITHUB_PERSONAL_ACCESS_TOKEN', label: '访问令牌', placeholder: '只读令牌即可' }],
-    server: { transport: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'], env: {} },
+    server: { transport: 'http', url: 'local://github', env: {}, native: true },
   },
   {
     key: 'gitlab', displayName: 'GitLab 项目协作', category: 'code',
@@ -176,8 +176,8 @@ export const CONNECTOR_CATALOG: ConnectorCatalogEntry[] = [
   {
     key: 'time', displayName: '时间与时区', category: 'utility',
     description: '统一竞赛截止时间、协作时间和自动化提醒。',
-    capabilities: ['时区转换', '时间查询', '截止时间换算'], native: false, readOnly: true, auth: 'none',
-    server: { transport: 'stdio', command: 'uvx', args: ['mcp-server-time'], env: {} },
+    capabilities: ['时区转换', '时间查询', '截止时间换算'], native: true, readOnly: true, auth: 'none',
+    server: { transport: 'http', url: 'local://time', env: {}, native: true },
   },
   {
     key: 'webhook', displayName: 'Webhook 通知', category: 'collaboration',

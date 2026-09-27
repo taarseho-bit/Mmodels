@@ -17,7 +17,7 @@
  *   │ └────────────────────────────┘ │
  *   └────────────────────────────────┘
  *
- * 文案全部走 `tx()`，键取自 i18n 里项目契约已有的 `composer.environmentPanel.*`
+ * 文案全部走 `tx()`，键取自 i18n 里应用约定已有的 `composer.environmentPanel.*`
  * （`title` / `versions` / `editor` / `editorView` / `openInEditorNamed` /
  * `openInEditor` / `notepad` / `notepadPlaceholder` / `settings`），启动器与
  * 「在文件夹中显示」复用 `dock.editorLaunchers.systemDefault` 与
@@ -30,11 +30,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { tx } from '../i18n';
 
-/** 记事本内容落 localStorage（项目契约记事本在同一台机器上长期保留） */
+/** 记事本内容落 localStorage（应用约定记事本在同一台机器上长期保留） */
 const NOTEPAD_KEY = 'mm-env-notepad';
 
 /**
- * 本机解析出的外部编辑器名。项目契约是运行时探测（`openInEditorNamed` 是插值键），
+ * 本机解析出的外部编辑器名。应用约定是运行时探测（`openInEditorNamed` 是插值键），
  * 当前版本没有编辑器探测 IPC，统一显示编辑器入口；
  * 展开后的「默认应用」走系统默认程序。
  */
@@ -89,14 +89,14 @@ export function EnvironmentMenu({
   onRevealInFolder,
 }: Props): JSX.Element | null {
   const ref = useRef<HTMLDivElement>(null);
-  /** 「编辑器」「记事本」两个分组可折叠（项目契约分组标题右侧带 chevron） */
+  /** 「编辑器」「记事本」两个分组可折叠（应用约定分组标题右侧带 chevron） */
   const [editorGroupOpen, setEditorGroupOpen] = useState(true);
   const [notepadOpen, setNotepadOpen] = useState(true);
-  /** 启动器列表（项目契约「在 Cursor 中打开」行尾的 chevron） */
+  /** 启动器列表（应用约定「在 Cursor 中打开」行尾的 chevron） */
   const [launchersOpen, setLaunchersOpen] = useState(false);
   const [note, setNote] = useState(loadNote);
 
-  // 每次重新展开都回到项目契约默认形态，避免上次的折叠状态让人以为菜单缺项
+  // 每次重新展开都回到应用约定默认形态，避免上次的折叠状态让人以为菜单缺项
   useEffect(() => {
     if (!open) return;
     setEditorGroupOpen(true);
@@ -220,7 +220,7 @@ export function EnvironmentMenu({
             </div>
 
             {/*
-              行尾 chevron 展开的是项目契约的「编辑器选择器」——对应
+              行尾 chevron 展开的是应用约定的「编辑器选择器」——对应
               `dock.openInPicker.*`（chooseEditor / openWith / revealInFolder /
               noEditorsFound），不是文件浏览器面板的 `dock.explorerPanel.*`。
               当前版本探测不到已安装编辑器，列表里固定给「默认应用」+「在文件夹中显示」。

@@ -7,7 +7,7 @@
  * 的 SEND 处理）。所以「跑着的时候切走、再切回来」这一轮在 `messages` 表里
  * 根本不存在 —— 渲染层再怎么按会话隔离缓存，也复原不出过程块与任务面板。
  * 主进程在这一轮进行中把块序列节流写进 `turn_spills`，切回来时由
- * `SESSION_GET` 带出（`InflightTurn`），这就是项目契约 `session_tasks` /
+ * `SESSION_GET` 带出（`InflightTurn`），这就是应用约定 `session_tasks` /
  * `turn_spills` 三件套里 `turn_spills` 的作用。
  *
  * ## 为什么单独一个文件、且不 import electron / better-sqlite3

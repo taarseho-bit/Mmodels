@@ -1,7 +1,7 @@
 /**
  * 扩展页 —— 本地设计的三栏 master-detail 结构。
  *
- * 布局（对应项目契约 05-extensions 截图）：
+ * 布局（对应应用约定 05-extensions 截图）：
  *   ┌──────────┬───────────────┬───────────────────────────┐
  *   │ 扩展类型 │ 条目列表      │ 详情面板                  │
  *   │ 技能     │ 已启用        │ 名称 + 开关 + 删除        │
@@ -34,7 +34,7 @@ import { skillDisplayName } from '../lib/skill-display';
 import { LocalPluginsPanel } from '../components/LocalPluginsPanel';
 
 type Tab = 'skills' | 'templates' | 'algorithms' | 'plugins' | 'connectors';
-/** SKILL.md 的两种查看方式（项目契约 viewToggle） */
+/** SKILL.md 的两种查看方式（应用约定 viewToggle） */
 type ViewMode = 'rendered' | 'source';
 
 type SkillCategory = '读题与资料' | '数据与统计' | '建模与求解' | '绘图与表达' | '论文与交付' | '通用协作';
@@ -67,7 +67,7 @@ const SECTIONS: Array<{ key: Tab; labelKey: string; icon: string }> = [
   { key: 'connectors', labelKey: 'extensions.sections.connectors', icon: 'plug' },
 ];
 
-/** 复制到剪贴板（项目契约详情面板的复制按钮同语义） */
+/** 复制到剪贴板（应用约定详情面板的复制按钮同语义） */
 function copyText(text: string): void {
   void navigator.clipboard?.writeText(text);
 }
@@ -75,7 +75,7 @@ function copyText(text: string): void {
 /**
  * 扩展页。
  *
- * `requestedTab` 是**外面跳进来时指定的分区**（项目契约
+ * `requestedTab` 是**外面跳进来时指定的分区**（应用约定
  * `u({to:"/extensions", search:{section:"skills"}})`）——「＋」菜单的
  * 「管理技能 / 管理算法 / 管理连接器 / 管理插件」四行靠它落到正确的 tab 上。
  * ⚠️ 不能只在页内监听事件：`openRoute` 是当场派发的，而这一页此刻还没挂载
@@ -92,7 +92,7 @@ export function ExtensionsPage({
    * 跳回别的页面。
    *
    * ⚠️ 这一页**自己不持有路由**（`route` 是 `App.tsx` 的 state），而「使用此模板」
-   *    要"选中后回到新会话"（项目契约 `extensionsHelpDialog.templatesBody` 原文），
+   *    要"选中后回到新会话"（应用约定 `extensionsHelpDialog.templatesBody` 原文），
    *    所以必须由 App 把 setRoute 递进来 —— 与 `GuidedTour` 的 `onNavigate` 同一套做法。
    *    不传也能用：那时只切模板 + 开新会话，不跳页（便于单测/预览单独挂载）。
    */
@@ -123,7 +123,7 @@ export function ExtensionsPage({
               <span>{tx(s.labelKey)}</span>
             </button>
           ))}
-          {/* 底部帮助入口（项目契约 sidebar 的 mt-auto 定位） */}
+          {/* 底部帮助入口（应用约定 sidebar 的 mt-auto 定位） */}
           <button className="ext-nav-item ext-nav-help" onClick={() => setHelpOpen(true)}>
             <Icon name="circle-question-mark" size={14} />
             <span>{tx('extensions.extensionsPage.helpButton')}</span>
@@ -192,7 +192,7 @@ function SkillsTab(): JSX.Element {
     return counts;
   }, [skills]);
 
-  /** 项目契约分组：已启用 / 已停用（顺序固定） */
+  /** 应用约定分组：已启用 / 已停用（顺序固定） */
   const groups = useMemo(
     () => [
       { key: 'enabled', label: tx('common.enabled'), items: filtered.filter((s) => s.enabled) },
@@ -230,7 +230,7 @@ function SkillsTab(): JSX.Element {
     try {
       const list = await window.mathmodel.skill.import();
       if (list === null) {
-        // 用户取消：项目契约不提示，这里也保持安静
+        // 用户取消：应用约定不提示，这里也保持安静
       } else {
         useApp.setState({ skills: list });
       }
@@ -553,18 +553,18 @@ function SkillDetail({
 }
 
 // ─────────────────────────────────────────────────────────────
-// 模板 tab（论文模板列表，项目契约 paperTemplatesSection）
+// 模板 tab（论文模板列表，应用约定 paperTemplatesSection）
 // ─────────────────────────────────────────────────────────────
 
 /**
  * 模板操作失败码 → 用户可见文案键。
  *
- * 键全部来自 `extensions.paperTemplatesSection.*`（项目契约那一族的 31 个键），
+ * 键全部来自 `extensions.paperTemplatesSection.*`（应用约定那一族的 31 个键），
  * **没有一个是新造的**。`i18n/keys.test.ts` 的零豁免名单会挡住不存在的键。
  *
  * ⚠️ `builtin_template_readonly` 用 `editorCustomOnly`（「只有自定义模板可以直接编辑。」）：
- *    项目契约中的内置模板删除按钮在 UI 上根本不出现，所以那族键里**没有**一条"删内置被拒"的
- *    专门文案；这条是同一语义（内置只读）下最贴近的一条。主进程仍按项目契约回 403。
+ *    应用约定中的内置模板删除按钮在 UI 上根本不出现，所以那族键里**没有**一条"删内置被拒"的
+ *    专门文案；这条是同一语义（内置只读）下最贴近的一条。主进程仍按应用约定回 403。
  */
 const TEMPLATE_ERROR_KEY: Record<string, string> = {
   template_not_found: 'extensions.paperTemplatesSection.forkSourceMissing',
@@ -585,7 +585,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  /** 一次操作的结果提示（项目契约 `forkCreated` / `deleted`） */
+  /** 一次操作的结果提示（应用约定 `forkCreated` / `deleted`） */
   const [notice, setNotice] = useState<string | null>(null);
 
   const patchSettings = useApp((s) => s.patchSettings);
@@ -627,9 +627,9 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
 
   /**
    * 两段分组：内置（`extensions.paperTemplatesSection.builtinGroup`）+
-   * 我的模板（`customGroup`，即项目契约 `customTemplatesGroup` 在扩展页命名空间下的同一个键）。
+   * 我的模板（`customGroup`，即应用约定 `customTemplatesGroup` 在扩展页命名空间下的同一个键）。
    *
-   * ⚠️ 空的自定义组**不渲染** —— 一条自定义模板都没有时，项目契约这一页上没有
+   * ⚠️ 空的自定义组**不渲染** —— 一条自定义模板都没有时，应用约定这一页上没有
    *    「我的模板」这段（真机 05-extensions 截图里只有一段「内置 · write-paper」）。
    */
   const builtinList = useMemo(() => list.filter((t) => t.source === 'builtin'), [list]);
@@ -651,11 +651,11 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
   /**
    * 「使用此模板」——用该模板**开一个新会话**。
    *
-   * 项目契约语义（`extensionsHelpDialog.templatesBody` 原句）：
+   * 应用约定语义（`extensionsHelpDialog.templatesBody` 原句）：
    *   「选中后回到新会话，Agent 会把整套模板复制到项目。」
    * ⇒ 三件事：
    *   ① **把"这篇论文用哪套模板"写进当前项目的论文配置**
-   *      （`template: {id,name,entryFile,source,sourcePath}` —— 项目契约存的就是项目配置，
+   *      （`template: {id,name,entryFile,source,sourcePath}` —— 应用约定存的就是项目配置，
    *       输入区读的也是它：`source='custom'` 时走 `srcTpl` 那条路，名字从磁盘上的
    *       ref 取，所以自定义模板在输入区能正确显示）；
    *   ② 开新会话；③ 跳回对话页。
@@ -665,7 +665,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
    * `paperTemplateId`（内置模板的正常通路）。**不静默假装成功**：这条分支只影响
    * "下次打开项目时预选哪套模板"，写不进去也不会让用户丢数据。
    *
-   * 这里**不往输入框塞提示词** —— 项目契约那句只说了"回到新会话"，没提炼词；
+   * 这里**不往输入框塞提示词** —— 应用约定那句只说了"回到新会话"，没提炼词；
    * 而那一族文案里也没有"用它开始写论文"的提示词键，自己编一条就等于造假文案。
    */
   const useThisTemplate = async (tpl: PaperTemplate): Promise<void> => {
@@ -674,7 +674,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
       name: makeLocalizedText(tpl.name, tpl.nameEn),
       entryFile: tpl.entryFile,
       source: tpl.source,
-      // 自定义模板要把模板目录记下来（项目契约 default(null)，且 custom 必须有值）
+      // 自定义模板要把模板目录记下来（应用约定 default(null)，且 custom 必须有值）
       sourcePath: tpl.source === 'custom' ? tpl.dir : null,
     };
     try {
@@ -687,7 +687,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
     onNavigate?.('chat');
   };
 
-  /** 打开 fork 弹层：默认名取项目契约 `forkDefaultName`（`{{name}} · 自定义`） */
+  /** 打开 fork 弹层：默认名取应用约定 `forkDefaultName`（`{{name}} · 自定义`） */
   const openFork = (tpl: PaperTemplate): void => {
     setForkError(null);
     setForkName(tx('extensions.paperTemplatesSection.forkDefaultName', { name: tpl.name }));
@@ -697,7 +697,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
   const submitFork = async (): Promise<void> => {
     if (!current) return;
     const name = forkName.trim();
-    // 客户端先挡一次（项目契约 `forkInvalidName`）；主进程还会再判一次（不信渲染层）
+    // 客户端先挡一次（应用约定 `forkInvalidName`）；主进程还会再判一次（不信渲染层）
     if (!name || name.length > 80) {
       setForkError(tx('extensions.paperTemplatesSection.forkInvalidName'));
       return;
@@ -857,7 +857,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
               </span>
             </div>
 
-            {/* ── 操作区（项目契约 `useTemplate` / `forkTemplate` / `editTemplate` / 删除）── */}
+            {/* ── 操作区（应用约定 `useTemplate` / `forkTemplate` / `editTemplate` / 删除）── */}
             <div className="row ext-detail-actions">
               <button className="btn btn-sm btn-primary" onClick={() => void useThisTemplate(current)}>
                 {tx('extensions.paperTemplatesSection.useTemplate')}
@@ -902,7 +902,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
                 <span className="ext-field-label">{tx('extensions.paperTemplatesSection.source')}</span>
                 <span className="ext-field-value">
                   {/* ⚠️ 参考运行验证（安装包检查 附近 / customSource 上下文）：
-                      项目契约这一行是 `{source} · {source === "custom" ? customSource : "write-paper"}`，
+                      应用约定这一行是 `{source} · {source === "custom" ? customSource : "write-paper"}`，
                       **没有 `builtinSource` 这个键**（`builtinSource` 只存在于
                       `extensions.connectorsSection.*`，是连接器详情那边的）。早期写成
                       `paperTemplatesSection.builtinSource` 取不到值，`tx()` 会把键路径原样渲染出来。 */}
@@ -940,7 +940,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
         )}
       </div>
 
-      {/* ── 「基于此模板自定义」弹层（项目契约 forkDialog*）── */}
+      {/* ── 「基于此模板自定义」弹层（应用约定 forkDialog*）── */}
       {forkOpen && current && (
         <Modal onClose={() => (forkBusy ? undefined : setForkOpen(false))}>
           <div className="ext-modal-head">
@@ -987,8 +987,8 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
               {tx('common.cancel')}
             </button>
             {/*
-              ⚠️ 这里用 `common.create`（创建）而不是项目契约中的 `forkAndEdit`（创建并编辑）：
-                 项目契约 `forkAndEdit` = 创建 + 打开**模板编辑器会话**
+              ⚠️ 这里用 `common.create`（创建）而不是应用约定中的 `forkAndEdit`（创建并编辑）：
+                 应用约定 `forkAndEdit` = 创建 + 打开**模板编辑器会话**
                  （`editorSessionTitle` / `editorProjectName`），当前实现还没有模板编辑器。
                  直接采用那个标签会是"按了不编辑"的假按钮，宁可先用一条通用文案。
             */}
@@ -999,7 +999,7 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
         </Modal>
       )}
 
-      {/* ── 删除确认（项目契约 deleteTitle / deleteDescription / deleting）── */}
+      {/* ── 删除确认（应用约定 deleteTitle / deleteDescription / deleting）── */}
       {deleteTarget && (
         <ConfirmDialog
           title={tx('extensions.paperTemplatesSection.deleteTitle')}
@@ -1083,7 +1083,7 @@ function ConfirmDialog({
   confirmLabel: string;
   /** 失败原因（如主进程把内置模板的删除拒了）—— 有就显示在正文下面 */
   extra?: string | null;
-  /** 忙碌中：两个按钮都禁用（项目契约 `deleting` 态） */
+  /** 忙碌中：两个按钮都禁用（应用约定 `deleting` 态） */
   busy?: boolean;
   busyLabel?: string;
   onCancel: () => void;

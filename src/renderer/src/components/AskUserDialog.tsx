@@ -12,7 +12,7 @@
  * （「always includes a Skip button and a free-text input box for custom answers」），
  * 所以 i18n 里的 customAnswerHint 才是「也可以在下方输入框中填写自定义回答」。
  *
- * 文案对接项目契约已有的 i18n 键（`notifications.*` / `composer.composerPendingUserInputPanel.*`，
+ * 文案对接应用约定已有的 i18n 键（`notifications.*` / `composer.composerPendingUserInputPanel.*`，
  * 见 i18n/zh.ts），不新造一套词。
  */
 import { useEffect, useMemo, useState } from 'react';

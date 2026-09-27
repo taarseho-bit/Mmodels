@@ -585,7 +585,7 @@ app.whenReady().then(async () => {
     ['项目版本', '04c-panel-versions-light'],
     ['流程图', '04f-panel-diagrams-light'],
     ['浏览器', '04g-panel-browser-light'],
-    // 项目契约右栏没有「技能」标签（已从标签条移除），改拍新增的「科研绘图」标签
+    // 应用约定右栏没有「技能」标签（已从标签条移除），改拍新增的「科研绘图」标签
     ['科研绘图', '05-panel-skills-light'],
   ]) {
     await win.webContents.executeJavaScript(`(()=>{const t=[...document.querySelectorAll('.sidepanel-tab')].find(e=>e.textContent.trim()===${JSON.stringify(label)});if(t)t.click();return !!t;})()`);

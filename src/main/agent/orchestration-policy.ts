@@ -78,6 +78,34 @@ const SKILL_ROUTES: SkillRouteGroup[] = [
       { id: 'quality-assurance-auditor', label: '交付质量复核', reason: '把内容、文件和可复算性一起过一遍' },
     ],
   },
+  {
+    id: 'pdf', label: 'PDF 前置处理', pattern: /pdf|扫描版|页码|正文页|表格错位|排版|版面/, hints: [
+      { id: 'pdf', label: 'PDF 版面预检', reason: '先确认页数、文字层、图片和宽表风险' },
+      { id: 'paper-table-repair', label: '表格排版修复', reason: '优先定位跨页、裁切和列宽异常' },
+      { id: 'latex-paper-audit', label: '公式与编译检查', reason: '避免修完后公式和引用不能正常编译' },
+    ],
+  },
+  {
+    id: 'reproducibility', label: '复现与验证', pattern: /复现|可重复|验证|自检|误差|敏感性|稳健|随机种子|结果不一致/, hints: [
+      { id: 'result-reproducibility', label: '结果复现检查', reason: '记录环境、参数和运行入口，保证别人能复算' },
+      { id: 'robustness-checker', label: '稳健性分析', reason: '确认换参数或数据后结论仍然可靠' },
+      { id: 'quality-assurance-auditor', label: '交付质量复核', reason: '把结果、图表、文件和引用一起验收' },
+    ],
+  },
+  {
+    id: 'connector', label: '外部资料与连接器', pattern: /联网|检索|arxiv|文献库|github|数据源|公开数据|下载资料|连接器/, hints: [
+      { id: 'deep-research', label: '资料源检查', reason: '先确认数据源可用，再开始长任务' },
+      { id: 'literature-search', label: '公开资料检索', reason: '优先从可核验的科研来源获取材料' },
+      { id: 'data-provenance', label: '来源与许可记录', reason: '记下来源、版本、日期和使用范围' },
+    ],
+  },
+  {
+    id: 'environment', label: '运行环境', pattern: /python|环境|依赖|安装|包|运行不了|超时|编译/, hints: [
+      { id: 'doctor', label: '环境体检', reason: '先检查解释器、依赖和路径，避免反复失败' },
+      { id: 'modeling-algorithms', label: '算法运行准备', reason: '确认求解与绘图所需的包可以使用' },
+      { id: 'result-reproducibility', label: '环境记录', reason: '把版本和运行命令写进项目，方便复现' },
+    ],
+  },
 ];
 
 /**
@@ -92,15 +120,26 @@ export function skillRouteDecision(prompt: string): SkillRouteDecision {
   const out: SkillRouteHint[] = [];
   const seen = new Set<string>();
   const matchedRoutes: string[] = [];
+  const matchedHints: SkillRouteHint[][] = [];
   for (const route of SKILL_ROUTES) {
     if (!route.pattern.test(text)) continue;
     matchedRoutes.push(route.label);
-    for (const hint of route.hints) {
-      if (seen.has(hint.id)) continue;
-      if (out.length >= 8) break;
+    matchedHints.push(route.hints);
+  }
+
+  // 轮流从每个命中方向取一个候选，避免“论文”或“数据”把 PDF、连接器、复现
+  // 等关键技能挤出候选列表。实际调用仍由主智能体根据输入和权限决定。
+  for (let round = 0; out.length < 16; round += 1) {
+    let added = false;
+    for (const hints of matchedHints) {
+      const hint = hints[round];
+      if (!hint || seen.has(hint.id)) continue;
       seen.add(hint.id);
       out.push(hint);
+      added = true;
+      if (out.length >= 16) break;
     }
+    if (!added) break;
   }
   const confidence = matchedRoutes.length >= 2 ? 'high' : matchedRoutes.length === 1 ? 'medium' : 'low';
   const reason = matchedRoutes.length

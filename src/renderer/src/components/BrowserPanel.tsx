@@ -1,10 +1,10 @@
 /**
- * 浏览器面板 —— 当前实现项目契约 `BrowserPanel` 的**内嵌后端**（`dock.browserPanel.backendInApp`）。
+ * 浏览器面板 —— 当前实现应用约定 `BrowserPanel` 的**内嵌后端**（`dock.browserPanel.backendInApp`）。
  *
- * 项目契约有两个后端：
+ * 应用约定有两个后端：
  *   - `backendInApp` 内嵌浏览器（独立登录态，功能完整）→ 本文件实现
  *   - `backendChrome` 复用你自己的 Chrome（需要装扩展配对）→ **当前版本不实现**，
- *     它依赖项目契约的 MCP Bridge 扩展，与本项目「不联网、不自建账号体系」的前提冲突。
+ *     它依赖应用约定的 MCP Bridge 扩展，与本项目「不联网、不自建账号体系」的前提冲突。
  *
  * 为什么用 `document.createElement('webview')` 而不是 JSX：
  *   React 不认识 `<webview>`，要额外补 JSX 类型声明；而且命令式创建
@@ -58,7 +58,7 @@ interface WvElement extends HTMLElement {
   reload(): void;
   stop(): void;
   getWebContentsId(): number;
-  /** 打开该 webview 的 DevTools（独立窗口），对应项目契约 browser.openDevTools */
+  /** 打开该 webview 的 DevTools（独立窗口），对应应用约定 browser.openDevTools */
   openDevTools(): void;
   isDevToolsOpened(): boolean;
   closeDevTools(): void;
@@ -340,8 +340,8 @@ export function BrowserPanel(): JSX.Element {
           onClick={() => {
             const wv = wvRefs.current.get(active.id);
             if (!wv) return;
-            // 对应项目契约 browser.openDevTools：给当前标签开独立 DevTools 窗口；
-            // 已打开时再点一次就关闭（与项目契约 toggle 行为一致）
+            // 对应应用约定 browser.openDevTools：给当前标签开独立 DevTools 窗口；
+            // 已打开时再点一次就关闭（与应用约定 toggle 行为一致）
             safe(() => {
               if (wv.isDevToolsOpened()) wv.closeDevTools();
               else wv.openDevTools();

@@ -1,18 +1,19 @@
 /**
- * 表格数据预览 —— 当前实现项目契约 `DataFilePreview`（项目契约用 papaparse + worker）。
+ * 表格数据预览 —— 当前实现应用约定 `DataFilePreview`（应用约定用 papaparse + worker）。
  *
  * 本项目不引 papaparse，自实现一个**引号感知**的 CSV/TSV 解析器：
  *   - 支持 `"` 包裹的字段（内含分隔符与换行）
  *   - 支持 `""` 转义引号
  *   - 自动识别分隔符（逗号 / 制表符 / 分号）
  *
- * 安全上限与项目契约一致：行数、列数、单元格长度都设上限，
+ * 安全上限与应用约定一致：行数、列数、单元格长度都设上限，
  * 并如实告知用户「原文件不会被修改」（`truncated` 文案）。
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { t, tx } from '../i18n';
+import type { FilePreview } from '@shared/types';
 
-/** 安全上限（对齐项目契约「按安全上限显示部分数据」的说法） */
+/** 安全上限（对齐应用约定「按安全上限显示部分数据」的说法） */
 const MAX_ROWS = 500;
 const MAX_COLS = 80;
 const MAX_CELL = 400;
@@ -204,4 +205,26 @@ export function DataFilePreview({
       )}
     </div>
   );
+}
+
+/** Excel 工作簿预览：工作表切换、尺寸提示和安全截断均在本地完成。 */
+export function WorkbookPreview({ workbook }: { workbook: NonNullable<FilePreview['workbook']> }): JSX.Element {
+  const [sheetIndex, setSheetIndex] = useState(0);
+  const sheet = workbook.sheets[Math.min(sheetIndex, Math.max(0, workbook.sheets.length - 1))];
+  if (!sheet) {
+    return <div className="muted" style={{ padding: 16, fontSize: 12, lineHeight: 1.7 }}>{workbook.message ?? '没有读取到工作表。'}</div>;
+  }
+  const header = sheet.rows[0] ?? [];
+  const body = sheet.rows.slice(1);
+  return <div className="pv workbook-preview">
+    <div className="pv-head" style={{ gap: 6, flexWrap: 'wrap' }}>
+      <span className="muted" style={{ fontSize: 11 }}>工作表 {sheetIndex + 1}/{workbook.sheets.length} · {sheet.totalRows} 行 · {sheet.totalCols} 列</span>
+      <span className="muted mono" style={{ fontSize: 10 }}>{workbook.parser === 'openpyxl' ? 'Excel' : '兼容读取'}</span>
+    </div>
+    <div className="workbook-tabs" role="tablist" aria-label="Excel 工作表">
+      {workbook.sheets.map((item, index) => <button key={`${item.name}-${index}`} className={`btn btn-sm${index === sheetIndex ? ' btn-primary' : ''}`} role="tab" aria-selected={index === sheetIndex} onClick={() => setSheetIndex(index)}>{item.name || `工作表 ${index + 1}`}</button>)}
+    </div>
+    <div className="pv-body"><table className="dt-table"><thead><tr><th className="dt-rownum">#</th>{header.map((h, i) => <th key={i} title={h}>{h || t('列 {{n}}', { n: i + 1 })}</th>)}</tr></thead><tbody>{body.map((row, ri) => <tr key={ri}><td className="dt-rownum">{ri + 1}</td>{header.map((_, ci) => { const value = row[ci] ?? ''; return <td key={ci} className={isNumeric(value) ? 'num' : ''} title={value}>{value}</td>; })}</tr>)}</tbody></table></div>
+    {(sheet.truncatedRows || sheet.truncatedCols) && <div className="muted" style={{ padding: '5px 10px', fontSize: 10.5, lineHeight: 1.6 }}>这里只显示前 500 行和前 80 列，原文件没有被修改。</div>}
+  </div>;
 }

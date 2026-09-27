@@ -38,13 +38,13 @@ export type AppRoute =
 export interface OpenRouteDetail {
   route: AppRoute;
   /**
-   * 需要一并打开的右栏面板（对应项目契约「带我走到该功能」时顺便展开的面板）。
+   * 需要一并打开的右栏面板（对应应用约定「带我走到该功能」时顺便展开的面板）。
    * 见 store/app.ts 的 SidePanelTab。
    */
   panel?: string;
   /**
    * 目标页面内部的**分区**（目前只有扩展页用得上）。
-   * 项目契约跳转带的是 `u({to:"/extensions", search:{section:"skills"}})` ——
+   * 应用约定跳转带的是 `u({to:"/extensions", search:{section:"skills"}})` ——
    * 「＋」菜单的「管理技能/算法/连接器/插件」四行都落在扩展页的不同 tab 上，
    * 不带这一项就只会停在默认的「技能」tab（算法/连接器/插件三行会指错地方）。
    */

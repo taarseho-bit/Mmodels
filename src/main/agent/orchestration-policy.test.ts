@@ -35,4 +35,10 @@ describe('数模协作编排策略', () => {
     expect(route.reason).toContain('本轮候选成员');
     expect(Object.keys(modelingAgentsForRoute(route))).toEqual(route.agentIds);
   });
+
+  it('遇到 PDF、连接器和复现要求会补充对应技能，而不是只走论文写作', () => {
+    const decision = skillRouteDecision('读取 PDF 和公开数据，检查模型复现与表格排版');
+    expect(decision.matchedRoutes).toEqual(expect.arrayContaining(['PDF 前置处理', '外部资料与连接器', '复现与验证']));
+    expect(decision.hints.map((hint) => hint.id)).toEqual(expect.arrayContaining(['pdf', 'deep-research', 'result-reproducibility']));
+  });
 });

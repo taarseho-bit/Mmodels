@@ -7,7 +7,7 @@
  *   3. 退出应用时收摊，别把监听端口留成僵尸
  *
  * ⚠️ 「会员校验」：本应用是当前版本，没有账号体系 —— 当前按普通用户处理，
- *    因此项目契约的 `joinMembershipRequired` 永远不会命中（文案仍保留在词典里）。
+ *    因此应用约定的 `joinMembershipRequired` 永远不会命中（文案仍保留在词典里）。
  */
 import { app, ipcMain } from 'electron';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -29,7 +29,7 @@ import { getSettings } from '../store/config';
 import { pushToRenderer, safeWrap } from './index';
 
 /**
- * 本机身份 id —— 用来挡项目契约的「同一个账号不能重复加入同一协作房间」。
+ * 本机身份 id —— 用来挡应用约定的「同一个账号不能重复加入同一协作房间」。
  * 存 userData 下的一个小 JSON，重装/清数据才会变。
  */
 let cachedIdentity: string | null = null;

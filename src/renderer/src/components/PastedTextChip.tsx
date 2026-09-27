@@ -10,7 +10,7 @@ import { pastedTitle, type PastedText } from '../lib/pasted-text';
 
 export interface PastedTextChipProps {
   item: PastedText;
-  /** 把这段文本展开进输入框正文，并移除本 chip（项目契约 `onShowInTextField`） */
+  /** 把这段文本展开进输入框正文，并移除本 chip（应用约定 `onShowInTextField`） */
   onShowInTextField: () => void;
   onRemove: () => void;
 }
@@ -29,7 +29,7 @@ export function PastedTextChip({ item, onShowInTextField, onRemove }: PastedText
         <button
           type="button"
           className="cz-paste-chip-act"
-          // ★ 项目契约 `Sxe = t => t.preventDefault()`：防止点按钮时 textarea 失焦
+          // ★ 应用约定 `Sxe = t => t.preventDefault()`：防止点按钮时 textarea 失焦
           //   （少了它，点完「显示在输入框中」光标会跑掉，用户接着打字打不进去）
           onMouseDown={(e) => e.preventDefault()}
           onClick={onShowInTextField}

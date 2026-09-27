@@ -1,4 +1,4 @@
-/** 扩展页 / 算法市场 / 连接器 / whatsnew 新增界面的英文覆盖 —— 无项目契约键的文案 */
+/** 扩展页 / 算法市场 / 连接器 / whatsnew 新增界面的英文覆盖 —— 无应用约定键的文案 */
 export const extensionsOv: Record<string, string> = {
   // ── ExtensionsPage（技能管理）──
   '算法市场': 'Algorithms Market',
@@ -166,10 +166,10 @@ export const extensionsOv: Record<string, string> = {
     'Browser panel: new DevTools toggle and drag-to-resize width',
   '环境「一键修复」：缺失项自动交给 Agent 配置':
     'Environment "one-click repair": missing items are handed to the Agent automatically',
-  '输入区遵循项目契约：项目 / 模式 / 比赛模板选择器、比赛信息、附件 chips、权限与模型选择器':
+  '输入区遵循应用约定：项目 / 模式 / 比赛模板选择器、比赛信息、附件 chips、权限与模型选择器':
     'Input area includes project / mode / competition template pickers, competition info, attachment chips, permission and model selectors',
 
-  // ── ExtensionsPage 三栏重构新增文案（项目契约无对应键的部分）──
+  // ── ExtensionsPage 三栏重构新增文案（应用约定无对应键的部分）──
   '已删除 Skill「{{name}}」': 'Deleted skill "{{name}}"',
   '选择左侧的技能查看详情': 'Select a skill on the left to see its details',
   '内置技能不可删除': 'Built-in skills cannot be deleted',

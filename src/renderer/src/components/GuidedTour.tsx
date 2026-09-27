@@ -1,20 +1,20 @@
 /**
- * 引导巡览 —— 当前实现项目契约 `MotionOnboarding` 的聚光灯引导（`onboarding.tour.*`）。
+ * 引导巡览 —— 当前实现应用约定 `MotionOnboarding` 的聚光灯引导（`onboarding.tour.*`）。
  *
  * 实现方式：**用 CSS 遮罩 + 高亮框**而不是画四个遮罩块 ——
  * 前者只需一个覆盖全屏的半透明层，再用 `box-shadow: 0 0 0 9999px` 挖出洞，
- * 目标元素能被真实点击（项目契约教程要求用户「点一下高亮的按钮」）。
+ * 目标元素能被真实点击（应用约定教程要求用户「点一下高亮的按钮」）。
  *
  * 定位策略：每步给一组**候选选择器**，取第一个能匹配到的元素。
  * 找不到就跳过该步（自动前进），而不是卡死或指向空气。
- * 项目契约也是这个思路（教程依赖真实界面元素存在）。
+ * 应用约定也是这个思路（教程依赖真实界面元素存在）。
  *
- * ── 多套教程（对应项目契约「新手教程」页的 7 张卡）──
- * 项目契约每张卡跑的是**一段独立的短教程**，不是同一条完整导览。这里用
+ * ── 多套教程（对应应用约定「新手教程」页的 7 张卡）──
+ * 应用约定每张卡跑的是**一段独立的短教程**，不是同一条完整导览。这里用
  * `TOURS` 把步骤分成 7 组：
  *   - `quickStart` → `onboarding.tour.steps.*`（11 步，原有那条完整导览）
- *   - 其余 6 组 → `onboarding.guided.<tour>.steps.*`（项目契约短教程的同名键）
- * 每组步骤数与项目契约卡片上标的「· n 步」严格一致。
+ *   - 其余 6 组 → `onboarding.guided.<tour>.steps.*`（应用约定短教程的同名键）
+ * 每组步骤数与应用约定卡片上标的「· n 步」严格一致。
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TourId } from '@shared/types';
@@ -28,7 +28,7 @@ interface TourStep {
   selectors: string[];
   /** 气泡相对目标的位置 */
   placement?: 'top' | 'bottom' | 'left' | 'right';
-  /** 点击目标后自动前进（项目契约教程的「点一下」交互） */
+  /** 点击目标后自动前进（应用约定教程的「点一下」交互） */
   autoAdvanceOnClick?: boolean;
   /** 切到该路由（保证目标存在） */
   route?: string;
@@ -121,7 +121,7 @@ const STEPS: TourStep[] = [
   },
   {
     id: 'communitySkills',
-    // 社区 Skills 入口在侧栏「扩展」页（项目契约右栏没有 skills 标签，此处不再指向右栏）
+    // 社区 Skills 入口在侧栏「扩展」页（应用约定右栏没有 skills 标签，此处不再指向右栏）
     selectors: ['.rail-item[data-route="extensions"]'],
     placement: 'right',
     route: 'chat',
@@ -465,7 +465,7 @@ export function GuidedTour({
 
   const title = tx(`${i18nBaseOf(step)}.title`);
   const rawDesc = tx(`${i18nBaseOf(step)}.description`);
-  // 项目契约这几条描述里带 <b> 标签；这里只取纯文本，避免注入
+  // 应用约定这几条描述里带 <b> 标签；这里只取纯文本，避免注入
   const desc = rawDesc.replace(/<\/?b>/g, '');
 
   return (

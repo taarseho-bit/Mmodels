@@ -143,7 +143,7 @@ describe('错误码 → 文案：每个码都要落到它自己那句话上', ()
 });
 
 describe('成功文案', () => {
-  it('回滚成功用的是项目契约那句（不是通用"操作成功"）', () => {
+  it('回滚成功用的是应用约定那句（不是通用"操作成功"）', () => {
     expect(revertSuccessText()).toBe(tx('chat.chatPage.revertSuccess'));
   });
 

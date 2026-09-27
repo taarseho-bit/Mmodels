@@ -15,8 +15,8 @@
  *     反过来说：如果有人把路由注册写错路径、或漏了 `return c.json`，
  *     **本文件的用例不会变红**。
  *   · **渲染层的交互**（点按钮 → 弹确认 → 调接口）只做结构断言，见 §6。
- *   · 项目契约 `restoreCheckpoint` 的"checkpoint 服务"在当前实现里由 `git/restoreVersion` 承担，
- *     `git/index.ts` 自身的正确性（trackedBefore 的取法、备份时机）由项目契约负责，
+ *   · 应用约定 `restoreCheckpoint` 的"checkpoint 服务"在当前实现里由 `git/restoreVersion` 承担，
+ *     `git/index.ts` 自身的正确性（trackedBefore 的取法、备份时机）由应用约定负责，
  *     本文件只在**行为层**断言"改过的文件回得去、备份真的写了"。
  */
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -212,7 +212,7 @@ describe('§2 planRevert / planFork / forkTitle / editableUserMessageId', () => 
     });
   });
 
-  it('★ 非 user 行 → 404 message_not_found（与项目契约同一错误码）', () => {
+  it('★ 非 user 行 → 404 message_not_found（与应用约定同一错误码）', () => {
     expect(planRevert(convo, 'a1')).toEqual({
       ok: false,
       status: 404,
@@ -268,7 +268,7 @@ describe('§2 planRevert / planFork / forkTitle / editableUserMessageId', () => 
     const once = forkTitle('T');
     expect(forkTitle(once)).toBe(once);
     expect(forkTitle('   ')).toBe(`新会话${FORK_TITLE_SUFFIX}`);
-    // 后缀长度就是项目契约硬编码的那个 7
+    // 后缀长度就是应用约定硬编码的那个 7
     expect(FORK_TITLE_SUFFIX.length).toBe(7);
   });
 
@@ -574,7 +574,7 @@ describe('§5 分叉 —— 原会话必须一个字节都不变', () => {
     }
     expect(new Set(store.messages.map((m) => m.id)).size).toBe(2);
 
-    // ④ 响应体：字段名对齐项目契约 + 当前实现额外报的 resumable / draft
+    // ④ 响应体：字段名对齐应用约定 + 当前实现额外报的 resumable / draft
     expect(out.result.copiedMessages).toBe(2);
     expect(out.result.draft).toBe('第二问'); // 用户消息分叉 → 原文预填输入框
     expect(out.result.session.id).toBe(created.id);

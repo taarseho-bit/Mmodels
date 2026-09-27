@@ -119,6 +119,89 @@ async function json(url: string, init?: RequestInit, signal?: AbortSignal): Prom
   throw new Error(`数据源暂时无法访问（${lastStatus || '网络异常'}），已自动重试`);
 }
 
+async function xml(url: string, init?: RequestInit, signal?: AbortSignal): Promise<string> {
+  const timeout = AbortSignal.timeout(18_000);
+  const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  const response = await fetch(url, { ...init, signal: requestSignal, headers: { accept: 'application/atom+xml, text/xml', ...(init?.headers ?? {}) } });
+  if (!response.ok) throw new Error(`公开论文源暂时无法访问（${response.status}）`);
+  return response.text();
+}
+
+function xmlUnescape(value: string): string {
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function atomEntries(body: string): Array<Record<string, unknown>> {
+  return [...body.matchAll(/<entry\b[\s\S]*?<\/entry>/gi)].map(match => {
+    const entry = match[0];
+    const pick = (tag: string) => {
+      const value = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i').exec(entry)?.[1] ?? '';
+      return xmlUnescape(value);
+    };
+    const authors = [...entry.matchAll(/<author>[\s\S]*?<name>([\s\S]*?)<\/name>[\s\S]*?<\/author>/gi)].map(m => xmlUnescape(m[1]));
+    const id = pick('id');
+    return { id, title: pick('title'), summary: pick('summary'), published: pick('published'), authors, url: id };
+  });
+}
+
+function arxiv() {
+  return server('arxiv', [
+    tool('search_papers', '搜索 arXiv 论文，返回标题、摘要、作者和链接。', { query: z.string().min(2), maxResults: z.number().int().min(1).max(20).default(8) }, wrap(async a => {
+      const url = new URL('https://export.arxiv.org/api/query');
+      url.searchParams.set('search_query', `all:${a.query}`);
+      url.searchParams.set('start', '0');
+      url.searchParams.set('max_results', String(a.maxResults));
+      url.searchParams.set('sortBy', 'relevance');
+      return atomEntries(await xml(url.toString()));
+    })),
+  ]);
+}
+
+function github(config: McpServerConfig) {
+  const token = env(config, 'GITHUB_PERSONAL_ACCESS_TOKEN') || env(config, 'GITHUB_TOKEN');
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'MModels-Math-Research',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  return server('github', [
+    tool('search_repositories', '搜索 GitHub 上的公开建模、数据和算法仓库。', { query: z.string().min(2), perPage: z.number().int().min(1).max(20).default(10) }, wrap(async a => {
+      const url = new URL('https://api.github.com/search/repositories'); url.searchParams.set('q', a.query); url.searchParams.set('per_page', String(a.perPage));
+      const data = await json(url.toString(), { headers });
+      return (data.items ?? []).map((item: any) => ({ name: item.full_name, description: item.description, language: item.language, stars: item.stargazers_count, updated: item.updated_at, url: item.html_url }));
+    })),
+    tool('search_issues', '搜索仓库中的公开 Issue 和讨论。', { query: z.string().min(2), perPage: z.number().int().min(1).max(20).default(10) }, wrap(async a => {
+      const url = new URL('https://api.github.com/search/issues'); url.searchParams.set('q', a.query); url.searchParams.set('per_page', String(a.perPage));
+      const data = await json(url.toString(), { headers });
+      return (data.items ?? []).map((item: any) => ({ title: item.title, state: item.state, repository: item.repository_url?.split('/').slice(-1)[0], url: item.html_url, updated: item.updated_at }));
+    })),
+    tool('read_file', '读取公开仓库中的一个文本文件，适合查看建模脚本和说明。', { owner: z.string().min(1), repo: z.string().min(1), path: z.string().min(1), ref: z.string().optional() }, wrap(async a => {
+      const url = new URL(`https://api.github.com/repos/${encodeURIComponent(a.owner)}/${encodeURIComponent(a.repo)}/contents/${a.path.split('/').map(encodeURIComponent).join('/')}`); if (a.ref) url.searchParams.set('ref', a.ref);
+      const data = await json(url.toString(), { headers });
+      if (data.encoding !== 'base64' || typeof data.content !== 'string') return { name: data.name, downloadUrl: data.download_url, message: '该文件不是可直接读取的文本' };
+      const content = Buffer.from(data.content.replace(/\s/g, ''), 'base64').toString('utf8');
+      return { name: data.name, path: data.path, content: content.slice(0, 80_000), truncated: content.length > 80_000, url: data.html_url };
+    })),
+  ]);
+}
+
+function timeConnector() {
+  return server('time', [
+    tool('now', '返回指定时区的当前时间和中文日期。', { timezone: z.string().default('Asia/Shanghai') }, wrap(async a => {
+      let now = new Date();
+      const formatter = new Intl.DateTimeFormat('zh-CN', { timeZone: a.timezone, dateStyle: 'full', timeStyle: 'long' });
+      return { timezone: a.timezone, iso: now.toISOString(), local: formatter.format(now) };
+    })),
+    tool('convert', '把一个时间转换到目标时区。', { iso: z.string().min(4), timezone: z.string().min(1) }, wrap(async a => {
+      const date = new Date(a.iso); if (Number.isNaN(date.getTime())) throw new Error('时间格式无法识别');
+      return { timezone: a.timezone, local: new Intl.DateTimeFormat('zh-CN', { timeZone: a.timezone, dateStyle: 'full', timeStyle: 'long' }).format(date), iso: date.toISOString() };
+    })),
+  ]);
+}
+
 function env(config: McpServerConfig, key: string): string | undefined {
   const value = config.env?.[key]?.trim();
   return value || undefined;
@@ -281,8 +364,10 @@ function localCompute(name: 'python' | 'r' | 'octave', opts: RunOptions, allowWr
 /** 根据设置中 native=true 的连接器创建原生 MCP 服务。 */
 export function buildNativeConnectors(servers: McpServerConfig[], opts: RunOptions): Record<string, any> {
   const result: Record<string, any> = {};
-  for (const config of servers.filter(item => item.enabled !== false && item.native)) {
+  const nativeNames = new Set(['arxiv', 'github', 'time']);
+  for (const config of servers.filter(item => item.enabled !== false && (item.native || nativeNames.has(item.name)))) {
     switch (config.name) {
+      case 'arxiv': result[config.name] = arxiv(); break;
       case 'crossref': result[config.name] = crossref(config); break;
       case 'openalex': result[config.name] = openalex(config); break;
       case 'semantic-scholar': result[config.name] = semanticScholar(config); break;
@@ -292,10 +377,12 @@ export function buildNativeConnectors(servers: McpServerConfig[], opts: RunOptio
       case 'zenodo': result[config.name] = zenodo(config); break;
       case 'orcid': result[config.name] = orcid(config); break;
       case 'google-drive': result[config.name] = googleDrive(config); break;
+      case 'github': result[config.name] = github(config); break;
       case 'gitlab': result[config.name] = gitService(config, 'gitlab'); break;
       case 'gitee': result[config.name] = gitService(config, 'gitee'); break;
       case 'python': case 'r': case 'octave': result[config.name] = localCompute(config.name, opts, config.permission !== 'read'); break;
       case 'webhook': result[config.name] = webhook(config, opts); break;
+      case 'time': result[config.name] = timeConnector(); break;
       default: break;
     }
   }
@@ -304,6 +391,7 @@ export function buildNativeConnectors(servers: McpServerConfig[], opts: RunOptio
 
 export async function testNativeConnector(config: McpServerConfig): Promise<string> {
   switch (config.name) {
+    case 'arxiv': { const url = new URL('https://export.arxiv.org/api/query'); url.searchParams.set('search_query', 'all:mathematics'); url.searchParams.set('max_results', '1'); await xml(url.toString()); return 'arXiv 可以访问'; }
     case 'crossref': await json('https://api.crossref.org/works?rows=1'); return 'Crossref 可以访问';
     case 'openalex': await json('https://api.openalex.org/works?per-page=1'); return 'OpenAlex 可以访问';
     case 'semantic-scholar': { const headers: Record<string, string> = {}; const key = env(config, 'SEMANTIC_SCHOLAR_API_KEY'); if (key) headers['x-api-key'] = key; await json('https://api.semanticscholar.org/graph/v1/paper/search?query=mathematics&limit=1', { headers }); return 'Semantic Scholar 可以访问'; }
@@ -313,9 +401,11 @@ export async function testNativeConnector(config: McpServerConfig): Promise<stri
     case 'zenodo': await json('https://zenodo.org/api/records?size=1'); return 'Zenodo 可以访问';
     case 'orcid': await fetch('https://pub.orcid.org/v3.0/').then(r => { if (!r.ok && r.status !== 404) throw new Error(`ORCID 返回 ${r.status}`); }); return 'ORCID 可以访问';
     case 'google-drive': { const token = env(config, 'GOOGLE_DRIVE_ACCESS_TOKEN'); if (!token) throw new Error('请先配置 Google Drive 访问令牌'); await json('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id,name)', { headers: { Authorization: `Bearer ${token}` } }); return 'Google Drive 可以访问'; }
+    case 'github': { const token = env(config, 'GITHUB_PERSONAL_ACCESS_TOKEN') || env(config, 'GITHUB_TOKEN'); const headers: Record<string, string> = { Accept: 'application/vnd.github+json', 'User-Agent': 'MModels-Math-Research', ...(token ? { Authorization: `Bearer ${token}` } : {}) }; await json('https://api.github.com/repos/github/docs', { headers }); return 'GitHub 可以访问'; }
     case 'gitlab': { const token = env(config, 'GITLAB_TOKEN'); if (!token) throw new Error('请先配置 GitLab 访问令牌'); const base = env(config, 'GITLAB_BASE_URL') || 'https://gitlab.com'; await json(`${base.replace(/\/$/, '')}/api/v4/projects?per_page=1`, { headers: { Authorization: `Bearer ${token}` } }); return 'GitLab 可以访问'; }
     case 'gitee': { const token = env(config, 'GITEE_TOKEN'); if (!token) throw new Error('请先配置 Gitee 访问令牌'); await json(`https://gitee.com/api/v5/user?access_token=${encodeURIComponent(token)}`); return 'Gitee 可以访问'; }
     case 'webhook': { const raw = env(config, 'WEBHOOK_URL'); if (!raw) throw new Error('请先配置 Webhook 地址'); const url = await validateWebhookUrl(raw); const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(12_000) }); if (!response.ok && response.status !== 405) throw new Error(`Webhook 返回 ${response.status}`); return 'Webhook 地址可以访问'; }
+    case 'time': return `当前时间连接器可用（${new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'short' }).format(new Date())}）`;
     case 'python': case 'r': case 'octave': await execFileAsync(config.name === 'python' ? (process.platform === 'win32' ? 'python' : 'python3') : config.name === 'r' ? 'Rscript' : (process.platform === 'win32' ? 'octave-cli.exe' : 'octave'), ['--version'], { timeout: 10_000, windowsHide: true }); return `${config.name} 已安装`;
     default: return '该连接器将在下一轮以 MCP 方式启动';
   }

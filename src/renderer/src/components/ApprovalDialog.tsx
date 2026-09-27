@@ -10,12 +10,12 @@
  * 决定走 `session.answerApproval`，主进程那条 promise 才会 resolve。
  *
  * ── 文案：**零新增 i18n 键** ──
- * 全部取自项目契约词典里**早就存在、调用点为 0** 的 `composer.composerPendingApprovalPanel.*`
- * （`zh.ts:741-754`）。这套键本来就是项目契约审批面板的词，逐条对得上：
- *   `promptCommand` / `promptFileRead` / `promptFileChange` ← 项目契约 requestKind 三种
- *   `approveOnce` / `alwaysAllowSession` / `decline` / `cancelTurn` ← 项目契约四个决定
- *   `reviewToContinue` ← 项目契约面板脚注
- * 所以**不要新增键、也不要改成 t('中文')** —— 改了就与英文界面下的项目契约文案脱钩。
+ * 全部取自应用约定词典里**早就存在、调用点为 0** 的 `composer.composerPendingApprovalPanel.*`
+ * （`zh.ts:741-754`）。这套键本来就是应用约定审批面板的词，逐条对得上：
+ *   `promptCommand` / `promptFileRead` / `promptFileChange` ← 应用约定 requestKind 三种
+ *   `approveOnce` / `alwaysAllowSession` / `decline` / `cancelTurn` ← 应用约定四个决定
+ *   `reviewToContinue` ← 应用约定面板脚注
+ * 所以**不要新增键、也不要改成 t('中文')** —— 改了就与英文界面下的应用约定文案脱钩。
  *
  * ── 视觉：**复用 AskUserDialog 的类名，不新增 CSS** ──
  * 审批框与提问框是同一层级的模态，用同一套 `modal / ask-dialog / ask-option` 类，
@@ -27,7 +27,7 @@ import { tx } from '../i18n';
 import { Icon } from './Icon';
 
 /**
- * requestKind → 标题键。**三种对应项目契约 zod 的三种枚举**
+ * requestKind → 标题键。**三种对应应用约定 zod 的三种枚举**
  * （`{type:'approval-request', …, requestKind: z.enum(['command','file-read','file-change'])}`
  * ）。
  *
@@ -42,16 +42,16 @@ const PROMPT_KEY: Record<ApprovalKind, string> = {
 };
 
 /**
- * 四个决定。顺序照项目契约的视觉顺序（先批准、后拒绝、最后"取消整个回合"）。
+ * 四个决定。顺序照应用约定的视觉顺序（先批准、后拒绝、最后"取消整个回合"）。
  *
- * `decision` 是**送进主进程的线上值**，必须与项目契约 `buildCanUseTool` 的
+ * `decision` 是**送进主进程的线上值**，必须与应用约定 `buildCanUseTool` 的
  * `switch(decision)` 分支一致（`'accept'` / `'acceptForSession'` / `'cancel'`，
  * 其余落 `default` = 拒绝）。
  *
  * ⚠️ 注意最后一个按钮的**键名与线上值不同名**：词典里这套键叫 `cancelTurn*`
- *    （项目契约的按钮名），而协议值是 `'cancel'`（项目契约 switch 的 case）。
- *    两个名字都对，差别只是"项目契约的界面词" vs "项目契约的协议词" ——
- *    直接采用项目契约就得到这种不同名，别为了整齐去改任何一边。
+ *    （应用约定的按钮名），而协议值是 `'cancel'`（应用约定 switch 的 case）。
+ *    两个名字都对，差别只是"应用约定的界面词" vs "应用约定的协议词" ——
+ *    直接采用应用约定就得到这种不同名，别为了整齐去改任何一边。
  */
 const OPTIONS: Array<{ decision: ApprovalDecision; labelKey: string; descKey: string }> = [
   {
@@ -124,7 +124,7 @@ export function ApprovalDialog({ request, onDecide }: Props): JSX.Element {
 
         <div className="modal-body ask-dialog-body">
           <section className="ask-question">
-            {/* 工具名单独一行 —— 项目契约只显示"有命令等待审批"，用户看不出在批准哪个工具 */}
+            {/* 工具名单独一行 —— 应用约定只显示"有命令等待审批"，用户看不出在批准哪个工具 */}
             <div className="ask-question-header">{request.toolName}</div>
             {/*
               `detail` 是机器生成的（`工具名: <JSON 输入>`，超 400 字符截断），**不是 i18n 文案**。

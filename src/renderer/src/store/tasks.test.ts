@@ -169,7 +169,7 @@ describe('latestTaskBlocks —— 重启后只恢复最近一批任务', () => {
  * —— 不报错、不像坏，只是很难看，而且只在界面样例里才看得见。
  * （第一版就写错成 `chat.composerTaskListCard.*`，界面样例才发现。）
  */
-describe('任务面板文案 —— 项目契约键必须命中', () => {
+describe('任务面板文案 —— 应用约定键必须命中', () => {
   const KEYS = [
     'composer.composerTaskListCard.tasksLabel',
     'composer.composerTaskListCard.progress',

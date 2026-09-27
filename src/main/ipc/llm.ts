@@ -1,10 +1,11 @@
 /**
  * 模型供应商 IPC。
  *
- * 包含「测试连通性」—— 这是项目契约也有、而且极其实用的功能：
+ * 包含「测试连通性」—— 这是应用约定也有、而且极其实用的功能：
  * 用户填完密钥点一下就知道通不通，而不是跑一次完整任务才发现配错。
  */
 import { ipcMain } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { IPC, type ProviderConfig } from '@shared/types';
 import {
   listProviders,
@@ -38,7 +39,7 @@ async function testProvider(p: ProviderConfig): Promise<{ ok: boolean; detail: s
         const count = Array.isArray(data?.data) ? data.data.length : 0;
         return { ok: true, detail: `连接成功${count ? `，可用模型 ${count} 个` : ''}` };
       }
-      return { ok: false, detail: `HTTP ${res.status}：${(await res.text().catch(() => '')).slice(0, 200)}` };
+      return { ok: false, detail: providerFailure(res.status) };
     }
 
     // Anthropic 协议：用 messages 端点发一个极小请求
@@ -68,11 +69,29 @@ async function testProvider(p: ProviderConfig): Promise<{ ok: boolean; detail: s
         detail: '连接成功',
       };
     }
-    return { ok: false, detail: `HTTP ${res.status}：${(await res.text().catch(() => '')).slice(0, 200)}` };
+    return { ok: false, detail: providerFailure(res.status) };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, detail: `无法连接：${msg}` };
+    const detail = /timeout|超时|abort/i.test(msg) ? '连接等待超时，已隐藏上游细节，可以检查地址后重试。' : '暂时无法连接，已隐藏上游细节，可以检查地址和网络后重试。';
+    return { ok: false, detail: `${detail}（诊断编号 ${diagnosticId()}）` };
   }
+}
+
+function diagnosticId(): string {
+  return randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+}
+
+function providerFailure(status: number): string {
+  const message = status === 401 || status === 403
+    ? '密钥没有通过验证，请检查密钥和供应商地址。'
+    : status === 404
+      ? '没有找到模型接口，请检查兼容协议和地址末尾路径。'
+      : status === 429
+        ? '请求太频繁，供应商正在限流，稍后再试。'
+        : status >= 500
+          ? '供应商暂时繁忙，稍后重试。'
+          : '供应商返回了无法识别的结果，请检查配置后重试。';
+  return `${message}（诊断编号 ${diagnosticId()}）`;
 }
 
 export function registerLlmHandlers(_ctx: IpcContext): void {

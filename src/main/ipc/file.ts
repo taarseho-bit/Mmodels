@@ -10,11 +10,12 @@ import { join, resolve, relative, isAbsolute, extname, dirname, basename, parse 
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { existsSync, statSync, readdirSync, readFileSync, writeFileSync, renameSync, rmSync, unlinkSync, cpSync } from 'node:fs';
-import { IPC, type FileNode, type FilePreview, type PdfInfo } from '@shared/types';
+import { IPC, type FileNode, type FilePreview, type PdfInfo, type PdfPreflight } from '@shared/types';
 import { mediaMime, mediaUrlFor } from '../media/protocol';
 import { getDb } from '../db';
 import { getSettings } from '../store/config';
 import { safeWrap, type IpcContext } from './index';
+import { managedPythonPath, sharedPythonPath, sharedRuntimeEnv } from '../runtime/shared-environment';
 
 /** 单次预览的最大字节数 —— 超过就只给提示，不往渲染层塞大文件 */
 const PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
@@ -32,13 +33,14 @@ const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.
 /** 音视频：走 mm-media:// 流式协议，不内联 base64（见 main/media/protocol.ts） */
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.m4a', '.aac', '.flac', '.ogg']);
 const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm', '.mkv', '.avi']);
+const WORKBOOK_EXTS = new Set(['.xlsx', '.xls', '.xlsm', '.xltx', '.xltm']);
 
 const SKIP_DIRS = new Set(['node_modules', '.git', '__pycache__', '.venv', 'venv', '.idea', '.vscode']);
 
 /**
  * 保存对话框的扩展名过滤器：只保留当前产品支持的文件类型和筛选语义：
  *
- * 项目契约按**默认文件名的扩展名**挑过滤器，所以用户看到的是「JSON 文件」而不是「所有文件」；
+ * 应用约定按**默认文件名的扩展名**挑过滤器，所以用户看到的是「JSON 文件」而不是「所有文件」；
  * 不认识就退成 `All Files`。
  */
 const SAVE_FILTERS: Record<string, { name: string; extensions: string[] }> = {
@@ -47,7 +49,7 @@ const SAVE_FILTERS: Record<string, { name: string; extensions: string[] }> = {
   '.zip': { name: 'ZIP', extensions: ['zip'] },
 };
 
-/** 按默认文件名的扩展名挑过滤器；不认识就退成项目契约的 All Files */
+/** 按默认文件名的扩展名挑过滤器；不认识就退成应用约定的 All Files */
 function saveFiltersFor(defaultPath: string): Array<{ name: string; extensions: string[] }> {
   return [SAVE_FILTERS[extname(defaultPath).toLowerCase()] ?? { name: 'All Files', extensions: ['*'] }];
 }
@@ -92,7 +94,7 @@ function buildTree(dirAbs: string, rootAbs: string, depth: number, counter: { n:
   for (const name of entries) {
     if (counter.n >= TREE_MAX_NODES) break;
     // 隐藏目录一律不展示，但**我们的配置目录要露出来**：
-    // `.mathmodel` 是合法名（与项目契约一致），`.mmodels` 是早期版本的遗留名 ——
+    // `.mathmodel` 是合法名（与应用约定一致），`.mmodels` 是早期版本的遗留名 ——
     // 它只读兼容、迁移时也不删，所以也得让用户看得见（否则用户以为数据没了）。
     if (name.startsWith('.') && name !== '.mathmodel' && name !== '.mmodels') continue;
     if (SKIP_DIRS.has(name)) continue;
@@ -135,10 +137,70 @@ function buildTree(dirAbs: string, rootAbs: string, depth: number, counter: { n:
   return nodes;
 }
 
+/**
+ * 只读读取 Excel 的工作表和前 500 行。优先使用软件共用 Python 环境，
+ * 没有时复用系统 Python；解析失败只返回友好提示，不影响其它文件预览。
+ */
+function makeWorkbookPreview(abs: string, relPath: string): FilePreview {
+  const script = [
+    'import json, math, sys',
+    'path = sys.argv[1]',
+    'def value(v):',
+    '    if v is None: return ""',
+    '    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return ""',
+    '    return str(v)',
+    'def result(parser, sheets, message=None):',
+    '    out = {"parser": parser, "sheets": sheets}',
+    '    if message: out["message"] = message',
+    '    print(json.dumps(out, ensure_ascii=False, separators=(",", ":")))',
+    'try:',
+    '    import openpyxl',
+    '    book = openpyxl.load_workbook(path, read_only=True, data_only=True)',
+    '    sheets = []',
+    '    for ws in list(book.worksheets)[:8]:',
+    '        total_rows = int(ws.max_row or 0); total_cols = int(ws.max_column or 0)',
+    '        rows = [[value(v) for v in row] for row in ws.iter_rows(min_row=1, max_row=min(total_rows, 501), min_col=1, max_col=min(total_cols, 80), values_only=True)]',
+    '        sheets.append({"name": ws.title, "rows": rows, "totalRows": total_rows, "totalCols": total_cols, "truncatedRows": total_rows > 501, "truncatedCols": total_cols > 80})',
+    '    result("openpyxl", sheets)',
+    'except Exception as first:',
+    '    try:',
+    '        import pandas as pd',
+    '        book = pd.ExcelFile(path)',
+    '        sheets = []',
+    '        for name in book.sheet_names[:8]:',
+    '            frame = pd.read_excel(path, sheet_name=name, header=None, nrows=501)',
+    '            rows = [[value(v) for v in row] for row in frame.iloc[:, :80].values.tolist()]',
+    '            sheets.append({"name": str(name), "rows": rows, "totalRows": int(frame.shape[0]), "totalCols": int(frame.shape[1]), "truncatedRows": False, "truncatedCols": frame.shape[1] > 80})',
+    '        result("pandas", sheets)',
+    '    except Exception:',
+    '        result("unavailable", [], "当前运行环境没有可用的 Excel 解析组件，请先在运行环境中补充 openpyxl。")',
+  ].join('\n');
+  const candidates = [sharedPythonPath(), managedPythonPath(), process.platform === 'win32' ? 'python.exe' : 'python3'].filter((v): v is string => !!v);
+  for (const python of [...new Set(candidates)]) {
+    try {
+      const raw = execFileSync(python, ['-c', script, abs], {
+        encoding: 'utf8', timeout: 20_000, maxBuffer: 2 * 1024 * 1024, windowsHide: true,
+        env: { ...process.env, ...sharedRuntimeEnv() },
+      });
+      const parsed = JSON.parse(raw) as { parser?: string; sheets?: NonNullable<FilePreview['workbook']>['sheets']; message?: string };
+      if (parsed.parser && Array.isArray(parsed.sheets)) {
+        return { kind: 'workbook', relPath, size: statSync(abs).size, mtimeMs: statSync(abs).mtimeMs,
+          workbook: { parser: parsed.parser === 'openpyxl' || parsed.parser === 'pandas' ? parsed.parser : 'unavailable', sheets: parsed.sheets, message: parsed.message } };
+      }
+    } catch {
+      // 尝试下一个 Python；所有候选都失败后返回中文的不可用状态。
+    }
+  }
+  return { kind: 'workbook', relPath, size: statSync(abs).size, mtimeMs: statSync(abs).mtimeMs,
+    workbook: { parser: 'unavailable', sheets: [], message: '当前运行环境没有可用的 Excel 解析组件，请先在运行环境中补充 openpyxl。' } };
+}
+
 function makePreview(abs: string, relPath: string): FilePreview {
   const st = statSync(abs);
   const ext = extname(abs).toLowerCase();
   const size = st.size;
+
+  if (WORKBOOK_EXTS.has(ext)) return makeWorkbookPreview(abs, relPath);
 
   // 音视频：只回一个流式 URL，二进制不进 IPC 响应（几 MB 的文件 base64 会炸内存）
   if (AUDIO_EXTS.has(ext) || VIDEO_EXTS.has(ext)) {
@@ -217,6 +279,43 @@ function readPdfInfo(abs: string, relPath: string): PdfInfo {
   return { relPath, pages: Number.isFinite(pages) && (pages ?? 0) > 0 ? pages : null, size };
 }
 
+/** 论文审阅前的轻量预检：页数、可提取文字、疑似表格页和图片页。 */
+function pdfPreflight(abs: string, relPath: string): PdfPreflight {
+  const warnings: string[] = [];
+  let pages: number | null = null;
+  let text = '';
+  let parser: PdfPreflight['parser'] = 'unavailable';
+  try {
+    const info = execFileSync('pdfinfo', [abs], { encoding: 'utf8', timeout: 8_000, windowsHide: true });
+    const match = info.match(/^Pages:\s*(\d+)\s*$/mi);
+    if (match) pages = Number(match[1]);
+  } catch { /* 继续使用 pdftotext 或回退统计 */ }
+  try {
+    text = execFileSync('pdftotext', ['-layout', abs, '-'], { encoding: 'utf8', timeout: 20_000, maxBuffer: 8 * 1024 * 1024, windowsHide: true });
+    parser = 'pdftotext';
+  } catch {
+    try {
+      const head = readFileSync(abs).subarray(0, 20 * 1024 * 1024).toString('latin1');
+      const matches = head.match(/\/Type\s*\/Page\b/g);
+      if (matches?.length) pages = pages ?? matches.length;
+      parser = 'fallback';
+    } catch { parser = 'unavailable'; }
+  }
+  const pageTexts = text ? text.split('\f') : [];
+  const textPages = pageTexts.filter(page => page.replace(/\s/g, '').length >= 40).length;
+  const tablePages = pageTexts.filter(page => /\|/.test(page) || /\S+\s{3,}\S+\s{3,}\S+/.test(page)).length;
+  let imagePages = 0;
+  try {
+    const imageList = execFileSync('pdfimages', ['-list', abs], { encoding: 'utf8', timeout: 15_000, maxBuffer: 2 * 1024 * 1024, windowsHide: true });
+    imagePages = new Set(imageList.split(/\r?\n/).slice(2).map(line => line.trim().split(/\s+/)[0]).filter(value => /^\d+$/.test(value))).size;
+  } catch { /* 没有 pdfimages 时不把环境缺失当成错误 */ }
+  if (pages && textPages === 0) warnings.push('没有提取到正文文字，可能是扫描版 PDF，需要 OCR。');
+  if (pages && textPages < pages * .65) warnings.push('部分页面文字较少，审阅时需要抽查页面图片和公式。');
+  if (tablePages > 0) warnings.push(`检测到约 ${tablePages} 页可能含表格，建议进行表格版面复核。`);
+  if (imagePages > 0) warnings.push(`检测到 ${imagePages} 页含图片，审阅时会重点检查图表清晰度。`);
+  return { relPath, pages, textPages, imagePages, tablePages, extractedChars: text.length, parser, warnings };
+}
+
 export function registerFileHandlers(ctx: IpcContext): void {
   ipcMain.handle(
     IPC.FILE_TREE,
@@ -245,6 +344,17 @@ export function registerFileHandlers(ctx: IpcContext): void {
       if (extname(abs).toLowerCase() !== '.pdf') throw new Error('只能读取 PDF 页数');
       return readPdfInfo(abs, relPath);
     }, '读取 PDF 页数'),
+  );
+
+  ipcMain.handle(
+    IPC.FILE_PDF_PREFLIGHT,
+    safeWrap((_e, relPath: string) => {
+      const root = currentProjectRoot();
+      const abs = safeJoin(root, relPath);
+      if (!existsSync(abs)) throw new Error(`文件不存在：${relPath}`);
+      if (extname(abs).toLowerCase() !== '.pdf') throw new Error('只能检查 PDF 文件');
+      return pdfPreflight(abs, relPath);
+    }, '预检查 PDF'),
   );
 
   ipcMain.handle(
@@ -330,7 +440,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
       const result = await dialog.showSaveDialog(ctx.getMainWindow() ?? undefined!, {
         title: '保存文件',
         defaultPath: defaultName,
-        // 对齐项目契约：按扩展名挑过滤器（导出 .json 时显示「JSON」而不是「所有文件」）
+        // 对齐应用约定：按扩展名挑过滤器（导出 .json 时显示「JSON」而不是「所有文件」）
         filters: saveFiltersFor(defaultName),
       });
       if (result.canceled || !result.filePath) return null;
@@ -376,9 +486,9 @@ export function registerFileHandlers(ctx: IpcContext): void {
   );
 
   /**
-   * 把一段 HTML 渲染成分享图（PNG）并保存 —— 对应项目契约 `saveShareImage`。
+   * 把一段 HTML 渲染成分享图（PNG）并保存 —— 对应应用约定 `saveShareImage`。
    *
-   * 项目契约做法（逐位当前实现）：
+   * 应用约定做法（逐位当前实现）：
    *   1. HTML 落到临时文件，起一个**隐藏** BrowserWindow（1640×800，2 倍缩放）
    *   2. 量出文档实际高度，把窗口撑成 1640 × min(2×scrollHeight, 16000)
    *      —— 这样整页一次截完，不会只截到可视区
@@ -390,7 +500,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
   ipcMain.handle(
     IPC.FILE_SAVE_SHARE_IMAGE,
     safeWrap(async (_e, payload: { defaultName?: string; html?: string; e2eAutoPath?: string } | string) => {
-      // 兼容两种调用形态：对象（项目契约语义）或单字符串（html）
+      // 兼容两种调用形态：对象（应用约定语义）或单字符串（html）
       const opts = typeof payload === 'string' ? { html: payload } : (payload ?? {});
       const defaultName = typeof opts.defaultName === 'string' ? opts.defaultName : 'share.png';
       const html = typeof opts.html === 'string' ? opts.html : '';

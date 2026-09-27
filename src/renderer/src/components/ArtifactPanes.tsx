@@ -1,7 +1,7 @@
 /**
- * 产物面板 —— 当前实现项目契约 `ArtifactPanes`：**可编辑的产物查看器**。
+ * 产物面板 —— 当前实现应用约定 `ArtifactPanes`：**可编辑的产物查看器**。
  *
- * 项目契约这块不只是「看一眼」：
+ * 应用约定这块不只是「看一眼」：
  *   - 文本产物可**直接编辑并保存**（⌘S / Ctrl+S）
  *   - 保存前检测**磁盘是否被外部改过**（Agent 或编辑器），冲突时让用户选
  *   - 二进制 / 过大 / 不存在的文件有明确的状态提示，不是空白
@@ -9,7 +9,7 @@
  *
  * 文案来源于项目资料 `dock.fileEditor.*`。
  *
- * ⚠️ 与项目契约的差异：项目契约面板内还有「协作中 · 实时同步」横幅，
+ * ⚠️ 与应用约定的差异：应用约定面板内还有「协作中 · 实时同步」横幅，
  *    那是协作模块的能力，当前实现未实现协作，故不显示该横幅（不造假状态）。
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -44,7 +44,7 @@ export function ArtifactPanes({ relPath, onClose }: ArtifactPanesProps): JSX.Ele
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** 音视频加载/解码失败 —— 文件被移动或编码不受支持（对应项目契约两条文案） */
+  /** 音视频加载/解码失败 —— 文件被移动或编码不受支持（对应应用约定两条文案） */
   const [mediaFailed, setMediaFailed] = useState(false);
 
   /** 编辑缓冲（与磁盘内容分离，才能做冲突检测） */
@@ -413,7 +413,7 @@ export function isEditableArtifact(p: FilePreview | null): boolean {
 
 /**
  * 从文件树里挑出「产物」：排除配置文件与依赖目录。
- * 项目契约产物面板只关心 agent 真正产出的东西。
+ * 应用约定产物面板只关心 agent 真正产出的东西。
  */
 export function pickArtifacts(
   tree: Array<{ name: string; relPath: string; isDirectory: boolean; children?: unknown[] }>,

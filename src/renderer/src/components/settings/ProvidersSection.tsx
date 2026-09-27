@@ -1,12 +1,12 @@
 /**
  * 设置页 ⑤ 供应商
  *
- * 结构与项目契约 `ProviderManager`（SettingsPage chunk）对齐：
+ * 结构与应用约定 `ProviderManager`（SettingsPage chunk）对齐：
  *   ① 「已连接的供应商」卡 —— 图标 + 名称 + 状态徽标 + baseUrl + 编辑 / 断开连接
  *   ② 「添加供应商」卡 —— 说明 + 「对话供应商」小节 + 15 行预设（图标 + 名称 + 推荐徽标 + 描述 + 「+ 连接」）
  *
- * 预设目录与项目契约 `PRESETS` 数组按字段对齐（名称 / 描述 i18n 键 / 协议 / baseURL / 默认模型 / 推荐标记）。
- * 项目契约 16 项口径 = 15 行预设 + 1 张已连接卡。
+ * 预设目录与应用约定 `PRESETS` 数组按字段对齐（名称 / 描述 i18n 键 / 协议 / baseURL / 默认模型 / 推荐标记）。
+ * 应用约定 16 项口径 = 15 行预设 + 1 张已连接卡。
  */
 import { useCallback, useMemo, useState } from 'react';
 import type { AnthropicAuthMode, ApiFormat, ProviderConfig } from '@shared/types';
@@ -20,7 +20,7 @@ function newId(): string {
   return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** 品牌键 —— 决定图标底色与形状（色值取自项目契约品牌色表 `dU`） */
+/** 品牌键 —— 决定图标底色与形状（色值取自应用约定品牌色表 `dU`） */
 type BrandKey =
   | 'anthropic'
   | 'openai'
@@ -49,17 +49,17 @@ const BRAND: Record<BrandKey, { color: string; text: string; round?: boolean }> 
 
 interface ProviderPreset {
   key: string;
-  /** 展示名（项目契约硬编码的产品名；OpenAI 兼容走当前 i18n 键） */
+  /** 展示名（应用约定硬编码的产品名；OpenAI 兼容走当前 i18n 键） */
   name: string;
   /** 名称是否走 i18n 键 */
   nameKey?: string;
-  /** 描述 —— 项目契约 `settings.providerPresets.*` 键 */
+  /** 描述 —— 应用约定 `settings.providerPresets.*` 键 */
   descKey: string;
   brand: BrandKey;
   apiFormat: ApiFormat;
   baseUrl: string;
   anthropicAuthMode: AnthropicAuthMode;
-  /** 项目契约 `default_models`（无则空数组） */
+  /** 应用约定 `default_models`（无则空数组） */
   defaultModels: string[];
   recommended?: boolean;
   /** 需要用户自己填接口地址（中转站 / 本机 CLI） */
@@ -68,7 +68,7 @@ interface ProviderPreset {
   consoleUrl?: string;
 }
 
-/** 项目契约 PRESETS（对话供应商 15 行，顺序一致） */
+/** 应用约定 PRESETS（对话供应商 15 行，顺序一致） */
 const PRESETS: ProviderPreset[] = [
   {
     key: 'deepseek',
@@ -247,7 +247,7 @@ const PRESETS: ProviderPreset[] = [
   },
 ];
 
-/** 品牌徽标（项目契约为品牌 SVG，这里用同色首字母占位；形状与色值对齐项目契约） */
+/** 品牌徽标（应用约定为品牌 SVG，这里用同色首字母占位；形状与色值对齐应用约定） */
 function BrandMark({ brand }: { brand: BrandKey }): JSX.Element {
   const b = BRAND[brand];
   return (
@@ -261,7 +261,7 @@ function BrandMark({ brand }: { brand: BrandKey }): JSX.Element {
   );
 }
 
-/** 按名称 / baseUrl 反查预设（项目契约 `resolvePreset` 的简化版） */
+/** 按名称 / baseUrl 反查预设（应用约定 `resolvePreset` 的简化版） */
 function brandOf(p: Pick<ProviderConfig, 'name' | 'baseUrl'>): BrandKey {
   const key = `${p.name} ${p.baseUrl}`.toLowerCase();
   if (/anthropic|claude/.test(key)) return 'anthropic';
@@ -297,9 +297,11 @@ export function ProvidersSection(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [fastModeModels, setFastModeModels] = useState<string[]>([]);
+  const [modelPool, setModelPool] = useState<string[]>([]);
+  const [fallbackModels, setFallbackModels] = useState<string[]>([]);
   const [discoveringModels, setDiscoveringModels] = useState(false);
 
-  /** 项目契约：已连接列表按名称排序 */
+  /** 应用约定：已连接列表按名称排序 */
   const connected = useMemo(
     () => [...providers].sort((a, b) => a.name.localeCompare(b.name)),
     [providers],
@@ -313,6 +315,8 @@ export function ProvidersSection(): JSX.Element {
     setPreset(p);
     setModels(p.defaultModels.slice());
     setFastModeModels([]);
+    setModelPool(p.defaultModels.slice());
+    setFallbackModels([]);
     setEditing({
       id: newId(),
       name: p.nameKey ? tx(p.nameKey) : p.name,
@@ -330,6 +334,8 @@ export function ProvidersSection(): JSX.Element {
     setPreset(null);
     setModels(p.models ?? []);
     setFastModeModels(p.fastModeModels ?? []);
+    setModelPool(p.modelPool ?? p.models ?? []);
+    setFallbackModels(p.fallbackModels ?? []);
     setEditing({ ...p });
   }, []);
 
@@ -338,6 +344,8 @@ export function ProvidersSection(): JSX.Element {
     setPreset(null);
     setModels([]);
     setFastModeModels([]);
+    setModelPool([]);
+    setFallbackModels([]);
     setError(null);
   }, []);
 
@@ -366,6 +374,8 @@ export function ProvidersSection(): JSX.Element {
         apiKey: editing.apiKey.trim(),
         models: models.filter((m) => m.trim()),
         fastModeModels: fastModeModels.filter((m) => m.trim()),
+        modelPool: modelPool.filter((m) => m.trim()),
+        fallbackModels: fallbackModels.filter((m) => m.trim()),
       });
       useApp.setState({ providers: list });
 
@@ -384,6 +394,10 @@ export function ProvidersSection(): JSX.Element {
                 ...cur,
                 models: merged,
                 fastModeModels: fast,
+                // 旧配置里空模型池表示“尚未选择”；发现清单后把它初始化为全量，
+                // 否则设置页会显示所有模型却没有任何可切换/备用勾选项。
+                modelPool: (cur.modelPool?.length ? cur.modelPool : merged).filter((m) => merged.includes(m)),
+                fallbackModels: (cur.fallbackModels ?? []).filter((m) => merged.includes(m)),
                 contextWindows: windows,
               });
               useApp.setState({ providers: updated });
@@ -404,7 +418,7 @@ export function ProvidersSection(): JSX.Element {
     } finally {
       setSaving(false);
     }
-  }, [editing, models, fastModeModels, patchSettings, refreshProviders, settings?.activeProviderId, closeForm]);
+  }, [editing, models, fastModeModels, modelPool, fallbackModels, patchSettings, refreshProviders, settings?.activeProviderId, closeForm]);
 
   const remove = useCallback(
     async (p: ProviderConfig) => {
@@ -582,6 +596,16 @@ export function ProvidersSection(): JSX.Element {
           <div className="col" style={{ gap: 6 }}>
             {models.map((m, i) => (
               <div key={i} className="row" style={{ gap: 6 }}>
+                <label className="row" style={{ gap: 4, flex: '0 0 auto' }} title={t('加入模型池')}>
+                  <input type="checkbox" checked={modelPool.includes(m.trim())} disabled={!m.trim()}
+                    onChange={() => { const id = m.trim(); setModelPool(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }} />
+                  <span className="muted" style={{ fontSize: 10 }}>{t('池')}</span>
+                </label>
+                <label className="row" style={{ gap: 4, flex: '0 0 auto' }} title={t('失败时按顺序尝试的备用模型')}>
+                  <input type="checkbox" checked={fallbackModels.includes(m.trim())} disabled={!m.trim() || !modelPool.includes(m.trim())}
+                    onChange={() => { const id = m.trim(); setFallbackModels(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }} />
+                  <span className="muted" style={{ fontSize: 10 }}>{t('备')}</span>
+                </label>
                 <input
                   className="input mono grow"
                   style={{ fontSize: 12 }}
@@ -637,7 +661,7 @@ export function ProvidersSection(): JSX.Element {
               <br />
               容量是模型一次能参考的内容，不是消费额度。最大1M；请按接口实际能力选择，修改数字不会扩容模型。未知型号以运行器参考值显示。旧名称 deepseek-chat 建议在确认后改用官方当前名称 deepseek-flash。
               <br />
-              {t('列表里的第一个会成为该供应商的默认模型。点击闪电可声明该模型支持快速模式。')}
+              {t('池=允许在对话框切换；备=当前模型失败时按列表顺序自动尝试。未勾选备用时，池内其他模型也会作为低优先级备用。列表里的第一个会成为默认模型。闪电表示支持快速模式。')}
             </div>
           </div>
         </div>

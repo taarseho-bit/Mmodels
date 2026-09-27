@@ -5,6 +5,7 @@ import { chineseAgentName, taskAgentAssignment, taskAgentName, workflowToolLabel
 /** 纯观察器：空 hook 返回值不改变审批、工具参数或模型结果。 */
 export class WorkflowTrace {
   readonly run: WorkflowRun;
+  private readonly allowedAgentTypes?: Set<string>;
   private timer?: ReturnType<typeof setTimeout>;
   private requests = new Map<string, { name: string; owner: string; assignment?: string }>();
   private linkedRequests = new Set<string>();
@@ -40,7 +41,9 @@ export class WorkflowTrace {
     private readonly maxParallelAgents = 2,
     private readonly maxTotalAgents = 4,
     workflowStages?: string[],
+    allowedAgentTypes?: string[],
   ) {
+    this.allowedAgentTypes = allowedAgentTypes ? new Set(allowedAgentTypes) : undefined;
     const now = Date.now();
     this.run = { id: randomUUID(), sessionId, startedAt: now, updatedAt: now, revision: 0,
       status: 'running', collaborationEnabled: this.collaborationEnabled, truncated: false, nodes: [],
@@ -69,6 +72,31 @@ export class WorkflowTrace {
   }
   private changed(): void {
     if (!this.timer) this.timer = setTimeout(() => this.flush(), 250);
+  }
+
+  /** 记录路由器在本轮开始前实际加载的技能前置说明。 */
+  recordSkillPrelude(items: Array<{ id: string; label: string; reason: string }>): void {
+    const node = this.run.nodes.find((entry) => entry.id === 'main');
+    if (!node || !items.length) return;
+    const existing = new Set(node.tools.filter((tool) => tool.skillSource === 'preload').map((tool) => tool.skill));
+    for (const item of items.slice(0, 16)) {
+      if (existing.has(item.id)) continue;
+      node.tools.push({
+        id: randomUUID(),
+        name: 'SkillPrelude',
+        label: `已载入技能 · ${item.label}`,
+        skill: item.id,
+        skillSource: 'preload',
+        verified: false,
+        action: item.reason.slice(0, 120),
+        // 这里只是路由器给出的候选方向，还没有 SDK 的 Skill/Read 事件。
+        // 用 unknown 保留“待确认”状态，避免向演示对象暗示技能已经执行。
+        status: 'unknown',
+        startedAt: Date.now(),
+      });
+      existing.add(item.id);
+    }
+    this.changed();
   }
   readonly hook: HookCallback = async (input, toolUseID) => {
     if (this.run.status !== 'running') return {};
@@ -105,7 +133,7 @@ export class WorkflowTrace {
       if (this.run.nodes.reduce((n, entry) => n + entry.tools.length, 0) >= 500) { this.run.truncated = true; return {}; }
       const command = input.command_name.replace(/^\//, '').slice(0, 100);
       node.tools.push({ id: randomUUID(), name: command, label: `载入入口指令 · ${workflowToolLabel('Skill', command)}`,
-        skill: command, skillSource: 'entry',
+        skill: command, skillSource: 'entry', verified: true,
         status: 'completed', startedAt: Date.now(), endedAt: Date.now() });
       return {};
     }
@@ -133,6 +161,19 @@ export class WorkflowTrace {
       return {};
     }
     if (event !== 'PreToolUse' && event !== 'PostToolUse' && event !== 'PostToolUseFailure') return {};
+    if (event === 'PreToolUse' && /^(Agent|Task)$/.test(input.tool_name) && this.collaborationEnabled && this.allowedAgentTypes) {
+      const data = input.tool_input && typeof input.tool_input === 'object' ? input.tool_input as Record<string, unknown> : {};
+      const requestedType = typeof data.subagent_type === 'string' ? data.subagent_type : '';
+      if (!requestedType || !this.allowedAgentTypes.has(requestedType)) {
+        return {
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: '本轮没有为这个角色安排工作，请使用已路由的专业成员，或由主助手继续。',
+          },
+        };
+      }
+    }
     if (event === 'PreToolUse' && /^(Agent|Task)$/.test(input.tool_name) && this.collaborationEnabled && this.activeCollaboratorCount() >= this.maxParallelAgents) {
       return {
         hookSpecificOutput: {
@@ -171,7 +212,7 @@ export class WorkflowTrace {
       if (this.run.nodes.reduce((n, entry) => n + entry.tools.length, 0) >= 500) { this.run.truncated = true; return {}; }
       const skill = input.tool_name === 'Skill' && typeof data.skill === 'string' ? data.skill.slice(0, 100) : undefined;
       tool = { id: input.tool_use_id, name: input.tool_name.slice(0, 100), label: workflowToolLabel(input.tool_name, skill),
-        skill, status: 'running', startedAt: Date.now() };
+        skill, verified: Boolean(skill), status: 'running', startedAt: Date.now() };
       if (typeof data.description === 'string' && /[\u3400-\u9fff]/.test(data.description)) {
         tool.action = data.description.replace(/[\r\n]+/g, ' ').slice(0, 100);
         if (node.id !== 'main') node.assignment ??= taskAgentAssignment(data.description);
@@ -200,7 +241,12 @@ export class WorkflowTrace {
       }
       if (input.tool_name === 'Read' && typeof data.file_path === 'string') {
         const match = data.file_path.replace(/\\/g, '/').match(/\/skills\/([^/]+)\/SKILL\.md$/i);
-        if (match) { tool.skill = match[1]; tool.skillSource = 'read'; tool.label = `参考技能 · ${workflowToolLabel('Skill', match[1])}`; }
+        if (match) {
+          tool.skill = match[1];
+          tool.skillSource = 'read';
+          tool.verified = true;
+          tool.label = `参考技能 · ${workflowToolLabel('Skill', match[1])}`;
+        }
       }
       if (/^(Write|Edit|NotebookEdit)$/.test(input.tool_name)) {
         const file = data.file_path ?? data.notebook_path;

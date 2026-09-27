@@ -21,7 +21,7 @@ import {
 import { resolveEffectiveProxy } from '../agent/env';
 import { safeWrap, type IpcContext } from './index';
 
-/** 探测系统代理时用哪个 URL —— 项目契约描述里点名了 Anthropic 官方端点 */
+/** 探测系统代理时用哪个 URL —— 应用约定描述里点名了 Anthropic 官方端点 */
 const PROBE_URL = 'https://api.anthropic.com';
 
 /**
@@ -30,7 +30,7 @@ const PROBE_URL = 'https://api.anthropic.com';
  * 形态：`DIRECT` / `PROXY 127.0.0.1:7890` / `SOCKS5 127.0.0.1:1080`，
  * 多个候选用 `;` 分隔（形如 `PROXY a:1;DIRECT`，取第一个可用的）。
  * 返回的还是**没有协议前缀**的地址，交由 `resolveEffectiveProxy` 统一判定
- * （它会按项目契约语义把 socks 判为不支持）。
+ * （它会按应用约定语义把 socks 判为不支持）。
  */
 function parseResolveProxy(raw: string): string | null {
   for (const part of raw.split(';')) {

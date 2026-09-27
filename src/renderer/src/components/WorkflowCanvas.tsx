@@ -33,7 +33,9 @@ export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'anal
     setFollow(false);
     setView({ scale, x: rect.width / 2 - (target.x + target.width / 2) * scale, y: rect.height / 2 - (target.y + target.height / 2) * scale });
   };
-  useEffect(() => { if (focusId && run.status === 'running') focusNode(focusId); }, [focusId, layout.width, layout.height, run.status]);
+  // 演示视图优先展示完整层级，不因当前成员变化而把画布拉到某一张卡片上；
+  // 分析视图才自动聚焦正在工作的成员，用户仍可随时点“适应”。
+  useEffect(() => { if (presentation === 'analysis' && focusId && run.status === 'running') focusNode(focusId); }, [focusId, layout.width, layout.height, run.status, presentation]);
   useEffect(() => {
     if (!follow || !viewport.current) return;
     const observer = new ResizeObserver(fit); observer.observe(viewport.current); fit();
@@ -89,7 +91,7 @@ export function WorkflowCanvas({ run, selectedId, onSelect, presentation = 'anal
         setView(old => ({ ...old, x: p.originX + e.clientX - p.x, y: p.originY + e.clientY - p.y })); }}
       onPointerUp={e => { drag.current = null; e.currentTarget.classList.remove('is-panning'); if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}
       onPointerCancel={e => { drag.current = null; e.currentTarget.classList.remove('is-panning'); }}>
-      <div className={`flow-world${view.scale < .6 ? ' is-overview' : ''}`} style={{ width: layout.width, height: layout.height, left: view.x / view.scale, top: view.y / view.scale, zoom: view.scale }}>
+      <div className={`flow-world${view.scale < .6 ? ' is-overview' : ''}`} style={{ width: layout.width, height: layout.height, left: view.x, top: view.y, transform: `scale(${view.scale})` }}>
         <svg className="flow-connections" width={layout.width} height={layout.height} aria-hidden="true">
           <defs>{layout.edges.map((edge, i) => <marker key={edge.id} id={`${prefix}-arrow-${i}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill={edge.color} /></marker>)}</defs>
           {layout.edges.map((edge, i) => <g key={edge.id} className={`flow-edge is-${edge.kind}${edge.active ? ' is-active' : ''}${edge.muted ? ' is-muted' : ''}`} style={{ '--flow-color': edge.color } as CSSProperties} data-source={edge.source} data-target={edge.target}>

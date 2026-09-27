@@ -202,12 +202,12 @@ const PROVIDER: ProviderConfig = {
   enabled: true,
 };
 
-describe('项目契约核心选项对齐', () => {
+describe('应用约定核心选项对齐', () => {
   it('保留基础系统提示，追加中文约定和工作区说明，额外插件不丢失', async () => {
     const sdk = installFakeQuery([assistant('完成'), result()]);
-    const { done } = runOnce('任务', { systemPrompt: '中文交流', workspaceInstructions: '项目契约', extraPluginPaths: ['/tmp/project-plugin'], effort: 'max' });
+    const { done } = runOnce('任务', { systemPrompt: '中文交流', workspaceInstructions: '应用约定', extraPluginPaths: ['/tmp/project-plugin'], effort: 'max' });
     await done;
-    expect(sdk.options?.systemPrompt).toEqual({ type: 'preset', preset: 'claude_code', append: '项目契约\n\n中文交流' });
+    expect(sdk.options?.systemPrompt).toEqual({ type: 'preset', preset: 'claude_code', append: '应用约定\n\n中文交流' });
     expect(sdk.options?.plugins).toEqual([{ type: 'local', path: '/tmp/skills-plugin' }, { type: 'local', path: '/tmp/project-plugin' }]);
     expect(sdk.options?.thinking).toEqual({ type: 'enabled', display: 'summarized' });
     expect(sdk.options?.effort).toBe('max');

@@ -1,7 +1,7 @@
 /**
  * 粘贴长文本折叠逻辑的单测。
  *
- * 为什么这些用例值钱：这套逻辑有**四处"看起来该优化、实际一改就与项目契约不一致"**的
+ * 为什么这些用例值钱：这套逻辑有**四处"看起来该优化、实际一改就与应用约定不一致"**的
  * 细节（闭区间阈值 / `split('\n').length` / 空串短路 / 尾巴不进 parts），
  * 它们都不会让界面报错，只会让**边界那一格**悄悄错掉（4000 字符的文本不折叠、
  * `'a\n'` 少算一行）。所以每条都钉死在边界值上。
@@ -35,7 +35,7 @@ const chip = (text: string): PastedText => makePastedText(text);
 const tailOf = (json: string): string => `\n\n<pasted_text>\n${json}\n</pasted_text>`;
 
 describe('pasted-text · 折叠阈值是闭区间', () => {
-  it('阈值常量与项目契约一致（25 行 / 4000 字符）', () => {
+  it('阈值常量与应用约定一致（25 行 / 4000 字符）', () => {
     expect(PASTE_FOLD_LINES).toBe(25);
     expect(PASTE_FOLD_CHARS).toBe(4000);
   });

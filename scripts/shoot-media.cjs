@@ -4,7 +4,7 @@
  * 验证链路：主进程 makePreview 判定 → mm-media:// 流式协议 → CSP media-src → <audio>/<video> 解码。
  *
  * 样本来源（本机无 ffmpeg）：
- *   · 音频：项目契约基线里的真实 wav（.baseline/app/out/renderer/assets/complete-*.wav）
+ *   · 音频：应用约定基线里的真实 wav（.baseline/app/out/renderer/assets/complete-*.wav）
  *   · 视频：渲染层用 MediaRecorder + canvas.captureStream 现场录一段 webm（Chromium 自带编码器）
  *   · 坏样本：随机字节冒充 .mp4，用来验证「无法播放」兜底文案可达
  *

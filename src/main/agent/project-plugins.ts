@@ -38,6 +38,6 @@ export function workspaceInstructions(cwd: string): string {
   return ['AGENTS.md', 'CLAUDE.md'].flatMap(name => {
     const file = join(cwd, name);
     if (!existsSync(file)) return [];
-    return [`## 项目契约：${name}\n${readFileSync(file, 'utf8')}`];
+    return [`## 应用约定：${name}\n${readFileSync(file, 'utf8')}`];
   }).join('\n\n');
 }

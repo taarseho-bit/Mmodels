@@ -123,8 +123,8 @@ describe('initPaperProjectConfig（自动初始化）', () => {
     expect(t.source).toBe('builtin');
     expect(t.sourcePath).toBe(null);
     expect(t.entryFile).toBe('document.tex');
-    // `name` 必须是**项目契约 `Np` 对象**（两个键都非空），**不是**字符串 ——
-    // 项目契约 zod 是 `z.object({ 'zh-CN': min(1), en: min(1) })`，字符串过不了 schema。
+    // `name` 必须是**应用约定 `Np` 对象**（两个键都非空），**不是**字符串 ——
+    // 应用约定 zod 是 `z.object({ 'zh-CN': min(1), en: min(1) })`，字符串过不了 schema。
     expect(typeof t.name).toBe('object');
     expect(t.name).not.toBeNull();
     expect(pickLocalizedText(t.name, 'zh-CN')).toBe('CUMCM');
@@ -182,7 +182,7 @@ describe('initPaperProjectConfig（自动初始化）', () => {
     expect(cfg.contestFields.map((f) => f.id)).toEqual(['school', 'members', 'advisor']);
     expect(cfg.contestFields.find((f) => f.id === 'members')!.value).toBe('甲、乙、丙');
     // 档案预填出来的字段名只有中文 → `en` 用原文兜底；但**形状必须是对象、两键都非空**
-    // （项目契约 `Np` 的 `min(1)`，塞空串或写字符串都会被项目契约判非法）。
+    // （应用约定 `Np` 的 `min(1)`，塞空串或写字符串都会被应用约定判非法）。
     for (const f of cfg.contestFields) {
       expect(typeof f.label).toBe('object');
       expect(pickLocalizedText(f.label, 'zh-CN')).not.toBe('');
@@ -207,7 +207,7 @@ describe('initPaperProjectConfig（自动初始化）', () => {
     expect(existsSync(paperConfigPath(root))).toBe(false);
   });
 
-  it('`.mathmodel` 是符号链接 → 拒绝写入（项目契约 paperConfigUnsafePath 同义）', () => {
+  it('`.mathmodel` 是符号链接 → 拒绝写入（应用约定 paperConfigUnsafePath 同义）', () => {
     const outside = mkdtempSync(join(tmpdir(), 'mm-paper-outside-'));
     try {
       try {
@@ -239,7 +239,7 @@ describe('initPaperProjectConfig（自动初始化）', () => {
 });
 
 describe('normalizePaperConfig（老结构兼容）', () => {
-  it('本项目早期结构 { templateId, fields:{k:v} } → 换算成项目契约新结构', () => {
+  it('本项目早期结构 { templateId, fields:{k:v} } → 换算成应用约定新结构', () => {
     const cfg = normalizePaperConfig(
       {
         templateId: 'cumcm',
@@ -257,7 +257,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
     expect(cfg.contestFields.map((f) => pickLocalizedText(f.label))).toEqual(['problemNumber', 'teamNumber']);
   });
 
-  it('项目契约新结构原样保留（含 custom / sourcePath / 自定义字段 label）', () => {
+  it('应用约定新结构原样保留（含 custom / sourcePath / 自定义字段 label）', () => {
     const cfg = normalizePaperConfig(
       {
         schemaVersion: 1,
@@ -265,7 +265,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
         template: { id: 'my-tpl', name: '我的模板', entryFile: 'main.tex', source: 'custom', sourcePath: 'D:/tpl' },
         contestFields: [
           { id: 'problemNumber', label: '题号', value: 'A' },
-          // 自定义字段的 id 要满足项目契约 schema `^[a-z][A-Za-z0-9]*$`（不能带下划线）
+          // 自定义字段的 id 要满足应用约定 schema `^[a-z][A-Za-z0-9]*$`（不能带下划线）
           { id: 'customAbc1', label: '组别', value: '研究生组' },
         ],
         teamProfile: { id: 'tp1', name: '队' },
@@ -283,7 +283,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
     expect(pickLocalizedText(custom.label, 'en')).not.toBe('');
   });
 
-  it('项目契约 `Np` 对象形态（项目契约写下的配置）读回来 en 不被中文化', () => {
+  it('应用约定 `Np` 对象形态（应用约定写下的配置）读回来 en 不被中文化', () => {
     const cfg = normalizePaperConfig(
       {
         schemaVersion: 1,
@@ -331,7 +331,7 @@ describe('normalizePaperConfig（老结构兼容）', () => {
 
 /**
  * ── 老数据兼容（硬纪律一族）────────────────────────────────────
- * `MM_DIR` 曾经是 `.mmodels`（本项目早期自造），现已对齐项目契约的 `.mathmodel`。
+ * `MM_DIR` 曾经是 `.mmodels`（本项目早期自造），现已对齐应用约定的 `.mathmodel`。
  * 下面每条都**先手工造出"老项目"的样子**再跑 —— 全新空目录测不出这类 bug。
  */
 describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', () => {
@@ -359,8 +359,8 @@ describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', (
     return p;
   }
 
-  it('目录常量就是项目契约那个字符串（不是别的写法）', () => {
-    // 项目契约 协议实现 `Li='.mathmodel/paper/config.json'`
+  it('目录常量就是应用约定那个字符串（不是别的写法）', () => {
+    // 应用约定 协议实现 `Li='.mathmodel/paper/config.json'`
     expect(MM_DIR).toBe('.mathmodel');
     expect(paperConfigPath('/p')).toBe(join('/p', '.mathmodel', 'paper', 'config.json'));
     expect(legacyPaperConfigPath('/p')).toBe(join('/p', '.mmodels', 'paper', 'config.json'));
@@ -445,11 +445,11 @@ describe('B9：目录名对齐 `.mathmodel` + 遗留 `.mmodels` 只读兼容', (
 });
 
 /**
- * ── B19：用户手写的配置**不许覆盖**（项目契约 `project_config_conflict`）──
+ * ── B19：用户手写的配置**不许覆盖**（应用约定 `project_config_conflict`）──
  */
 describe('B19：论文配置归属判定与保存决策', () => {
   function userConfig(): Record<string, unknown> {
-    // 用户手抄的：有项目契约的键，但**没有** `managedBy`（项目契约 zod 是 literal('mathmodel')）
+    // 用户手抄的：有应用约定的键，但**没有** `managedBy`（应用约定 zod 是 literal('mathmodel')）
     return {
       template: { id: 'cumcm', name: '我自己的模板', entryFile: 'paper.tex' },
       contestFields: [{ id: 'problemNumber', label: '题号', value: 'C' }],
@@ -610,7 +610,7 @@ describe('listPaperTemplates（template.json → 模板元数据）', () => {
 
 /**
  * 真实内置模板目录的回归 —— 判据盯的是「模板数据 + 解析器」合起来的结果，
- * 不是各自单独的样子：`options` 在 template.json 里**本来就有**（项目契约有、我们丢过）。
+ * 不是各自单独的样子：`options` 在 template.json 里**本来就有**（应用约定有、我们丢过）。
  */
 describe('listPaperTemplates（真实内置模板目录 · 字段 options）', () => {
   const res = join(process.cwd(), 'resources');

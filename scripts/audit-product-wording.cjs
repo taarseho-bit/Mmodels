@@ -51,7 +51,7 @@ const chineseTerms = [
 // 用码点生成词表，避免检查脚本自身成为误报来源。
 for (const term of chineseTerms) banned.push(String.fromCodePoint(...term));
 
-// 只拦截明确表示“照着另一个产品做”的英文组合；论文、数据和许可证里的 ordinary original 不属于产品措辞。
+// 只拦截明确表示“参照另一个产品实现”的英文组合；论文、数据和许可证里的 ordinary original 不属于产品措辞。
 const comparisonTerms = [
   [115, 97, 109, 101, 32, 97, 115, 32, 116, 104, 101, 32, 111, 114, 105, 103, 105, 110, 97, 108],
   [108, 105, 107, 101, 32, 116, 104, 101, 32, 111, 114, 105, 103, 105, 110, 97, 108],

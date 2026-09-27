@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { DeliveryAudit, Project, Phase } from '../../../shared/competition-studio';
-import type { FileNode } from '@shared/types';
+import type { FileNode, PdfPreflight } from '@shared/types';
 import type { WorkflowRun } from '@shared/workflow';
 import { COMPETITIONS } from '../../../shared/competitions-data';
 import { calendarCompetition, competitionDeadline, countdownFor } from '../../../shared/competition-countdown';
@@ -39,6 +39,7 @@ export function WorkbenchPage(): JSX.Element {
   const [draft, setDraft] = useState<Project | null>(null);
   const [fileStats, setFileStats] = useState<DeliveryFileStats | null>(null);
   const [pdfInfo, setPdfInfo] = useState<{ relPath: string; pages: number | null; size: number } | null>(null);
+  const [pdfPreflight, setPdfPreflight] = useState<PdfPreflight | null>(null);
   const [fileScanNonce, setFileScanNonce] = useState(0);
   const [fileScannedAt, setFileScannedAt] = useState<number | null>(null);
   const [workflowSummary, setWorkflowSummary] = useState<WorkflowQualitySummary | null>(null);
@@ -53,7 +54,7 @@ export function WorkbenchPage(): JSX.Element {
   }, [project?.id]);
   useEffect(() => {
     let live = true;
-    setFileStats(null); setPdfInfo(null);
+    setFileStats(null); setPdfInfo(null); setPdfPreflight(null);
     setFileScannedAt(null);
     if (!project) return () => { live = false; };
     void window.mathmodel.file.tree().then(async nodes => {
@@ -62,7 +63,11 @@ export function WorkbenchPage(): JSX.Element {
       setFileStats(stats); setFileScannedAt(Date.now());
       const firstPdf = stats.pdfPaths[0];
       if (firstPdf) {
-        try { const info = await window.mathmodel.file.pdfInfo(firstPdf); if (live) setPdfInfo(info); } catch { if (live) setPdfInfo({ relPath: firstPdf, pages: null, size: 0 }); }
+        try {
+          const info = await window.mathmodel.file.pdfInfo(firstPdf);
+          if (live) setPdfInfo(info);
+          try { const preflight = await window.mathmodel.file.pdfPreflight(firstPdf); if (live) setPdfPreflight(preflight); } catch { /* 预检工具缺失时保留页数结果 */ }
+        } catch { if (live) setPdfInfo({ relPath: firstPdf, pages: null, size: 0 }); }
       }
     }).catch(() => { if (live) { setFileStats({ pdf: 0, source: 0, figure: 0, table: 0, pdfPaths: [] }); setFileScannedAt(Date.now()); } });
     return () => { live = false; };
@@ -111,6 +116,7 @@ export function WorkbenchPage(): JSX.Element {
     { label: '比赛信息', detail: contest ? `${contest.shortName || contest.name} · ${contest.year}` : '还没有选择比赛', ok: Boolean(contest) },
     { label: '页数要求', detail: pdfInfo?.pages ? `${pdfInfo.pages} 页${pageLimitNumber ? ` · 上限 ${pageLimitNumber} 页` : ''}${pageCheck === '超出' ? ' · 需要压缩' : ''}` : draft.pageLimit ? `上限 ${draft.pageLimit} · 正在读取 PDF 页数` : '还没有设置页数上限', ok: pdfInfo?.pages && pageLimitNumber > 0 ? pageCheck !== '超出' : draft.pageLimit.trim() ? null : false },
     { label: '论文文件', detail: fileStats ? `${fileStats.pdf} 个 PDF · ${fileStats.source} 个源文件${pdfInfo?.pages ? ` · 主文档 ${pdfInfo.pages} 页` : ''}` : '正在读取项目文件', ok: fileStats ? fileStats.pdf > 0 : null },
+    { label: 'PDF 版面预检', detail: pdfPreflight ? `${pdfPreflight.textPages} 页有正文 · ${pdfPreflight.tablePages} 页疑似表格 · ${pdfPreflight.imagePages} 页含图片` : '正在读取文字、表格和图片分布', ok: pdfPreflight ? pdfPreflight.warnings.length === 0 : null },
     { label: '图表与数据', detail: fileStats ? `${fileStats.figure} 个图表 · ${fileStats.table} 个数据文件` : '正在读取项目文件', ok: fileStats ? fileStats.figure > 0 || fileStats.table > 0 : null },
     { label: '模型方案', detail: draft.alternatives.length ? `${draft.alternatives.length} 个候选方案已记录` : '还没有记录模型方案对比', ok: draft.alternatives.length > 0 },
     { label: '结论依据', detail: draft.evidence.length ? `${checkedEvidence}/${draft.evidence.length} 条依据已核对` : '还没有记录结论依据', ok: draft.evidence.length > 0 && checkedEvidence === draft.evidence.length },
@@ -149,6 +155,7 @@ export function WorkbenchPage(): JSX.Element {
         try {
           currentPdfInfo = await window.mathmodel.file.pdfInfo(stats.pdfPaths[0]);
           setPdfInfo(currentPdfInfo);
+          try { const preflight = await window.mathmodel.file.pdfPreflight(stats.pdfPaths[0]); setPdfPreflight(preflight); } catch { /* 预检工具不可用时继续做其它交付检查 */ }
         } catch {
           currentPdfInfo = { relPath: stats.pdfPaths[0], pages: null, size: 0 };
           setPdfInfo(currentPdfInfo);
@@ -165,7 +172,7 @@ export function WorkbenchPage(): JSX.Element {
         { id: 'reproducibility', label: '复现材料', status: stats.source > 0 && stats.table > 0 ? '通过' : '待补充', detail: `${stats.source} 个源文件 · ${stats.table} 个数据文件` },
         { id: 'skills', label: '技能执行', status: workflowSummary && workflowSkillCount > 0 && workflowSkillReviewCount === 0 ? '通过' : workflowSummary ? '需深度核验' : '待补充', detail: workflowSummary ? `${workflowSkillCount} 项技能${workflowSkillReviewCount ? `，${workflowSkillReviewCount} 项需要复核` : '，调用状态正常'}` : '还没有完整的工作流技能记录' },
         { id: 'checklist', label: '提交清单', status: checkPercent === 100 ? '通过' : '待补充', detail: `${checkedCount}/${draft.checklist.length} 项已核对` },
-        { id: 'deep-review', label: 'PDF 深度核验', status: '需深度核验', detail: '需要助手实际读取 PDF、表格和图表后确认' },
+         { id: 'deep-review', label: 'PDF 深度核验', status: pdfPreflight && pdfPreflight.warnings.length === 0 ? '通过' : '需深度核验', detail: pdfPreflight ? (pdfPreflight.warnings.length ? pdfPreflight.warnings.join('；') : '已完成文字、表格和图片分布预检，仍需助手抽查关键页面') : '需要助手实际读取 PDF、表格和图表后确认' },
       ];
       const ready = items.filter(item => item.status === '待补充').length === 0;
       const audit: DeliveryAudit = { checkedAt: new Date().toISOString(), status: ready ? '准备较好' : '仍需处理', items, note: '这是项目级预检查；PDF 页数、表格裁切、公式和引用仍需助手深度核验。' };

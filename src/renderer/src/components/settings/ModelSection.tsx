@@ -1,13 +1,13 @@
 /**
  * 设置页 ④ 模型
  *
- * 项目契约结构（SettingsPage chunk 中 `o==="models"` 分支）：
+ * 应用约定结构（SettingsPage chunk 中 `o==="models"` 分支）：
  *   ① 分区右上「+ 添加自定义模型」按钮
  *   ② 两行下拉 —— 当前供应商 / 当前模型（左标题+说明、右下拉）
  *   ③ 「添加自定义模型」弹窗（供应商下拉 + 模型 ID 输入 + 校验）
  *
  * 当前实现原有的自创区块（模型名 / 推理强度 effort / 关闭思考 / 内置 MCP）
- * 保留功能、整体下移，收在同分区末尾的「本地附加项」里（项目契约无这些控件）。
+ * 保留功能、整体下移，收在同分区末尾的「本地附加项」里（应用约定无这些控件）。
  */
 import { useCallback, useMemo, useState } from 'react';
 import type { ProviderConfig } from '@shared/types';
@@ -17,7 +17,7 @@ import { Icon } from '../Icon';
 import { Section, Switch } from './shared';
 import { friendlyError } from '../../lib/friendly-error';
 
-/** 模型 ID 校验 —— 项目契约 zod 规则：非空且不含空格 / 逗号 */
+/** 模型 ID 校验 —— 应用约定 zod 规则：非空且不含空格 / 逗号 */
 function isValidModelId(v: string): boolean {
   return v.trim() !== '' && !/[\s,]/.test(v.trim());
 }
@@ -67,7 +67,9 @@ function AddCustomModelDialog({
 
   const persist = useCallback(
     async (p: ProviderConfig, next: string[]) => {
-      const list = await window.mathmodel.llm.upsertProvider({ ...p, models: next });
+      const pool = (p.modelPool ?? p.models ?? []).filter((id) => next.includes(id));
+      const fallback = (p.fallbackModels ?? []).filter((id) => next.includes(id));
+      const list = await window.mathmodel.llm.upsertProvider({ ...p, models: next, modelPool: pool, fallbackModels: fallback });
       useApp.setState({ providers: list });
       await refreshProviders();
     },
@@ -88,7 +90,11 @@ function AddCustomModelDialog({
     setError(null);
     try {
       if (!models.includes(id)) await persist(provider, [...models, id]);
-      await patchSettings({ activeProviderId: provider.id, defaultModel: id });
+      await patchSettings({
+        activeProviderId: provider.id,
+        defaultModel: id,
+        modelPool: Array.from(new Set([...(provider.modelPool ?? models), id])),
+      });
       onClose();
     } catch (e) {
       setError(friendlyError(e, '模型设置没有保存成功，可以重试。'));
@@ -107,7 +113,10 @@ function AddCustomModelDialog({
         await persist(provider, next);
         // 删掉的正好是当前模型 → 回退到列表第一个（或清空）
         if (useApp.getState().settings?.defaultModel === name) {
-          await patchSettings({ defaultModel: next[0] ?? null });
+          await patchSettings({
+            defaultModel: next[0] ?? null,
+            modelPool: (provider.modelPool ?? models).filter((id) => id !== name),
+          });
         }
       } catch (e) {
       setError(friendlyError(e, '模型设置没有更新成功，可以重试。'));
@@ -229,11 +238,11 @@ export function ModelSection(): JSX.Element {
   const [adding, setAdding] = useState(false);
 
   const activeProvider = providers.find((p) => p.id === settings?.activeProviderId) ?? null;
-  const modelOptions = activeProvider?.models ?? [];
+  const modelOptions = activeProvider?.modelPool?.length ? activeProvider.modelPool : activeProvider?.models ?? [];
 
   return (
     <div className="col" style={{ gap: 22 }}>
-      {/* ① 分区右上动作（项目契约在分区标题行右侧） */}
+      {/* ① 分区右上动作（应用约定在分区标题行右侧） */}
       <div className="row" style={{ justifyContent: 'flex-end' }}>
         <button
           className="btn btn-sm"
@@ -257,7 +266,8 @@ export function ModelSection(): JSX.Element {
               onChange={(e) => {
                 const id = e.target.value;
                 const p = providers.find((x) => x.id === id) ?? null;
-                void patchSettings({ activeProviderId: id || null, defaultModel: p?.models?.[0] ?? null });
+                const pool = p?.modelPool?.length ? p.modelPool : p?.models ?? [];
+                void patchSettings({ activeProviderId: id || null, defaultModel: pool[0] ?? null, modelPool: pool });
               }}
             >
               <option value="">{t('未选择')}</option>

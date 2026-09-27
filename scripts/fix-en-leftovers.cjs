@@ -1,4 +1,4 @@
-// 修补项目契约 en 词典里 25 条未翻译的中文条目（项目契约自身的翻译欠账）
+// 修补应用约定 en 词典里 25 条未翻译的中文条目（应用约定自身的翻译欠账）
 const fs = require('fs');
 const p = 'D:/mathmodel-desktop/src/renderer/src/i18n/en.ts';
 let s = fs.readFileSync(p, 'utf8');

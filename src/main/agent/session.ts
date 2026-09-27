@@ -3,7 +3,7 @@
  *
  * 职责：把「一条用户消息」变成「一串流式事件」，并在中途管理进程生命周期。
  *
- * 设计要点（按项目契约行为）：
+ * 设计要点（按应用约定行为）：
  *  1. 每个会话一个长驻 `query()` 迭代器，而不是每条消息重启进程
  *     —— 这样 Claude Code 才能保留上下文、复用 warm 状态
  *  2. 事件先落进内存队列再广播，避免渲染层还没挂载监听就丢事件
@@ -27,7 +27,7 @@ import type {
   TokenUsage,
 } from '@shared/types';
 import { MODELING_AGENTS, type ModelingAgentRoster } from './modeling-agents';
-import { DEFAULT_MAX_PARALLEL_AGENTS } from './orchestration-policy';
+import { DEFAULT_MAX_PARALLEL_AGENTS, type SkillRouteHint } from './orchestration-policy';
 import { WorkflowTrace } from './workflow-trace';
 import type { WorkflowRun } from '@shared/workflow';
 import { sdkModel, userMcpOptions, mcpServersForProject, knownContextWindow, boundedContextWindow } from './runtime-options';
@@ -45,18 +45,46 @@ import {
   type InteractionMode,
 } from './permissions';
 import { materializeSkillsPlugin, warmupSkillsPlugin } from './skills-plugin';
+import { readSkillPrelude } from '../skills';
 import {
   BACKGROUND_WAIT_CAP_MS,
   SessionInputQueue,
   runSessionLoop,
   type SessionLoopOutcome,
 } from './session-loop';
+import { isRetryableModelError } from './model-retry';
 
 /** SDK 是按需加载的 —— 加载失败要给用户可读信息，而不是崩溃 */
 type QueryFn = typeof import('@anthropic-ai/claude-agent-sdk')['query'];
 type QueryHandle = ReturnType<QueryFn>;
 
 const CONTEXT_PROBE_TIMEOUT_MS = 2_500;
+
+function routedSkillPrelude(plan?: SkillRouteHint[]): { prompt: string; loaded: Array<{ id: string; label: string; reason: string }> } {
+  if (!plan?.length) return { prompt: '', loaded: [] };
+  const loaded: Array<{ id: string; label: string; reason: string }> = [];
+  const sections: string[] = [];
+  let remainingChars = 16_000;
+  for (const hint of plan.slice(0, 16)) {
+    const prelude = readSkillPrelude(hint.id);
+    if (!prelude) continue;
+    const budget = Math.min(1_600, remainingChars);
+    if (budget < 400) break;
+    loaded.push({ id: hint.id, label: hint.label, reason: hint.reason });
+    sections.push(`### ${hint.label}（${hint.id}）\n用途：${hint.reason}\n${prelude.text.slice(0, budget)}`);
+    remainingChars -= budget;
+  }
+  if (!sections.length) return { prompt: '', loaded };
+  return {
+    loaded,
+    prompt: [
+      '本轮技能执行计划（系统已在开始前载入以下技能的短说明）：',
+      '先按这些技能的适用范围处理任务；需要完整步骤、脚本或模板时，再调用对应 Skill 读取完整内容。',
+      sections.join('\n\n'),
+      '技能执行后要在工作流记录中留下实际技能名和产物，不能只说“已使用技能”。',
+    ].join('\n\n'),
+  };
+}
 
 async function withContextProbeTimeout<T>(promise: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -124,7 +152,7 @@ export interface RunOptions {
    * 手写的后果是「设置里多两档、这里少两档」，tsc 会在渲染层拦下，
    * 但主进程会**静默忽略**掉它不认识的值（选了等于没选）。
    *
-   * 项目契约是 5 档、默认 `high`；`xhigh`/`max` 是「更深/最大」，SDK 会在
+   * 应用约定是 5 档、默认 `high`；`xhigh`/`max` 是「更深/最大」，SDK 会在
    * 不支持该档的模型上**自动回落**（`sdk.d.ts:550-551`：`'xhigh'` 在
    * Fable 5 / Opus 4.7+ / Sonnet 5 之外回落 `'high'`，`'max'` 仅部分模型支持）。
    */
@@ -145,7 +173,7 @@ export interface RunOptions {
    * 用户在设置/输入区选的权限模式（当前实现口径 `'full' | 'approval'`）。
    *
    * ⚠️ 这里**原样传当前实现口径**，不要在这里换名字 ——
-   *    换算成项目契约口径的那一步**只在 `permissions.ts` 里做一次**
+   *    换算成应用约定口径的那一步**只在 `permissions.ts` 里做一次**
    *    （见该文件头"口径映射"）。少写一处映射，就少一个"两处各写一半"的坑。
    */
   permissionMode?: AppPermissionMode;
@@ -153,7 +181,7 @@ export interface RunOptions {
    * 每条消息的交互模式（`'default' | 'plan'`）。
    *
    * B2（plan 模式）落地前**没有任何调用方会传它**，默认 `undefined` ⇒ 走权限分支。
-   * 之所以现在就留出这个字段：项目契约 `jh()` 的三元里 **plan 必须先判**
+   * 之所以现在就留出这个字段：应用约定 `jh()` 的三元里 **plan 必须先判**
    * （`plan + 完全访问` 要得 `'plan'` 而不是 `'bypassPermissions'`），
    * 这个**顺序**是极易写错的，留出字段 + 单测钉住顺序，B2 只需要往里传值。
    */
@@ -174,6 +202,10 @@ export interface RunOptions {
   collaborationBudget?: { maxParallelAgents: number; maxTotalAgents: number };
   /** 给工作流画布的阶段短名；只用于展示，不会注入模型。 */
   workflowStages?: string[];
+  /** 本轮路由命中的技能。主进程会先加载短说明，再由 SDK 按需读取完整技能。 */
+  skillPlan?: SkillRouteHint[];
+  /** 当前模型不可用时的有序备用模型；只在尚未产出内容的入口故障时切换。 */
+  fallbackModels?: string[];
   onWorkflow?: (run: WorkflowRun) => void;
 }
 
@@ -182,7 +214,7 @@ export interface RunOptions {
  *
  * 完整形状见 `sdk.d.ts:206-266`（`CanUseTool`）。这里只声明用到的两个，
  * 其余（`title` / `displayName` / `description` / `requestId` / `toolUseID` …）
- * 暂时不用：审批框的直接文案走渲染层 i18n（项目契约词典里已有
+ * 暂时不用：审批框的直接文案走渲染层 i18n（应用约定词典里已有
  * `composer.composerPendingApprovalPanel.*` 整套），不消费 CLI 渲染的句子。
  *
  * ⚠️ 用可选字段而不是 required：这个参数是 SDK 给的，**我们不能假定它一定给全**
@@ -263,6 +295,8 @@ export class AgentSession extends EventEmitter {
   private subagentTasks = new Map<string, AgentActivity>();
   private workflow?: WorkflowTrace;
   private workflowHadError = false;
+  /** SDK 可能用 result:error 表示供应商失败，而不是抛出异常；先暂存，便于模型池回退。 */
+  private pendingModelError: Error | null = null;
   /**
    * 正在等待用户作答的提问：requestId → resolve。
    *
@@ -274,7 +308,7 @@ export class AgentSession extends EventEmitter {
   /**
    * 正在等待用户审批的工具调用：requestId → resolve。
    *
-   * 对应项目契约 `pendingApprovals` （`Map<requestId, {sessionId, resolve}>`）。
+   * 对应应用约定 `pendingApprovals` （`Map<requestId, {sessionId, resolve}>`）。
    * 与 `pendingQuestions` 同理：**必须保持 pending 直到用户真的决定**。
    * 松开它的三条路径：用户作答、abort、SDK 的 `signal` 被 abort。
    */
@@ -283,17 +317,17 @@ export class AgentSession extends EventEmitter {
   /**
    * 本次会话内用户点过「始终允许」的工具名。
    *
-   * 对应项目契约 `sessionAllowedTools`（逐 sessionId 分组；当前实现一个会话一个
+   * 对应应用约定 `sessionAllowedTools`（逐 sessionId 分组；当前实现一个会话一个
    * `AgentSession` 实例，所以这里一个 `Set` 就够，不必再按 sessionId 分）。
-   * **不落库**：项目契约也是内存态，重启应用后重新问 —— 这一点直接采用。
+   * **不落库**：应用约定也是内存态，重启应用后重新问 —— 这一点直接采用。
    */
   private sessionAllowedTools = new Set<string>();
 
   /**
-   * 本次 run 生效的**项目契约口径**权限值 —— 在 `run()` 里算好。
+   * 本次 run 生效的**应用约定口径**权限值 —— 在 `run()` 里算好。
    *
    * ⚠️ 它**不是**交给 SDK 的那个值（那个是 `sdkPermissionModeFor()` 的结果）。
-   *    项目契约也是如此：`buildCanUseTool` 门内比的是 app 级值（`'full-access'`），
+   *    应用约定也是如此：`buildCanUseTool` 门内比的是 app 级值（`'full-access'`），
    *    SDK 拿到的是 `jh()` 的产物。见 `permissions.ts` 文件头"二"。
    */
   private canonicalPermissionMode: CanonicalPermissionMode = 'full-access';
@@ -416,7 +450,7 @@ export class AgentSession extends EventEmitter {
     // SDK 侧那一次 tool 调用会卡到进程退出。
     this.settleAllQuestions(null);
     // 审批同理：挂着的审批不松开，整个回合就卡死在等用户点按钮上。
-    // 松开时给 `'cancel'`（项目契约语义：中断本轮），而不是 `'decline'` ——
+    // 松开时给 `'cancel'`（应用约定语义：中断本轮），而不是 `'decline'` ——
     // 用户按的是「停止」，不该让模型以为"用户拒绝了但可以接着干别的"。
     this.settleAllApprovals('cancel');
     this.activeInput?.close();
@@ -453,8 +487,8 @@ export class AgentSession extends EventEmitter {
   /**
    * 渲染层提交一条审批决定。
    *
-   * 对应项目契约 `resolveApproval(sessionId, requestId, decision)`  ——
-   * 项目契约会核对 sessionId，当前实现一个实例只管一个会话，所以只需按 requestId 命中。
+   * 对应应用约定 `resolveApproval(sessionId, requestId, decision)`  ——
+   * 应用约定会核对 sessionId，当前实现一个实例只管一个会话，所以只需按 requestId 命中。
    *
    * @returns 是否命中了一条正在等待的审批（没命中说明它已经被 abort 或已经答过了）
    */
@@ -484,13 +518,13 @@ export class AgentSession extends EventEmitter {
    *   （见 sdk.mjs：`if(canUseTool) push("--permission-prompt-tool","stdio")`）。
    *   → 所以「只加 onUserDialog + supportedDialogKinds」不能解锁这个工具，必须给 canUseTool。
    *
-   * ── ⚠️ 顺序不能动（按语义对应项目契约 `buildCanUseTool()`  的 if 链） ──
+   * ── ⚠️ 顺序不能动（按语义对应应用约定 `buildCanUseTool()`  的 if 链） ──
    *
    *   ① `AskUserQuestion`  **最先**。若排到权限门后面，在"需要批准"模式下
    *      会先弹一个"要不要允许 AskUserQuestion"的审批框 —— 用户要批准一次
    *      "能不能问你问题"，荒谬且会把弹窗链路变成两层。
-   *   ② （项目契约此处是 `ExitPlanMode` → 捕获计划并 deny；当前实现没有 plan 模式，
-   *      B2 落地时这一支必须插在**③ 之前** —— 项目契约就是插在这儿的。
+   *   ② （应用约定此处是 `ExitPlanMode` → 捕获计划并 deny；当前实现没有 plan 模式，
+   *      B2 落地时这一支必须插在**③ 之前** —— 应用约定就是插在这儿的。
    *      插到 ③ 之后的话，plan + 完全访问 会先被 ③ 全放行、计划永远捕获不到。）
    *   ③ `'full-access'` 全放行      ← 见 `gateStepFor`
    *   ④ 只读工具白名单 放行          ← 见 `gateStepFor`
@@ -498,8 +532,8 @@ export class AgentSession extends EventEmitter {
    *   ⑥ 其余 → 发审批请求并等待
    *
    * ── 与 SDK `permissionMode` 的关系（这条最容易搞错） ──
-   *   门内比的是**项目契约口径的 app 级权限值**（`'full-access'`），
-   *   **不是**交给 SDK 的 `'bypassPermissions'`。项目契约同样如此，理由见
+   *   门内比的是**应用约定口径的 app 级权限值**（`'full-access'`），
+   *   **不是**交给 SDK 的 `'bypassPermissions'`。应用约定同样如此，理由见
    *   `permissions.ts` 文件头"二"。所以下面用 `this.canonicalPermissionMode`。
    *
    * ── 关于 `[CLAUDE_SDK_CAN_USE_TOOL_SHADOWED]` ──
@@ -523,7 +557,7 @@ export class AgentSession extends EventEmitter {
     //    才能退出 plan。走 requestApproval 复用审批框全链路（pending/超时/abort 清理），
     //    渲染层 ApprovalDialog 按 kind==='plan' 展示计划全文。
     //    ⚠️ 必须插在 ③ 全放行之前：否则 plan + 完全访问 会先被 ③ 放行，计划永远捕获不到
-    //    （项目契约同位， if 链 ②）。
+    //    （应用约定同位， if 链 ②）。
     if (toolName === 'ExitPlanMode') {
       return this.requestApproval(toolName, input, ctx);
     }
@@ -613,13 +647,13 @@ export class AgentSession extends EventEmitter {
       toolName,
     };
 
-    // 推给渲染层弹审批框（IPC 层订阅 'approval-ask'，对应项目契约 approval-request 流事件）
+    // 推给渲染层弹审批框（IPC 层订阅 'approval-ask'，对应应用约定 approval-request 流事件）
     this.emit('approval-ask', request);
 
     const decision = await new Promise<ApprovalDecision>((resolve) => {
       this.pendingApprovals.set(requestId, resolve);
       // SDK 给的 signal：它被 abort 时（SDK 侧取消了这次工具调用）把我们松开，
-      // 否则这条 promise 会挂到永远 —— 这是项目契约的处理方式，不是我自己加的。
+      // 否则这条 promise 会挂到永远 —— 这是应用约定的处理方式，不是我自己加的。
       ctx.signal?.addEventListener(
         'abort',
         () => {
@@ -668,10 +702,13 @@ export class AgentSession extends EventEmitter {
      */
     const controller = new AbortController();
     this.abortController = controller;
+    let retryOpts: RunOptions | null = null;
     this.blocks = [];
     this.streamIndex = -1;
     this.subagentTasks.clear();
     this.workflowHadError = false;
+    this.pendingModelError = null;
+    const skillPrelude = routedSkillPrelude(opts.skillPlan);
     this.workflow = opts.onWorkflow
       ? new WorkflowTrace(
           this.sessionId,
@@ -680,10 +717,13 @@ export class AgentSession extends EventEmitter {
           opts.collaborationBudget?.maxParallelAgents ?? DEFAULT_MAX_PARALLEL_AGENTS,
           opts.collaborationBudget?.maxTotalAgents ?? 4,
           opts.workflowStages,
+          opts.agentRoster ? Object.keys(opts.agentRoster) : undefined,
         )
       : undefined;
+    this.workflow?.recordSkillPrelude(skillPrelude.loaded);
 
     this.emitEvent({ type: 'session-start', sessionId: this.sessionId });
+    this.emit('model', opts.model);
 
     try {
       const query = await loadSdk();
@@ -708,7 +748,7 @@ export class AgentSession extends EventEmitter {
       // ── 组装 SDK 选项 ──────────────────────────────────────
       /**
        * 权限值**在这里算一次**，两处消费共用（见 `permissions.ts` 文件头）：
-       *   · `sdkMode`      → 交给 SDK 的 `permissionMode`（等价项目契约 `jh()` ）
+       *   · `sdkMode`      → 交给 SDK 的 `permissionMode`（等价应用约定 `jh()` ）
        *   · `this.canonicalPermissionMode` → `canUseTool` 门内比的 app 级值
        *
        * 顺带把测试环境那条"默认值分支"钉在这里：`opts.permissionMode` 为 `undefined`
@@ -741,7 +781,7 @@ export class AgentSession extends EventEmitter {
          */
         permissionMode: sdkMode,
         // ⚠️ **无条件 true，不要跟着 permissionMode 改。**
-        //    项目契约  的同对象里 `'allowDangerouslySkipPermissions': !0x0` 也是无条件的
+        //    应用约定  的同对象里 `'allowDangerouslySkipPermissions': !0x0` 也是无条件的
         //    （连 plan 模式下都是 true）。拦不拦工具是 `permissionMode` 管的事，
         //    这个开关只管"允许不允许用 bypassPermissions 这个模式本身"
         //    （SDK 的硬要求：`sdk.d.ts:1748` 'Must be set to true when using
@@ -768,7 +808,7 @@ export class AgentSession extends EventEmitter {
 
       if (claudePath) options.pathToClaudeCodeExecutable = claudePath;
       if (opts.model) options.model = sdkModel(opts.provider, opts.model);
-      // 项目契约兼容接口不暴露 Anthropic 服务端搜索，改用实际可用的浏览器/网页工具。
+      // 应用约定兼容接口不暴露 Anthropic 服务端搜索，改用实际可用的浏览器/网页工具。
       if (opts.provider.apiFormat === 'openai') options.disallowedTools = ['WebSearch'];
       // SDK 的快速模式属于 settings 层，而不是 query options 顶层字段。
       // 只有调用方确认当前供应商/模型支持时才注入，避免第三方端点收到未知配置。
@@ -781,7 +821,7 @@ export class AgentSession extends EventEmitter {
       }
       options.systemPrompt = {
         type: 'preset', preset: 'claude_code',
-        append: [opts.workspaceInstructions, opts.systemPrompt].filter(Boolean).join('\n\n'),
+        append: [opts.workspaceInstructions, opts.systemPrompt, skillPrelude.prompt].filter(Boolean).join('\n\n'),
       };
       if (opts.resumeSessionId) options.resume = opts.resumeSessionId;
       if (this.workflow) {
@@ -797,7 +837,7 @@ export class AgentSession extends EventEmitter {
         options.forwardSubagentText = false;
       }
 
-      // 用户配置的 MCP 服务器（设置/扩展里的「连接器」，项目契约 settings.mcpServers 语义）：
+      // 用户配置的 MCP 服务器（设置/扩展里的「连接器」，应用约定 settings.mcpServers 语义）：
       // stdio 型 → SDK stdio server；http 型 → SDK http server。
       // 延迟 import 避免循环依赖（config store 不依赖本模块）。
       const { getRuntimeMcpServers } = await import('../store/config');
@@ -889,6 +929,11 @@ export class AgentSession extends EventEmitter {
           stream,
           onMessage: (msg) => {
             this.handleSdkMessage(msg);
+            // 有些兼容接口把 429/5xx/API 错误包装在 result 帧中。把它转成异常，
+            // 复用同一套备用模型回退逻辑；已经产生正文或工具调用时不重跑。
+            if (this.pendingModelError && this.blocks.length === 0 && (opts.fallbackModels?.length ?? 0) > 0) {
+              throw this.pendingModelError;
+            }
             const frame = msg && typeof msg === 'object' ? msg as Record<string, unknown> : null;
             if (!contextConfigured && frame?.type === 'system' && frame.subtype === 'init') {
               contextConfigured = true;
@@ -926,16 +971,42 @@ export class AgentSession extends EventEmitter {
           reason: 'background-timeout',
         });
       } else {
-        this.emitEvent({ type: 'session-end', sessionId: this.sessionId });
+        // 回调在异步事件流中设置这个字段，先经 unknown 取出，避免 TypeScript
+        // 把跨回调的属性收窄成“永远为空”的 never。
+        const resultError = this.pendingModelError as unknown as Error | null;
+        if (resultError !== null) {
+          this.pendingModelError = null;
+          this.emitEvent({ type: 'session-error', message: resultError.message });
+          this.emitEvent({ type: 'session-end', sessionId: this.sessionId, reason: 'error' });
+        } else {
+          this.emitEvent({ type: 'session-end', sessionId: this.sessionId });
+        }
       }
     } catch (err) {
       if (controller.signal.aborted) {
         this.emitEvent({ type: 'session-end', sessionId: this.sessionId });
         return;
       }
-      const message = err instanceof Error ? err.message : String(err);
-      this.emitEvent({ type: 'session-error', message });
-      this.emitEvent({ type: 'session-end', sessionId: this.sessionId, reason: 'error' });
+      const canRetry = this.blocks.length === 0 && isRetryableModelError(err) && (opts.fallbackModels?.length ?? 0) > 0;
+      if (canRetry) {
+        const [next, ...rest] = opts.fallbackModels ?? [];
+        if (next && next !== opts.model) {
+          // 失败发生在首个内容块之前，因此不会重复正文或工具调用。
+          retryOpts = {
+            ...opts,
+            model: next,
+            fallbackModels: rest,
+            // 不把只初始化了一半的 SDK 会话交给另一个模型续传。
+            resumeSessionId: undefined,
+          };
+          console.warn(`[model-pool] ${opts.model} 暂不可用，切换备用模型 ${next}`);
+        }
+      }
+      if (!retryOpts) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.emitEvent({ type: 'session-error', message });
+        this.emitEvent({ type: 'session-end', sessionId: this.sessionId, reason: 'error' });
+      }
     } finally {
       this.running = false;
       this.activeInput?.close();
@@ -943,6 +1014,9 @@ export class AgentSession extends EventEmitter {
       this.activeInput = null;
       this.activeQuery = null;
       this.abortController = null;
+      if (retryOpts && !controller.signal.aborted) {
+        await this.run(retryOpts);
+      }
     }
   }
 
@@ -1005,13 +1079,16 @@ export class AgentSession extends EventEmitter {
         if (m.subtype && m.subtype !== 'success') {
           // max_turns / error_* 都要让用户看见
           const detail = m.result ?? m.subtype;
-          this.emitEvent({
-            type: 'session-error',
-            message:
-              m.subtype === 'error_max_turns'
-                ? `已达到最大轮次上限，任务可能未完成。${typeof detail === 'string' ? detail : ''}`
-                : `任务异常结束：${m.subtype}`,
-          });
+          const message = m.subtype === 'error_max_turns'
+            ? `已达到最大轮次上限，任务可能未完成。${typeof detail === 'string' ? detail : ''}`
+            : `任务异常结束：${typeof detail === 'string' ? detail : m.subtype}`;
+          const resultError = new Error(message);
+          if (this.blocks.length === 0 && isRetryableModelError(resultError)) {
+            // 延迟到 run() 决定是否存在备用模型；没有备用模型时会在正常收尾路径显示。
+            this.pendingModelError = resultError;
+          } else {
+            this.emitEvent({ type: 'session-error', message });
+          }
         }
         /**
          * 一个 `result` = 一个回合的边界。

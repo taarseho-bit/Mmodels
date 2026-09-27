@@ -1,7 +1,7 @@
 /**
  * 设置页 ⑭ 关于
  *
- * 对齐项目契约 s13-about：
+ * 对齐应用约定 s13-about：
  *   - 顶部「版本 x.x.x」行 + 「检查更新」按钮（自动更新 → 按既定决策保留骨架并置灰）
  *   - 「版本更新」changelog 区块（最近 3 个版本）+「在网页查看全部更新」
  *   - 外部链接 2×2 网格（官网 / 小红书 / QQ 群 / GitHub）
@@ -13,7 +13,7 @@ import { tx, txPlural, t } from '../../i18n';
 import { Section } from './shared';
 import { CHANGELOG } from '../WhatsNew';
 
-/** changelog 里展示的版本数（项目契约为「最近 3 个版本」） */
+/** changelog 里展示的版本数（应用约定为「最近 3 个版本」） */
 const RELEASE_WINDOW = 3;
 
 export function AboutSection(): JSX.Element {

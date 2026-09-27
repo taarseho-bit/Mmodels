@@ -1,13 +1,13 @@
 /**
  * 算法市场 + Python 运行时管理。
  *
- * 项目契约语义（从 renderer ExtensionsPage chunk 与主进程字符串还原）：
+ * 应用约定语义（从 renderer ExtensionsPage chunk 与主进程字符串还原）：
  *   - 目录三个来源：remote（远端拉取）/ cache（上次缓存）/ bundled（随包内置）
  *     当前版本直接用 **bundled**（resources/algorithms/catalog.json），离线可用 —— 这是既定的优化。
  *   - 条目字段：task 分类（decision/prediction/classification/clustering/optimization/
  *     multiObjective/statistics）、packageName/versionRange、license、suitableFor/inputs/outputs/notFor、docs
  *   - Python 运行时状态机：ready / installable / no-python / broken
- *   - 项目契约有 /install-python 服务路由：下载官方安装器静默安装。
+ *   - 应用约定有 /install-python 服务路由：下载官方安装器静默安装。
  *     当前版本走 **npmmirror 镜像**（官方源在本机不通，见项目记忆）。
  *
  * 安装状态机：对每个 unique packageName 用 `python -c "import ..."` 探测（比 pip show 快且准）。
@@ -73,7 +73,7 @@ function execFileP(cmd: string, args: string[], timeout = 15000): Promise<{ code
   });
 }
 
-/** Python 运行时状态机（对应项目契约 runtimeReady / runtimeInstallable / runtimeNoPython / runtimeBroken） */
+/** Python 运行时状态机（对应应用约定 runtimeReady / runtimeInstallable / runtimeNoPython / runtimeBroken） */
 async function pythonRuntime(): Promise<{ state: RuntimeState; cmd: string | null; version: string; pipOk: boolean }> {
   // ⚠️ `await`：`findPython` 会**逐个候选试**（见其注释），不再是同步取候选表首项
   const py = await findPython();
@@ -129,7 +129,7 @@ function cacheGet(e: CacheEntry | null | undefined): unknown | null {
 // ── 注册 ─────────────────────────────────────────────────────
 
 export function registerAlgorithmHandlers(_ctx: IpcCtx): void {
-  /** 目录 + 安装状态（对应项目契约 GET /api/algorithms） */
+  /** 目录 + 安装状态（对应应用约定 GET /api/algorithms） */
   ipcMain.handle(
     IPC.ALG_LIST,
     safeWrap(async () => {
@@ -173,7 +173,7 @@ export function registerAlgorithmHandlers(_ctx: IpcCtx): void {
   );
 
   /**
-   * pip 安装算法依赖（对应项目契约「安装」→ agentWillPrepare 的直装路径）。
+   * pip 安装算法依赖（对应应用约定「安装」→ agentWillPrepare 的直装路径）。
    * 直接用检测到的 Python 的 pip 装到用户环境；日志实时推渲染层。
    */
   ipcMain.handle(
@@ -239,7 +239,7 @@ export function registerAlgorithmHandlers(_ctx: IpcCtx): void {
   );
 
   /**
-   * Python 一键安装（对应项目契约 /install-python）。
+   * Python 一键安装（对应应用约定 /install-python）。
    * 下载官方安装器（npmmirror 镜像）→ 静默安装（当前用户级，PrependPath）→ 重新检测。
    * 进度通过 ALG_PYTHON_PROGRESS 推送。
    */

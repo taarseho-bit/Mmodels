@@ -90,7 +90,7 @@ describe('核心能力对齐', () => {
       .toEqual({ one: { type: 'http', url: 'https://example.org/mcp', headers: undefined } });
     expect(() => userMcpOptions([{ name: 'broken', transport: 'stdio' }])).toThrow('启动命令');
   });
-  it('项目契约 DeepSeek 长上下文映射只作用于匹配端点', () => {
+  it('应用约定 DeepSeek 长上下文映射只作用于匹配端点', () => {
     expect(sdkModel({ ...provider, apiFormat: 'anthropic', baseUrl: 'https://api.deepseek.com/anthropic' }, 'deepseek-v4-flash')).toBe('deepseek-v4-flash[1m]');
     expect(sdkModel(provider, 'deepseek-flash')).toBe('deepseek-flash[1m]');
   });
@@ -117,8 +117,8 @@ describe('核心能力对齐', () => {
     const plugin = projectSkillsPlugin(cwd, join(dir, 'storage'));
     expect(plugin).toContain('project-skills-plugins');
     expect(projectSkillsPlugin(cwd, join(dir, 'storage'))).toBe(plugin);
-    writeFileSync(join(cwd, 'AGENTS.md'), '项目契约'); writeFileSync(join(cwd, 'CLAUDE.md'), '补充约定');
-    expect(workspaceInstructions(cwd)).toContain('项目契约'); expect(workspaceInstructions(cwd)).toContain('补充约定');
+    writeFileSync(join(cwd, 'AGENTS.md'), '应用约定'); writeFileSync(join(cwd, 'CLAUDE.md'), '补充约定');
+    expect(workspaceInstructions(cwd)).toContain('应用约定'); expect(workspaceInstructions(cwd)).toContain('补充约定');
   });
   it('统计分开入口、Skill、Agent、连接器，超过20类仍计算总数', () => {
     const rows = [

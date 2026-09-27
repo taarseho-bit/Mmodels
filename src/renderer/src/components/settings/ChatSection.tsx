@@ -1,7 +1,7 @@
 /**
  * 设置页 ③ 对话
  *
- * 对齐项目契约：本分区只有一张卡「追问行为」（`settings.settingsPage.conversation.*`）。
+ * 对齐应用约定：本分区只有一张卡「追问行为」（`settings.settingsPage.conversation.*`）。
  * 默认任务模式在输入区的模式选择器里，Agent 权限在输入区右下角的权限选择器里，
  * 此处不再重复提供（设置字段本身仍由 Composer 读写，未删）。
  */
@@ -22,7 +22,7 @@ export function ChatSection(): JSX.Element {
 
   return (
     <div className="col" style={{ gap: 22 }}>
-      {/* 项目契约唯一一张卡：标题 + 描述在左，下拉在右 */}
+      {/* 应用约定唯一一张卡：标题 + 描述在左，下拉在右 */}
       <div className="panel row chat-followup" style={{ padding: 14, gap: 14 }}>
         <div className="col grow" style={{ gap: 3 }}>
           <span style={{ fontSize: 13, fontWeight: 500 }}>

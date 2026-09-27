@@ -1,7 +1,7 @@
 /**
- * 输入区（Composer）—— 当前实现项目契约的结构。
+ * 输入区（Composer）—— 当前实现应用约定的结构。
  *
- * 项目契约的输入区远不止一个文本框，自上而下三层：
+ * 应用约定的输入区远不止一个文本框，自上而下三层：
  *   ① 上下文栏：项目选择器 · 任务模式选择器 · 比赛模板选择器 ……… 比赛信息
  *   ② 附件 chips + 文本框
  *   ③ 底部栏：＋ 添加文件 · 权限选择器 ……… 模型·推理强度 · 发送
@@ -9,7 +9,7 @@
  * 文案来源于项目资料 `composer.composerContextBar.*` / `composer.composerPermissionPicker.*` /
  * `chat.modelPicker.*` / `composer.composerAttachments.*`。
  *
- * 项目契约发送按钮左侧的计费提示依赖在线积分体系，当前版本不显示这一项。
+ * 应用约定发送按钮左侧的计费提示依赖在线积分体系，当前版本不显示这一项。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -99,7 +99,7 @@ function pageLimitFromDraft(draft: PaperPageLimitDraft): PaperPageLimit | null {
   };
 }
 
-/** 模式 → 发送时自动附加的斜杠命令（项目契约行为：模式本质是预设命令） */
+/** 模式 → 发送时自动附加的斜杠命令（应用约定行为：模式本质是预设命令） */
 const MODE_COMMAND: Record<ComposerMode, string | null> = {
   chat: null,
   paper: '/write-paper',
@@ -112,15 +112,15 @@ const MODE_COMMAND: Record<ComposerMode, string | null> = {
 /**
  * 自定义比赛字段的 id 前缀。
  *
- * 项目契约 `contestFields` 是数组，加一项就是自定义字段；这里给本地生成的 id 一个前缀，
+ * 应用约定 `contestFields` 是数组，加一项就是自定义字段；这里给本地生成的 id 一个前缀，
  * 好处是**重开弹层时只靠文件内容就能认出哪些是自定义行**，不必等模板列表加载完
  * （否则每换一次模板都要重新判定，判定错会让用户填的值看起来"丢了"）。
  */
 /**
  * 「用户自己加的字段」的 id 前缀。
  *
- * ⚠️ 后缀里**不能带下划线**：项目契约 `contestFields` 的字段 id schema 是
- *    `z.string().min(1).max(64).regex(/^[a-z][A-Za-z0-9]*$/)`（从项目契约未混淆的渲染层
+ * ⚠️ 后缀里**不能带下划线**：应用约定 `contestFields` 的字段 id schema 是
+ *    `z.string().min(1).max(64).regex(/^[a-z][A-Za-z0-9]*$/)`（从应用约定未混淆的渲染层
  *    bundle 里挖到，`Gk` 定义：`q().min(1).max(64).regex(/^[a-z][A-Za-z0-9]*$/)`）——
  *    小驼峰、只允许 [A-Za-z0-9]。所以前缀用 `custom`（而不是 `custom_`），
  *    后半段也只用 `toString(36)` 的字母数字。
@@ -189,12 +189,12 @@ const HASH_TASKS: HashTask[] = [
  */
 export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 const EFFORT_LEVELS: EffortLevel[] = ['low', 'medium', 'high', 'xhigh', 'max'];
-/** 项目契约模型 chip 默认显示「高」。设置里没选过时按 高 展示（不写回设置，避免挂载即写入） */
+/** 应用约定模型 chip 默认显示「高」。设置里没选过时按 高 展示（不写回设置，避免挂载即写入） */
 const DEFAULT_EFFORT: EffortLevel = 'high';
 /**
  * 档位 → 词典键。
  *
- * ⚠️ **不能机械拼 `effort${首字母大写}`**：项目契约这两个档位的键名不是规则拼法 ——
+ * ⚠️ **不能机械拼 `effort${首字母大写}`**：应用约定这两个档位的键名不是规则拼法 ——
  * `xhigh` 的键是 `effortExtra`（'超高'）、`max` 的键是 `effortMax`（'最大'）。
  * 机械拼会得到 `effortXhigh`，而那个键**在词典里不存在** ——
  * `tx()` 取不到值时会把**键路径原样渲染到界面上**（本项目的静默失败形态）。
@@ -223,12 +223,12 @@ interface ModelOption {
   /** 显示给用户的服务商名称，便于多个供应商同名模型的区分 */
   providerName?: string;
   id: string;
-  /** 右侧的上下文窗口徽标（项目契约：1M / 200K） */
+  /** 右侧的上下文窗口徽标（应用约定：1M / 200K） */
   badge?: string;
 }
 
 /**
- * 内置模型目录 —— 项目契约 14-menu-model 列出的 5 个模型，直接采用。
+ * 内置模型目录 —— 应用约定 14-menu-model 列出的 5 个模型，直接采用。
  *
  * 数据来源优先级：**本机已配置的供应商/模型**（`useApp().providers`）；
  * 一个都没配时回落到这份内置目录，保证模型选择器与原生 UI 一致且可点选
@@ -242,7 +242,7 @@ const BUILTIN_MODELS: ModelOption[] = [
   { providerId: '', id: 'claude-haiku-4-5', badge: '200K' },
 ];
 
-/** 未配置任何模型时 chip 显示哪个（项目契约选中项就是 claude-sonnet-5） */
+/** 未配置任何模型时 chip 显示哪个（应用约定选中项就是 claude-sonnet-5） */
 const DEFAULT_MODEL_ID = 'claude-sonnet-5';
 
 /** 供应商自带的模型名里若写了 `[1M]` / `[200K]`，取出来当徽标 */
@@ -254,7 +254,7 @@ function badgeOf(modelId: string): string | undefined {
 /**
  * 「完全访问」的图标 —— lucide `shield-alert`（盾牌 + 感叹号）。
  *
- * 图标表里只提取到了 `shield-check`，而项目契约 15-menu-permission 用的是带感叹号的
+ * 图标表里只提取到了 `shield-check`，而应用约定 15-menu-permission 用的是带感叹号的
  * 盾牌（托盘文案也是「完全访问」而非「已批准」）。图标在这里直接绘制，
  * 避免为一个小图标改动整张图标数据表。
  */
@@ -284,7 +284,7 @@ function ShieldAlertIcon({ size = 13 }: { size?: number }): JSX.Element {
 /**
  * 附件图标选择。
  *
- * 项目契约渲染附件只有两种形态：图片给缩略图，其余给「小图标 + 文件名」。
+ * 应用约定渲染附件只有两种形态：图片给缩略图，其余给「小图标 + 文件名」。
  * 这里对齐它 —— **只用图标区分类型，不显示任何文字标签**。
  * （曾经用文字徽标且无扩展名时退化成英文 "file"，界面上会突然冒出一个英文单词。）
  */
@@ -322,7 +322,7 @@ interface Attachment {
    * 小写扩展名（不含点），用于挑图标。空串表示没有扩展名。
    *
    * ⚠️ 早先这里是个文字徽标，还写成 `ext || 'file'` —— 没有扩展名的文件
-   *    会在附件上渲染出英文单词 "file"。**项目契约没有这种东西**：
+   *    会在附件上渲染出英文单词 "file"。**应用约定没有这种东西**：
    *    它渲染附件只有两种形态 —— 图片给缩略图，其余给「小图标 + 文件名」。
    *    所以这里只保留扩展名用来选图标，不显示任何文字标签。
    */
@@ -336,7 +336,7 @@ export interface ComposerSendOptions {
   displayText?: string;
   /**
    * **对设置里选的行为取反**（不是恒定打断）。
-   * 项目契约设置页描述：「Ctrl/Cmd+Enter 可为单条消息临时使用相反行为」——
+   * 应用约定设置页描述：「Ctrl/Cmd+Enter 可为单条消息临时使用相反行为」——
    * 所以设置为「排队」时它打断，设置为「调整当前任务」时它排队。
    */
   invertFollowUp?: boolean;
@@ -530,7 +530,7 @@ export function Composer({
     });
   };
 
-  // ── 「＋」菜单（项目契约 `data-tour="composer-plus"` 那个 Popover）──
+  // ── 「＋」菜单（应用约定 `data-tour="composer-plus"` 那个 Popover）──
   /**
    * 二级子菜单开关。与「思考强度」同一套"悬停展开 + 点击固定 + 延时关闭"，
    * 只是这里要记**哪一个**子菜单开着。
@@ -540,7 +540,7 @@ export function Composer({
   /**
    * ⚠️ 这里**故意没有** `research` / `webSearch` 两个开关的 state。
    *
-   * 项目契约那两个开关是"只有状态、没有消费者"的（拨了不改变任何东西，取证贴在
+   * 应用约定那两个开关是"只有状态、没有消费者"的（拨了不改变任何东西，取证贴在
    * `PlusMenu.tsx` 文件头），所以当前实现把它们降级成**不可交互的展示项**，
    * 不再持有状态 —— 见裁决「宁可少一个开关，也不要多一个骗人的开关」。
    */
@@ -565,7 +565,7 @@ export function Composer({
   const [pageLimitDraft, setPageLimitDraft] = useState<PaperPageLimitDraft>(EMPTY_PAGE_LIMIT);
   const [setupOpen, setSetupOpen] = useState(false);
   /**
-   * 用户**自己加**的比赛字段（项目契约 `contestFields` 是数组，加一项就是自定义字段）。
+   * 用户**自己加**的比赛字段（应用约定 `contestFields` 是数组，加一项就是自定义字段）。
    * 只存 id + label，值统一在 `paperFields[id]` 里，读写只有一处。
    */
   const [customFields, setCustomFields] = useState<{ id: string; label: string }[]>([]);
@@ -580,7 +580,7 @@ export function Composer({
   const [srcTpl, setSrcTpl] = useState<PaperTemplateRef | null>(null);
 
   // ⚠️ 兜底必须是 'paper' 而不是 'chat'。
-  //    项目契约 composerMode 默认就是 "paper"（zod schema 与运行时兜底都是），
+  //    应用约定 composerMode 默认就是 "paper"（zod schema 与运行时兜底都是），
   //    只有 paper 模式才会显示「比赛模板选择器 + 比赛信息」，并把占位文字
   //    换成「粘贴题目，或拖入题目 PDF / 附件…」。
   //    兜底写成 chat 会让首屏看不到任何比赛相关内容 —— 用户会以为功能没做。
@@ -636,7 +636,7 @@ export function Composer({
     if (!template) return srcTpl;
     return {
       id: template.id,
-      // 落成项目契约 `Np` 对象（两键必填非空）；en 取 template.json 的 name.en
+      // 落成应用约定 `Np` 对象（两键必填非空）；en 取 template.json 的 name.en
       name: makeLocalizedText(template.name, template.nameEn),
       entryFile: template.entryFile,
       source: 'builtin',
@@ -653,7 +653,7 @@ export function Composer({
     sourcePath?: string | null;
   } | null = (() => {
     const ref = templateRefForSave();
-    // 磁盘上的 `ref.name` 现在是项目契约 `Np` 对象 —— 渲染前按界面语言取一个字符串
+    // 磁盘上的 `ref.name` 现在是应用约定 `Np` 对象 —— 渲染前按界面语言取一个字符串
     const lang = settings?.locale ?? 'zh-CN';
     if (template) {
       // 自定义模板源下，名字/描述以磁盘上的 ref 为准 ——
@@ -681,9 +681,9 @@ export function Composer({
   /** 组装要落盘的 contestFields：模板自带的在前，用户自定义的在后（顺序稳定，便于比对） */
   const contestFieldsForSave = useCallback((): PaperContestField[] => {
     const out: PaperContestField[] = [];
-    // 写侧**一律落成项目契约 `Np` 对象**：模板自带字段的 en 取 template.json 的
+    // 写侧**一律落成应用约定 `Np` 对象**：模板自带字段的 en 取 template.json 的
     // `fields[].label.en`（如「题号」→「Problem」）；用户手填的自定义字段只有中文名，
-    // en 用中文原文兜底 —— 但两个键都必须非空（项目契约 `Np` 是 `min(1)`）。
+    // en 用中文原文兜底 —— 但两个键都必须非空（应用约定 `Np` 是 `min(1)`）。
     for (const f of template?.fields ?? []) {
       const v = (paperFields[f.id] ?? '').trim();
       if (v) out.push({ id: f.id, label: makeLocalizedText(f.label, f.labelEn), value: v });
@@ -696,7 +696,7 @@ export function Composer({
   }, [template, paperFields, customFields]);
 
   const addCustomField = useCallback((): void => {
-    // 后缀只用 base36 的字母数字，整体满足项目契约 id schema（见 CUSTOM_FIELD_PREFIX 注释）
+    // 后缀只用 base36 的字母数字，整体满足应用约定 id schema（见 CUSTOM_FIELD_PREFIX 注释）
     const id = `${CUSTOM_FIELD_PREFIX}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     setCustomFields((prev) => [...prev, { id, label: '' }]);
   }, []);
@@ -745,7 +745,7 @@ export function Composer({
    * 没人选过比赛时，自动认领一个。
    *
    * 规则直接采用模板自带的标记：优先 `defaultFor` 命中当前语言的，其次 `order` 最小的。
-   * 中文界面下就是 `cumcm`（国赛 CUMCM）—— 与项目契约首屏一致。
+   * 中文界面下就是 `cumcm`（国赛 CUMCM）—— 与应用约定首屏一致。
    *
    * ⚠️ 不做这一步，输入区只会显示「暂无模板」，
    *    而「比赛信息」按钮依赖 template 才渲染，于是永远不出现 ——
@@ -812,7 +812,7 @@ export function Composer({
         setCustomFields(
           list
             .filter((f) => f.id.startsWith(CUSTOM_FIELD_PREFIX))
-            // 读侧兼容：磁盘上的 `label` 可能是项目契约 `Np` 对象，也可能是早期版本写下的
+            // 读侧兼容：磁盘上的 `label` 可能是应用约定 `Np` 对象，也可能是早期版本写下的
             // 普通字符串 —— 只认一种，用户存好的字段名就丢了。
             .map((f) => ({ id: f.id, label: pickLocalizedText(f.label, settings?.locale ?? 'zh-CN') })),
         );
@@ -833,7 +833,7 @@ export function Composer({
   /**
    * 折叠起来的粘贴长文本。
    *
-   * ⚠️ 与 `attachments` 是**两个独立数组**（项目契约也是两个独立 setter）：
+   * ⚠️ 与 `attachments` 是**两个独立数组**（应用约定也是两个独立 setter）：
    *    附件走「路径清单」进正文，粘贴文本走正文末尾的 `<pasted_text>` 尾巴，
    *    两者在发送时的拼法完全不同，合并成一个数组会分不开。
    */
@@ -848,8 +848,8 @@ export function Composer({
    *
    * 之前这两个调用点是 `void saveConfig(...)` —— 失败被完全吞掉：用户点了「保存」，
    * 项目里那份 `.mathmodel/paper/config.json` 是用户手写的（`managedBy` 不是 mathmodel）
-   * 时，主进程按项目契约语义**拒绝写入**，而界面一声不响，用户以为存上了。
-   * 现在三种原因各自对应项目契约那条文案（`chat.newChatPage.paperConfig*`）。
+   * 时，主进程按应用约定语义**拒绝写入**，而界面一声不响，用户以为存上了。
+   * 现在三种原因各自对应应用约定那条文案（`chat.newChatPage.paperConfig*`）。
    */
   const savePaperConfig = useCallback(async (patch: PaperConfigPatch): Promise<void> => {
     const targetProjectId = project?.id;
@@ -950,7 +950,7 @@ export function Composer({
       });
   }, [addFromPaths]);
 
-  // ⌘U —— 项目契约 `Vk` 里 `composer.attach` 的键位，走统一分发器（不要再挂 keydown 监听）
+  // ⌘U —— 应用约定 `Vk` 里 `composer.attach` 的键位，走统一分发器（不要再挂 keydown 监听）
   useEffect(
     () => registerCommand('composer.attach', () => pickAttachments()),
     [pickAttachments],
@@ -977,7 +977,7 @@ export function Composer({
     [onChange, ref],
   );
 
-  /** 打开「＋」菜单时扫一次当前项目的数据文件（项目契约这三行是写死的样例名） */
+  /** 打开「＋」菜单时扫一次当前项目的数据文件（应用约定这三行是写死的样例名） */
   useEffect(() => {
     if (openMenu !== 'plus' || !project) return;
     let alive = true;
@@ -1049,7 +1049,7 @@ export function Composer({
     if (effectiveTpl) {
       // 用 contestFieldsForSave() 而不是直接遍历 paperFields：顺序稳定（模板字段在前、
       // 自定义字段在后），并且带上 label —— 用户自定义的字段名（"组别"）才是模型要看的。
-      // ⚠️ `label` 是项目契约 `Np` 对象，拼进正文前必须按语言解析，否则会写出 `[object Object]`。
+      // ⚠️ `label` 是应用约定 `Np` 对象，拼进正文前必须按语言解析，否则会写出 `[object Object]`。
       const lang = settings?.locale ?? 'zh-CN';
       const kv = contestFieldsForSave();
       if (kv.length) {
@@ -1081,7 +1081,7 @@ export function Composer({
     setAttachments([]);
     // ★2 粘贴 chip 同理：发完就清，否则下一条会把同一段长文再送一遍
     setPastedTexts([]);
-    // ★3 尾巴**不进 parts**：照项目契约 `n0e` 用两个换行接在正文**之后**（见 lib/pasted-text.ts）。
+    // ★3 尾巴**不进 parts**：照应用约定 `n0e` 用两个换行接在正文**之后**（见 lib/pasted-text.ts）。
     //    不要把 serializePasted(...) 塞进 parts —— 那会让尾巴与「参考以下文件：…」
     //    这类段落平级，正文为空时还会多出一个前导换行。
     // 最终文本交给父级（父级负责清空输入框）
@@ -1122,7 +1122,7 @@ export function Composer({
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!value.trim() && attachments.length === 0 && pastedTexts.length === 0) return;
-      // Ctrl/Cmd+Enter = 本次取反（项目契约：「临时使用相反行为」）；普通 Enter 按设置走
+      // Ctrl/Cmd+Enter = 本次取反（应用约定：「临时使用相反行为」）；普通 Enter 按设置走
       handleSend(e.ctrlKey || e.metaKey);
     }
   };
@@ -1130,19 +1130,20 @@ export function Composer({
   // ── 模型 / 思考强度 ──────────────────────────────────────
   /**
    * 可选模型列表：优先本机已配置的供应商，一个都没有时回落到内置目录。
-   * 内置目录对齐项目契约 14-menu-model 的 5 项，保证未配置时菜单也不是空的。
+   * 内置目录对齐应用约定 14-menu-model 的 5 项，保证未配置时菜单也不是空的。
    */
   const modelOptions = useMemo<ModelOption[]>(() => {
     const fromProviders: ModelOption[] = [];
     for (const p of providers) {
-      for (const m of p.models ?? []) {
+      const pool = p.modelPool?.length ? p.modelPool : (settings?.modelPool?.length && p.id === settings.activeProviderId ? settings.modelPool : p.models ?? []);
+      for (const m of pool) {
         fromProviders.push({ providerId: p.id, providerName: p.name, id: m, badge: badgeOf(m) });
       }
     }
     return fromProviders.length > 0 ? fromProviders : BUILTIN_MODELS;
-  }, [providers]);
+  }, [providers, settings?.modelPool, settings?.activeProviderId]);
 
-  /** 当前模型：设置里没选过就默认 claude-sonnet-5（项目契约选中项） */
+  /** 当前模型：设置里没选过就默认 claude-sonnet-5（应用约定选中项） */
   const model =
     settings?.defaultModel ||
     (modelOptions.some((o) => o.id === DEFAULT_MODEL_ID)
@@ -1215,12 +1216,12 @@ export function Composer({
             <Icon name="chevron-down" size={11} />
           </button>
           <Popover open={openMenu === 'project'} onClose={close}>
-            {/* 项目契约顺序：默认工作区（标题 + 副标题）→ 项目当前项(✓) → ⋯ → 导入文件夹… → 新建项目…
-                项目契约没有「项目」分组标题，也没有地球图标 */}
+            {/* 应用约定顺序：默认工作区（标题 + 副标题）→ 项目当前项(✓) → ⋯ → 导入文件夹… → 新建项目…
+                应用约定没有「项目」分组标题，也没有地球图标 */}
             <button
               className="cz-pop-item"
               onClick={() => {
-                // 项目契约：切回全局「默认工作区」。这里落到启动时播种的默认项目上。
+                // 应用约定：切回全局「默认工作区」。这里落到启动时播种的默认项目上。
                 void (async () => {
                   const id = await window.mathmodel.project.defaultId();
                   if (id) await openProject(id);
@@ -1254,7 +1255,7 @@ export function Composer({
             <button
               className="cz-pop-item"
               onClick={() => {
-                // 项目契约的「导入文件夹…」= 挑一个已存在的目录登记成项目。
+                // 应用约定的「导入文件夹…」= 挑一个已存在的目录登记成项目。
                 // 现有主进程能力里 PROJECT_CREATE 弹出的就是「选择或新建项目目录」
                 // 对话框（允许 openDirectory），目录已登记时只更新名称与打开时间 ——
                 // 语义正好是导入，直接复用，不新增 IPC。
@@ -1305,8 +1306,8 @@ export function Composer({
       {/* ── ② 附件 chips + 粘贴 chip + 文本框 ── */}
       {(attachments.length > 0 || pastedTexts.length > 0) && (
         <div className="cz-chips">
-          {/* ⚠️ 附件在前、粘贴 chip 在后 —— **这个先后顺序没有从项目契约确证**
-              （项目契约是同一容器里的两块列表，压缩码里读不出相对位置）。
+          {/* ⚠️ 附件在前、粘贴 chip 在后 —— **这个先后顺序没有从应用约定确证**
+              （应用约定是同一容器里的两块列表，压缩码里读不出相对位置）。
               待 `diff-chat` 补一张"同时放一个附件 + 一段长文本"的界面样例后对齐。 */}
           {attachments.map((a) => (
             <span key={a.id} className="cz-chip" title={a.path ?? a.name}>
@@ -1327,7 +1328,7 @@ export function Composer({
               key={p.id}
               item={p}
               onShowInTextField={() => {
-                // 项目契约语义：**展开进正文 + 移除 chip**
+                // 应用约定语义：**展开进正文 + 移除 chip**
                 // （不是"复制一份进正文、chip 留着" —— 那样再发一次会重复带同一段）
                 onChange(value.trim() ? `${value.trim()}\n\n${p.text}` : p.text);
                 setPastedTexts((prev) => prev.filter((x) => x.id !== p.id));
@@ -1382,7 +1383,7 @@ export function Composer({
         className="composer-input"
         placeholder={
           isRunning
-            ? // 项目契约为运行中准备了两条占位文案，正是「追问行为」两个取值：
+            ? // 应用约定为运行中准备了两条占位文案，正是「追问行为」两个取值：
               // 排队 → 「按 Enter 将下一条消息加入队列…」；调整 → 「按 Enter 可引导当前回合…」
               readFollowUpBehavior() === 'steer'
               ? tx('composer.composer.placeholderBusySteer')
@@ -1399,7 +1400,7 @@ export function Composer({
           el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
         }}
         onPaste={(e) => {
-          // 项目契约 `so` 的三分支（顺序不能换）：
+          // 应用约定 `so` 的三分支（顺序不能换）：
           // ① 剪贴板里是**文件** → 登记成附件并阻止默认粘贴（否则会把文件名或二进制垃圾塞进输入框）
           // ② 是**长文本**（≥4000 字符 或 ≥25 行）→ 折成 chip，同样吞掉这次粘贴
           // ③ 都不是 → **什么都不做**，让浏览器默认粘贴生效
@@ -1424,8 +1425,8 @@ export function Composer({
 
       {/* ── ③ 底部栏 ── */}
       <div className="cz-foot">
-        {/* 加号：项目契约点它弹出「添加附件、技能及更多内容」的弹层（不是直接推开右栏）。
-            ⚠️ 改动前这里是 `onClick={() => setSidePanel('files')}` —— tooltip 与项目契约
+        {/* 加号：应用约定点它弹出「添加附件、技能及更多内容」的弹层（不是直接推开右栏）。
+            ⚠️ 改动前这里是 `onClick={() => setSidePanel('files')}` —— tooltip 与应用约定
             字段一致、行为却完全不同。那条"一键打开文件面板"的路径**没有丢**：
             弹层最后一组里有一行「打开面板 · 文件」，指向同一个动作（见 PlusMenu.tsx）。 */}
         <div className="cz-slot">
@@ -1438,7 +1439,7 @@ export function Composer({
             <Icon name="plus" size={15} />
           </button>
           {/* `maxHeight` 只给这个菜单用（见 Popover 的注释）：11 行 ≈374px 全部可见，
-              对齐项目契约 `max-h-[var(--available-height,28rem)]`；`.cz-pop` 那个
+              对齐应用约定 `max-h-[var(--available-height,28rem)]`；`.cz-pop` 那个
               320px 还压在另外 5 个选择器上，所以不动它。 */}
           <Popover open={openMenu === 'plus'} onClose={close} maxHeight={PLUS_POPOVER_MAX_HEIGHT}>
             <PlusMenu
@@ -1542,7 +1543,7 @@ export function Composer({
             </span>
             <Icon name="chevron-down" size={11} />
           </button>
-          {/* 项目契约是**单行**项（没有第二行描述），选中项右侧独立 ✓，图标统一灰色描边 */}
+          {/* 应用约定是**单行**项（没有第二行描述），选中项右侧独立 ✓，图标统一灰色描边 */}
           <Popover open={openMenu === 'perm'} onClose={close}>
             {(['full', 'approval'] as PermissionMode[]).map((pm) => (
               <button
@@ -1630,7 +1631,7 @@ export function Composer({
             <Icon name="chevron-down" size={11} />
           </button>
           <Popover open={openMenu === 'model'} onClose={close} align="right">
-            {/* 项目契约：5 个模型 + 右侧上下文徽标 + 选中项 ✓，底部单行「思考强度 高 ›」二级入口 */}
+            {/* 应用约定：5 个模型 + 右侧上下文徽标 + 选中项 ✓，底部单行「思考强度 高 ›」二级入口 */}
             {modelOptions.map((o) => (
               <button
                 key={o.providerId + o.id}
@@ -1765,7 +1766,7 @@ export function Composer({
         )}
       </div>
 
-      {/* ⚠️ 这里项目契约**没有**任何「N 条消息 / 新建对话」行 ——
+      {/* ⚠️ 这里应用约定**没有**任何「N 条消息 / 新建对话」行 ——
           输入卡片到「＋ 完全访问」一行就结束，下面是「试试这些数模真题案例」。
           当前实现早期多出来的这一行已删除（00-main P1-3 / 11-chat P1-1）。 */}
 
@@ -1872,7 +1873,7 @@ export function Composer({
                       {f.required ? <span style={{ color: 'var(--danger)' }}> *</span> : null}
                     </label>
                     {/* ── 有 options 的字段是**下拉框** ──
-                        项目契约的判据就是 `options.length > 0 ? <Select> : <Input>`
+                        应用约定的判据就是 `options.length > 0 ? <Select> : <Input>`
                         （长三角赛「赛道」、东三省/五一杯「参赛组别」这类）。
                         之前 `listPaperTemplates` 把 options 丢了，这几个比赛只能填文本框。 */}
                     {f.options?.length ? (
@@ -1984,7 +1985,7 @@ export function Composer({
               </section>
 
               {/* ── 自定义字段 ──
-                  项目契约 contestFields 是数组，所以「加字段」就是追加一项；
+                  应用约定 contestFields 是数组，所以「加字段」就是追加一项；
                   名字由用户填（如「组别」），因为模板元数据里本来就没有这个键。 */}
               {customFields.map((c) => (
                 <div key={c.id} className="row" style={{ gap: 8, alignItems: 'flex-end' }}>

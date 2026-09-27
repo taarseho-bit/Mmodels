@@ -30,30 +30,30 @@ export interface PastedText {
   charCount: number;
 }
 
-/** 项目契约 `oy()` —— `\r\n` / 孤立 `\r` 统一成 `\n` */
+/** 应用约定 `oy()` —— `\r\n` / 孤立 `\r` 统一成 `\n` */
 export function normalizeNewlines(s: string): string {
   return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
-/** 项目契约 `dT()` —— 空串 0 行；`'a\n'` 是 **2** 行（末尾换行也算一行） */
+/** 应用约定 `dT()` —— 空串 0 行；`'a\n'` 是 **2** 行（末尾换行也算一行） */
 export function lineCountOf(s: string): number {
   return s.length === 0 ? 0 : s.split('\n').length;
 }
 
-/** 项目契约 `e0e()` —— **闭区间** `>=`；空串直接 false */
+/** 应用约定 `e0e()` —— **闭区间** `>=`；空串直接 false */
 export function shouldFoldPasted(raw: string): boolean {
   const s = normalizeNewlines(raw);
   if (s.length === 0) return false;
   return s.length >= PASTE_FOLD_CHARS || lineCountOf(s) >= PASTE_FOLD_LINES;
 }
 
-/** 项目契约 `dM()` —— 注意 charCount 是**归一化后**的长度（`'a\r\nb'` → 3，不是 4） */
+/** 应用约定 `dM()` —— 注意 charCount 是**归一化后**的长度（`'a\r\nb'` → 3，不是 4） */
 export function makePastedText(raw: string): PastedText {
   const text = normalizeNewlines(raw);
   return { id: crypto.randomUUID(), text, lineCount: lineCountOf(text), charCount: text.length };
 }
 
-/** 项目契约 `Nz()` —— 首个非空行 trim；>140 → 前 137 + '...'；全空白 → ''（调用方回落 fallbackTitle） */
+/** 应用约定 `Nz()` —— 首个非空行 trim；>140 → 前 137 + '...'；全空白 → ''（调用方回落 fallbackTitle） */
 export function pastedTitle(text: string): string {
   for (const line of normalizeNewlines(text).split('\n')) {
     const s = line.trim();
@@ -62,14 +62,14 @@ export function pastedTitle(text: string): string {
   return '';
 }
 
-/** 项目契约 `xxe()` —— 只有一行时显示字符数，多行时显示行数 */
+/** 应用约定 `xxe()` —— 只有一行时显示字符数，多行时显示行数 */
 export function pastedMetricsLabel(m: Pick<PastedText, 'lineCount' | 'charCount'>): string {
   return m.lineCount > 1
     ? txPlural('chat.pastedText.lineCount', m.lineCount)
     : txPlural('chat.pastedText.charCount', m.charCount);
 }
 
-/** 项目契约 `t0e()` —— 三行 join('\n')；无有效条目返回 '' */
+/** 应用约定 `t0e()` —— 三行 join('\n')；无有效条目返回 '' */
 export function serializePasted(items: PastedText[]): string {
   const live = items.filter((i) => normalizeNewlines(i.text).length > 0);
   if (live.length === 0) return '';
@@ -78,7 +78,7 @@ export function serializePasted(items: PastedText[]): string {
 }
 
 /**
- * 项目契约 `n0e(body, chips)` —— ★ 尾巴**不进 parts**，而是接在正文之后。
+ * 应用约定 `n0e(body, chips)` —— ★ 尾巴**不进 parts**，而是接在正文之后。
  * 正文为空 → 只有尾巴；无 chip → 正文原样（trim 过）。
  */
 export function appendPasted(body: string, items: PastedText[]): string {
@@ -89,7 +89,7 @@ export function appendPasted(body: string, items: PastedText[]): string {
 }
 
 /**
- * 项目契约 `i0e()` + `Oz()` —— 解析尾巴（编辑回填用）。
+ * 应用约定 `i0e()` + `Oz()` —— 解析尾巴（编辑回填用）。
  *
  * 容错口径（与用例一致）：尾巴 JSON 坏了 / 不是数组 / 元素不是对象或 `text` 非字符串
  * ⇒ **不抛异常**，坏条目静默丢弃；一条都没解析出来时**原样返回整个 body**

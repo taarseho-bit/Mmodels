@@ -205,7 +205,7 @@ function checkMsgOps(raw: string): string[] {
     problems.push(`forkFromMessage 读不出来：${(e as Error).message}`);
   }
 
-  // ⑧ 回合运行中禁用（项目契约 `ie` 门槛）
+  // ⑧ 回合运行中禁用（应用约定 `ie` 门槛）
   if (!src.includes('disabled={isRunning || opsBusy}')) {
     problems.push('操作按钮没有 `disabled={isRunning || opsBusy}`：回合跑着也能点，会和 agent 抢工作区');
   }

@@ -1,13 +1,13 @@
 /**
- * 连接器（MCP 服务器管理）—— 对应项目契约 ExtensionsPage 的 connectorsSection。
+ * 连接器（MCP 服务器管理）—— 对应应用约定 ExtensionsPage 的 connectorsSection。
  *
- * 项目契约语义（从 chunk 还原）：
+ * 应用约定语义（从 chunk 还原）：
  *   - 条目形状：{ name, transport: 'stdio'|'http', command, args, env, url, headers }
  *   - 预设表（key/displayName/group/description/capabilities/server/credentials）：
  *     arxiv(uvx arxiv-mcp-server)、zotero(uvx zotero-mcp + env 凭据)、
  *     fetch(uvx mcp-server-fetch)、context7(http) … 按 group 分组展示
  *   - 内置（builtin: 前缀）只读；自定义可增删；凭据写进 server.env
- *   - 持久化：项目契约走 /api/mcp；当前版本存 settings.mcpServers（本地优化，形态一致）
+ *   - 持久化：应用约定走 /api/mcp；当前版本存 settings.mcpServers（本地优化，形态一致）
  *
  * 注入点：agent/session.ts 把 mcpServers 映射为 SDK 的 mcpServers 选项。
  */
@@ -85,7 +85,7 @@ export function ConnectorsSection(): JSX.Element {
     save(servers.map(server => server.name === name ? { ...server, ...patch } : server));
   }, [save, servers]);
 
-  // 按 group 分组展示（项目契约语义）
+  // 按 group 分组展示（应用约定语义）
   const groups = new Map<string, McpServerConfig[]>();
   for (const s of servers) {
     const p = CONNECTOR_CATALOG.find(item => item.key === s.name);

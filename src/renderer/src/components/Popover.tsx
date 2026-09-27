@@ -46,9 +46,9 @@ export function Popover({
    * ⚠️ **改这个参数不能替代改 `.cz-pop`** —— 这里给的是"每个弹层自己那条腿"，
    *    默认值只是与 `.cz-pop` 保持一致。要动全局观感请改 CSS，别改默认值。
    *
-   * 为什么要有它：「＋」菜单是 11 行 + 4 条分隔线（≈374px），而项目契约根弹层的高度
+   * 为什么要有它：「＋」菜单是 11 行 + 4 条分隔线（≈374px），而应用约定根弹层的高度
    * 上限是 `max-h-[var(--available-height,28rem)]`（= 可用高度，兜底 28rem/448px）
-   * ⇒ **项目契约这 11 行是一屏全见的**。本仓 `.cz-pop` 的 320px 会让它滚起来。
+   * ⇒ **应用约定这 11 行是一屏全见的**。本仓 `.cz-pop` 的 320px 会让它滚起来。
    * 那个 320px 还压在另外 5 个选择器上（项目/模式/模板/权限/模型），所以只能给
    * 「＋」菜单单独开一条腿：`<Popover maxHeight={448}>`。
    * 内联 `max-height` 的优先级高于 `.cz-pop` 那条类规则，所以它真的会生效。
@@ -87,7 +87,7 @@ export function Popover({
       // 上方放得下就向上，否则向下；两边都不够就选大的一侧并夹住高度
       const down = spaceAbove < wantH + GAP && spaceBelow > spaceAbove;
       const avail = Math.max(120, Math.floor((down ? spaceBelow : spaceAbove) - GAP));
-      // 上限由调用方给（项目契约就是 `min(可用高度, 28rem)` 这个口径）
+      // 上限由调用方给（应用约定就是 `min(可用高度, 28rem)` 这个口径）
       const maxH = Math.min(maxHeight, avail);
       const top = down ? a.bottom + GAP : a.top - GAP - Math.min(wantH, maxH);
       const width = self?.offsetWidth || 220;
@@ -158,7 +158,7 @@ export function Popover({
 }
 
 /**
- * 二级子菜单（项目契约模型选择器底部的「思考强度　高　›」）。
+ * 二级子菜单（应用约定模型选择器底部的「思考强度　高　›」）。
  *
  * 和 Popover 一样必须 portal 出去：父弹层 `.cz-pop` 上有 `overflow-y:auto`，
  * 就地绝对定位会被整块裁掉。
@@ -182,7 +182,7 @@ export function SubFlyout({
   /**
    * 追加的 class（可选）。
    * 用途：`.cz-flyout` 只有 `min-width:120px`（够放「思考强度」那 4 行），
-   * 而「＋」菜单的子菜单里有项目名 / 技能名 / 数据集文件名，项目契约给的是
+   * 而「＋」菜单的子菜单里有项目名 / 技能名 / 数据集文件名，应用约定给的是
    * `min-w-48/52/56`（192~224px）⇒ 由调用方传 `plus-sub` 加宽，
    * **不去改 `.cz-flyout` 本身**（那会连带改掉模型选择器里那个子菜单的宽度）。
    */
