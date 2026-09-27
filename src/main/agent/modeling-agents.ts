@@ -134,4 +134,132 @@ export const MODELING_AGENTS = {
   },
 } satisfies Record<string, AgentDefinition>;
 
-export const MODELING_AGENT_IDS = Object.keys(MODELING_AGENTS);
+/**
+ * 供会话编排层使用的角色类型和最小注册表。
+ *
+ * 这里故意把「全部角色」和「本轮选中的角色」分开：直接调用
+ * `AgentSession.run({ multiAgentEnabled: true })` 的旧入口仍然可以拿到完整
+ * 协作组；来自 IPC 的正常对话则可以只注册与当前任务相关的成员，避免模型
+ * 面对一长串不相关角色后随意派人。
+ */
+export type ModelingAgentId = keyof typeof MODELING_AGENTS;
+export type ModelingAgentRoster = Record<string, AgentDefinition>;
+
+export interface ModelingAgentRoute {
+  /** 触发这次路由的任务类型；没有显式类型时为 null。 */
+  trigger: string | null;
+  /** 本轮实际允许主智能体调用的角色，顺序也是推荐的派发顺序。 */
+  agentIds: ModelingAgentId[];
+  /** 给用户和工作流看的简短解释。 */
+  reason: string;
+  /** 命中的通俗关键词，便于排查为什么启用了某个角色。 */
+  matchedSignals: string[];
+}
+
+interface RoleRule {
+  id: ModelingAgentId;
+  label: string;
+  patterns: RegExp[];
+}
+
+const ROLE_RULES: RoleRule[] = [
+  {
+    id: 'problem-analyst',
+    label: '题意与约束',
+    patterns: [/题目|题意|题干|拆解|变量|约束|目标|条件|问题描述|读题/],
+  },
+  {
+    id: 'data-analyst',
+    label: '数据整理',
+    patterns: [/数据|附件|excel|xlsx|csv|表格|字段|缺失|异常|清洗|样本|统计|预处理/],
+  },
+  {
+    id: 'model-solver',
+    label: '模型与求解',
+    patterns: [/建模|模型|算法|优化|规划|调度|分配|路径|预测|分类|回归|仿真|求解|灵敏度|参数/],
+  },
+  {
+    id: 'literature-researcher',
+    label: '文献与资料',
+    patterns: [/文献|引用|参考文献|资料|检索|研究现状|背景|查新|来源/],
+  },
+  {
+    id: 'paper-writer',
+    label: '论文成稿',
+    patterns: [/写论文|论文|成稿|正文|摘要|章节|latex|排版|润色|写作/],
+  },
+  {
+    id: 'figure-maker',
+    label: '图表表达',
+    patterns: [/绘图|图表|可视化|流程图|示意图|热力图|散点图|柱状图|折线图|表格排版/],
+  },
+  {
+    id: 'paper-reviewer',
+    label: '审阅与交付',
+    patterns: [/评审|评阅|审阅|检查|核验|质量|提交|最终版|页数|格式|复核|交付/],
+  },
+];
+
+/** 任务类型对应的最小角色集合；它们不是强制全部派发，而是 SDK 的候选角色。 */
+const DEFAULT_ROLE_IDS: Record<string, ModelingAgentId[]> = {
+  paper: ['problem-analyst', 'model-solver', 'paper-writer'],
+  review: ['paper-reviewer', 'problem-analyst'],
+  audit: ['paper-reviewer'],
+  'multi-file': ['data-analyst', 'problem-analyst', 'model-solver'],
+  complex: ['problem-analyst', 'model-solver'],
+};
+
+function triggerLabel(trigger: string | null): string {
+  switch (trigger) {
+    case 'paper': return '论文写作与综合解题';
+    case 'review': return '论文评阅与交叉核验';
+    case 'audit': return '提交材料核对';
+    case 'multi-file': return '多附件综合分析';
+    case 'complex': return '复杂建模任务';
+    default: return '当前建模任务';
+  }
+}
+
+/**
+ * 根据任务类型和本轮文字选择候选角色。
+ *
+ * 这一步只做轻量、可解释的路由，不调用模型，也不代表一定会创建成员；
+ * 主智能体仍需根据依赖和质量门决定是否真正派发。最多保留 4 个角色，避免
+ * 工作流出现大量没有实际工作的平行节点。
+ */
+export function modelingAgentRouteForPrompt(prompt: string, trigger: string | null = null): ModelingAgentRoute {
+  const text = prompt.replace(/\s+/g, ' ').trim().toLowerCase();
+  const ids: ModelingAgentId[] = [];
+  const matchedSignals: string[] = [];
+
+  const add = (id: ModelingAgentId) => {
+    if (!ids.includes(id)) ids.push(id);
+  };
+
+  // 任务类型先给出最低限度的骨架，再用本轮关键词补充具体成员。
+  for (const id of DEFAULT_ROLE_IDS[trigger ?? ''] ?? []) add(id);
+  for (const rule of ROLE_RULES) {
+    const matched = rule.patterns.some(pattern => pattern.test(text));
+    if (!matched) continue;
+    add(rule.id);
+    if (!matchedSignals.includes(rule.label)) matchedSignals.push(rule.label);
+  }
+
+  // 未触发协作时也允许对明确的专业请求给出候选；普通闲聊则返回空，
+  // 由调用方传入 null，避免为了“看起来有团队”而注册所有角色。
+  const selected = ids.slice(0, 4);
+  const names = selected.map(id => ROLE_RULES.find(rule => rule.id === id)?.label ?? id);
+  const reason = selected.length
+    ? `识别为“${triggerLabel(trigger)}”，${matchedSignals.length ? `命中${matchedSignals.join('、')}，` : ''}本轮候选成员为${names.join('、')}。`
+    : '当前内容没有明显的复杂建模分工，先由主智能体直接处理。';
+  return { trigger, agentIds: selected, reason, matchedSignals };
+}
+
+/** 将路由结果转换为 SDK 接受的精简角色注册表。 */
+export function modelingAgentsForRoute(route: ModelingAgentRoute): ModelingAgentRoster {
+  const roster: ModelingAgentRoster = {};
+  for (const id of route.agentIds) roster[id] = MODELING_AGENTS[id];
+  return roster;
+}
+
+export const MODELING_AGENT_IDS = Object.keys(MODELING_AGENTS) as ModelingAgentId[];

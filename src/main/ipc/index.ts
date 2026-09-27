@@ -10,6 +10,7 @@
  * ⚠️ 注意：本文件**不注册**账号/计费相关通道（按需求排除）。
  */
 import { ipcMain, BrowserWindow } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { IPC } from '@shared/types';
 import type { ServerInfo } from '../server';
 import { registerAppHandlers } from './app';
@@ -44,6 +45,35 @@ export interface IpcContext {
   debug: boolean;
 }
 
+/**
+ * 把底层错误转换成面向用户的中文提示。
+ *
+ * 原始错误只写主进程日志，不能把上游 HTTP 文本、绝对路径、命令行参数
+ * 或英文堆栈直接塞进渲染层。保留诊断编号，用户需要排查时可以把编号交给开发者。
+ */
+export function friendlyIpcError(raw: unknown): string {
+  const message = raw instanceof Error ? raw.message : String(raw ?? '');
+  if (/当前接口不支持|不支持 document|document 内容|unsupported document/i.test(message)) return '当前接口暂时不支持直接读取这类文档，正在改用本地解析方式。';
+  if (/401|403|unauthori[sz]ed|forbidden|api.?key|token/i.test(message)) return '连接凭据或访问权限需要检查，请打开连接器设置后重试。';
+  if (/429|too many requests|rate.?limit/i.test(message)) return '服务当前比较忙，稍后会自动重试；也可以换一个模型或连接器。';
+  if (/timed? ?out|timeout|ETIMEDOUT|网络异常|fetch failed|ENETUNREACH|ECONNRESET/i.test(message)) return '网络暂时没有连通，正在重试；如果持续失败，请检查网络或代理设置。';
+  if (/ENOENT|not found|不存在|找不到|no such file/i.test(message)) return '需要的文件或目录没有找到，请检查项目文件后重试。';
+  if (/EACCES|permission denied|权限不足|拒绝访问/i.test(message)) return '当前操作没有足够权限，请检查项目目录权限或在设置中调整访问范围。';
+  if (/spawn|命令|executable|进程/i.test(message) && /failed|error|失败|找不到/i.test(message)) return '本机环境还没有准备好这个工具，正在保留当前结果；请到运行环境中检查后重试。';
+  // 已经是通俗中文的业务提示可以保留；含绝对路径或控制字符的内容统一收敛。
+  if (/[A-Za-z]:\\|\\Users\\|\/Users\/|\r|\n|stack|at \w+\s*\(/i.test(message)) return '这次操作没有完成，当前内容已经保留，可以重试或换一种方式。';
+  return message.length > 240 ? `${message.slice(0, 237)}…` : message || '这次操作没有完成，当前内容已经保留，可以重试。';
+}
+
+function wrapIpcError(label: string, err: unknown): Error {
+  const diagnosticId = `MM-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  console.error(`[ipc] ${label} failed (${diagnosticId}):`, err);
+  const wrapped = new Error(`${label}：${friendlyIpcError(err)}（诊断编号 ${diagnosticId}）`);
+  (wrapped as Error & { code?: string; diagnosticId?: string }).code = 'MM_IPC_OPERATION_FAILED';
+  (wrapped as Error & { code?: string; diagnosticId?: string }).diagnosticId = diagnosticId;
+  return wrapped;
+}
+
 /** 把 handler 的错误包成可读信息 */
 export function safeWrap<T extends unknown[]>(
   fn: (...args: T) => unknown,
@@ -55,16 +85,12 @@ export function safeWrap<T extends unknown[]>(
       // 支持 async handler
       if (result instanceof Promise) {
         return result.catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.error(`[ipc] ${label} failed:`, err);
-          throw new Error(`${label} 执行失败：${msg}`);
+          throw wrapIpcError(`${label}执行失败`, err);
         });
       }
       return result;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[ipc] ${label} failed:`, err);
-      throw new Error(`${label} 执行失败：${msg}`);
+      throw wrapIpcError(`${label}执行失败`, err);
     }
   };
 }

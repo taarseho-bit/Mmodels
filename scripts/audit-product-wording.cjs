@@ -12,6 +12,11 @@ const extensions = new Set(['.ts', '.tsx', '.js', '.cjs', '.mjs', '.css', '.md',
 const ignored = new Set(['node_modules', 'dist', 'out', '.git', '.cache', '.mmodels-audit']);
 const hits = [];
 
+// 旧产品名必须从用户可见文案和仓库资料中移除；合法供应商名称不在此表内。
+const legacyProductTerms = [
+  [66,97,115,101,98,111,120],
+];
+
 function walk(relative) {
   const absolute = path.join(root, relative);
   if (!fs.existsSync(absolute)) return;
@@ -21,6 +26,11 @@ function walk(relative) {
     const text = fs.readFileSync(absolute, 'utf8');
     for (const word of banned) {
       if (text.includes(word)) hits.push(`${relative}: ${word}`);
+    }
+    for (const codes of legacyProductTerms) {
+      const legacy = String.fromCodePoint(...codes);
+      const match = text.match(new RegExp(`\\b${legacy}\\b`, 'i'));
+      if (match) hits.push(`${relative}: 旧产品名（${match[0]}）`);
     }
     return;
   }

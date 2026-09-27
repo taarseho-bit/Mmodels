@@ -26,7 +26,7 @@ import type {
   StreamEvent,
   TokenUsage,
 } from '@shared/types';
-import { MODELING_AGENTS } from './modeling-agents';
+import { MODELING_AGENTS, type ModelingAgentRoster } from './modeling-agents';
 import { DEFAULT_MAX_PARALLEL_AGENTS } from './orchestration-policy';
 import { WorkflowTrace } from './workflow-trace';
 import type { WorkflowRun } from '@shared/workflow';
@@ -168,6 +168,8 @@ export interface RunOptions {
   askPolicy?: 'ask' | 'auto';
   /** 允许主智能体按任务需要调用数学建模协作组。 */
   multiAgentEnabled?: boolean;
+  /** 本轮按任务路由后的角色注册表；省略时保持旧行为，注册完整协作组。 */
+  agentRoster?: ModelingAgentRoster;
   /** 本轮协作预算：并行成员数和整轮新建成员数都由编排策略决定。 */
   collaborationBudget?: { maxParallelAgents: number; maxTotalAgents: number };
   /** 给工作流画布的阶段短名；只用于展示，不会注入模型。 */
@@ -256,6 +258,7 @@ export class AgentSession extends EventEmitter {
   private compactedContextTokens: number | null = null;
   private modelContextCapacity: number | undefined;
   private contextCapacitySource: ContextWindowUsage['capacitySource'] = 'reference';
+  private autoCompactState: NonNullable<ContextWindowUsage['autoCompactState']> = 'unknown';
   /** SDK task id 对应的子智能体活动，用于把后续 progress/update 帧补全。 */
   private subagentTasks = new Map<string, AgentActivity>();
   private workflow?: WorkflowTrace;
@@ -368,6 +371,7 @@ export class AgentSession extends EventEmitter {
         percentage: Math.min(100, Math.max(0, (used / total) * 100)),
         autoCompactThreshold: this.modelContextCapacity ? Math.floor(total * .9) : usage.autoCompactThreshold,
         autoCompactEnabled: usage.isAutoCompactEnabled,
+        autoCompactState: this.autoCompactState,
         model: usage.model,
       };
       this.lastContextUsage = normalized;
@@ -389,14 +393,17 @@ export class AgentSession extends EventEmitter {
   private async configureContextWindow(query: QueryHandle): Promise<void> {
     try {
       const initial = await withContextProbeTimeout(query.getContextUsage());
-      const rawMax = boundedContextWindow(this.modelContextCapacity ?? Number(initial.rawMaxTokens || initial.maxTokens || 0));
+      const reportedMax = Number(initial.rawMaxTokens || initial.maxTokens || 0);
+      const rawMax = boundedContextWindow(this.modelContextCapacity ?? reportedMax);
       const target = Math.floor(rawMax * 0.9);
       await query.applyFlagSettings({
         autoCompactEnabled: true,
         precomputeCompactionEnabled: true,
         ...(target >= 100_000 && target <= 1_000_000 ? { autoCompactWindow: target } : {}),
       });
+      this.autoCompactState = this.modelContextCapacity || reportedMax > 0 ? 'guaranteed' : 'unknown';
     } catch (err) {
+      this.autoCompactState = 'failed';
       console.debug('[agent] 自动压缩沿用 SDK 默认阈值：', err instanceof Error ? err.message : err);
     }
     await this.emitContextUsage(query);
@@ -653,6 +660,8 @@ export class AgentSession extends EventEmitter {
       throw new Error('该会话已有正在执行的任务，请先中断或等待完成');
     }
     this.running = true;
+    // 每轮重新确认自动整理状态，避免上一轮失败状态污染下一轮展示。
+    this.autoCompactState = 'unknown';
     /**
      * 本轮的取消控制器。留一个局部引用给下面的消费循环用 ——
      * `this.abortController` 会在 `finally` 里被置空，而循环的收尾路径（排空阶段）在那之后还会跑。
@@ -781,7 +790,8 @@ export class AgentSession extends EventEmitter {
           SubagentStart: [observer], SubagentStop: [observer], UserPromptExpansion: [observer] };
       }
       if (opts.multiAgentEnabled) {
-        options.agents = MODELING_AGENTS;
+        // 未提供路由结果时保留完整角色注册表，兼容直接调用 AgentSession.run。
+        options.agents = opts.agentRoster ?? MODELING_AGENTS;
         options.agentProgressSummaries = true;
         // 生命周期事件足以呈现协作状态；不把子智能体长篇过程混入主对话。
         options.forwardSubagentText = false;
@@ -1055,6 +1065,7 @@ export class AgentSession extends EventEmitter {
         const postTokens = Number(metadata.post_tokens ?? metadata.postTokens ?? 0);
         this.compactedContextTokens = Number.isFinite(postTokens) ? Math.max(0, postTokens) : 0;
         this.pendingContextTokens = 0;
+        this.autoCompactState = 'guaranteed';
         this.emitEvent({
           type: 'context-compacted',
           before: Number(metadata.pre_tokens ?? metadata.preTokens ?? 0),

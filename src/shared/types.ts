@@ -177,6 +177,8 @@ export interface ContextWindowUsage {
   /** SDK 当前启用自动压缩时的触发线（token）。 */
   autoCompactThreshold?: number;
   autoCompactEnabled: boolean;
+  /** 自动整理是否已经由运行器确认，而不是仅凭默认值推测。 */
+  autoCompactState?: 'guaranteed' | 'unknown' | 'failed';
   model?: string;
 }
 

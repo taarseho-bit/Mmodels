@@ -1,6 +1,9 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { join } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import type { McpServerConfig } from '@shared/types';
@@ -11,13 +14,95 @@ type Result = { content: [{ type: 'text'; text: string }]; isError?: boolean };
 const text = (value: unknown): Result => ({ content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
 const publicCache = new Map<string, { expiresAt: number; value: any }>();
 
-async function json(url: string, init?: RequestInit): Promise<any> {
+/** 本地连接器的硬上限，避免模型生成的脚本拖垮桌面进程。 */
+const LOCAL_TIMEOUT_MS = 60_000;
+const LOCAL_STDOUT_LIMIT = 64 * 1024;
+const LOCAL_STDERR_LIMIT = 32 * 1024;
+const LOCAL_SCRIPT_LIMIT = 2 * 1024 * 1024;
+
+type ToolExtra = { signal?: AbortSignal };
+
+function toolSignal(extra: unknown): AbortSignal | undefined {
+  if (!extra || typeof extra !== 'object') return undefined;
+  const signal = (extra as ToolExtra).signal;
+  return signal && typeof signal.aborted === 'boolean' ? signal : undefined;
+}
+
+/** 把用户提供的文件名限制在项目的 .mathmodel 目录内。 */
+export function projectRunFile(projectRoot: string, requested: string, extension: string): string {
+  const root = resolve(projectRoot);
+  if (!isAbsolute(root)) throw new Error('项目目录必须是绝对路径');
+  const cleaned = basename(String(requested || '').trim()).replace(/[^\w.-]/g, '_');
+  const fallback = `connector-run-${Date.now()}.${extension}`;
+  const name = cleaned && cleaned !== '.' && cleaned !== '..' ? cleaned : fallback;
+  const file = resolve(root, '.mathmodel', name);
+  const rel = relative(resolve(root, '.mathmodel'), file);
+  if (rel.startsWith('..') || isAbsolute(rel) || rel.split(sep).length !== 1) {
+    throw new Error('脚本文件只能写入当前项目的运行记录目录');
+  }
+  return file;
+}
+
+function isPrivateIpv4(address: string): boolean {
+  const parts = address.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(x => !Number.isInteger(x) || x < 0 || x > 255)) return false;
+  const [a, b] = parts;
+  return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+
+function isPrivateAddress(address: string): boolean {
+  if (isIP(address) === 4) return isPrivateIpv4(address);
+  if (isIP(address) === 6) {
+    const normalized = address.toLowerCase();
+    return normalized === '::1' || normalized === '::' || normalized.startsWith('fe80:') || normalized.startsWith('fc') || normalized.startsWith('fd');
+  }
+  return false;
+}
+
+/**
+ * 校验 Webhook 目的地址，防止把项目内容发往本机、内网和带凭据的 URL。
+ * 可用 WEBHOOK_ALLOWED_HOSTS（逗号分隔）进一步收窄域名范围。
+ */
+export async function validateWebhookUrl(raw: string): Promise<URL> {
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new Error('Webhook 地址格式不正确'); }
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Webhook 只支持 HTTP 或 HTTPS 地址');
+  if (url.username || url.password) throw new Error('Webhook 地址不能包含登录信息');
+  if (url.hostname === 'localhost' || url.hostname.endsWith('.localhost') || url.hostname.endsWith('.local')) {
+    throw new Error('Webhook 不能指向本机或局域网地址');
+  }
+  const hostAllowlist = (process.env.WEBHOOK_ALLOWED_HOSTS ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (hostAllowlist.length && !hostAllowlist.includes(hostname)) throw new Error('Webhook 地址不在允许的域名范围内');
+  if (isPrivateAddress(hostname)) throw new Error('Webhook 不能指向本机或局域网地址');
+  for (const key of [...url.searchParams.keys()]) {
+    if (/(token|secret|password|passwd|api[_-]?key|access[_-]?key|signature)/i.test(key)) {
+      throw new Error('Webhook 地址不能把密钥放在查询参数中');
+    }
+  }
+  // 对域名再做一次解析，避免通过公网域名解析到内网地址（基础 SSRF 防护）。
+  if (!isIP(hostname)) {
+    try {
+      const records = await lookup(hostname, { all: true, verbatim: true });
+      if (records.some(record => isPrivateAddress(record.address))) throw new Error('Webhook 解析到了本机或局域网地址');
+    } catch (error) {
+      if (error instanceof Error && /本机|局域网/.test(error.message)) throw error;
+      // DNS 暂时失败交给 fetch 返回可重试错误，不在校验阶段把普通网络波动误报成配置错误。
+    }
+  }
+  return url;
+}
+
+async function json(url: string, init?: RequestInit, signal?: AbortSignal): Promise<any> {
   const hasSecret = Object.keys((init?.headers ?? {}) as Record<string, unknown>).some(key => /authorization|api-key|token/i.test(key));
   const cached = !hasSecret && (init?.method ?? 'GET') === 'GET' ? publicCache.get(url) : undefined;
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   let lastStatus = 0;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(url, { ...init, signal: AbortSignal.timeout(18_000), headers: { accept: 'application/json', ...(init?.headers ?? {}) } });
+    if (signal?.aborted) throw new Error('连接器任务已停止');
+    const timeout = AbortSignal.timeout(18_000);
+    const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+    const response = await fetch(url, { ...init, signal: requestSignal, headers: { accept: 'application/json', ...(init?.headers ?? {}) } });
     const body = await response.text();
     if (response.ok) {
       try { const value = JSON.parse(body); if (!hasSecret && (init?.method ?? 'GET') === 'GET') publicCache.set(url, { expiresAt: Date.now() + 120_000, value }); return value; } catch { throw new Error('数据源返回格式不正确'); }
@@ -26,7 +111,10 @@ async function json(url: string, init?: RequestInit): Promise<any> {
     if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 2) break;
     const retryAfter = Number(response.headers.get('retry-after') ?? '0');
     const waitMs = Math.min(4_000, retryAfter > 0 ? retryAfter * 1000 : 350 * (attempt + 1));
-    await new Promise(resolve => setTimeout(resolve, waitMs));
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, waitMs);
+      signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('连接器任务已停止')); }, { once: true });
+    });
   }
   throw new Error(`数据源暂时无法访问（${lastStatus || '网络异常'}），已自动重试`);
 }
@@ -36,13 +124,16 @@ function env(config: McpServerConfig, key: string): string | undefined {
   return value || undefined;
 }
 
-function wrap(fn: (args: any) => Promise<unknown> | unknown, planOnly = false, write = false) {
-  return async (args: any): Promise<Result> => {
+function wrap(fn: (args: any, signal?: AbortSignal) => Promise<unknown> | unknown, planOnly = false, write = false) {
+  return async (args: any, extra: unknown): Promise<Result> => {
     try {
       if (write && planOnly) throw new Error('当前只做规划，不能执行写入操作');
-      return text(await fn(args));
+      // SDK 的 MCP handler 第二个参数带有本次工具调用的取消信号。
+      // 这里故意从 unknown 读取，兼容不同版本 SDK 的额外上下文形状。
+      return text(await fn(args, toolSignal(extra)));
     } catch (error) {
-      return { ...text(error instanceof Error ? error.message : String(error)), isError: true };
+      const message = error instanceof Error ? error.message : String(error);
+      return { ...text(message || '连接器执行失败，请稍后重试'), isError: true };
     }
   };
 }
@@ -136,30 +227,54 @@ function gitService(config: McpServerConfig, provider: 'gitlab' | 'gitee') {
 
 function webhook(config: McpServerConfig, opts: RunOptions) {
   const url = env(config, 'WEBHOOK_URL'); const token = env(config, 'WEBHOOK_TOKEN');
-  return server('webhook', [tool('send', '按用户明确要求发送一条项目通知；发送前应确认收件地址和内容。', { title: z.string().min(1), message: z.string().min(1).max(4000) }, wrap(async a => {
+  return server('webhook', [tool('send', '按用户明确要求发送一条项目通知；发送前应确认收件地址和内容。', { title: z.string().min(1), message: z.string().min(1).max(4000) }, wrap(async (a, signal) => {
     if (config.permission !== 'external-write') throw new Error('通知连接器需要切换为“外部可写”后才能发送');
     if (!url) throw new Error('请先配置 Webhook 地址');
+    const target = await validateWebhookUrl(url);
     const headers: Record<string, string> = { 'content-type': 'application/json' }; if (token) headers.authorization = `Bearer ${token}`;
-    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ title: a.title, text: a.message, content: a.message }) });
+    const timeout = AbortSignal.timeout(15_000);
+    const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+    const response = await fetch(target, { method: 'POST', headers, body: JSON.stringify({ title: a.title, text: a.message, content: a.message }), signal: requestSignal });
     if (!response.ok) throw new Error(`通知服务返回 ${response.status}`);
     return { sent: true, at: new Date().toISOString() };
   }, opts.interactionMode === 'plan', true))]);
 }
 
-async function runLocal(command: string, args: string[], cwd: string) {
-  const result = await execFileAsync(command, args, { cwd, timeout: 60_000, maxBuffer: 8 * 1024 * 1024, windowsHide: true });
-  return { stdout: result.stdout.slice(-40_000), stderr: result.stderr.slice(-20_000) };
+async function runLocal(command: string, args: string[], cwd: string, signal?: AbortSignal) {
+  return await new Promise<{ stdout: string; stderr: string }>((resolvePromise, reject) => {
+    const child = spawn(command, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '', settled = false;
+    const append = (current: string, chunk: Buffer, limit: number) => (current + chunk.toString('utf8')).slice(-limit);
+    const finish = (error?: Error) => { if (settled) return; settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort); error ? reject(error) : resolvePromise({ stdout, stderr }); };
+    const terminate = () => {
+      if (process.platform === 'win32' && child.pid) {
+        // Windows 的 SIGTERM 只结束外层解释器；taskkill /T 同时收掉它派生的
+        // Python/R/Octave 子进程，保证点击停止后不会继续占用项目文件。
+        const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+        killer.unref();
+      } else {
+        child.kill('SIGTERM');
+      }
+    };
+    const abort = () => { terminate(); finish(new Error('连接器任务已停止')); };
+    const timer = setTimeout(() => { terminate(); finish(new Error('本地计算超时')); }, LOCAL_TIMEOUT_MS);
+    signal?.addEventListener('abort', abort, { once: true });
+    child.stdout.on('data', (chunk: Buffer) => { stdout = append(stdout, chunk, LOCAL_STDOUT_LIMIT); });
+    child.stderr.on('data', (chunk: Buffer) => { stderr = append(stderr, chunk, LOCAL_STDERR_LIMIT); });
+    child.on('error', error => finish(error));
+    child.on('close', code => code === 0 ? finish() : finish(new Error(`本地计算失败（退出码 ${code ?? '未知'}）\n${stderr.slice(-2000)}`)));
+  });
 }
 
 function localCompute(name: 'python' | 'r' | 'octave', opts: RunOptions, allowWrite: boolean) {
   const command = name === 'python' ? (process.platform === 'win32' ? 'python' : 'python3') : name === 'r' ? 'Rscript' : (process.platform === 'win32' ? 'octave-cli.exe' : 'octave');
   const extension = name === 'python' ? 'py' : name === 'r' ? 'R' : 'm';
-  return server(name, [tool('run', `在当前项目中运行 ${name} 脚本，输出会保存到项目运行记录。`, { script: z.string().min(1), filename: z.string().optional() }, wrap(async a => {
+  return server(name, [tool('run', `在当前项目中运行 ${name} 脚本，输出会保存到项目运行记录。`, { script: z.string().min(1).max(LOCAL_SCRIPT_LIMIT), filename: z.string().optional() }, wrap(async (a, signal) => {
     if (!allowWrite) throw new Error('这个本地计算连接器当前是只读状态，请先切换为“项目可写”');
-    const filename = (a.filename || `connector-run-${Date.now()}.${extension}`).replace(/[^\w.-]/g, '_');
-    const file = join(opts.cwd, '.mathmodel', filename); const { mkdir } = await import('node:fs/promises'); await mkdir(join(opts.cwd, '.mathmodel'), { recursive: true }); await (await import('node:fs/promises')).writeFile(file, a.script, 'utf8');
-    if (name === 'octave') return runLocal(command, ['--quiet', file], opts.cwd);
-    return runLocal(command, [file], opts.cwd);
+    const file = projectRunFile(opts.cwd, a.filename || `connector-run-${Date.now()}.${extension}`, extension);
+    await mkdir(join(opts.cwd, '.mathmodel'), { recursive: true }); await writeFile(file, a.script, 'utf8');
+    if (name === 'octave') return runLocal(command, ['--quiet', file], opts.cwd, signal);
+    return runLocal(command, [file], opts.cwd, signal);
   }, opts.interactionMode === 'plan', true))]);
 }
 
@@ -200,7 +315,7 @@ export async function testNativeConnector(config: McpServerConfig): Promise<stri
     case 'google-drive': { const token = env(config, 'GOOGLE_DRIVE_ACCESS_TOKEN'); if (!token) throw new Error('请先配置 Google Drive 访问令牌'); await json('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id,name)', { headers: { Authorization: `Bearer ${token}` } }); return 'Google Drive 可以访问'; }
     case 'gitlab': { const token = env(config, 'GITLAB_TOKEN'); if (!token) throw new Error('请先配置 GitLab 访问令牌'); const base = env(config, 'GITLAB_BASE_URL') || 'https://gitlab.com'; await json(`${base.replace(/\/$/, '')}/api/v4/projects?per_page=1`, { headers: { Authorization: `Bearer ${token}` } }); return 'GitLab 可以访问'; }
     case 'gitee': { const token = env(config, 'GITEE_TOKEN'); if (!token) throw new Error('请先配置 Gitee 访问令牌'); await json(`https://gitee.com/api/v5/user?access_token=${encodeURIComponent(token)}`); return 'Gitee 可以访问'; }
-    case 'webhook': { const url = env(config, 'WEBHOOK_URL'); if (!url) throw new Error('请先配置 Webhook 地址'); const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(12_000) }); if (!response.ok && response.status !== 405) throw new Error(`Webhook 返回 ${response.status}`); return 'Webhook 地址可以访问'; }
+    case 'webhook': { const raw = env(config, 'WEBHOOK_URL'); if (!raw) throw new Error('请先配置 Webhook 地址'); const url = await validateWebhookUrl(raw); const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(12_000) }); if (!response.ok && response.status !== 405) throw new Error(`Webhook 返回 ${response.status}`); return 'Webhook 地址可以访问'; }
     case 'python': case 'r': case 'octave': await execFileAsync(config.name === 'python' ? (process.platform === 'win32' ? 'python' : 'python3') : config.name === 'r' ? 'Rscript' : (process.platform === 'win32' ? 'octave-cli.exe' : 'octave'), ['--version'], { timeout: 10_000, windowsHide: true }); return `${config.name} 已安装`;
     default: return '该连接器将在下一轮以 MCP 方式启动';
   }

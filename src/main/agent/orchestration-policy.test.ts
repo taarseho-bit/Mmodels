@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS, skillRouteHints } from './orchestration-policy';
+import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS, skillRouteDecision, skillRouteHints } from './orchestration-policy';
+import { modelingAgentRouteForPrompt, modelingAgentsForRoute } from './modeling-agents';
 
 describe('数模协作编排策略', () => {
   it('默认限制为两位并行成员', () => {
@@ -23,5 +24,15 @@ describe('数模协作编排策略', () => {
     expect(new Set(hints.map(h => h.id)).size).toBe(hints.length);
     expect(hints.map(h => h.id)).toContain('data-auditor-cleaner');
     expect(hints.map(h => h.id)).toContain('paper-page-fit');
+  });
+
+  it('技能和角色路由都能解释命中原因，并限制候选数量', () => {
+    const skill = skillRouteDecision('读取 Excel 数据，建立优化模型，输出论文并检查正文页数');
+    expect(skill.confidence).toBe('high');
+    expect(skill.matchedRoutes).toEqual(expect.arrayContaining(['数据整理', '模型求解', '论文交付']));
+    const route = modelingAgentRouteForPrompt('读取 Excel 数据，建立优化模型，输出论文并检查正文页数', 'paper');
+    expect(route.agentIds.length).toBeLessThanOrEqual(4);
+    expect(route.reason).toContain('本轮候选成员');
+    expect(Object.keys(modelingAgentsForRoute(route))).toEqual(route.agentIds);
   });
 });

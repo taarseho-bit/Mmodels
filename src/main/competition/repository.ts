@@ -5,7 +5,8 @@ import { open, unlink } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { type StudioState, type PaperInput, type ImportRow, type Paper } from '../../shared/competition-studio';
+import { type StudioState, type PaperInput, type ImportRow, type Paper, type Project } from '../../shared/competition-studio';
+import { validateProject } from './validation';
 
 const FILE_LIMIT = 100 * 1024 * 1024;
 const BATCH_LIMIT = 300 * 1024 * 1024;
@@ -24,6 +25,10 @@ export class Repository {
     for (const key of ['projects', 'papers']) {
       if (!Array.isArray((this.state as any)[key])) throw new Error('本地资料索引不完整，请保留文件并从备份恢复，不能直接覆盖');
     }
+    // 历史格式把比赛配置只写在全局 library.json；现在以项目目录中的
+    // `.mathmodel/competition.json` 为可迁移的权威副本。启动时自动把历史记录
+    // 补到项目目录，并优先读取项目目录里用户已经修改过的版本。
+    this.hydrateProjectFiles();
     this.commit(this.state);
   }
   commit(next: StudioState): StudioState {
@@ -37,6 +42,71 @@ export class Repository {
   projectRoot(id: string): string {
     if (!this.state.projects.some(p => p.id === id)) throw new Error('找不到这个比赛项目');
     const dir = this.workspace ? this.workspace(id) : join(this.root, 'projects', id); mkdirSync(dir, { recursive: true }); return dir;
+  }
+
+  private projectFile(id: string): string {
+    return join(this.projectRoot(id), '.mathmodel', 'competition.json');
+  }
+
+  private readProjectFile(id: string): Project | null {
+    try {
+      const file = this.projectFile(id);
+      if (!existsSync(file)) return null;
+      if (statSync(file).size > 300_000) return null;
+      const value = validateProject(JSON.parse(readFileSync(file, 'utf8')));
+      return value.id === id ? value : null;
+    } catch {
+      // 项目配置损坏时保留旧索引，避免打开项目直接失败；下一次保存会修复文件。
+      return null;
+    }
+  }
+
+  private writeProjectFile(project: Project): void {
+    const file = this.projectFile(project.id);
+    mkdirSync(join(file, '..'), { recursive: true });
+    const temp = `${file}.${randomUUID()}.tmp`;
+    writeFileSync(temp, JSON.stringify(project, null, 2), { flag: 'wx' });
+    try { renameSync(temp, file); } catch (error) { try { unlinkSync(temp); } catch { /* 保留原文件 */ } throw error; }
+  }
+
+  private hydrateProjectFiles(): void {
+    if (!this.workspace) return;
+    let changed = false;
+    for (const legacy of this.state.projects) {
+      try {
+        const local = this.readProjectFile(legacy.id);
+        if (local) {
+          if (JSON.stringify(local) !== JSON.stringify(legacy)) {
+            this.state = { ...this.state, projects: this.state.projects.map(p => p.id === local.id ? local : p) };
+            changed = true;
+          }
+        } else {
+          this.writeProjectFile(legacy);
+        }
+      } catch {
+        // 单个项目目录不可用不阻断资料库初始化；打开该项目时再给出可操作提示。
+      }
+    }
+    if (changed) this.commit(this.state);
+  }
+
+  /** 读取项目级比赛配置；没有本地副本时兼容旧 library.json。 */
+  project(id: string): Project | null {
+    const local = this.readProjectFile(id);
+    if (local) return local;
+    return this.state.projects.find(p => p.id === id) ?? null;
+  }
+
+  /** 保存项目级比赛配置，同时更新兼容索引，供迁移期间读取。 */
+  saveProject(project: Project): StudioState {
+    this.writeProjectFile(project);
+    return this.commit({ ...this.state, projects: this.state.projects.map(p => p.id === project.id ? project : p) });
+  }
+
+  /** 删除项目时同步移除项目级比赛配置；不会触碰用户的论文资料库。 */
+  removeProject(id: string): void {
+    try { unlinkSync(this.projectFile(id)); } catch { /* 文件不存在或项目目录已被移除 */ }
+    this.commit({ ...this.state, projects: this.state.projects.filter(p => p.id !== id) });
   }
   stage(files: string[]): ImportRow[] {
     if (files.length > 100) throw new Error('一次最多导入 100 篇，请分批操作');

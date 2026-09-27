@@ -29,6 +29,8 @@ export function ConnectorsSection(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null);
   const [projectOnly, setProjectOnly] = useState(true);
   const [testing, setTesting] = useState<string | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogCategory, setCatalogCategory] = useState<string>('all');
 
   const save = useCallback(
     (next: McpServerConfig[]): void => {
@@ -58,6 +60,20 @@ export function ConnectorsSection(): JSX.Element {
     [currentProject, projectOnly, servers, save],
   );
 
+  const savePresetCredentials = useCallback((p: ConnectorCatalogEntry, values: Record<string, string>): void => {
+    const entered = Object.fromEntries(Object.entries(values).filter(([, value]) => value.trim()).map(([key, value]) => [key, value.trim()]));
+    if (!Object.keys(entered).length) {
+      setNotice(t('没有填写新的凭据，原有凭据保持不变。'));
+      setPresetCred(null);
+      setCredValues({});
+      return;
+    }
+    save(servers.map(server => server.name === p.key ? { ...server, env: { ...(server.env ?? {}), ...entered } } : server));
+    setNotice(t('「{{name}}」的凭据已更新，下一个会话生效。', { name: p.displayName }));
+    setPresetCred(null);
+    setCredValues({});
+  }, [save, servers]);
+
   const remove = useCallback(
     (name: string): void => {
       save(servers.filter((s) => s.name !== name));
@@ -76,7 +92,12 @@ export function ConnectorsSection(): JSX.Element {
     const g = p ? CONNECTOR_CATEGORY_LABELS[p.category] : tx('extensions.connectorsSection.groupCustom');
     groups.set(g, [...(groups.get(g) ?? []), s]);
   }
-  const addable = useMemo(() => CONNECTOR_CATALOG.filter((p) => !servers.some((s) => s.name === p.key)), [servers]);
+  const addable = useMemo(() => {
+    const query = catalogSearch.trim().toLowerCase();
+    return CONNECTOR_CATALOG.filter((p) => !servers.some((s) => s.name === p.key))
+      .filter(p => catalogCategory === 'all' || p.category === catalogCategory)
+      .filter(p => !query || `${p.displayName} ${p.description} ${p.capabilities.join(' ')}`.toLowerCase().includes(query));
+  }, [catalogCategory, catalogSearch, servers]);
 
   return (
     <div className="col" style={{ gap: 18 }}>
@@ -128,7 +149,29 @@ export function ConnectorsSection(): JSX.Element {
                       .catch(error => setNotice(error instanceof Error ? error.message : '连接测试失败'))
                       .finally(() => setTesting(null));
                   }}>{testing === s.name ? '测试中…' : '测试连接'}</button>
+                  {(() => {
+                    const preset = CONNECTOR_CATALOG.find(p => p.key === s.name);
+                    return preset?.credentials?.length ? (
+                      <button className="btn btn-sm btn-ghost" onClick={() => { setPresetCred(preset); setCredValues({}); }}>
+                        编辑凭据
+                      </button>
+                    ) : null;
+                  })()}
                   <button className="btn btn-sm btn-ghost" onClick={() => remove(s.name)}>{t('移除')}</button>
+                  {presetCred?.key === s.name && presetCred.credentials?.length ? (
+                    <div className="col" style={{ gap: 8, flexBasis: '100%', paddingTop: 6 }} onClick={(e) => e.stopPropagation()}>
+                      {presetCred.credentials.map((c) => (
+                        <div key={c.key} className="row" style={{ gap: 8, alignItems: 'center' }}>
+                          <span className="muted" style={{ fontSize: 11.5, width: 90 }}>{t(c.label)}</span>
+                          <input className="input mono" style={{ fontSize: 12 }} placeholder="已配置，留空保持" value={credValues[c.key] ?? ''} onChange={(e) => setCredValues({ ...credValues, [c.key]: e.target.value })} />
+                        </div>
+                      ))}
+                      <div className="row" style={{ gap: 8 }}>
+                        <button className="btn btn-sm btn-primary" onClick={() => savePresetCredentials(presetCred, credValues)}>保存凭据</button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => { setPresetCred(null); setCredValues({}); }}>取消</button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -138,7 +181,17 @@ export function ConnectorsSection(): JSX.Element {
 
       {/* ── 可添加的预设 ── */}
       <section className="col" style={{ gap: 8 }}>
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{t('添加连接器')}</span>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>{t('添加连接器')}</span>
+          <span className="muted" style={{ fontSize: 11 }}>按当前项目选择需要的能力</span>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <input className="input" style={{ flex: 1, minWidth: 180 }} value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} placeholder="搜索连接器、用途或能力" />
+          <select className="select" style={{ minWidth: 130 }} value={catalogCategory} onChange={e => setCatalogCategory(e.target.value)}>
+            <option value="all">全部分类</option>
+            {Object.entries(CONNECTOR_CATEGORY_LABELS).map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}
+          </select>
+        </div>
         <label className="row" style={{ gap: 8, fontSize: 12 }}>
           <input type="checkbox" checked={projectOnly} onChange={e => setProjectOnly(e.target.checked)} disabled={!currentProject} />
           只在当前项目启用{currentProject ? `（${currentProject.name}）` : '（当前没有项目）'}
@@ -169,15 +222,15 @@ export function ConnectorsSection(): JSX.Element {
                       <input
                         className="input mono"
                         style={{ fontSize: 12 }}
-                        placeholder={t(c.placeholder)}
+                        placeholder={servers.some(server => server.name === p.key) ? '已配置，留空保持' : t(c.placeholder)}
                         value={credValues[c.key] ?? ''}
                         onChange={(e) => setCredValues({ ...credValues, [c.key]: e.target.value })}
                       />
                     </div>
                   ))}
                   <div className="row" style={{ gap: 8 }}>
-                    <button className="btn btn-sm btn-primary" onClick={() => addPreset(p, credValues)}>
-                      {t('确认添加')}
+                    <button className="btn btn-sm btn-primary" onClick={() => servers.some(server => server.name === p.key) ? savePresetCredentials(p, credValues) : addPreset(p, credValues)}>
+                      {servers.some(server => server.name === p.key) ? '保存凭据' : t('确认添加')}
                     </button>
                     <button className="btn btn-sm btn-ghost" onClick={() => setPresetCred(null)}>
                       {t('取消')}

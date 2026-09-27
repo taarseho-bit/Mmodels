@@ -35,7 +35,8 @@ vi.mock('./skills-plugin', () => ({
   materializeSkillsPlugin: () => '/tmp/skills-plugin',
   warmupSkillsPlugin: async () => '/tmp/skills-plugin',
 }));
-vi.mock('../store/config', () => ({ getSettings: () => ({}) }));
+vi.mock('../store/config', () => ({ getSettings: () => ({}), getRuntimeMcpServers: () => [] }));
+vi.mock('../ipc/project', () => ({ findProjectByRoot: () => null }));
 
 vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
   query: (args: { prompt: unknown; options: Record<string, unknown> }) => h.queryImpl!(args),

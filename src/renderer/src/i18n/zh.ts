@@ -77,7 +77,7 @@ export const zh = {
       createTask: '创建定时任务',
       description: '定时任务',
       editTask: '编辑 {{name}}',
-      emptyDescription: '创建一个定时任务，让 Basebox 自动抓取数据、复现论文图表和刷新图表。',
+      emptyDescription: '创建一个定时任务，让 MModels 自动抓取数据、复现论文图表和刷新图表。',
       emptyTitle: '还没有定时任务',
       new: '新建',
       pause: '暂停',
@@ -938,7 +938,7 @@ export const zh = {
       backendInApp: '内嵌浏览器',
       backendInAppHint: '独立登录态，功能完整',
       blankHint: '输入网址开始浏览',
-      chromeFootnote: '页面位于你自己的 Chrome 窗口中（归入“basebox agent”标签组）。系统使用合成事件，不会出现调试横幅；你随时可以直接操作该页面。',
+      chromeFootnote: '页面位于你自己的 Chrome 窗口中（归入“MModels Agent”标签组）。系统使用合成事件，不会出现调试横幅；你随时可以直接操作该页面。',
       closeTab: '关闭标签页',
       controlling: '正在控制',
       copyLink: '复制链接',
@@ -1308,8 +1308,8 @@ export const zh = {
       useWithAgent: '让 Agent 使用',
     },
     claudeCodePluginDetail: {
-      isolationNote: '这是本机 Claude Code（~/.claude/plugins）中安装的插件。Basebox 默认与它隔离；打开开关后，插件的 Skills 和命令会在 Basebox Agent 会话中可用。',
-      localClaudeCode: '本机 Claude Code',
+      isolationNote: '这是本机插件目录（~/.claude/plugins）中的插件。MModels 默认与其他插件隔离；打开开关后，插件的技能和命令会在 MModels 会话中可用。',
+      localClaudeCode: '本机插件',
       offByDefault: '默认关闭',
     },
     connectorPresets: {
@@ -1390,11 +1390,11 @@ export const zh = {
     extensionsHelpDialog: {
       algorithmsBody: '按评价、预测、分类、聚类和优化等任务浏览真实算法。每个方法会说明数据要求、输出和适用边界，并让 Agent 在当前项目中检查依赖后运行。',
       algorithmsKind: '方法',
-      connectorsBody: '把外部数据和服务接给 Agent（底层是 MCP）：arXiv 检索、你的 Zotero 文献库、GitHub 等。内置 Basebox 连接器还能让 Agent 配置应用自身。',
+      connectorsBody: '把外部数据和服务接给 Agent（底层是 MCP）：arXiv 检索、你的 Zotero 文献库、GitHub 等。内置 MModels 连接器还能让 Agent 配置应用自身。',
       connectorsKind: '数据 / 服务',
-      pluginsBody: '把上面四类能力打包成完整工作流：例如 paper-daily = 图表提取 Skill + arXiv 连接器 + 每日定时任务。安装一个套装，所需能力自动就位。本机 Claude Code 插件也会列在这里，默认关闭，可逐个放行。',
+      pluginsBody: '把上面四类能力打包成完整工作流：例如 paper-daily = 图表提取技能 + arXiv 连接器 + 每日定时任务。安装一个套装，所需能力自动就位。本机插件也会列在这里，默认关闭，可逐个放行。',
       pluginsKind: '套装',
-      skillsBody: '教 Agent 如何做事的方法文档（SKILL.md）：绘图规范、期刊样式、复现流程。Agent 绘图时会自动参考，也可以从本机 Claude Code 一键导入。',
+      skillsBody: '教智能体如何做事的方法文档（SKILL.md）：绘图规范、期刊样式、复现流程。绘图时会自动参考，也可以从本机插件目录一键导入。',
       skillsKind: '知识',
       subtitle: '五类扩展覆盖知识、模板、方法、服务与套装，都会进入 Agent 的工作流。',
       templatesBody: '随论文 Skill 提供的赛事 LaTeX 文件包。可查看适用赛事、语言、模板文件夹和入口文件；选中后回到新会话，Agent 会把整套模板复制到项目。',
@@ -1537,7 +1537,7 @@ export const zh = {
       loadLocalSkillFailed: '加载本机 SKILL.md 失败',
       loadRemoteSkillFailed: '加载远程 SKILL.md 失败',
       loadSkillFailed: '加载 SKILL.md 失败',
-      scanLocalFailed: '扫描本机 Claude Code Skills 失败',
+      scanLocalFailed: '扫描本机插件技能失败',
       toggleFailed: '切换状态失败',
     },
     viewToggle: {
@@ -2161,7 +2161,7 @@ export const zh = {
       topProvider: '最常用供应商',
     },
     shareCardExport: {
-      redditTitle: '我的 Basebox 开发统计',
+      redditTitle: '我的 MModels 开发统计',
       tweetText: '来看看我的 {{handle}} 开发统计。',
     },
     shareDialog: {

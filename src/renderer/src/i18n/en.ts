@@ -1288,8 +1288,8 @@ export const en = {
       useWithAgent: "Use with agent",
     },
     claudeCodePluginDetail: {
-      isolationNote: "This plugin is installed in your local Claude Code (~/.claude/plugins). mathmodel is isolated from it by default; turn it on to make the plugin's skills and commands available in mathmodel agent sessions.",
-      localClaudeCode: "Local Claude Code",
+      isolationNote: "This plugin is installed in the local plugin directory (~/.claude/plugins). MModels keeps it isolated by default; turn it on to make its skills and commands available in MModels sessions.",
+      localClaudeCode: "Local plugins",
       offByDefault: "Off by default",
     },
     connectorPresets: {
@@ -1372,9 +1372,9 @@ export const en = {
       algorithmsKind: "Methods",
       connectorsBody: "Connect external data and services to the agent (powered by MCP): arXiv search, your Zotero library, GitHub… The built-in mathmodel connector lets the agent configure the app itself.",
       connectorsKind: "Data / services",
-      pluginsBody: "Bundle the four types above into complete workflows: paper-daily = a figure-extraction skill + the arXiv connector + a daily scheduled job. Install one bundle and every piece falls into place. Plugins from your local Claude Code are also listed — off by default, enable them one by one.",
+      pluginsBody: "Bundle the four types above into complete workflows: paper-daily = a figure-extraction skill + the arXiv connector + a daily scheduled job. Install one bundle and every piece falls into place. Local plugins are also listed — off by default, enable them one by one.",
       pluginsKind: "Bundles",
-      skillsBody: "Method docs (SKILL.md) that teach the agent how to do things: plotting conventions, journal styles, replication workflows. The agent consults them automatically when plotting, and you can import them from local Claude Code in one click.",
+      skillsBody: "Method docs (SKILL.md) that teach the agent how to do things: plotting conventions, journal styles, replication workflows. The agent consults them automatically when plotting, and you can import them from the local plugin directory in one click.",
       skillsKind: "Knowledge",
       subtitle: "Five kinds of extensions cover knowledge, templates, methods, services, and bundles in the agent workflow.",
       templatesBody: "Competition LaTeX file bundles shipped with the paper skill. Review the contest, language, folder, and entry file, then start a new chat that copies the complete template into the project.",
@@ -1517,7 +1517,7 @@ export const en = {
       loadLocalSkillFailed: "Failed to load local SKILL.md",
       loadRemoteSkillFailed: "Failed to load remote SKILL.md",
       loadSkillFailed: "Failed to load SKILL.md",
-      scanLocalFailed: "Failed to scan local Claude Code skills",
+      scanLocalFailed: "Failed to scan local plugin skills",
       toggleFailed: "Toggle failed",
     },
     viewToggle: {

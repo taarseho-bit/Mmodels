@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Repository } from './repository';
@@ -33,4 +33,18 @@ describe('本地论文资料库', () => {
   it('确认、年份和批次上限由主进程检查', async () => { const { r, pdf } = fixture(); const input = row(r.stage([pdf])[0].ticket); await expect(r.importPapers([input], false)).rejects.toThrow('确认'); await expect(r.importPapers([{ ...input, year: NaN }], true)).rejects.toThrow('年份'); expect(() => r.stage(Array(101).fill(pdf))).toThrow('100'); });
   it('损坏索引不会被静默重置', () => { const { r } = fixture(); writeFileSync(join(r.root, 'library.json'), 'broken'); expect(() => new Repository(r.root)).toThrow(); expect(readFileSync(join(r.root, 'library.json'), 'utf8')).toBe('broken'); });
   it('工作台按原有项目 id 隔离，不另起一套项目系统', () => { const { r } = fixture(); const a = makeProject('a', '项目甲'), b = makeProject('b', '项目乙'); a.rules = '甲规则'; b.rules = '乙规则'; r.commit({ ...r.state, projects: [a, b] }); const reopened = new Repository(r.root); expect(reopened.state.projects.find(p => p.id === 'a')?.rules).toBe('甲规则'); expect(reopened.state.projects.find(p => p.id === 'b')?.rules).toBe('乙规则'); expect(() => r.projectRoot('missing')).toThrow('找不到'); });
+  it('项目比赛配置写入项目目录，重开时项目副本优先于旧全局索引', () => {
+    const { r, root } = fixture();
+    const projectRoot = join(root, 'projects');
+    const a = makeProject('a', '项目甲');
+    r.commit({ ...r.state, projects: [a] });
+    const scoped = new Repository(r.root, id => join(projectRoot, id));
+    scoped.saveProject({ ...a, rules: '项目目录里的最新规则' });
+    expect(existsSync(join(projectRoot, 'a', '.mathmodel', 'competition.json'))).toBe(true);
+    const legacy = { ...scoped.state, projects: [{ ...a, rules: '旧全局规则' }] };
+    scoped.commit(legacy);
+    const reopened = new Repository(r.root, id => join(projectRoot, id));
+    expect(reopened.project('a')?.rules).toBe('项目目录里的最新规则');
+    expect(reopened.state.projects.find(p => p.id === 'a')?.rules).toBe('项目目录里的最新规则');
+  });
 });

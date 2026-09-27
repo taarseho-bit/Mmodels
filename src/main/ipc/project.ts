@@ -19,6 +19,7 @@ import { IPC, type ProjectMeta } from '@shared/types';
 import { getDb } from '../db';
 import { getSettings, updateSettings } from '../store/config';
 import { safeWrap, type IpcContext } from './index';
+import { removeCompetitionProject } from './competition-library';
 
 interface ProjectRow {
   id: string;
@@ -263,6 +264,8 @@ export function registerProjectHandlers(ctx: IpcContext): void {
       const meta = getProject(id);
       if (!meta) throw new Error('项目不存在');
       // ⚠️ 只删数据库记录，**不删用户文件**，除非显式要求
+      // 先删项目级比赛配置，再删数据库记录；否则 workspace(id) 无法解析项目根目录。
+      removeCompetitionProject(id, meta.root);
       getDb().prepare('DELETE FROM projects WHERE id = ?').run(id);
       if (deleteFiles) {
         // 二次确认：这个操作不可逆

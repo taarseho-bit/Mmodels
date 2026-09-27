@@ -372,6 +372,7 @@ export interface ComposerProps {
     percentage: number;
     autoCompactThreshold?: number;
     autoCompactEnabled: boolean;
+    autoCompactState?: 'guaranteed' | 'unknown' | 'failed';
     compacted?: boolean;
   };
 }
@@ -1602,7 +1603,11 @@ export function Composer({
                       <div className="cz-context-bar"><i style={{ width: `${pct}%` }} /></div>
                       <div className="cz-context-meta"><span>自动整理线</span><strong>{threshold ? `${Math.round(threshold / 1000)}K` : '等待确认'}</strong></div>
                     </> : <p className="cz-pop-note">开始一次对话后，这里会显示当前回合的上下文用量。</p>}
-                    <p className="cz-context-note">{contextUsage?.autoCompactEnabled ? '接近上限时会自动整理旧内容，保留关键结论继续工作。' : '正在等待运行器确认自动整理状态。'}</p>
+                    <p className="cz-context-note">{contextUsage?.autoCompactState === 'failed'
+                      ? '自动整理还没有确认成功，可以重试当前回合；原有内容不会被删除。'
+                      : contextUsage?.autoCompactState === 'guaranteed'
+                        ? '接近上限时会自动整理旧内容，保留关键结论继续工作。'
+                        : '正在确认自动整理状态，当前先按参考容量显示。'}</p>
                     <p className="cz-context-source">{contextUsage?.estimated ? '当前数字包含估算' : contextUsage?.capacitySource === 'configured' ? '容量来自模型设置' : contextUsage?.capacitySource === 'known' ? '容量已由模型确认' : '容量为运行器参考值'}{contextUsage?.compacted ? ' · 最近已整理过一次' : ''}</p>
                   </div>
                 </Popover>
