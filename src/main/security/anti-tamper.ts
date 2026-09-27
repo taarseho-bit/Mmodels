@@ -27,6 +27,11 @@
 /** BrowserWindow 仅作类型使用（import type 不产生运行时代码，字节码里无 electron 顶层依赖） */
 import type { BrowserWindow } from 'electron';
 import { digestMatches, parseIntegrityMeta, type IntegrityMeta } from './integrity';
+// 授权逻辑与反篡改逻辑一起进入 _security.jsc；业务 bundle 不携带可直接
+// 搜索的授权闸门实现。开发态由调用方跳过，发布态由 session IPC 调用。
+import { assertAiEntitlement } from './license-gate';
+
+export { assertAiEntitlement };
 
 /** 本模块最终输出为 CJS，require 是真实全局（esbuild 不改写标识符） */
 declare const require: NodeRequire;

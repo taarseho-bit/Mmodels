@@ -13,7 +13,8 @@
  *   如果 agent 崩了/用户关了窗口，至少用户发过的话还在。
  *   反过来（跑完再落库）会丢消息。
  */
-import { ipcMain } from 'electron';
+import { app, ipcMain } from 'electron';
+import { createRequire } from 'node:module';
 import { competitionProjectContext } from './competition-library';
 import { sharedEnvironmentInstructions } from '../runtime/shared-environment';
 import { userTextBlock } from '../../shared/user-message';
@@ -54,7 +55,32 @@ import { resolveResourcesRoot } from '../resources';
 import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS, skillRouteDecision } from '../agent/orchestration-policy';
 import { modelingAgentRouteForPrompt, modelingAgentsForRoute } from '../agent/modeling-agents';
 import { chooseModelRoute } from '../../shared/model-pool';
-import { assertAiEntitlement } from '../security/license-gate';
+
+type SecurityEntitlementModule = {
+  assertAiEntitlement?: () => Promise<void>;
+};
+
+let securityEntitlement: SecurityEntitlementModule | null | undefined;
+
+/**
+ * 商业版授权逻辑由反篡改模块统一编译进 `_security.jsc`，避免把授权闸门
+ * 的实现留在主业务 bundle。开发态没有字节码文件，保持本地 API 行为不变。
+ */
+async function assertPackagedAiEntitlement(): Promise<void> {
+  if (!app.isPackaged) return;
+  if (securityEntitlement === undefined) {
+    try {
+      const nodeRequire = createRequire(import.meta.url);
+      securityEntitlement = nodeRequire('./_security.jsc') as SecurityEntitlementModule;
+    } catch {
+      securityEntitlement = null;
+    }
+  }
+  if (!securityEntitlement?.assertAiEntitlement) {
+    throw new Error('授权校验模块不可用，请重新安装后重试。');
+  }
+  await securityEntitlement.assertAiEntitlement();
+}
 
 /** 全局会话注册表（整个应用一份） */
 export const sessionRegistry = new SessionRegistry();
@@ -1008,7 +1034,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       const targetProject = getProject(targetSession.projectId);
       if (!targetProject) throw new Error('会话所属项目不存在');
       if (activeTurns.has(sessionId)) throw new Error('这条对话正在运行，请先停止当前任务');
-      await assertAiEntitlement();
+      await assertPackagedAiEntitlement();
       const cwd = targetProject.root;
       resolveSessionModel(targetSession);
 
