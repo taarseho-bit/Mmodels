@@ -30,7 +30,8 @@ import { MODELING_AGENTS } from './modeling-agents';
 import { DEFAULT_MAX_PARALLEL_AGENTS } from './orchestration-policy';
 import { WorkflowTrace } from './workflow-trace';
 import type { WorkflowRun } from '@shared/workflow';
-import { sdkModel, userMcpOptions, knownContextWindow, boundedContextWindow } from './runtime-options';
+import { sdkModel, userMcpOptions, mcpServersForProject, knownContextWindow, boundedContextWindow } from './runtime-options';
+import { buildNativeConnectors } from './native-connectors';
 import { recordCapabilities } from './capabilities';
 import { buildChildEnv, buildProviderEnv, resolveClaudeExecutable } from './env';
 import {
@@ -789,8 +790,12 @@ export class AgentSession extends EventEmitter {
       // 用户配置的 MCP 服务器（设置/扩展里的「连接器」，项目契约 settings.mcpServers 语义）：
       // stdio 型 → SDK stdio server；http 型 → SDK http server。
       // 延迟 import 避免循环依赖（config store 不依赖本模块）。
-      const { getSettings } = await import('../store/config');
-      const mcp = userMcpOptions(getSettings().mcpServers ?? []);
+      const { getRuntimeMcpServers } = await import('../store/config');
+      const { findProjectByRoot } = await import('../ipc/project');
+      const projectId = findProjectByRoot(opts.cwd)?.id;
+      const selectedConnectors = mcpServersForProject(getRuntimeMcpServers(), projectId);
+      const mcp = userMcpOptions(selectedConnectors.filter(server => !server.native));
+      Object.assign(mcp, buildNativeConnectors(selectedConnectors, opts));
       if (opts.builtinMcpEnabled) {
         const { buildBuiltinMcp } = await import('./builtin-mcp');
         Object.assign(mcp, await buildBuiltinMcp(opts));

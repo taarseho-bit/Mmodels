@@ -501,6 +501,41 @@ export interface McpServerConfig {
   headers?: Record<string, string>;
   /** 是否内置预设（builtin: 前缀的只读项既有语义） */
   builtin?: boolean;
+  /** 原生连接器：由 MModels 内置适配器提供，不需要外部 npx/uvx 包。 */
+  native?: boolean;
+  /** 连接器归类，用于设置页和任务路由。 */
+  category?: ConnectorCategory;
+  /** 面向用户的名称和用途说明。 */
+  displayName?: string;
+  description?: string;
+  capabilities?: string[];
+  /** 只读连接器不会修改远端内容。默认 true。 */
+  readOnly?: boolean;
+  /** 运行时权限：只读、写入当前项目、外部写入。 */
+  permission?: ConnectorPermission;
+  /** 为空表示全局；有值时只对指定项目启用。 */
+  projectIds?: string[];
+}
+
+export type ConnectorCategory =
+  | 'literature'
+  | 'datasets'
+  | 'research'
+  | 'files'
+  | 'code'
+  | 'compute'
+  | 'collaboration'
+  | 'utility';
+
+export type ConnectorPermission = 'read' | 'project-write' | 'external-write';
+
+export interface ConnectorTestResult {
+  ok: boolean;
+  name: string;
+  displayName?: string;
+  detail: string;
+  checkedAt: number;
+  latencyMs?: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -764,6 +799,9 @@ export const IPC = {
   NETWORK_SET_BOT_SECRET: 'network:set-bot-secret',
   /** 清除机器人密钥 */
   NETWORK_CLEAR_BOT_SECRET: 'network:clear-bot-secret',
+
+  // 连接器诊断
+  CONNECTOR_TEST: 'connector:test',
 
   // 技能
   SKILL_LIST: 'skill:list',

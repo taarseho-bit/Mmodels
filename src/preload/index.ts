@@ -307,6 +307,12 @@ const api = {
       subscribe<AppSettings>(IPC.SETTINGS_CHANGED, cb),
   },
 
+  // ── 连接器诊断 ───────────────────────────────────────────
+  connectors: {
+    test: (name: string): Promise<import('@shared/types').ConnectorTestResult> =>
+      ipcRenderer.invoke(IPC.CONNECTOR_TEST, name),
+  },
+
   // ── 桌面小模 ──────────────────────────────────────────────
   pet: {
     showMain: (): Promise<boolean> => ipcRenderer.invoke(IPC.PET_SHOW_MAIN),

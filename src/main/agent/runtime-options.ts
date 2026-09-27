@@ -48,3 +48,14 @@ export function userMcpOptions(servers: McpServerConfig[]): Record<string, SdkMc
   }
   return result;
 }
+
+/**
+ * 项目范围过滤：没有 projectIds 的历史连接器继续全局生效；
+ * 新连接器可以只绑定到一个或多个项目，避免不同竞赛项目互相串数据。
+ */
+export function mcpServersForProject(servers: McpServerConfig[], projectId?: string): McpServerConfig[] {
+  return servers.filter(server => {
+    const ids = server.projectIds?.filter(Boolean);
+    return !ids?.length || (!!projectId && ids.includes(projectId));
+  });
+}

@@ -89,6 +89,8 @@ interface StoreShape {
    * 密钥不该跟着走。这里只经 `network:bot-secret-status` 暴露「配没配」。
    */
   botSecrets: Record<string, string>;
+  /** MCP 连接器密钥单独保存，键为连接器名，值为环境变量映射。 */
+  mcpSecrets: Record<string, Record<string, string>>;
 }
 
 const store = new Conf<StoreShape>({
@@ -100,6 +102,7 @@ const store = new Conf<StoreShape>({
     disabledSkills: [],
     enabledSkills: [],
     botSecrets: {},
+    mcpSecrets: {},
   },
 });
 
@@ -144,15 +147,69 @@ function decryptSecret(stored: string): string {
 // ─────────────────────────────────────────────────────────────
 
 export function getSettings(): AppSettings {
-  return { ...DEFAULT_SETTINGS, ...store.get('settings') };
+  const settings = { ...DEFAULT_SETTINGS, ...store.get('settings') };
+  // 渲染层只需要知道哪些字段已经配置，不应收到真实令牌。
+  if (settings.mcpServers) {
+    const secretStore = { ...(store.get('mcpSecrets') ?? {}) };
+    let migrated = false;
+    const clean = settings.mcpServers.map(server => {
+      const existing = { ...(secretStore[server.name] ?? {}) };
+      for (const [key, value] of Object.entries(server.env ?? {})) {
+        if (value) { existing[key] = encryptSecret(value); migrated = true; }
+      }
+      if (Object.keys(existing).length) secretStore[server.name] = existing;
+      return { ...server, env: Object.fromEntries(Object.keys(server.env ?? {}).map(key => [key, ''])) };
+    });
+    if (migrated) {
+      store.set('mcpSecrets', secretStore);
+      store.set('settings', { ...settings, mcpServers: clean });
+    }
+    settings.mcpServers = clean;
+  }
+  return settings;
 }
 
 export function updateSettings(patch: Partial<AppSettings>): AppSettings {
-  const next = { ...getSettings(), ...patch };
+  const stored = { ...DEFAULT_SETTINGS, ...store.get('settings') };
+  // 历史版本把 MCP 密钥写在 settings.mcpServers.env 中：写入新配置时迁移到
+  // safeStorage 层，并且不再把真实值写入普通设置 JSON。
+  if (patch.mcpServers) {
+    const secretStore = { ...(store.get('mcpSecrets') ?? {}) };
+    const sanitized = patch.mcpServers.map(server => {
+      const env = server.env ?? {};
+      const existing = { ...(secretStore[server.name] ?? {}) };
+      for (const [key, value] of Object.entries(env)) {
+        if (value) existing[key] = encryptSecret(value);
+      }
+      if (Object.keys(existing).length) secretStore[server.name] = existing;
+      return { ...server, env: Object.fromEntries(Object.keys(env).map(key => [key, ''])) };
+    });
+    for (const key of Object.keys(secretStore)) {
+      if (!sanitized.some(server => server.name === key)) delete secretStore[key];
+    }
+    store.set('mcpSecrets', secretStore);
+    patch = { ...patch, mcpServers: sanitized };
+  }
+  const next = { ...stored, ...patch };
   store.set('settings', next);
   // 代理变更要立刻同步给 Agent 子进程环境（env.ts 的运行时缓存）
   if (patch.proxy) setProxyRuntime(next.proxy ?? DEFAULT_PROXY, detectedSystemProxy());
   return next;
+}
+
+/** 主进程运行 Agent 时读取带解密凭据的连接器配置。绝不通过 preload 暴露。 */
+export function getRuntimeMcpServers(): NonNullable<AppSettings['mcpServers']> {
+  const stored = { ...DEFAULT_SETTINGS, ...store.get('settings') };
+  const secretStore = store.get('mcpSecrets') ?? {};
+  return (stored.mcpServers ?? []).map(server => {
+    const secrets = secretStore[server.name] ?? {};
+    const env = { ...(server.env ?? {}) };
+    for (const [key, value] of Object.entries(secrets)) {
+      const plain = decryptSecret(value);
+      if (plain) env[key] = plain;
+    }
+    return { ...server, env };
+  });
 }
 
 // ─────────────────────────────────────────────────────────────

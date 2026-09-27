@@ -3,7 +3,7 @@
 ## 当前版本
 
 - 版本：0.1.15
-- Git：`d5308e8`
+- Git：`599acab`
 - 分支：`main`
 - 工作区：干净（便携版与源码一致）
 - 本地保护标签：`pre-independent-cut-2026-09-26`
@@ -17,6 +17,8 @@
 - 对话活动行已去重并统一中文表达，消息操作默认收起；工作流画布总览缩放、停止态和阶段状态已收口。
 - 59 项内置数学建模技能可以被插件注册器发现（便携版真实读盘）。
 - 多智能体工作流、项目比赛配置、论文模板、图表和交付检查均有对应代码与测试。
+- 连接器目录已扩展为文献、数据源、科研资料、项目文件、代码、本地计算和通知七类；新增 Crossref、OpenAlex、Semantic Scholar、World Bank、Open-Meteo、Hugging Face、Zenodo、ORCID、Google Drive、GitLab、Gitee、Python、R、Octave 与 Webhook 等适配器。
+- 新连接器默认只绑定当前项目；MCP 凭据迁移到 Electron safeStorage 层，渲染层只看到已配置状态；设置页提供连接测试、启用开关和只读/项目可写/外部可写权限。
 
 ## 近期升级方向
 
