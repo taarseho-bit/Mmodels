@@ -1,6 +1,6 @@
 {
   "name": "mmodels-desktop",
-  "version": "0.1.16",
+  "version": "0.1.18",
   "private": true,
   "description": "MModels · 本地数学建模智能体桌面版",
   "type": "module",

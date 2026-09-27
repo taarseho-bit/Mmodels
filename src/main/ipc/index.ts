@@ -7,7 +7,7 @@
  *  3. **每个 handler 自己包 try/catch** —— 未捕获的异常会让渲染层拿到
  *     一个没头没尾的 Error，用户看不懂。统一转成可读信息。
  *
- * ⚠️ 注意：本文件**不注册**账号/计费相关通道（按需求排除）。
+ * 2026-09-28 商业化：账号/授权通道（account.ts）已接入，仍在此单一入口注册。
  */
 import { ipcMain, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
@@ -36,6 +36,7 @@ import { registerPetHandlers } from './pet';
 import { registerCompetitionLibraryHandlers } from './competition-library';
 import { registerWorkflowHandlers } from './workflow';
 import { registerConnectorHandlers } from './connectors';
+import { registerAccountHandlers } from './account';
 import { closeAgentBrowsers } from '../agent/browser-tools';
 import { bridgeRegistry } from '../agent/bridge-registry';
 
@@ -124,6 +125,7 @@ export function registerIpcHandlers(ctx: IpcContext): void {
   registerCompetitionLibraryHandlers(ctx);
   registerWorkflowHandlers();
   registerConnectorHandlers(ctx);
+  registerAccountHandlers();
 }
 
 /** 彻底退出应用前，先结束由 MModels 自己启动的长驻任务与终端子进程。 */

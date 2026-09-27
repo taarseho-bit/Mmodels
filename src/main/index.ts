@@ -19,7 +19,7 @@
  */
 import { app, BrowserWindow, shell, nativeTheme, dialog, Menu } from 'electron';
 import { join } from 'node:path';
-import { writeFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 // ⚠️ bytenode 副作用 import：注册 .jsc（V8 字节码）加载钩子。
 //    必须先于安全模块 .jsc 的 require —— 加固产物（_security.jsc）依赖它。
@@ -30,7 +30,7 @@ import { LocalServer, type ServerInfo } from './server';
 import { pushToRenderer, registerIpcHandlers, shutdownIpcRuntimes } from './ipc';
 import { IPC } from '@shared/types';
 import { mountRoutes } from './server/routes';
-import { closeDb, initDb } from './db';
+import { closeDb, initDb, isDbOpen } from './db';
 import { bootstrapDefaultProject } from './ipc/project';
 import { warmupSkillsPlugin } from './agent/skills-plugin';
 import { getSettings, syncProxyRuntime, updateSettings } from './store/config';
@@ -151,7 +151,7 @@ if (!gotLock) {
     //    （与 bootstrap 里数据库/本地服务两处专属 catch 同一套约定）。
     //    「启动失败」这条路径此前**不落盘**，排障只能靠用户截图。
     try {
-      writeFileSync(
+      appendFileSync(
         join(app.getPath('userData'), 'startup-error.log'),
         `[${new Date().toISOString()}] bootstrap 失败\n${String(err)}\n${err instanceof Error && err.stack ? err.stack : ''}\n`,
         'utf8',
@@ -333,8 +333,8 @@ async function bootstrap(): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     // 同样先落盘：模态框会阻塞事件循环（见下面本地服务那段的说明）
     try {
-      const { writeFileSync } = await import('node:fs');
-      writeFileSync(
+      const { appendFileSync } = await import('node:fs');
+      appendFileSync(
         join(app.getPath('userData'), 'startup-error.log'),
         `[${new Date().toISOString()}] 数据库初始化失败\n${message}\n${err instanceof Error ? (err.stack ?? '') : ''}\n`,
         'utf8',
@@ -382,8 +382,8 @@ async function bootstrap(): Promise<void> {
     //    但窗口不出现、调试端口也不响应，排起来极其费劲。
     //    写一份日志文件，至少让错误能被看到。
     try {
-      const { writeFileSync } = await import('node:fs');
-      writeFileSync(
+      const { appendFileSync } = await import('node:fs');
+      appendFileSync(
         join(app.getPath('userData'), 'startup-error.log'),
         `[${new Date().toISOString()}] 本地服务启动失败\n${message}\n${err instanceof Error ? (err.stack ?? '') : ''}\n`,
         'utf8',
@@ -398,6 +398,14 @@ async function bootstrap(): Promise<void> {
         `常见原因：端口被占用或防火墙拦截。`,
     );
     app.quit();
+    return;
+  }
+
+  // localServer.start() 是启动流程唯一的 await 间隙。若系统退出、第二实例
+  // 或其他生命周期事件在这里触发 before-quit，closeDb() 会把句柄置空；
+  // 继续注册 workflow IPC 就会把“退出中的应用”误报为数据库启动失败。
+  if (quittingCompletely || !isDbOpen()) {
+    log('bootstrap cancelled while the application was closing');
     return;
   }
 
@@ -459,6 +467,12 @@ app.on('window-all-closed', () => {
   //    一旦退掉整个应用，正在跑的生成任务会被腰斩。
   if (isRenderingScreenshots()) {
     log('window-all-closed ignored (screenshot rendering in progress)');
+    return;
+  }
+  // 首个主窗口创建前不应因系统生命周期事件结束 bootstrap；否则
+  // before-quit 会关闭数据库，随后 registerWorkflowHandlers() 触发误报。
+  if (!mainWindow && !quittingCompletely) {
+    log('window-all-closed ignored during startup');
     return;
   }
   if (process.platform !== 'darwin') {

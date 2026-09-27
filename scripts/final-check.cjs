@@ -1,19 +1,29 @@
 const fs = require('fs');
 const path = require('path');
 const out = [];
+const ROOT = 'D:\\mathmodel-desktop';
+const PNPM = path.join(ROOT, 'node_modules', '.pnpm');
+function packageDir(prefix) {
+  try {
+    const name = fs.readdirSync(PNPM).find((x) => x.startsWith(prefix + '@'));
+    return name ? path.join(PNPM, name, 'node_modules', prefix) : '';
+  } catch { return ''; }
+}
+const electronDir = packageDir('electron');
+const sqliteDir = packageDir('better-sqlite3');
+const ptyDir = packageDir('node-pty');
+const claudeDir = packageDir('@anthropic-ai');
 
 const checks = [
-  ['electron.exe', 'node_modules\\.pnpm\\electron@33.4.11\\node_modules\\electron\\dist\\electron.exe'],
-  ['electron path.txt', 'node_modules\\.pnpm\\electron@33.4.11\\node_modules\\electron\\path.txt'],
-  ['better_sqlite3.node', 'node_modules\\.pnpm\\better-sqlite3@12.11.1\\node_modules\\better-sqlite3\\build\\Release\\better_sqlite3.node'],
-  ['node-pty pty.node', 'node_modules\\.pnpm\\node-pty@1.1.0\\node_modules\\node-pty\\prebuilds\\win32-x64\\pty.node'],
-  ['claude.exe', 'node_modules\\.pnpm\\@anthropic-ai+claude-agent-sdk-win32-x64@0.3.224\\node_modules\\@anthropic-ai\\claude-agent-sdk-win32-x64\\claude.exe'],
-  ['claude-agent-sdk sdk.mjs', 'node_modules\\.pnpm\\@anthropic-ai+claude-agent-sdk@0.3.224_*\\node_modules\\@anthropic-ai\\claude-agent-sdk\\sdk.mjs'],
+  ['electron.exe', path.join(electronDir, 'dist', 'electron.exe')],
+  ['electron path.txt', path.join(electronDir, 'path.txt')],
+  ['better_sqlite3.node', path.join(sqliteDir, 'build', 'Release', 'better_sqlite3.node')],
+  ['node-pty pty.node', path.join(ptyDir, 'prebuilds', 'win32-x64', 'pty.node')],
 ];
 
 out.push('=== 关键二进制 ===');
 for (const [label, rel] of checks) {
-  const full = path.join('D:\\mathmodel-desktop', rel);
+  const full = path.isAbsolute(rel) ? rel : path.join(ROOT, rel);
   const ok = fs.existsSync(full);
   out.push((ok ? 'OK      ' : 'MISSING ') + label + '  ' + (ok ? (fs.statSync(full).size / 1024 / 1024).toFixed(2) + ' MB' : ''));
 }

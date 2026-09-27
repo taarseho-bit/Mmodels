@@ -14,8 +14,8 @@ export function friendlyError(error: unknown, fallback = '这一步没有完成�
   if (/eacces|permission|denied|权限/.test(text)) return '当前文件夹没有访问权限，请换一个位置或重新授权。';
   if (/network|fetch|socket|连接|代理|dns/.test(text)) return '暂时连不上服务，内容已保留，可以检查网络后重试。';
   if (/template|模板/.test(text)) return '论文模板暂时没有找到，请在比赛信息中重新选择。';
+  if (/授权|会员|令牌|license|entitlement|token/.test(text)) return '当前版本需要有效授权，请到“设置 → 账号与授权”登录或续费后再试。';
   if (/exit code|退出码|process exited|进程/.test(text)) return '这一步没有正常完成，已保留当前结果，可以重试。';
   if (/busy|already running|正在运行|已有.*任务/.test(text)) return '上一项工作还在收尾，请稍等片刻再试。';
   return fallback;
 }
-

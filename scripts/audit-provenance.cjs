@@ -26,7 +26,9 @@ const markerLabels = ['外部产品名', '外部产品名', '外部目录名', '
 const machinePathPatterns = [
   /[A-Za-z]:\\Users\\(?!<)[^\\/\s"']+/i,
   /\\Users\\(?!<)[^\\/\s"']+/i,
-  /\/Users\/(?!<)[^/\s"']+/i,
+  // 只匹配真正的 POSIX 用户目录，不要把 `/api/users/...` 这类接口路径
+  // 当成开发机路径（历史规则过宽，导致商业服务源码无意义地误报）。
+  /(?:^|[\s"'=:(])\/Users\/(?!<)[^/\s"']+/i,
 ];
 const personalFieldPatterns = [
   /(?:作者|开发者|维护者)\s*[:：]\s*[^\s，。；;]+/i,

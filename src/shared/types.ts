@@ -944,7 +944,25 @@ export const IPC = {
 
   /** main → renderer：成员变化 / 待批准 / 任务 / 文件变更 / 房间关闭 */
   COLLAB_EVENT: 'collab:event',
+
+  // 商业化：账号与授权（对接授权服务 register/login/redeem/check）
+  ACCOUNT_STATUS: 'account:status',
+  ACCOUNT_REGISTER: 'account:register',
+  ACCOUNT_LOGIN: 'account:login',
+  ACCOUNT_REDEEM: 'account:redeem',
+  ACCOUNT_LOGOUT: 'account:logout',
+  ACCOUNT_SEND_CODE: 'account:send-code',
+  ACCOUNT_RESET_PASSWORD: 'account:reset-password',
 } as const;
+
+/** 本地账号状态（设置页「账号与授权」渲染用；expiresAt 为服务端毫秒时间戳） */
+export interface AccountStatusInfo {
+  loggedIn: boolean;
+  username: string;
+  expiresAt: number;
+  /** 服务端连通但账号被停用等异常态 */
+  error?: string;
+}
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
 

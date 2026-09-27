@@ -15,9 +15,12 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { IPC } from '@shared/types';
+import type { ContentBlock, StreamEvent } from '@shared/types';
+import { userTextBlock } from '../../shared/user-message';
 import { getDb } from '../db';
 import { createSystemNotification } from '../notify';
-import { createSession } from './session';
+import { createSession, insertMessage } from './session';
+import { applyStreamEvent } from './stream-blocks';
 import { pushToRenderer, safeWrap, type IpcContext } from './index';
 
 // ─────────────────────────────────────────────────────────────
@@ -190,6 +193,7 @@ async function executeAutomation(a: AutomationRecord): Promise<void> {
   running.add(a.id);
 
   const runId = randomUUID();
+  let automationSessionId: string | null = null;
   getDb()
     .prepare(
       'INSERT INTO automation_runs (id, automation_id, status, started_at) VALUES (?,?,?,?)',
@@ -199,57 +203,135 @@ async function executeAutomation(a: AutomationRecord): Promise<void> {
   pushToRenderer(IPC.AUTOMATION_CHANGED, { automationId: a.id, phase: 'started' });
 
   try {
+    // 自动化绕过 session.send，必须在创建 runner 前走同一条商业授权闸门。
+    // 否则账号被停用后，定时任务仍可能继续调用模型。
+    const { assertPackagedAiEntitlement } = await import('./session');
+    await assertPackagedAiEntitlement();
+
+    // 先验证项目和模型，再创建会话，避免失败时留下空的孤儿会话。
+    const { sessionRegistry } = await import('./session');
+    const { getProject } = await import('./project');
+    const { findProvider, activeProvider, getSettings } = await import('../store/config');
+    const project = getProject(a.projectId);
+    if (!project) throw new Error('定时任务所属项目不存在');
+    const settings = getSettings();
+    const provider = (settings.activeProviderId ? findProvider(settings.activeProviderId) : null) ?? activeProvider();
+    if (!provider) throw new Error('未配置模型供应商，自动化任务无法执行');
+    const selectedModel = settings.defaultModel || provider.models?.[0] || '';
+    if (!selectedModel) throw new Error('未指定模型，自动化任务无法执行');
+
+    const { bridgeRegistry } = await import('../agent/bridge-registry');
+    const bridgeBaseUrl = await bridgeRegistry.ensureFor(provider, { model: selectedModel, effort: settings.effort ?? undefined, disableThinking: settings.disableThinking });
+
     // 每个自动化任务创建一个专属会话来承载这一轮
     const session = createSession(a.projectId, `[自动] ${a.name}`);
-
+    automationSessionId = session.id;
     getDb()
       .prepare('UPDATE automation_runs SET session_id = ? WHERE id = ?')
       .run(session.id, runId);
+    insertMessage(session.id, {
+      id: randomUUID(),
+      role: 'user',
+      blocks: [userTextBlock(a.prompt)],
+      createdAt: Date.now(),
+    });
 
     // ⚠️ 这里不能直接 await sessionRunner.run() —— 因为 send 的实现在 ipc/session.ts
-    //    里。为了避免循环依赖，我们在这里直接调 runner。
-    const { sessionRegistry } = await import('./session');
-    const { getProject } = await import('./project');
+    //    里。为了避免循环依赖，我们在这里直接调 runner，但仍复用同一套流事件落库逻辑。
     const runner = sessionRegistry.get(session.id);
 
-    const providerId = session.providerId || null;
-    const { findProvider, activeProvider, getSettings } = await import('../store/config');
-    const provider = (providerId ? findProvider(providerId) : null) ?? activeProvider();
-    if (!provider) throw new Error('未配置模型供应商，自动化任务无法执行');
-
-    const { bridgeRegistry } = await import('../agent/bridge-registry');
-    const selectedModel = session.model || getSettings().defaultModel || provider.models?.[0] || '';
-    const bridgeBaseUrl = await bridgeRegistry.ensureFor(provider, { model: selectedModel, effort: getSettings().effort ?? undefined, disableThinking: getSettings().disableThinking });
-    const project = getProject(a.projectId);
-    if (!project) throw new Error('定时任务所属项目不存在');
     const { extraPlugins, workspaceInstructions } = await import('../agent/project-plugins');
     const { buildSystemPrompt } = await import('./session');
     const { publishWorkflow } = await import('./workflow');
     const { competitionProjectContext } = await import('./competition-library');
 
-    await runner.run({
+    const collected: ContentBlock[] = [];
+    const onEvent = (ev: StreamEvent): void => {
+      applyStreamEvent(collected, ev);
+      // 结束事件等最终消息写入后再发，避免界面打开会话时撞上空窗。
+      if (ev.type !== 'session-end') {
+        pushToRenderer(IPC.SESSION_STREAM, { sessionId: session.id, event: ev });
+      }
+    };
+    runner.on('event', onEvent);
+    getDb()
+      .prepare("UPDATE sessions SET status = 'running', updated_at = ? WHERE id = ?")
+      .run(Date.now(), session.id);
+
+    try {
+      await runner.run({
       sessionId: session.id,
       prompt: a.prompt,
       provider,
       model: selectedModel,
       cwd: project.root,
-      extraPluginPaths: extraPlugins(project.root, getSettings()),
+      extraPluginPaths: extraPlugins(project.root, settings),
       workspaceInstructions: [workspaceInstructions(project.root), competitionProjectContext(project.id)].filter(Boolean).join('\n'),
       systemPrompt: buildSystemPrompt(project.root),
-      multiAgentEnabled: getSettings().multiAgentEnabled !== false,
+      multiAgentEnabled: settings.multiAgentEnabled !== false,
       onWorkflow: publishWorkflow,
       // 技能插件由 session.ts 自动物化挂载（<userData>/skills-plugin），这里不用管
-      builtinMcpEnabled: getSettings().builtinMcpEnabled,
-      effort: getSettings().effort ?? undefined,
-      disableThinking: getSettings().disableThinking,
+      builtinMcpEnabled: settings.builtinMcpEnabled,
+      effort: settings.effort ?? undefined,
+      disableThinking: settings.disableThinking,
       bridgeBaseUrl: bridgeBaseUrl ?? undefined,
-    } as Parameters<typeof runner.run>[0]);
+      } as Parameters<typeof runner.run>[0]);
+
+      const blocks = collected.filter(Boolean);
+      if (!blocks.length) blocks.push({ kind: 'text', text: `自动化任务已完成。共输出 ${runner.totalUsage.outputTokens} 个 token。` });
+      insertMessage(session.id, {
+        id: randomUUID(),
+        role: 'assistant',
+        blocks,
+        createdAt: Date.now(),
+        model: selectedModel,
+        usage: runner.totalUsage,
+      });
+      getDb()
+        .prepare("UPDATE sessions SET status = 'idle', error = NULL, updated_at = ?, input_tokens = ?, output_tokens = ?, reasoning_tokens = ? WHERE id = ?")
+        .run(Date.now(), runner.totalUsage.inputTokens, runner.totalUsage.outputTokens, runner.totalUsage.reasoningTokens ?? 0, session.id);
+      pushToRenderer(IPC.SESSION_STREAM, { sessionId: session.id, event: { type: 'session-end', sessionId: session.id } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      insertMessage(session.id, {
+        id: randomUUID(),
+        role: 'assistant',
+        blocks: [{ kind: 'error', text: '自动化任务未完成：' + message }],
+        createdAt: Date.now(),
+        model: selectedModel,
+        usage: runner.totalUsage,
+      });
+      getDb()
+        .prepare("UPDATE sessions SET status = 'error', error = ?, updated_at = ? WHERE id = ?")
+        .run(message, Date.now(), session.id);
+      pushToRenderer(IPC.SESSION_STREAM, { sessionId: session.id, event: { type: 'session-error', message: '自动化任务未完成，已保留当前内容，可以重试。' } });
+      pushToRenderer(IPC.SESSION_STREAM, { sessionId: session.id, event: { type: 'session-end', sessionId: session.id, reason: 'error' } });
+      throw err;
+    } finally {
+      runner.removeListener('event', onEvent);
+    }
 
     getDb()
       .prepare('UPDATE automation_runs SET status = ?, finished_at = ?, summary = ? WHERE id = ?')
       .run('success', Date.now(), `共 ${runner.totalUsage.outputTokens} 输出 tokens`, runId);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    if (automationSessionId) {
+      const existing = getDb()
+        .prepare<[string], { status: string }>('SELECT status FROM sessions WHERE id = ?')
+        .get(automationSessionId);
+      if (existing && existing.status !== 'error') {
+        insertMessage(automationSessionId, {
+          id: randomUUID(),
+          role: 'assistant',
+          blocks: [{ kind: 'error', text: '自动化任务未完成：' + msg }],
+          createdAt: Date.now(),
+        });
+        getDb()
+          .prepare("UPDATE sessions SET status = 'error', error = ?, updated_at = ? WHERE id = ?")
+          .run(msg, Date.now(), automationSessionId);
+      }
+    }
     getDb()
       .prepare('UPDATE automation_runs SET status = ?, finished_at = ?, error = ? WHERE id = ?')
       .run('failed', Date.now(), msg, runId);

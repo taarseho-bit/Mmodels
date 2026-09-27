@@ -189,6 +189,16 @@ export function getDb(): BetterSqlite3.Database {
   return db;
 }
 
+/**
+ * 启动流程跨过本地服务的异步间隙时使用的轻量状态检查。
+ * Electron 在退出、第二实例切换或窗口生命周期异常时，before-quit
+ * 可能先关闭数据库；调用方需要在继续注册 IPC 前安静地结束 bootstrap，
+ * 而不是再次调用 getDb() 把“数据库尚未初始化”误报成启动故障。
+ */
+export function isDbOpen(): boolean {
+  return db !== null && db.open;
+}
+
 export function closeDb(): void {
   if (!db) return;
   try {

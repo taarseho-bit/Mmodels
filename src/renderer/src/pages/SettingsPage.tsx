@@ -6,8 +6,8 @@
  *
  * ⚠️ 全部本地化：
  *   - 个人资料的用量统计从本地 SQLite 聚合（stats:get），不出网
- *   - 没有账号体系：显示名/句柄存本地设置
- *   - 订阅状态：当前版本 = 普通用户（不接计费）
+ *   - 账号与授权：会员状态、注册/登录、卡密兑换由独立账号分区承载
+ *   - 凭证只由主进程安全存储，渲染层不接触服务端密钥
  *
  * 各分区已拆分到 `../components/settings/*`，本文件只负责导航 / 搜索 / 分区切换 / 滚动容器。
  */
@@ -31,6 +31,7 @@ import { KeysSection } from '../components/settings/KeysSection';
 import { NotifySection } from '../components/settings/NotifySection';
 import { TourSection } from '../components/settings/TourSection';
 import { AboutSection } from '../components/settings/AboutSection';
+import { AccountSection } from '../components/settings/AccountSection';
 import { DataChartStudioPage } from './DataChartStudioPage';
 import { CompetitionsPage } from './CompetitionsPage';
 import { AutomationPage } from './AutomationPage';
@@ -38,6 +39,7 @@ import { ExtensionsPage } from './ExtensionsPage';
 import type { Route } from '../App';
 
 type SectionId =
+  | 'account'
   | 'gallery' | 'competitions' | 'datasets' | 'automation' | 'extensions'
   | 'profile'
   | 'paper'
@@ -64,7 +66,7 @@ function normalizeSection(value: string | null | undefined): SectionId | null {
   if (value === 'bots') return 'about';
   if (value === 'gallery') return 'datasets';
   const ids: SectionId[] = [
-    'gallery', 'competitions', 'datasets', 'automation', 'extensions', 'profile', 'paper', 'quality',
+    'account', 'gallery', 'competitions', 'datasets', 'automation', 'extensions', 'profile', 'paper', 'quality',
     'chat', 'model', 'providers', 'env', 'network', 'sysprompt', 'appearance', 'keys',
     'notify', 'tour', 'about',
   ];
@@ -72,6 +74,7 @@ function normalizeSection(value: string | null | undefined): SectionId | null {
 }
 
 function groupForSection(section: SectionId): string {
+  if (section === 'account') return 'membership';
   if (['competitions', 'paper', 'quality'].includes(section)) return 'competition';
   if (['extensions', 'datasets'].includes(section)) return 'resources';
   if (['model', 'providers', 'chat', 'sysprompt'].includes(section)) return 'model';
@@ -127,6 +130,11 @@ export function SettingsPage({
    * 只是把入口按数学建模场景重新归类。
    */
   const groups: SectionGroup[] = [
+    {
+      id: 'membership', label: '会员与账号', icon: 'crown', items: [
+        { id: 'account', label: '账号与授权', icon: 'crown' },
+      ],
+    },
     {
       id: 'competition', label: '比赛与论文', icon: 'trophy', items: [
         { id: 'competitions', label: '竞赛日历', icon: 'calendar-days' },
@@ -255,6 +263,7 @@ export function SettingsPage({
             {section === 'datasets' && <DataChartStudioPage />}
             {section === 'automation' && <AutomationPage />}
             {section === 'extensions' && <ExtensionsPage requestedTab={requestedExtensionTab} onNavigate={onNavigate} />}
+            {section === 'account' && <AccountSection />}
             {section === 'profile' && <ProfileSection />}
             {section === 'paper' && <PaperSection />}
             {section === 'quality' && <ModelingQualitySection />}

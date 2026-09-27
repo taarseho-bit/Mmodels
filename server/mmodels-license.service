@@ -1,0 +1,23 @@
+[Unit]
+Description=MModels License Server
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /opt/mmodels/server.cjs
+WorkingDirectory=/opt/mmodels
+Restart=always
+RestartSec=3
+User=mmodels
+Group=mmodels
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/mmodels/data
+Environment=MM_PORT=8080
+Environment=MM_TRUST_PROXY=1
+Environment=MM_DATA_DIR=/opt/mmodels/data
+
+[Install]
+WantedBy=multi-user.target

@@ -10,7 +10,7 @@
  *
  * 这个脚本做三件事：
  *   1. electron: 用本地缓存 zip 解压到 dist/
- *   2. better-sqlite3: 下载 electron-v130 prebuild 解压到 build/Release/
+ *   2. better-sqlite3: 按当前 Electron ABI 下载预编译包解压到 build/Release/
  *   3. node-pty: 已自带 prebuilds，跳过
  */
 const fs = require('fs');
@@ -20,13 +20,27 @@ const { execFileSync } = require('child_process');
 
 const NM = 'D:\\mathmodel-desktop\\node_modules\\.pnpm';
 const out = [];
+function packageDir(prefix) {
+  try {
+    const entry = fs.readdirSync(NM).find((x) => x.startsWith(prefix + '@'));
+    return entry ? path.join(NM, entry, 'node_modules', prefix) : '';
+  } catch { return ''; }
+}
+function packageVersion(dir) {
+  try { return JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version; } catch { return ''; }
+}
+const electronPkgDir = packageDir('electron');
+const electronVersion = packageVersion(electronPkgDir) || '43.3.0';
+const electronMajor = Number(electronVersion.split('.')[0]);
+// electron 43 对应 Node module ABI 148；未知主版本不猜，提示手动准备预编译包。
+const electronAbi = ({ 33: 130, 34: 132, 35: 134, 36: 136, 37: 138, 38: 140, 39: 142, 40: 144, 41: 146, 42: 147, 43: 148, 44: 150 })[electronMajor];
 function log(s) { out.push(s); }
 
 // ─────────────────────────────────────────────────────────────
 // 1. Electron
 // ─────────────────────────────────────────────────────────────
 function setupElectron() {
-  const pkgDir = path.join(NM, 'electron@33.4.11', 'node_modules', 'electron');
+  const pkgDir = electronPkgDir;
   log('=== Electron ===');
   log('pkg dir: ' + pkgDir + '  exists=' + fs.existsSync(pkgDir));
   if (!fs.existsSync(pkgDir)) { log('  SKIP: pkg dir missing'); return; }
@@ -39,11 +53,11 @@ function setupElectron() {
   const cacheDir = path.join(os.homedir(), 'AppData', 'Local', 'electron', 'Cache');
   let zipPath = null;
   try {
-    const files = fs.readdirSync(cacheDir).filter((f) => f.startsWith('electron-v33') && f.endsWith('.zip'));
+    const files = fs.readdirSync(cacheDir).filter((f) => f.startsWith(`electron-v${electronMajor}`) && f.endsWith('.zip'));
     if (files.length) zipPath = path.join(cacheDir, files[0]);
   } catch (e) { log('  读缓存失败: ' + e.message); }
 
-  if (!zipPath) { log('  缓存里没有 electron-v33 zip'); return; }
+  if (!zipPath) { log(`  缓存里没有 electron-v${electronMajor} zip`); return; }
   log('  使用缓存 zip: ' + zipPath + '  (' + (fs.statSync(zipPath).size / 1024 / 1024).toFixed(1) + ' MB)');
 
   // 用系统 tar 解压（Windows 10 自带 bsdtar，能解 zip）
@@ -66,10 +80,10 @@ function setupElectron() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 2. better-sqlite3（Electron ABI 130 预编译包）
+// 2. better-sqlite3（当前 Electron ABI 预编译包）
 // ─────────────────────────────────────────────────────────────
 async function setupBetterSqlite3() {
-  const pkgDir = path.join(NM, 'better-sqlite3@12.11.1', 'node_modules', 'better-sqlite3');
+  const pkgDir = packageDir('better-sqlite3');
   log('');
   log('=== better-sqlite3 ===');
   log('pkg dir: ' + pkgDir + '  exists=' + fs.existsSync(pkgDir));
@@ -78,10 +92,12 @@ async function setupBetterSqlite3() {
   const target = path.join(pkgDir, 'build', 'Release', 'better_sqlite3.node');
   if (fs.existsSync(target)) { log('  已就位: ' + target); return; }
 
-  // 镜像上的 electron-v130 预编译包（对应 Electron 33）
+  if (!electronAbi) { log(`  未知 Electron ${electronVersion} 的 ABI，跳过自动下载`); return; }
+  const sqliteVersion = packageVersion(pkgDir) || '12.11.1';
+  // 国内镜像上的对应 Electron ABI 预编译包
   const url =
-    'https://registry.npmmirror.com/-/binary/better-sqlite3/v12.11.1/' +
-    'better-sqlite3-v12.11.1-electron-v130-win32-x64.tar.gz';
+    `https://registry.npmmirror.com/-/binary/better-sqlite3/v${sqliteVersion}/` +
+    `better-sqlite3-v${sqliteVersion}-electron-v${electronAbi}-win32-x64.tar.gz`;
 
   const tmp = path.join('D:\\mathmodel-desktop', '.cache', 'better-sqlite3-prebuilt.tar.gz');
   fs.mkdirSync(path.dirname(tmp), { recursive: true });
@@ -119,7 +135,7 @@ async function setupBetterSqlite3() {
 function checkNodePty() {
   log('');
   log('=== node-pty ===');
-  const pkgDir = path.join(NM, 'node-pty@1.1.0', 'node_modules', 'node-pty');
+  const pkgDir = packageDir('node-pty');
   const pre = path.join(pkgDir, 'prebuilds', 'win32-x64', 'pty.node');
   log('  pty.node: ' + (fs.existsSync(pre) ? fs.statSync(pre).size + ' bytes' : 'MISSING'));
   const conpty = path.join(pkgDir, 'third_party', 'conpty');

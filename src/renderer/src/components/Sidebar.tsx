@@ -85,6 +85,26 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 2400);
   }, []);
+
+  const deleteProjectWithConfirm = useCallback(async (id: string, name: string): Promise<void> => {
+    if (!window.confirm(`确定移除项目“${name}”吗？\n\n会删除项目记录、会话和 MModels 元数据目录，论文与其他项目文件会保留。此操作无法撤销。`)) return;
+    try {
+      await removeProject(id, true);
+      showToast('项目已删除');
+    } catch {
+      showToast('项目删除失败，请检查文件权限后重试');
+    }
+  }, [removeProject, showToast]);
+
+  const deleteSessionWithConfirm = useCallback(async (id: string, title: string): Promise<void> => {
+    if (!window.confirm(`确定删除会话“${title || '未命名会话'}”吗？\n\n删除后无法恢复。`)) return;
+    try {
+      await removeSession(id);
+      showToast('会话已删除');
+    } catch {
+      showToast('会话删除失败，请重试');
+    }
+  }, [removeSession, showToast]);
   useEffect(
     () => () => {
       if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
@@ -435,7 +455,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
             label: tx('shell.sidebar.deleteProject'),
             icon: 'trash-2',
             danger: true,
-            onSelect: () => void removeProject(ctxMenu.project.id, true),
+            onSelect: () => void deleteProjectWithConfirm(ctxMenu.project.id, ctxMenu.project.name),
           },
         ]
       : [];
@@ -503,7 +523,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
               label: t('删除会话'),
               icon: 'trash-2',
               danger: true,
-              onSelect: () => void removeSession(ctxMenu.session.id),
+              onSelect: () => void deleteSessionWithConfirm(ctxMenu.session.id, ctxMenu.session.title),
             },
           ] satisfies ContextMenuItem[];
         })()
@@ -777,7 +797,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
                         aria-label={tx('shell.sidebar.deleteProject')}
                         onClick={(e) => {
                           e.stopPropagation();
-                          void removeProject(p.id, true);
+                          void deleteProjectWithConfirm(p.id, p.name);
                         }}
                       >
                         <Icon name="trash-2" size={13} />

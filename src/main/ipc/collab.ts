@@ -6,8 +6,8 @@
  *   2. 把服务事件转发给渲染层（`collab:event`）
  *   3. 退出应用时收摊，别把监听端口留成僵尸
  *
- * ⚠️ 「会员校验」：本应用是当前版本，没有账号体系 —— 当前按普通用户处理，
- *    因此应用约定的 `joinMembershipRequired` 永远不会命中（文案仍保留在词典里）。
+ * 会员状态由账号与授权 IPC 统一管理；局域网协作只负责房间权限和项目范围，
+ * 不在这里重复读取口令或实现另一套会员校验。
  */
 import { app, ipcMain } from 'electron';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';

@@ -4,7 +4,7 @@
  * 应用约定有两个后端：
  *   - `backendInApp` 内嵌浏览器（独立登录态，功能完整）→ 本文件实现
  *   - `backendChrome` 复用你自己的 Chrome（需要装扩展配对）→ **当前版本不实现**，
- *     它依赖应用约定的 MCP Bridge 扩展，与本项目「不联网、不自建账号体系」的前提冲突。
+ *     它依赖外部 MCP Bridge 扩展；本项目默认保持项目范围和最小权限，需要用户显式启用。
  *
  * 为什么用 `document.createElement('webview')` 而不是 JSX：
  *   React 不认识 `<webview>`，要额外补 JSX 类型声明；而且命令式创建

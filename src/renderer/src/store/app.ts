@@ -732,6 +732,9 @@ export const useApp = create<AppState>((set, get) => ({
   // ─────────────────────────────────────────────────────────
 
   bootstrap: async () => {
+    // 允许启动失败页安全重试：清掉旧错误并重新进入加载态，避免按钮点击后
+    // 仍停留在“启动失败”静态页。
+    set({ ready: false, bootError: null });
     try {
       const [settings, projects, providers, skills] = await Promise.all([
         api().settings.get(),

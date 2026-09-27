@@ -90,13 +90,23 @@ exports.default = async function afterPack(context) {
   await flipFuses(exePath, fusesConfig);
   console.log('[after-pack] fuses 烧录完成:', JSON.stringify(fusesConfig));
 
-  // 商业版通过构建环境开启在线授权；不把令牌写入安装包，只写策略与服务地址。
+  // 商业发布脚本会显式注入 required=1；不把令牌写入安装包，只写策略与服务地址。
+  // 这里仍做最后一道硬校验，防止有人绕过 release-hardened 直接用错误配置打包。
+  if (process.env.MM_RELEASE_HARDENED === '1' && process.env.MM_LICENSE_REQUIRED !== '1') {
+    throw new Error('商业发布缺少 MM_LICENSE_REQUIRED=1，已拒绝生成无授权安装包');
+  }
   const licensePolicy = {
     schema: 1,
     required: process.env.MM_LICENSE_REQUIRED === '1',
     endpoint: process.env.MM_LICENSE_URL || '',
     cacheTtlMs: 300000,
   };
+  if (process.env.MM_RELEASE_HARDENED === '1' && !/^https:\/\//i.test(licensePolicy.endpoint)) {
+    throw new Error(`商业发布授权地址必须是 HTTPS：${licensePolicy.endpoint || '（空）'}`);
+  }
+  if (process.env.MM_RELEASE_HARDENED === '1' && !/\/api\/license\/check\/?$/i.test(licensePolicy.endpoint)) {
+    throw new Error(`商业发布授权地址必须是 /api/license/check：${licensePolicy.endpoint}`);
+  }
   writeFileSync(path.join(resourcesDir, 'license-policy.json'), JSON.stringify(licensePolicy, null, 2), 'utf8');
   console.log(`[after-pack] license-policy 写入完成 (required=${licensePolicy.required})`);
 

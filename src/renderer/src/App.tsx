@@ -12,7 +12,7 @@
  *
  * ⚠️ 与界面检查对齐：**没有底部状态栏**（应用约定所有页面都没有），
  *    顶栏也没有品牌块与多余图标。
- * ⚠️ 没有登录页、没有账户菜单、没有额度显示 —— 按要求排除计费功能。
+ * 账号与授权位于设置页，由本地安全存储保存会话凭证；主界面保持以建模工作为中心。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ApprovalDecision, ApprovalRequest, AskUserRequest, TourId } from '@shared/types';
@@ -127,12 +127,13 @@ export function App(): JSX.Element {
     if (settings?.locale) setLang(settings.locale);
   }, [settings?.locale]);
 
-  // 当前版本启动后必须可以立即使用各个页面。模型向导保留为可选配置入口，
-  // 不再用模态层挡住整个应用；未配置模型时，输入区会明确引导到设置页。
+  // 首次启动显示轻量向导，完成或跳过后才记录 onboardingDone。
+  // 不能在这里自动写“已完成”：否则新用户还没有看到模型/API 与运行环境设置，
+  // 下次也无法找回向导，只能自己猜设置入口。
   useEffect(() => {
     if (!ready || !settings || decidedRef.current) return;
     decidedRef.current = true;
-    if (!settings.onboardingDone) void patchSettings({ onboardingDone: true });
+    if (!settings.onboardingDone) setShowWizard(true);
   }, [ready, settings, patchSettings]);
 
   // 有「待填入的提示词」→ 自动切回对话页（应用约定：选模板后进入新会话并填好输入框）
@@ -338,6 +339,10 @@ export function App(): JSX.Element {
         <div className="muted" style={{ maxWidth: 520, lineHeight: 1.7 }}>
           {bootError}
         </div>
+        <div className="row" style={{ marginTop: 18, gap: 8 }}>
+          <button className="btn btn-sm btn-primary" onClick={() => void bootstrap()}>{t('重试启动')}</button>
+          <button className="btn btn-sm btn-ghost" onClick={() => window.location.reload()}>{t('重新加载')}</button>
+        </div>
       </div>
     );
   }
@@ -347,6 +352,9 @@ export function App(): JSX.Element {
     return (
       <ErrorBoundary key={lang}>
         <WelcomePage />
+        {showWizard && (
+          <OnboardingWizard onClose={() => finishWizard({ startTour: false })} onFinish={finishWizard} />
+        )}
       </ErrorBoundary>
     );
   }

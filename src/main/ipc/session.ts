@@ -66,7 +66,7 @@ let securityEntitlement: SecurityEntitlementModule | null | undefined;
  * 商业版授权逻辑由反篡改模块统一编译进 `_security.jsc`，避免把授权闸门
  * 的实现留在主业务 bundle。开发态没有字节码文件，保持本地 API 行为不变。
  */
-async function assertPackagedAiEntitlement(): Promise<void> {
+export async function assertPackagedAiEntitlement(): Promise<void> {
   if (!app.isPackaged) return;
   if (securityEntitlement === undefined) {
     try {
@@ -264,7 +264,7 @@ async function captureCheckpoint(cwd: string): Promise<string | null> {
 }
 
 /** 落库一条消息，并维护会话的消息计数与更新时间 */
-function insertMessage(
+export function insertMessage(
   sessionId: string,
   msg: ChatMessage,
   extra?: { checkpointRef?: string | null; agentMsgUuid?: string | null },

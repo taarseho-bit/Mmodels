@@ -13,6 +13,7 @@ import { IPC } from '@shared/types';
 import { COMPETITION_IPC, type CompetitionLibraryApi } from '../shared/competition-studio';
 import { WORKFLOW_IPC, type WorkflowApi } from '../shared/workflow';
 import type {
+  AccountStatusInfo,
   AppSettings,
   AskUserRequest,
   ApprovalDecision,
@@ -151,6 +152,22 @@ const api = {
         return '';
       }
     },
+  },
+
+  // ── 账号与授权（商业化） ──────────────────────────────────
+  account: {
+    status: (): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_STATUS),
+    register: (args: { username: string; password: string; email: string; emailCode: string; code?: string }): Promise<AccountStatusInfo> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_REGISTER, args),
+    login: (args: { username: string; password: string }): Promise<AccountStatusInfo> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_LOGIN, args),
+    redeem: (args: { code: string }): Promise<AccountStatusInfo> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_REDEEM, args),
+    logout: (): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_LOGOUT),
+    sendCode: (args: { email: string; purpose: 'register' | 'reset' }): Promise<void> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_SEND_CODE, args),
+    resetPassword: (args: { email: string; emailCode: string; newPassword: string }): Promise<void> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_RESET_PASSWORD, args),
   },
 
   // ── 文件 ──────────────────────────────────────────────────

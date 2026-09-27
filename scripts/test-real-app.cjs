@@ -303,6 +303,18 @@ async function main() {
   }
   ok(mounted, '界面已挂载');
 
+  // 新用户首次启动应看到向导；测试先验证它确实出现，再走“先跳过”继续
+  // 检查其余页面，避免向导把真实应用回归挡在设置之外。
+  const onboarding = await cdp.eval(`(function(){
+    var card = document.querySelector('.ob-card');
+    if (!card) return { visible: false, skipped: false };
+    var btn = Array.from(card.querySelectorAll('button')).find(function(b){ return /跳过|略过/.test(b.textContent || ''); });
+    if (btn) { btn.click(); return { visible: true, skipped: true }; }
+    return { visible: true, skipped: false };
+  })()`);
+  ok(onboarding.visible, '首次启动向导已显示');
+  if (onboarding.skipped) await sleep(350);
+
   // ── 1. 运行时（验证真的是打包后的 Electron 43） ──
   const info = await cdp.eval(
     `(function(){

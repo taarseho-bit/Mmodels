@@ -15,7 +15,7 @@
  */
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { delimiter, join } from 'node:path';
+import { delimiter, isAbsolute, join } from 'node:path';
 import { sharedPythonPath, managedPythonPath } from '../runtime/shared-environment';
 import { findLocalCompute } from '../runtime/local-compute';
 
@@ -517,7 +517,9 @@ export async function checkEnvironment(
     const found = await findLocalCompute(id);
     if (id === 'r') rRuntime = found;
     const it = push(id, name, 'recommended', purpose, found ? 'ok' : 'missing', found?.version);
-    if (found) it.path = found.command;
+    // `Rscript.exe` / `octave-cli.exe` 可能是 PATH 中的裸命令；界面和
+    // 检查报告只展示可复现的绝对路径，裸命令仍保留在运行时 command 中使用。
+    if (found && isAbsolute(found.command)) it.path = found.command;
   }
 
   // R 的常用科研绘图库单独列出，方便用户知道“R 已安装”与“R 可以画图”是两件事。
