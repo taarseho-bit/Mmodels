@@ -20,6 +20,12 @@
 import { app, BrowserWindow, shell, nativeTheme, dialog, Menu } from 'electron';
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+// ⚠️ bytenode 副作用 import：注册 .jsc（V8 字节码）加载钩子。
+//    必须先于安全模块 .jsc 的 require —— 加固产物（_security.jsc）依赖它。
+//    preload 保持 CJS 加载器以兼容 Electron/DevTools，但代码已强混淆。
+//    dev 模式下同样安全（纯注册无副作用）。
+import 'bytenode';
 import { LocalServer, type ServerInfo } from './server';
 import { pushToRenderer, registerIpcHandlers, shutdownIpcRuntimes } from './ipc';
 import { IPC } from '@shared/types';
@@ -49,11 +55,59 @@ let quittingCompletely = false;
 app.setName('MModels');
 if (process.platform === 'win32') app.setAppUserModelId('com.mmodels.desktop');
 
+/**
+ * userData 覆盖开关（自动化测试 / 多实例隔离用）。
+ *
+ * ⚠️ 单实例锁按 userData 路径算：setName('MModels') 之后，dev 实例与
+ *    安装版/便携版共享同一个 userData（%APPDATA%/MModels）—— 用户开着
+ *    正式版时跑任何 dev/测试实例都会抢锁失败、静默退出（2026-09-27
+ *    加固验证时踩到：electron.exe . 秒退且零输出，就是撞上便携版）。
+ *    测试脚本设置 MATHMODEL_USERDATA 指向独立目录即可并存。
+ *    普通用户不设此变量，行为不变。
+ */
+if (process.env.MATHMODEL_USERDATA) {
+  app.setPath('userData', process.env.MATHMODEL_USERDATA);
+}
+
 /** 渲染层通过同步 IPC 读取，所以放在模块级 */
 let serverInfo: ServerInfo | null = null;
 
 const isDev = !app.isPackaged;
 const DEBUG = process.env.MATHMODEL_DEBUG === '1' || isDev;
+
+/**
+ * 反篡改检测（最早期执行 —— 单例锁之前）。
+ * _security.jsc 是 src/main/security/anti-tamper.ts 的 V8 字节码产物
+ * （scripts/harden.cjs 生成）。源码文本不随包分发，防「删检测代码」式篡改。
+ *
+ * - dev（未打包）：跳过（字节码产物不存在属正常）。
+ * - 打包态但字节码缺失：包体被破坏，拒绝启动并立即退出。
+ */
+if (!isDev) {
+  type SecurityModule = {
+    installAntiTamper(opts: { isPackaged: boolean; userDataPath: string }): void;
+  };
+  try {
+    const nodeRequire = createRequire(import.meta.url);
+    (nodeRequire('./_security.jsc') as SecurityModule).installAntiTamper({
+      isPackaged: true,
+      userDataPath: app.getPath('userData'),
+    });
+  } catch (err) {
+    try {
+      writeFileSync(
+        join(app.getPath('userData'), 'startup-error.log'),
+        `[${new Date().toISOString()}] _security.jsc 加载失败（包体可能被破坏）\n${String(err)}\n`,
+        'utf8',
+      );
+    } catch {
+      /* 日志写不出也必须拦住 */
+    }
+    // 反篡改失败不能继续跑后续 bootstrap；也不弹模态框，避免进程
+    // 留在“看起来还活着”的状态。诊断信息已经写入 startup-error.log。
+    process.exit(1);
+  }
+}
 
 /**
  * ⚠️ 必须在这里（app ready 之前）声明 `mm-media` 协议特权，
@@ -159,6 +213,17 @@ function createMainWindow(): BrowserWindow {
   });
   win.setMenuBarVisibility(false);
 
+  // ── 反篡改：打包态强制关闭 devtools（详见 src/main/security/anti-tamper.ts）──
+  if (!isDev) {
+    type SecurityModule = { hardenWindow(win: BrowserWindow): void };
+    try {
+      const nodeRequire = createRequire(import.meta.url);
+      (nodeRequire('./_security.jsc') as SecurityModule).hardenWindow(win);
+    } catch {
+      /* security 模块缺失已在上方 installAntiTamper 拦截，此处不再重复退出 */
+    }
+  }
+
   // ── <webview> 安全加固 ──────────────────────────────────────
   // 官方建议：无条件剥掉 preload、禁掉 node，并强制 http/https。
   // 我们的画布页面不需要向被嵌入的网页暴露任何本地能力。
@@ -189,13 +254,19 @@ function createMainWindow(): BrowserWindow {
   });
 
   // 阻止渲染层被导航到外部地址
-  win.webContents.on('will-navigate', (event, url) => {
+  const allowRendererNavigation = (url: string): boolean => {
     const devUrl = process.env.ELECTRON_RENDERER_URL;
-    if (devUrl && url.startsWith(devUrl)) return;
-    if (url.startsWith('file://')) return;
+    if (devUrl && url.startsWith(devUrl)) return true;
+    return url.startsWith('file://') || url.startsWith('mm-media://');
+  };
+  const blockExternalNavigation = (event: Electron.Event, url: string): void => {
+    if (allowRendererNavigation(url)) return;
     event.preventDefault();
     if (url.startsWith('http')) void shell.openExternal(url);
-  });
+  };
+  win.webContents.on('will-navigate', (event, url) => blockExternalNavigation(event, url));
+  // 重定向不会总是触发 will-navigate；补上这一层，避免外部页面通过 30x 绕过边界。
+  win.webContents.on('will-redirect', (event, url) => blockExternalNavigation(event, url));
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
     void win.loadURL(process.env.ELECTRON_RENDERER_URL);

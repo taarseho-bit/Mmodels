@@ -1,6 +1,6 @@
 {
   "name": "mmodels-desktop",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "description": "MModels · 本地数学建模智能体桌面版",
   "type": "module",
@@ -20,9 +20,11 @@
     "test:harness": "node scripts/test-git.cjs && node scripts/test-env.cjs && node scripts/test-claude-path.mjs",
     "test:native": "node scripts/clean-env.cjs node_modules/electron/dist/electron.exe scripts/test-native-abi.mjs",
     "test:e2e": "node scripts/test-real-app.cjs",
-    "pack:dir": "electron-vite build && electron-builder --win --x64 --dir",
-    "dist": "electron-vite build && electron-builder --win --x64",
-    "dist:portable": "electron-vite build && electron-builder --win portable --x64",
+    "pack:dir": "npm run build:harden && electron-builder --win --x64 --dir",
+    "build:harden": "node scripts/clean-env.cjs npm run build && node scripts/clean-env.cjs node scripts/harden.cjs",
+    "dist": "npm run build:harden && electron-builder --win --x64",
+    "dist:portable": "npm run build:harden && electron-builder --win portable --x64",
+    "release:hardened": "node scripts/release-hardened.cjs",
     "postinstall": "node scripts/ensure-native.cjs"
   },
   "dependencies": {
@@ -32,6 +34,7 @@
     "@hono/zod-validator": "^0.9.1",
     "@tanstack/react-virtual": "^3.14.13",
     "better-sqlite3": "^12.11.0",
+    "bytenode": "^1.7.0",
     "chokidar": "^4.0.3",
     "conf": "^13.1.0",
     "diff-match-patch": "^1.0.5",
@@ -45,6 +48,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@electron/fuses": "^2.1.3",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
@@ -55,8 +59,10 @@
     "electron": "43.3.0",
     "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
+    "esbuild": "^0.28.2",
     "gsap": "^3.15.0",
     "howler": "^2.2.4",
+    "javascript-obfuscator": "^5.8.0",
     "katex": "^0.18.7",
     "marked": "^15.0.7",
     "marked-katex-extension": "^5.1.13",

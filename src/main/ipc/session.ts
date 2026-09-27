@@ -54,6 +54,7 @@ import { resolveResourcesRoot } from '../resources';
 import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS, skillRouteDecision } from '../agent/orchestration-policy';
 import { modelingAgentRouteForPrompt, modelingAgentsForRoute } from '../agent/modeling-agents';
 import { chooseModelRoute } from '../../shared/model-pool';
+import { assertAiEntitlement } from '../security/license-gate';
 
 /** 全局会话注册表（整个应用一份） */
 export const sessionRegistry = new SessionRegistry();
@@ -1007,6 +1008,7 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       const targetProject = getProject(targetSession.projectId);
       if (!targetProject) throw new Error('会话所属项目不存在');
       if (activeTurns.has(sessionId)) throw new Error('这条对话正在运行，请先停止当前任务');
+      await assertAiEntitlement();
       const cwd = targetProject.root;
       resolveSessionModel(targetSession);
 

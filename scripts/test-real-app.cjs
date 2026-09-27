@@ -191,6 +191,8 @@ async function main() {
   env.NODE_OPTIONS = '';
   // 开 E2E 模式：默认项目落 userData 而非用户主目录，避免污染真实工作区
   env.MATHMODEL_E2E = '1';
+  // --user-data-dir 是 Chromium 参数，Electron 的 app.getPath('userData') 不会读取它。
+  env.MATHMODEL_USERDATA = USER_DATA;
 
   const child = spawn(
     APP,
