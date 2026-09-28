@@ -12,13 +12,30 @@ import { app, ipcMain, safeStorage } from 'electron';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { IPC, type AccountStatusInfo } from '@shared/types';
+import {
+  IPC,
+  type AccountAiQuota,
+  type AccountPlan,
+  type AccountPointRewardKind,
+  type AccountPointsEarnResult,
+  type AccountStatusInfo,
+  type AccountEntitlementInfo,
+  type EntitlementReason,
+  type MembershipFeature,
+} from '@shared/types';
 import { safeWrap } from './index';
+import { isLicenseRequired } from '../security/license-gate';
 
 interface LocalAccount {
   username: string;
   password: string;
   expiresAt: number;
+  plan?: AccountPlan;
+  trialDaysLeft?: number;
+  trialActive?: boolean;
+  points?: number;
+  aiQuota?: AccountAiQuota;
+  checkedAt?: number;
 }
 
 interface StoredAccount {
@@ -27,6 +44,61 @@ interface StoredAccount {
   /** 历史明文字段，仅用于一次迁移，成功读取后立即删除。 */
   password?: string;
   expiresAt?: number;
+  plan?: AccountPlan;
+  trialDaysLeft?: number;
+  trialActive?: boolean;
+  points?: number;
+  aiQuota?: AccountAiQuota;
+  checkedAt?: number;
+}
+
+function finiteNonNegative(value: unknown): number | undefined {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
+function finitePositive(value: unknown): number | undefined {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function normalizeQuota(value: unknown): AccountAiQuota | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const q = value as Record<string, unknown>;
+  const used = finiteNonNegative(q.used);
+  const base = finiteNonNegative(q.base);
+  const bonus = finiteNonNegative(q.bonus);
+  const total = finiteNonNegative(q.total);
+  const remaining = finiteNonNegative(q.remaining);
+  if ([used, base, bonus, total, remaining].some((v) => v === undefined)) return undefined;
+  return {
+    used: used!,
+    base: base!,
+    bonus: bonus!,
+    total: total!,
+    remaining: remaining!,
+    vip: q.vip === true,
+    ...(typeof q.date === 'string' ? { date: q.date.slice(0, 32) } : {}),
+    ...(finitePositive(q.checkedAt) ? { checkedAt: finitePositive(q.checkedAt) } : {}),
+  };
+}
+
+function statusFromLocal(local: LocalAccount | null): AccountStatusInfo {
+  if (!local) {
+    return { loggedIn: false, username: '', expiresAt: 0, authRequired: isLicenseRequired() };
+  }
+  return {
+    loggedIn: true,
+    username: local.username,
+    expiresAt: local.expiresAt,
+    authRequired: isLicenseRequired(),
+    ...(local.plan ? { plan: local.plan } : {}),
+    ...(local.trialDaysLeft !== undefined ? { trialDaysLeft: local.trialDaysLeft } : {}),
+    ...(local.trialActive !== undefined ? { trialActive: local.trialActive } : {}),
+    ...(local.points !== undefined ? { points: local.points } : {}),
+    ...(local.aiQuota ? { aiQuota: local.aiQuota } : {}),
+    ...(local.checkedAt !== undefined ? { checkedAt: local.checkedAt } : {}),
+  };
 }
 
 function accountFile(): string {
@@ -47,11 +119,31 @@ function readLocal(): LocalAccount | null {
       // 迁移历史明文账号文件；安全存储暂不可用时只在内存使用。
       password = raw.password;
       if (safeStorage.isEncryptionAvailable()) {
-        writeLocal({ username: raw.username, password, expiresAt: Number(raw.expiresAt) || 0 });
+        writeLocal({
+          username: raw.username,
+          password,
+          expiresAt: Number(raw.expiresAt) || 0,
+          plan: raw.plan,
+          trialDaysLeft: raw.trialDaysLeft,
+          trialActive: raw.trialActive,
+          points: raw.points,
+          aiQuota: raw.aiQuota,
+          checkedAt: raw.checkedAt,
+        });
       }
     }
     if (!password) return null;
-    return { username: raw.username, password, expiresAt: Number(raw.expiresAt) || 0 };
+    return {
+      username: raw.username,
+      password,
+      expiresAt: Number(raw.expiresAt) || 0,
+      plan: raw.plan === 'vip' ? 'vip' : raw.plan === 'free' ? 'free' : undefined,
+      trialDaysLeft: finiteNonNegative(raw.trialDaysLeft),
+      trialActive: raw.trialActive === true,
+      points: finiteNonNegative(raw.points),
+      aiQuota: normalizeQuota(raw.aiQuota),
+      checkedAt: finitePositive(raw.checkedAt),
+    };
   } catch {
     return null;
   }
@@ -65,6 +157,12 @@ function writeLocal(account: LocalAccount): void {
     username: account.username,
     passwordEnc: safeStorage.encryptString(account.password).toString('base64'),
     expiresAt: account.expiresAt,
+    ...(account.plan ? { plan: account.plan } : {}),
+    ...(account.trialDaysLeft !== undefined ? { trialDaysLeft: account.trialDaysLeft } : {}),
+    ...(account.trialActive !== undefined ? { trialActive: account.trialActive } : {}),
+    ...(account.points !== undefined ? { points: account.points } : {}),
+    ...(account.aiQuota ? { aiQuota: account.aiQuota } : {}),
+    ...(account.checkedAt !== undefined ? { checkedAt: account.checkedAt } : {}),
   };
   const target = accountFile();
   const tmp = `${target}.tmp`;
@@ -141,13 +239,164 @@ async function callApi(path: string, body: unknown, headers: Record<string, stri
 
 function statusOf(): AccountStatusInfo {
   const local = readLocal();
-  if (!local) return { loggedIn: false, username: '', expiresAt: 0 };
-  return { loggedIn: true, username: local.username, expiresAt: local.expiresAt };
+  return statusFromLocal(local);
 }
 
-function persistAuth(username: string, password: string, expiresAt: unknown, token: unknown): AccountStatusInfo {
-  const exp = Number(expiresAt) || 0;
-  const tok = String(token || '').trim();
+function membershipErrorText(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  if (/timeout|timed out|abort|网络|fetch|socket|dns|连接/i.test(raw)) return '会员服务暂时不可用，请检查网络后重试。';
+  if (/401|403|登录|令牌|授权/i.test(raw)) return '登录状态已失效，请重新登录后重试。';
+  if (/429|频繁|rate/i.test(raw)) return '操作过于频繁，请稍后重试。';
+  return raw && !/[A-Za-z]:\\|\n|stack|at \w+\s*\(/i.test(raw) ? raw : '这次会员操作没有完成，请稍后重试。';
+}
+
+const MEMBERSHIP_FEATURES: readonly MembershipFeature[] = [
+  'ai-chat', 'multi-agent', 'full-paper', 'deep-modeling', 'advanced-figures',
+  'large-context', 'export', 'cloud-collaboration', 'automation',
+];
+
+function localEntitlement(feature: MembershipFeature, account: AccountStatusInfo): AccountEntitlementInfo {
+  if (!account.loggedIn) {
+    return { feature, allowed: false, reason: 'login-required', account };
+  }
+  const activeTrial = account.trialActive === true;
+  const activeVip = account.plan === 'vip' && account.expiresAt > Date.now();
+  const elevated = activeTrial || activeVip;
+  if (feature !== 'ai-chat' && !elevated) {
+    return { feature, allowed: false, reason: activeTrial ? 'allowed' : 'vip-required', account };
+  }
+  if (feature === 'ai-chat' && !elevated) {
+    const remaining = account.aiQuota?.remaining;
+    if (typeof remaining === 'number' && remaining <= 0) {
+      return { feature, allowed: false, reason: 'ai-quota-exceeded', account, remaining: 0 };
+    }
+    return { feature, allowed: true, reason: 'allowed', account, ...(remaining === undefined ? {} : { remaining }) };
+  }
+  return { feature, allowed: true, reason: 'allowed', account };
+}
+
+function entitlementReason(code: unknown, body: Record<string, unknown>): EntitlementReason {
+  if (body.allowed === true) return 'allowed';
+  switch (String(code || body.code || '')) {
+    case 'LOGIN_REQUIRED': return 'login-required';
+    case 'AI_QUOTA_EXCEEDED': return 'ai-quota-exceeded';
+    case 'FEATURE_VIP_REQUIRED': return 'vip-required';
+    default: return 'service-unavailable';
+  }
+}
+
+async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount): Promise<AccountEntitlementInfo> {
+  const token = tokenFromDisk();
+  if (!token) return { feature, allowed: false, reason: 'login-required', account: statusFromLocal(local) };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const response = await fetch(`${apiBase()}/api/license/check`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+        'x-mmodels-device': deviceId(),
+        'x-mmodels-feature': feature,
+      },
+      body: JSON.stringify({ app: 'mmodels-desktop', version: app.getVersion(), deviceId: deviceId(), feature, consume: false }),
+    });
+    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const account = statusFromRemote(local, body);
+    if (account.loggedIn) {
+      try {
+        writeLocal({
+          ...local,
+          expiresAt: account.expiresAt,
+          plan: account.plan,
+          trialDaysLeft: account.trialDaysLeft,
+          trialActive: account.trialActive,
+          points: account.points,
+          aiQuota: account.aiQuota,
+          checkedAt: account.checkedAt,
+        });
+      } catch { /* UI 预检查不能因本地缓存写入失败而中断 */ }
+    }
+    const allowed = response.ok && body.allowed === true;
+    const remaining = account.aiQuota?.remaining;
+    return {
+      feature,
+      allowed,
+      reason: allowed ? 'allowed' : entitlementReason(body.code, body),
+      account,
+      ...(typeof remaining === 'number' ? { remaining } : {}),
+    };
+  } catch {
+    return { feature, allowed: false, reason: 'service-unavailable', account: statusFromLocal(local) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function entitlementOf(feature: MembershipFeature): Promise<AccountEntitlementInfo> {
+  const local = readLocal();
+  if (!local) return { feature, allowed: false, reason: 'login-required', account: statusOf() };
+  if (!isLicenseRequired() && !process.env.MM_LICENSE_API?.trim()) {
+    return localEntitlement(feature, statusFromLocal(local));
+  }
+  return remoteEntitlement(feature, local);
+}
+
+function tokenFromDisk(): string {
+  try {
+    const raw = readFileSync(tokenFile(), 'utf8').trim();
+    if (!raw.startsWith('enc1:') || !safeStorage.isEncryptionAvailable()) return raw;
+    return safeStorage.decryptString(Buffer.from(raw.slice(5), 'base64')).trim();
+  } catch { return ''; }
+}
+
+function statusFromRemote(local: LocalAccount, data: Record<string, unknown>): AccountStatusInfo {
+  const quota = normalizeQuota(data.aiQuota);
+  const plan = data.plan === 'vip' ? 'vip' : 'free';
+  const expiresAt = Number(data.expiresAt) || local.expiresAt;
+  return {
+    loggedIn: true,
+    username: local.username,
+    expiresAt,
+    authRequired: isLicenseRequired(),
+    plan,
+    trialDaysLeft: finiteNonNegative(data.trialDaysLeft) ?? 0,
+    trialActive: data.trialActive === true,
+    points: finiteNonNegative(data.points) ?? 0,
+    ...(quota ? { aiQuota: quota } : {}),
+    checkedAt: Date.now(),
+  };
+}
+
+async function refreshRemoteStatus(local: LocalAccount): Promise<AccountStatusInfo> {
+  // 普通本地开发没有配置测试授权服务时，不要因为一次打开设置把界面卡住十秒。
+  // 发布版策略为 required=true，仍会强制走下面的在线快照。
+  if (!isLicenseRequired() && !process.env.MM_LICENSE_API?.trim()) return statusFromLocal(local);
+  const token = tokenFromDisk();
+  if (!token) return statusFromLocal(local);
+  const data = await callApi('/api/account/status', {}, {
+    authorization: `Bearer ${token}`,
+    'x-mmodels-device': deviceId(),
+  });
+  const next = statusFromRemote(local, data);
+  writeLocal({
+    ...local,
+    expiresAt: next.expiresAt,
+    plan: next.plan,
+    trialDaysLeft: next.trialDaysLeft,
+    trialActive: next.trialActive,
+    points: next.points,
+    aiQuota: next.aiQuota,
+    checkedAt: next.checkedAt,
+  });
+  return next;
+}
+
+function persistAuth(username: string, password: string, data: Record<string, unknown>): AccountStatusInfo {
+  const exp = Number(data.expiresAt) || 0;
+  const tok = String(data.token || '').trim();
   if (!tok) throw new Error('服务端未返回授权令牌');
   if (!safeStorage.isEncryptionAvailable()) throw new Error('系统安全存储不可用，无法保存授权令牌');
   // 先准备两份临时文件，再提交令牌和账号；账号提交失败时恢复旧令牌，
@@ -167,6 +416,12 @@ function persistAuth(username: string, password: string, expiresAt: unknown, tok
       username,
       passwordEnc: safeStorage.encryptString(password).toString('base64'),
       expiresAt: exp,
+      plan: data.plan === 'vip' ? 'vip' : data.plan === 'free' ? 'free' : undefined,
+      trialDaysLeft: finiteNonNegative(data.trialDaysLeft),
+      trialActive: data.trialActive === true,
+      points: finiteNonNegative(data.points),
+      aiQuota: normalizeQuota(data.aiQuota),
+      checkedAt: Date.now(),
     };
     writeFileSync(accountTmp, JSON.stringify(accountPayload, null, 2), { encoding: 'utf8', mode: 0o600 });
     writeFileSync(tokenTmp, `enc1:${safeStorage.encryptString(tok).toString('base64')}`, { encoding: 'utf8', mode: 0o600 });
@@ -187,11 +442,40 @@ function persistAuth(username: string, password: string, expiresAt: unknown, tok
     try { rmSync(accountTmp, { force: true }); } catch { /* ignore */ }
     try { rmSync(tokenTmp, { force: true }); } catch { /* ignore */ }
   }
-  return { loggedIn: true, username, expiresAt: exp };
+  const local: LocalAccount = {
+    username,
+    password,
+    expiresAt: exp,
+    plan: data.plan === 'vip' ? 'vip' : 'free',
+    trialDaysLeft: finiteNonNegative(data.trialDaysLeft) ?? 0,
+    trialActive: data.trialActive === true,
+    points: finiteNonNegative(data.points) ?? 0,
+    aiQuota: normalizeQuota(data.aiQuota),
+    checkedAt: Date.now(),
+  };
+  return statusFromLocal(local);
 }
 
 export function registerAccountHandlers(): void {
-  ipcMain.handle(IPC.ACCOUNT_STATUS, safeWrap((): AccountStatusInfo => statusOf(), '读取账号状态'));
+  ipcMain.handle(IPC.ACCOUNT_STATUS, safeWrap(async (): Promise<AccountStatusInfo> => {
+    const local = readLocal();
+    if (!local) return statusOf();
+    try { return await refreshRemoteStatus(local); }
+    catch (error) {
+      return { ...statusFromLocal(local), error: membershipErrorText(error) };
+    }
+  }, '读取账号状态'));
+
+  ipcMain.handle(
+    IPC.ACCOUNT_ENTITLEMENT,
+    safeWrap(async (_e, featureArg: MembershipFeature): Promise<AccountEntitlementInfo> => {
+      const feature = String(featureArg || '').trim() as MembershipFeature;
+      if (!MEMBERSHIP_FEATURES.includes(feature)) {
+        throw new Error('功能标识不合法');
+      }
+      return entitlementOf(feature);
+    }, '查询会员权益'),
+  );
 
   ipcMain.handle(
     IPC.ACCOUNT_REGISTER,
@@ -205,7 +489,7 @@ export function registerAccountHandlers(): void {
       const data = await callApi('/api/auth/register', {
         username, password, email, emailCode, deviceId: deviceId(), code: code || undefined,
       });
-      return persistAuth(username, password, data.expiresAt, data.token);
+      return persistAuth(username, password, data);
     }, '注册账号'),
   );
 
@@ -235,7 +519,7 @@ export function registerAccountHandlers(): void {
       const username = String(args?.username || '').trim();
       const password = String(args?.password || '');
       const data = await callApi('/api/auth/login', { username, password, deviceId: deviceId() });
-      return persistAuth(username, password, data.expiresAt, data.token);
+      return persistAuth(username, password, data);
     }, '登录账号'),
   );
 
@@ -249,8 +533,62 @@ export function registerAccountHandlers(): void {
       const data = await callApi('/api/redeem', {
         username: local.username, password: local.password, code, deviceId: deviceId(),
       });
-      return persistAuth(local.username, local.password, data.expiresAt, data.token);
+      return persistAuth(local.username, local.password, data);
     }, '兑换卡密'),
+  );
+
+  ipcMain.handle(
+    IPC.ACCOUNT_CHECKIN,
+    safeWrap(async (): Promise<AccountStatusInfo> => {
+      assertSecureStorage();
+      const local = readLocal();
+      if (!local) throw new Error('请先注册或登录账号');
+      const token = tokenFromDisk();
+      if (!token) throw new Error('登录状态已失效，请重新登录');
+      const data = await callApi('/api/account/checkin', {}, { authorization: `Bearer ${token}`, 'x-mmodels-device': deviceId() });
+      return persistAuth(local.username, local.password, { ...data, token });
+    }, '每日签到'),
+  );
+
+  ipcMain.handle(
+    IPC.ACCOUNT_POINTS_REDEEM,
+    safeWrap(async (_e, args: { days?: number }): Promise<AccountStatusInfo> => {
+      assertSecureStorage();
+      const local = readLocal();
+      if (!local) throw new Error('请先注册或登录账号');
+      const token = tokenFromDisk();
+      if (!token) throw new Error('登录状态已失效，请重新登录');
+      const days = Number(args?.days);
+      const data = await callApi('/api/account/points-redeem', { days }, { authorization: `Bearer ${token}`, 'x-mmodels-device': deviceId() });
+      return persistAuth(local.username, local.password, { ...data, token });
+    }, '积分兑换会员'),
+  );
+
+  ipcMain.handle(
+    IPC.ACCOUNT_POINTS_EARN,
+    safeWrap(async (_e, args: { kind?: AccountPointRewardKind; eventId?: string }): Promise<AccountPointsEarnResult> => {
+      assertSecureStorage();
+      const local = readLocal();
+      if (!local) throw new Error('请先注册或登录账号');
+      const token = tokenFromDisk();
+      if (!token) throw new Error('登录状态已失效，请重新登录');
+      const kind = args?.kind;
+      if (kind !== 'firstProject' && kind !== 'paperExport' && kind !== 'feedback' && kind !== 'invite') {
+        throw new Error('积分奖励类型不合法');
+      }
+      const eventId = String(args?.eventId || '').trim();
+      const data = await callApi('/api/account/points-earn', { kind, eventId }, {
+        authorization: `Bearer ${token}`,
+        'x-mmodels-device': deviceId(),
+      });
+      const status = persistAuth(local.username, local.password, { ...data, token });
+      return {
+        status,
+        kind,
+        awarded: finiteNonNegative(data.awarded) ?? 0,
+        duplicate: data.duplicate === true,
+      };
+    }, '领取积分奖励'),
   );
 
   ipcMain.handle(

@@ -206,7 +206,7 @@ async function executeAutomation(a: AutomationRecord): Promise<void> {
     // 自动化绕过 session.send，必须在创建 runner 前走同一条商业授权闸门。
     // 否则账号被停用后，定时任务仍可能继续调用模型。
     const { assertPackagedAiEntitlement } = await import('./session');
-    await assertPackagedAiEntitlement();
+    await assertPackagedAiEntitlement('automation');
 
     // 先验证项目和模型，再创建会话，避免失败时留下空的孤儿会话。
     const { sessionRegistry } = await import('./session');

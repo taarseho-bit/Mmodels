@@ -303,12 +303,15 @@ async function main() {
   }
   ok(mounted, '界面已挂载');
 
-  // 新用户首次启动应看到向导；测试先验证它确实出现，再走“先跳过”继续
-  // 检查其余页面，避免向导把真实应用回归挡在设置之外。
+  // 新用户首次启动会先看到会员欢迎页；完成/跳过后才会进入工作台并显示
+  // 传统的新手向导。两种入口都要验证，随后统一走“稍后再说/跳过”继续，
+  // 避免欢迎层把真实应用回归挡在设置之外。
   const onboarding = await cdp.eval(`(function(){
     var card = document.querySelector('.ob-card');
-    if (!card) return { visible: false, skipped: false };
-    var btn = Array.from(card.querySelectorAll('button')).find(function(b){ return /跳过|略过/.test(b.textContent || ''); });
+    var welcome = document.querySelector('[data-testid="first-run-welcome"]');
+    if (!card && !welcome) return { visible: false, skipped: false };
+    var root = card || welcome;
+    var btn = Array.from(root.querySelectorAll('button')).find(function(b){ return /跳过|略过|稍后再说/.test(b.textContent || ''); });
     if (btn) { btn.click(); return { visible: true, skipped: true }; }
     return { visible: true, skipped: false };
   })()`);

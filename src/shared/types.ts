@@ -426,6 +426,8 @@ export interface AppSettings {
   recentProjectId: string | null;
   /** 首次运行向导是否已完成（完成后不再自动弹出） */
   onboardingDone?: boolean;
+  /** 首启会员欢迎页是否已经展示过。与 onboardingDone 分开，允许用户稍后再看模型向导。 */
+  welcomeShown?: boolean;
   /** 引导巡览是否已看过 */
   tourDone?: boolean;
   /**
@@ -953,15 +955,92 @@ export const IPC = {
   ACCOUNT_LOGOUT: 'account:logout',
   ACCOUNT_SEND_CODE: 'account:send-code',
   ACCOUNT_RESET_PASSWORD: 'account:reset-password',
+  /** 账号每日签到：领取当日额外 AI 次数。 */
+  ACCOUNT_CHECKIN: 'account:checkin',
+  /** 积分兑换 VIP 天数。 */
+  ACCOUNT_POINTS_REDEEM: 'account:points-redeem',
+  /** 记录可核验的积分奖励事件（首个项目、论文导出、反馈、邀请）。 */
+  ACCOUNT_POINTS_EARN: 'account:points-earn',
+  /** 查询某项能力是否可用；渲染层只拿到脱敏权益快照。 */
+  ACCOUNT_ENTITLEMENT: 'account:entitlement',
 } as const;
+
+/** 会员档位。trial 不是单独的服务端套餐，而是免费账号的限时全功能窗口。 */
+export type AccountPlan = 'free' | 'vip';
+
+/** 可由客户端上报、由服务端幂等核验的积分事件。 */
+export type AccountPointRewardKind = 'firstProject' | 'paperExport' | 'feedback' | 'invite';
+
+export interface AccountPointsEarnResult {
+  status: AccountStatusInfo;
+  kind: AccountPointRewardKind;
+  awarded: number;
+  duplicate: boolean;
+}
+
+/** 会员墙使用的稳定功能名；新增能力只能追加，不能复用旧名称改变语义。 */
+export type MembershipFeature =
+  | 'ai-chat'
+  | 'multi-agent'
+  | 'full-paper'
+  | 'deep-modeling'
+  | 'advanced-figures'
+  | 'large-context'
+  | 'export'
+  | 'cloud-collaboration'
+  | 'automation';
+
+export type EntitlementReason =
+  | 'allowed'
+  | 'login-required'
+  | 'trial-expired'
+  | 'vip-required'
+  | 'ai-quota-exceeded'
+  | 'service-unavailable';
+
+/** 免费账号每日 AI 配额；服务器是最终判定方，本地只缓存展示。 */
+export interface AccountAiQuota {
+  used: number;
+  base: number;
+  bonus: number;
+  total: number;
+  remaining: number;
+  vip: boolean;
+  date?: string;
+  checkedAt?: number;
+}
 
 /** 本地账号状态（设置页「账号与授权」渲染用；expiresAt 为服务端毫秒时间戳） */
 export interface AccountStatusInfo {
   loggedIn: boolean;
   username: string;
   expiresAt: number;
+  /** 发布版是否要求登录；开发版/本地调试版为 false。 */
+  authRequired?: boolean;
+  /** 账号套餐：free 为免费账号，vip 为已激活会员。旧服务端可能不返回。 */
+  plan?: AccountPlan;
+  /** 试用剩余天数（服务端计算，避免客户端猜测试用窗口）。 */
+  trialDaysLeft?: number;
+  /** 试用期仍在开放全功能；不要由客户端根据注册时间自行推导。 */
+  trialActive?: boolean;
+  /** 当前可用积分余额。 */
+  points?: number;
+  /** 免费账号当天 AI 额度快照。 */
+  aiQuota?: AccountAiQuota;
   /** 服务端连通但账号被停用等异常态 */
   error?: string;
+  /** 最近一次成功在线校验时间，仅用于界面提示，不参与权益计算。 */
+  checkedAt?: number;
+}
+
+/** 渲染层功能墙使用的统一结果。不会把令牌、密码或设备指纹带出主进程。 */
+export interface AccountEntitlementInfo {
+  feature: MembershipFeature;
+  allowed: boolean;
+  reason: EntitlementReason;
+  account: AccountStatusInfo;
+  /** 仅供提示“还剩几次”，VIP 时为 undefined。 */
+  remaining?: number;
 }
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

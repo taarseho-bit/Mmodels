@@ -20,6 +20,7 @@ import { t, tx } from '../i18n';
 import { exportFileName } from '../lib/export-name';
 import { makeZip } from '../lib/zip';
 import { registerCommand } from '../keybindings/dispatch';
+import { openMembership } from '../lib/membership-nav';
 
 interface Props {
   route: Route;
@@ -289,7 +290,9 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
       }
       binary = btoa(binary);
       const saved = await window.mathmodel.file.saveBinary(exportFileName(session.title, 'zip'), binary);
-      if (saved) showToast(tx('shell.sidebar.bundleExported', { assets: 1 }));
+      if (saved) {
+        showToast(tx('shell.sidebar.bundleExported', { assets: 1 }));
+      }
     } catch { showToast(tx('shell.sidebar.exportFailed')); }
   }, [loadExport, showToast]);
 
@@ -922,8 +925,8 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
       <div className="rail-foot rail-account">
         <button
           className="rail-account-chip"
-          title={tx('shell.sidebar.settings')}
-          onClick={() => setRoute('settings')}
+          title={t('打开账号与会员中心')}
+          onClick={() => openMembership('account')}
         >
           <span className="rail-avatar" aria-hidden>
             {(settings?.profileName ?? 'M').trim().slice(0, 1).toUpperCase()}

@@ -37,6 +37,7 @@ import { DraftComposer } from '../components/DraftComposer';
 import { createComposerDraft } from '../store/composer-draft';
 import { withPendingMessage } from '../lib/optimistic-message';
 import { friendlyError } from '../lib/friendly-error';
+import { openMembership } from '../lib/membership-nav';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
 import { AgentCollaboration } from '../components/AgentCollaboration';
@@ -522,6 +523,9 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
    * 初值 null：应用空闲时队列本来就该能正常消化。
    */
   const pendingTurnRef = useRef<string | null>(null);
+  /** 首个有效建模奖励不能把“用户停止”或失败回合算成完成。 */
+  const stoppedSessionsRef = useRef<Set<string>>(new Set());
+  const rewardFailedSessionsRef = useRef<Set<string>>(new Set());
   const pendingUserRef = useRef<{ sid: string | null; message: ChatMessage } | null>(null);
   const preparingRef = useRef<{ cancelled: boolean } | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -571,6 +575,7 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
   const [opsNotice, setOpsNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const reportSendFailure = useCallback((message: string) => {
     setOpsNotice({ kind: 'error', text: `这条消息暂未发出，内容已保留。${message}` });
+    if (/次数已用完|需要 VIP|需要会员|注册免费账号|请先.*登录/.test(message)) openMembership(/次数/.test(message) ? 'plans' : 'account');
   }, []);
   const sendMessage = useSendMessage(reportSendFailure);
 
@@ -859,7 +864,47 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
         setStream(toView(entry));
       }
 
-      if (ev.type === 'session-end') handleEnd(sid, isCurrent);
+      if (ev.type === 'session-error') rewardFailedSessionsRef.current.add(sid);
+      if (ev.type === 'session-end') {
+        const stopped = stoppedSessionsRef.current.delete(sid);
+        const failed = rewardFailedSessionsRef.current.delete(sid) || ev.reason === 'error' || ev.reason === 'background-timeout';
+        handleEnd(sid, isCurrent);
+        if (!stopped && !failed) {
+          // 只在服务端已经落下至少一条助手结果后登记“首个有效项目”。
+          // 账号未登录、网络不可用或重复领取都静默跳过，不影响建模主流程。
+          void window.mathmodel.session.get(sid)
+            .then((result) => {
+              const hasAssistantResult = result.messages.some((message) =>
+                message.role === 'assistant' && message.blocks.some(Boolean),
+              );
+              if (hasAssistantResult) {
+                const firstReward = window.mathmodel.account.earnPoints({ kind: 'firstProject', eventId: 'first-project' });
+                const lastUser = [...result.messages].reverse().find((message) => message.role === 'user');
+                const requestText = lastUser?.blocks.map((block) => block.text ?? '').join(' ') ?? '';
+                const asksForPaperExport = /(?:导出|生成|编译|交付|投稿).*(?:pdf|word|docx|latex|tex|论文)|(?:pdf|word|docx|latex|tex).*(?:导出|生成|编译|论文)/i.test(requestText)
+                  || /write-paper|paper-page-fit|论文成稿/i.test(requestText);
+                if (!asksForPaperExport) {
+                  void firstReward.catch(() => undefined);
+                  return undefined;
+                }
+                // 成品奖励只在会员闸门已放行且项目里确实出现论文产物时登记；
+                // 普通 JSON/ZIP 会话备份不会走到这里。
+                return firstReward.then(async () => {
+                  const walk = (nodes: Array<{ relPath: string; isDirectory: boolean; children?: unknown[] }>): boolean => nodes.some((node) => {
+                    if (node.isDirectory && Array.isArray(node.children)) return walk(node.children as Array<{ relPath: string; isDirectory: boolean; children?: unknown[] }>);
+                    return /\.(pdf|docx|tex|latex)$/i.test(node.relPath);
+                  });
+                  const files = await window.mathmodel.file.tree();
+                  if (walk(files)) {
+                    await window.mathmodel.account.earnPoints({ kind: 'paperExport', eventId: `paper-export:${sid}` });
+                  }
+                }).then(() => undefined);
+              }
+              return undefined;
+            })
+            .catch(() => undefined);
+        }
+      }
       if (ev.type === 'session-error') {
         void refreshSessions();
       }
@@ -1247,6 +1292,7 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
     }
     if (!activeSessionId) return;
     const sid = activeSessionId;
+    stoppedSessionsRef.current.add(sid);
     // 当前帧立刻退出运行态，同时完整保留已经显示的文字、工具结果和任务。
     // 主进程继续在后台把这些内容落库；真正收尾前 pendingTurnRef 会阻止并发发送。
     setStream(toView(chatStreamStore.interrupt(sid)));

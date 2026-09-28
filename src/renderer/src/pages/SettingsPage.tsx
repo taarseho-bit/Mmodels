@@ -32,6 +32,8 @@ import { NotifySection } from '../components/settings/NotifySection';
 import { TourSection } from '../components/settings/TourSection';
 import { AboutSection } from '../components/settings/AboutSection';
 import { AccountSection } from '../components/settings/AccountSection';
+import { MembershipModal } from '../components/membership/MembershipModal';
+import type { AccountStatusInfo } from '@shared/types';
 import { DataChartStudioPage } from './DataChartStudioPage';
 import { CompetitionsPage } from './CompetitionsPage';
 import { AutomationPage } from './AutomationPage';
@@ -100,6 +102,8 @@ export function SettingsPage({
 
   const [section, setSection] = useState<SectionId>('paper');
   const [query, setQuery] = useState('');
+  const [membershipOpen, setMembershipOpen] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<AccountStatusInfo | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
     resources: false,
     model: false,
@@ -263,7 +267,12 @@ export function SettingsPage({
             {section === 'datasets' && <DataChartStudioPage />}
             {section === 'automation' && <AutomationPage />}
             {section === 'extensions' && <ExtensionsPage requestedTab={requestedExtensionTab} onNavigate={onNavigate} />}
-            {section === 'account' && <AccountSection />}
+            {section === 'account' && (
+              <AccountSection
+                onStatusChange={setAccountStatus}
+                onOpenMembership={() => setMembershipOpen(true)}
+              />
+            )}
             {section === 'profile' && <ProfileSection />}
             {section === 'paper' && <PaperSection />}
             {section === 'quality' && <ModelingQualitySection />}
@@ -281,6 +290,12 @@ export function SettingsPage({
           </div>
         </div>
       </div>
+      <MembershipModal
+        open={membershipOpen}
+        onClose={() => setMembershipOpen(false)}
+        status={accountStatus}
+        onStatusChange={setAccountStatus}
+      />
     </div>
   );
 }

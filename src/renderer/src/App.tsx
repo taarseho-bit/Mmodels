@@ -28,6 +28,10 @@ import { SettingsPage } from './pages/SettingsPage';
 import { WorkbenchPage } from './pages/WorkbenchPage';
 import { PapersPage } from './pages/PapersPage';
 import { OnboardingWizard } from './components/OnboardingWizard';
+import { FirstRunWelcome } from './components/welcome/FirstRunWelcome';
+import { AccountModal } from './components/membership/AccountModal';
+import { MembershipModal } from './components/membership/MembershipModal';
+import type { AccountStatusInfo } from '@shared/types';
 import { GuidedTour } from './components/GuidedTour';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { WhatsNew } from './components/WhatsNew';
@@ -42,6 +46,7 @@ import { ArtifactPanes } from './components/ArtifactPanes';
 import { VersionHistoryPanel } from './components/VersionHistoryPanel';
 import { setLang, t, tx, useLang } from './i18n';
 import { onOpenRoute, onOpenSettings } from './lib/settings-nav';
+import { onOpenMembership, type MembershipCenterView } from './lib/membership-nav';
 import { installKeybindings, registerCommand, RULES, APP_COMMANDS } from './keybindings/dispatch';
 
 /** 路由 —— 与应用约定顶栏导航一致（不含账号相关页面） */
@@ -107,12 +112,58 @@ export function App(): JSX.Element {
   const [showShare, setShowShare] = useState(false);
   const [showCollab, setShowCollab] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<AccountStatusInfo | null>(null);
+  const [membershipReminder, setMembershipReminder] = useState<{ kind: 'trial' | 'vip' | 'expired'; text: string } | null>(null);
+  const [membershipView, setMembershipView] = useState<MembershipCenterView | null>(null);
   /** 是否已经就「要不要弹向导」做过判断（避免设置加载完又弹一次） */
   const decidedRef = useRef(false);
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  // 账号状态只做界面快照；模型能力仍由主进程向服务端重新校验。
+  useEffect(() => {
+    if (!ready) return;
+    void window.mathmodel.account.status().then(setAccountStatus).catch(() => setAccountStatus(null));
+  }, [ready]);
+
+  // 到期提醒每天最多出现一次。服务器返回的剩余天数是最终依据，渲染层只负责
+  // 把提醒变成轻量的可关闭提示，不把本地日期计算当成权限判断。
+  useEffect(() => {
+    const status = accountStatus;
+    if (!ready || !status?.loggedIn) return;
+    const now = Date.now();
+    const dayKey = new Date(now).toISOString().slice(0, 10);
+    let kind: 'trial' | 'vip' | 'expired' | null = null;
+    let text = '';
+    if (status.trialActive && typeof status.trialDaysLeft === 'number' && status.trialDaysLeft <= 2) {
+      kind = 'trial';
+      text = status.trialDaysLeft > 0
+        ? `免费试用还剩 ${status.trialDaysLeft} 天，抓紧体验完整建模能力。`
+        : '免费试用今天结束，升级 VIP 可继续使用完整功能。';
+    } else if (status.plan === 'vip' && status.expiresAt > 0) {
+      const vipDays = Math.ceil((status.expiresAt - now) / 86_400_000);
+      if (vipDays <= 3) {
+        kind = 'vip';
+        text = vipDays > 0 ? `VIP 还剩 ${vipDays} 天，及时续费可保持工作不中断。` : 'VIP 已到期，续费后即可继续使用完整功能。';
+      }
+    } else if (!status.trialActive && status.plan !== 'vip' && status.expiresAt > 0 && status.expiresAt <= now) {
+      kind = 'expired';
+      text = '免费试用已结束，基础 AI 每天仍可使用，升级 VIP 可解锁完整功能。';
+    }
+    if (!kind) return;
+    const storageKey = `mmembership-reminder:${kind}:${dayKey}`;
+    try {
+      if (window.localStorage.getItem('mmembership-reminder-last') === storageKey) return;
+      window.localStorage.setItem('mmembership-reminder-last', storageKey);
+    } catch {
+      // 本地存储不可用时仍显示本次提醒；不会影响账号权益。
+    }
+    setMembershipReminder({ kind, text });
+  }, [accountStatus, ready]);
+
+  useEffect(() => onOpenMembership((view) => setMembershipView(view)), []);
 
   // 桌面小模可以在主窗口之外修改开关，主界面需要立即跟上，不能等到重启。
   useEffect(() => {
@@ -265,6 +316,10 @@ export function App(): JSX.Element {
     [patchSettings],
   );
 
+  const finishFirstWelcome = useCallback((): void => {
+    void patchSettings({ welcomeShown: true });
+  }, [patchSettings]);
+
   const closeTour = useCallback((): void => {
     // 完整导览结束后照旧回对话页收尾；短教程（图库/扩展/广场…）就停在原地，
     // 用户正站在刚讲的那个功能上，把他拽回对话页反而莫名其妙。
@@ -344,6 +399,23 @@ export function App(): JSX.Element {
           <button className="btn btn-sm btn-ghost" onClick={() => window.location.reload()}>{t('重新加载')}</button>
         </div>
       </div>
+    );
+  }
+
+  // 新安装第一次先说明账号与会员方式。用户可直接进入本地工作台；真正触发
+  // 联网 AI 或高级能力时，主进程仍会做服务端权益校验。
+  if (settings && settings.welcomeShown !== true) {
+    return (
+      <ErrorBoundary key={lang}>
+        <FirstRunWelcome
+          onAuthenticated={finishFirstWelcome}
+          onLater={finishFirstWelcome}
+          onStartTour={() => {
+            finishFirstWelcome();
+            setShowWizard(true);
+          }}
+        />
+      </ErrorBoundary>
     );
   }
 
@@ -640,9 +712,33 @@ export function App(): JSX.Element {
       {/* ── 更新日志（新版本首次启动弹出）── */}
       <WhatsNew />
 
+      {membershipReminder && (
+        <div className={`membership-reminder-toast${membershipReminder.kind === 'vip' ? ' is-vip' : ''}`} role="status">
+          <div className="membership-reminder-copy">
+            <strong>{membershipReminder.kind === 'vip' ? t('会员到期提醒') : membershipReminder.kind === 'trial' ? t('试用提醒') : t('会员状态')}</strong>
+            <span>{t(membershipReminder.text)}</span>
+          </div>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => { setMembershipReminder(null); setMembershipView('plans'); }}>{t('查看权益')}</button>
+          <button type="button" className="btn btn-sm btn-ghost" aria-label={t('关闭提醒')} onClick={() => setMembershipReminder(null)}><Icon name="x" size={13} /></button>
+        </div>
+      )}
+
       {/* ── 顶栏浮层：分享论文 / 局域网协作 ── */}
       <PaperShareDialog open={showShare} onClose={() => setShowShare(false)} />
       <CollabPanel open={showCollab} onClose={() => setShowCollab(false)} />
+      <AccountModal
+        open={membershipView === 'account'}
+        onClose={() => setMembershipView(null)}
+        onOpenMembership={() => setMembershipView('plans')}
+        onStatusChange={setAccountStatus}
+      />
+      <MembershipModal
+        open={membershipView !== null && membershipView !== 'account'}
+        initialTab={membershipView === 'redeem' || membershipView === 'points' ? membershipView : 'plans'}
+        status={accountStatus}
+        onClose={() => setMembershipView(null)}
+        onStatusChange={setAccountStatus}
+      />
 
       {/* ── Agent 提问确认框（AskUserQuestion）── */}
       {askRequest && (

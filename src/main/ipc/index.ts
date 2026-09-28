@@ -57,6 +57,8 @@ export function friendlyIpcError(raw: unknown): string {
   if (/当前接口不支持|不支持 document|document 内容|unsupported document/i.test(message)) return '当前接口暂时不支持直接读取这类文档，正在改用本地解析方式。';
   if (/401|403|unauthori[sz]ed|forbidden|api.?key|token/i.test(message)) return '连接凭据或访问权限需要检查，请打开连接器设置后重试。';
   if (/429|too many requests|rate.?limit/i.test(message)) return '服务当前比较忙，稍后会自动重试；也可以换一个模型或连接器。';
+  if (/insufficient_points|积分不足/i.test(message)) return '当前积分不足，完成建模或签到后再来兑换。';
+  if (/invite_not_verified|邀请关系/i.test(message)) return '邀请关系还在核验中，确认注册完成后再领取奖励。';
   if (/timed? ?out|timeout|ETIMEDOUT|网络异常|fetch failed|ENETUNREACH|ECONNRESET/i.test(message)) return '网络暂时没有连通，正在重试；如果持续失败，请检查网络或代理设置。';
   if (/ENOENT|not found|不存在|找不到|no such file/i.test(message)) return '需要的文件或目录没有找到，请检查项目文件后重试。';
   if (/EACCES|permission denied|权限不足|拒绝访问/i.test(message)) return '当前操作没有足够权限，请检查项目目录权限或在设置中调整访问范围。';

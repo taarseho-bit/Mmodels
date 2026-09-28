@@ -13,7 +13,11 @@ import { IPC } from '@shared/types';
 import { COMPETITION_IPC, type CompetitionLibraryApi } from '../shared/competition-studio';
 import { WORKFLOW_IPC, type WorkflowApi } from '../shared/workflow';
 import type {
+  AccountPointRewardKind,
+  AccountPointsEarnResult,
   AccountStatusInfo,
+  AccountEntitlementInfo,
+  MembershipFeature,
   AppSettings,
   AskUserRequest,
   ApprovalDecision,
@@ -157,6 +161,8 @@ const api = {
   // ── 账号与授权（商业化） ──────────────────────────────────
   account: {
     status: (): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_STATUS),
+    entitlement: (feature: MembershipFeature): Promise<AccountEntitlementInfo> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_ENTITLEMENT, feature),
     register: (args: { username: string; password: string; email: string; emailCode: string; code?: string }): Promise<AccountStatusInfo> =>
       ipcRenderer.invoke(IPC.ACCOUNT_REGISTER, args),
     login: (args: { username: string; password: string }): Promise<AccountStatusInfo> =>
@@ -168,6 +174,10 @@ const api = {
       ipcRenderer.invoke(IPC.ACCOUNT_SEND_CODE, args),
     resetPassword: (args: { email: string; emailCode: string; newPassword: string }): Promise<void> =>
       ipcRenderer.invoke(IPC.ACCOUNT_RESET_PASSWORD, args),
+    checkin: (): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_CHECKIN),
+    redeemPoints: (days: number): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_POINTS_REDEEM, { days }),
+    earnPoints: (args: { kind: AccountPointRewardKind; eventId?: string }): Promise<AccountPointsEarnResult> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_POINTS_EARN, args),
   },
 
   // ── 文件 ──────────────────────────────────────────────────

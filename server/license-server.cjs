@@ -10,7 +10,11 @@
  *   POST /api/auth/send-code {email, purpose: register|reset}       发送邮箱验证码（10 分钟有效）
  *   POST /api/auth/reset-pass {email, emailCode, newPassword}       忘记密码重置
  *   POST /api/redeem        {username, password, code, deviceId}    卡密续期（到期日叠加）
- *   POST /api/license/check Bearer token + x-mmodels-device         授权校验
+ *   POST /api/license/check Bearer token + x-mmodels-device         授权校验与额度扣减
+ *   POST /api/account/status Bearer token + x-mmodels-device        账号权益快照
+ *   POST /api/account/checkin Bearer token + x-mmodels-device       每日签到
+ *   POST /api/account/points-redeem Bearer token + x-mmodels-device  积分兑换会员
+ *   POST /api/account/points-earn Bearer token + x-mmodels-device    记录积分奖励事件
  *
  * 邮件配置：/opt/mmodels/data/mail.json → {"host":"smtp.qq.com","port":465,"user":"...","pass":"授权码","from":"..."}
  *           未配置时 send-code 返回 503「邮件服务暂未开通」
@@ -50,6 +54,15 @@ const SECRET_FILE = path.join(DATA_DIR, 'secret');
 const ADMIN_FILE = path.join(DATA_DIR, 'admin-auth');
 const ADMIN_HTML = path.join(__dirname, 'admin.html');
 const PORT = Number(process.env.MM_PORT || 80);
+const DAY_MS = 86_400_000;
+const TRIAL_DAYS = 3;
+const FREE_BASE_QUOTA = 10;
+const CHECKIN_BONUS_QUOTA = 10;
+const POINT_REWARDS = Object.freeze({ register: 50, firstProject: 30, paperExport: 20, feedback: 10, invite: 50 });
+const POINT_EXCHANGE = Object.freeze({ 1: 100, 7: 600, 30: 2000 });
+const POINT_REWARD_KINDS = new Set(['firstProject', 'paperExport', 'feedback', 'invite']);
+const POINT_EVENT_RE = /^[A-Za-z0-9._:-]{1,128}$/;
+const VIP_FEATURES = new Set(['multi-agent', 'full-paper', 'deep-modeling', 'advanced-figures', 'large-context', 'export', 'cloud-collaboration', 'automation']);
 
 // ---------- 存储 ----------
 function loadDb() {
@@ -203,6 +216,11 @@ function genCardCode() {
   const seg = () => Array.from({ length: 4 }, () => alphabet[crypto.randomInt(alphabet.length)]).join('');
   return `${seg()}-${seg()}-${seg()}-${seg()}`;
 }
+function genInviteCode() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const part = () => Array.from({ length: 6 }, () => alphabet[crypto.randomInt(alphabet.length)]).join('');
+  return `MM-${part()}`;
+}
 function signPayload(payload) {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = crypto.createHmac('sha256', SECRET).update(body).digest('base64url');
@@ -215,7 +233,7 @@ function verifyToken(token) {
   if (sig !== expect) return null;
   try {
     const p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
-    if (!p || typeof p.username !== 'string' || typeof p.deviceId !== 'string' || typeof p.expiresAt !== 'number') return null;
+    if (!p || typeof p.username !== 'string' || typeof p.deviceId !== 'string' || typeof p.expiresAt !== 'number' || p.expiresAt <= Date.now()) return null;
     if (p.tokenVersion !== undefined && (!Number.isInteger(p.tokenVersion) || p.tokenVersion < 1)) return null;
     return p;
   } catch { return null; }
@@ -370,6 +388,121 @@ function verifyEmailCode(purpose, email, code) {
 }
 
 // ---------- 业务 ----------
+function dayKey(now = Date.now()) {
+  // 额度与签到按产品服务地区的自然日清零，避免北京时间早上 8 点才重置。
+  const d = new Date(now + 8 * 60 * 60_000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+function ensureUser(user) {
+  if (!user || typeof user !== 'object') return user;
+  const now = Date.now();
+  if (!Number.isFinite(Number(user.createdAt))) user.createdAt = now;
+  if (!Number.isFinite(Number(user.expiresAt))) user.expiresAt = 0;
+  if (typeof user.inviteCode !== 'string' || !/^MM-[A-Z2-9]{6}$/.test(user.inviteCode)) {
+    user.inviteCode = genInviteCode();
+  }
+  // 存量账号可能只有 expiresAt，没有 plan。先补齐，再把已经过期的 VIP
+  // 明确迁回免费档；保留 expiresAt 供运营审计，不让旧 token 把用户锁死。
+  if (user.plan !== 'vip' && user.plan !== 'free') user.plan = user.expiresAt > now ? 'vip' : 'free';
+  if (user.plan === 'vip' && !(Number(user.expiresAt) > now)) {
+    user.plan = 'free';
+    if (!user.vipExpiredLoggedAt) {
+      user.vipExpiredLoggedAt = now;
+      logEvent('vip-expired', user.name, { detail: '会员已到期，账号自动回到免费额度' });
+    }
+  }
+  if (!Number.isFinite(Number(user.trialExpiresAt))) {
+    const created = Number(user.createdAt) || now;
+    user.trialExpiresAt = created + TRIAL_DAYS * DAY_MS;
+  }
+  if (Number(user.trialExpiresAt) <= now && !user.trialExpiredLoggedAt) {
+    user.trialExpiredLoggedAt = now;
+    logEvent('trial-expired', user.name, { detail: '试用期结束，账号自动回到免费额度' });
+  }
+  if (!Number.isFinite(Number(user.points)) || user.points < 0) user.points = 0;
+  if (!user.pointsAwards || typeof user.pointsAwards !== 'object') user.pointsAwards = {};
+  if (!user.quota || typeof user.quota !== 'object') user.quota = {};
+  if (user.quota.date !== dayKey(now)) {
+    user.quota = { date: dayKey(now), used: 0, bonus: 0, consumed: {} };
+  } else {
+    user.quota.used = Math.max(0, Number(user.quota.used) || 0);
+    user.quota.bonus = Math.max(0, Number(user.quota.bonus) || 0);
+    if (!user.quota.consumed || typeof user.quota.consumed !== 'object') user.quota.consumed = {};
+  }
+  if (typeof user.checkinDate !== 'string') user.checkinDate = '';
+  return user;
+}
+
+function trialActive(user, now = Date.now()) {
+  return user.plan === 'free' && Number(user.trialExpiresAt) > now;
+}
+
+function accountExpiresAt(user) {
+  return user.plan === 'vip' ? Number(user.expiresAt) || 0 : Number(user.trialExpiresAt) || 0;
+}
+
+function accountSnapshot(user, now = Date.now()) {
+  ensureUser(user);
+  const activeTrial = trialActive(user, now);
+  const vip = user.plan === 'vip' && Number(user.expiresAt) > now;
+  const bonus = Number(user.quota.bonus) || 0;
+  const used = Number(user.quota.used) || 0;
+  const total = FREE_BASE_QUOTA + bonus;
+  return {
+    plan: vip ? 'vip' : 'free',
+    trialActive: activeTrial,
+    trialDaysLeft: activeTrial ? Math.max(1, Math.ceil((Number(user.trialExpiresAt) - now) / DAY_MS)) : 0,
+    expiresAt: accountExpiresAt(user),
+    points: Math.max(0, Number(user.points) || 0),
+    aiQuota: { used, base: FREE_BASE_QUOTA, bonus, total, remaining: vip || activeTrial ? 0 : Math.max(0, total - used), vip: vip || activeTrial, date: user.quota.date, checkedAt: now },
+  };
+}
+
+function awardPoints(user, key, amount) {
+  ensureUser(user);
+  if (user.pointsAwards[key]) return false;
+  user.pointsAwards[key] = Date.now();
+  user.points += Math.max(0, Number(amount) || 0);
+  return true;
+}
+
+/**
+ * 把客户端事件映射到稳定的幂等键。
+ * 首个项目奖励只能领取一次；其余奖励必须带项目/反馈/邀请的事件编号，
+ * 这样同一个完成动作重试不会重复加分。事件编号只作为去重键，不作为积分数值来源。
+ */
+function pointRewardKey(kind, eventId) {
+  if (kind === 'firstProject') return 'firstProject';
+  if (!POINT_EVENT_RE.test(eventId)) return null;
+  return `${kind}:${eventId}`;
+}
+
+function authUser(req, ip) {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const payload = verifyToken(token);
+  if (!payload) return { status: 401, error: '登录状态已失效，请重新登录', detail: '无效令牌' };
+  const device = String(req.headers['x-mmodels-device'] || '');
+  if (!DEVICE_RE.test(device)) return { status: 400, error: '设备标识不合法，请重启客户端后重试', detail: '设备标识不合法' };
+  db = loadDb();
+  const user = db.users[payload.username];
+  if (!user) return { status: 401, error: '账号不存在，请重新注册', detail: '账号不存在' };
+  if (user.banned) return { status: 403, error: '账号已被停用，请联系客服', detail: '已封禁' };
+  if (device !== payload.deviceId || user.deviceId !== device) return { status: 403, error: '当前设备未绑定，请重新登录', detail: '设备不匹配' };
+  if (payload.tokenVersion !== (Number(user.tokenVersion) || 1)) return { status: 401, error: '登录状态已更新，请重新登录', detail: '令牌已失效' };
+  ensureUser(user);
+  return { user, payload, token };
+}
+
+function saveQuotaRequest(user, requestId, now) {
+  const consumed = user.quota.consumed || (user.quota.consumed = {});
+  for (const [key, at] of Object.entries(consumed)) if (Number(at) < now - 2 * DAY_MS) delete consumed[key];
+  if (requestId && consumed[requestId]) return true;
+  if (requestId) consumed[requestId] = now;
+  return false;
+}
+
 function activateCard(code, deviceId, username) {
   const card = db.cards[code];
   if (!card) return { status: 404, error: '卡密不存在' };
@@ -377,18 +510,26 @@ function activateCard(code, deviceId, username) {
   if (card.usedBy) return { status: 409, error: '卡密已兑换，不能重复使用' };
   const now = Date.now();
   const user = db.users[username];
-  const base = user && user.expiresAt > now ? user.expiresAt : now;
+  const base = user ? Math.max(now, Number(user.expiresAt) || 0, trialActive(user, now) ? Number(user.trialExpiresAt) : 0) : now;
   const expiresAt = base + card.days * 86_400_000;
   card.usedBy = card.usedBy || deviceId;
   card.usedByUsername = card.usedByUsername || username;
   card.usedAt = card.usedAt || now;
   user.expiresAt = expiresAt;
+  user.plan = 'vip';
+  ensureUser(user);
   return { expiresAt, days: card.days }; // 日志由调用方记录（register 激活不应计入 redeem 统计）
 }
 
 function issueToken(user, deviceId) {
   user.tokenVersion = Number.isInteger(user.tokenVersion) && user.tokenVersion > 0 ? user.tokenVersion : 1;
-  return signPayload({ username: user.name, deviceId, expiresAt: user.expiresAt, tokenVersion: user.tokenVersion });
+  // 免费账号过了试用期仍可登录并使用每日基础额度，令牌寿命不能跟着试用期失效。
+  // VIP 到期后 plan 字段保留历史状态用于审计，因此必须同时判断 expiresAt，
+  // 否则过期账号重新登录会拿到一个已经过期的令牌，无法回到免费额度。
+  const tokenExpiresAt = user.plan === 'vip' && Number(user.expiresAt) > Date.now()
+    ? user.expiresAt
+    : Date.now() + 3650 * DAY_MS;
+  return signPayload({ username: user.name, deviceId, expiresAt: tokenExpiresAt, tokenVersion: user.tokenVersion });
 }
 
 // ---------- HTTP 基础 ----------
@@ -449,12 +590,18 @@ async function handleRequest(req, res) {
       const deviceId = String(b.deviceId || '').trim();
       const email = String(b.email || '').trim().toLowerCase();
       const emailCode = String(b.emailCode || '').trim();
+      const inviteCode = String(b.inviteCode || '').trim().toUpperCase();
       if (!USERNAME_RE.test(username)) return send(res, 400, { ok: false, error: '账号需 3-24 位字母/数字/下划线' });
       if (!PASSWORD_RE.test(password)) return send(res, 400, { ok: false, error: '密码需为 8-128 位且不能含控制字符' });
       if (!DEVICE_RE.test(deviceId)) return send(res, 400, { ok: false, error: '设备标识不合法，请重启客户端后重试' });
       if (!EMAIL_RE.test(email)) return send(res, 400, { ok: false, error: '邮箱格式不正确' });
       if (Object.values(db.users).some((u) => (u.email || '') === email)) return send(res, 409, { ok: false, error: '该邮箱已绑定其他账号' });
       if (db.users[username]) return send(res, 409, { ok: false, error: '账号已存在' });
+      let inviter = null;
+      if (inviteCode) {
+        inviter = Object.values(db.users).find((candidate) => candidate.inviteCode === inviteCode && candidate.name !== username) || null;
+        if (!inviter) return send(res, 400, { ok: false, error: '邀请标识无效，请检查后重试' });
+      }
       const code = String(b.code || '').trim().toUpperCase();
       if (code && !CARD_RE.test(code)) return send(res, 400, { ok: false, error: '卡密格式不正确' });
       const vr = verifyEmailCode('register', email, emailCode);
@@ -462,8 +609,12 @@ async function handleRequest(req, res) {
       const now = Date.now();
       db.users[username] = {
         name: username, passHash: hashPass(password), tokenVersion: 1, createdAt: now,
-        expiresAt: now, banned: false, deviceId, lastLoginAt: now, email,
+        expiresAt: now, trialExpiresAt: now + TRIAL_DAYS * DAY_MS,
+        plan: 'free', points: 0, pointsAwards: {},
+        quota: { date: dayKey(now), used: 0, bonus: 0, consumed: {} }, checkinDate: '',
+        banned: false, deviceId, lastLoginAt: now, email, inviteCode: genInviteCode(),
       };
+      if (inviter) db.users[username].invitedBy = inviter.name;
       let token = '';
       let expiresAt = now;
       let usedCard = '';
@@ -480,10 +631,19 @@ async function handleRequest(req, res) {
         usedCard = code;
       }
       db.users[username].expiresAt = expiresAt;
+      awardPoints(db.users[username], 'register', POINT_REWARDS.register);
       token = issueToken(db.users[username], deviceId);
+      logEvent('trial-start', username, { ip, detail: `注册后开放 ${TRIAL_DAYS} 天全功能试用` });
+      logEvent('points-earn', username, { ip, detail: `注册奖励 +${POINT_REWARDS.register} 积分` });
+      if (inviter) {
+        const inviteKey = `invite:${username}`;
+        if (awardPoints(inviter, inviteKey, POINT_REWARDS.invite)) {
+          logEvent('points-earn', inviter.name, { ip, detail: `邀请注册奖励 +${POINT_REWARDS.invite} 积分（${username}）` });
+        }
+      }
       logEvent('register', username, { ip, detail: usedCard ? `激活卡密 ${cardLabel(usedCard)}（+${Math.round((expiresAt - now) / 86_400_000)} 天）` : '未带卡密' });
       saveDb();
-      return send(res, 200, { ok: true, token, expiresAt, activated: Boolean(code) });
+      return send(res, 200, { ok: true, token, activated: Boolean(code), ...accountSnapshot(db.users[username]) });
     }
 
     if (req.method === 'POST' && url === '/api/auth/send-code') {
@@ -566,10 +726,11 @@ async function handleRequest(req, res) {
       if (check.migrated) { user.passHash = check.migrated; delete user.passEnc; }
       user.lastLoginAt = Date.now();
       user.lastIp = ip;
+      ensureUser(user);
       const token = issueToken(user, deviceId);
       logEvent('login', username, { ip, detail: '登录成功' });
       saveDb();
-      return send(res, 200, { ok: true, token, expiresAt: user.expiresAt });
+      return send(res, 200, { ok: true, token, ...accountSnapshot(user) });
     }
 
     if (req.method === 'POST' && url === '/api/redeem') {
@@ -606,33 +767,135 @@ async function handleRequest(req, res) {
       logEvent('redeem', username, { ip, days: r.days, detail: `卡密 ${cardLabel(code)}（+${r.days} 天）` });
       if (check.migrated) { user.passHash = check.migrated; delete user.passEnc; }
       saveDb();
-      return send(res, 200, { ok: true, token, expiresAt: r.expiresAt });
+      return send(res, 200, { ok: true, token, ...accountSnapshot(user) });
     }
 
     if (req.method === 'POST' && url === '/api/license/check') {
-      if (!rateAllowed(`check:${ip}`, 120, 60_000)) return send(res, 429, { allowed: false, reason: 'too many requests' });
-      const auth = req.headers['authorization'] || '';
-      const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-      const payload = verifyToken(token);
-      if (!payload) {
-        logEvent('check-fail', '-', { ip, detail: '无效令牌' });
-        return send(res, 401, { allowed: false, reason: 'invalid token' });
+      if (!rateAllowed(`check:${ip}`, 120, 60_000)) return send(res, 429, { allowed: false, code: 'RATE_LIMITED', reason: '校验请求过于频繁，请稍后重试' });
+      const auth = authUser(req, ip);
+      if (auth.error) {
+        logEvent('check-fail', '-', { ip, detail: auth.detail });
+        return send(res, auth.status, { allowed: false, reason: auth.error, code: 'LOGIN_REQUIRED' });
       }
-      db = loadDb(); // 管理端封禁/重置设备需即时生效
-      const user = db.users[payload.username];
-      const device = String(req.headers['x-mmodels-device'] || '');
-      if (!DEVICE_RE.test(device)) return send(res, 400, { allowed: false, reason: 'invalid device' });
-      if (!user) { logEvent('check-fail', payload.username, { ip, detail: '账号不存在' }); return send(res, 401, { allowed: false, reason: '账号不存在' }); }
-      if (user.banned) { logEvent('check-fail', payload.username, { ip, detail: '已封禁' }); return send(res, 403, { allowed: false, reason: 'banned' }); }
-      if (device !== payload.deviceId) { logEvent('check-fail', payload.username, { ip, detail: '设备不匹配' }); return send(res, 403, { allowed: false, reason: 'device mismatch' }); }
-      if (user.deviceId !== device) { logEvent('check-fail', payload.username, { ip, detail: '设备已重绑' }); return send(res, 403, { allowed: false, reason: 'device rebinding' }); }
-      // 缺少 tokenVersion 的令牌也必须失效：重置密码后不能继续沿用旧会话。
-      if (payload.tokenVersion !== (Number(user.tokenVersion) || 1)) {
-        logEvent('check-fail', payload.username, { ip, detail: '令牌已失效' });
-        return send(res, 401, { allowed: false, reason: 'token revoked' });
+      const b = await readBody(req);
+      const user = auth.user;
+      const feature = String(b.feature || 'ai-chat');
+      const consume = b.consume === true;
+      const requestId = String(b.requestId || '');
+    if (feature !== 'ai-chat' && !VIP_FEATURES.has(feature)) return send(res, 400, { allowed: false, code: 'INVALID_FEATURE', reason: '功能标识不合法' });
+      if (consume && feature === 'ai-chat' && !/^[A-Za-z0-9._:-]{8,128}$/.test(requestId)) return send(res, 400, { allowed: false, code: 'INVALID_REQUEST_ID', reason: '请求标识不合法' });
+      const now = Date.now();
+      const snapshot = accountSnapshot(user, now);
+      const elevated = snapshot.plan === 'vip' || snapshot.trialActive;
+      if (VIP_FEATURES.has(feature) && !elevated) {
+        logEvent('vip-block', user.name, { ip, detail: `拦截会员功能：${feature}` });
+        saveSoon();
+        return send(res, 403, { allowed: false, code: 'FEATURE_VIP_REQUIRED', reason: '当前功能需要会员，可在会员中心升级', ...snapshot });
       }
-      if (user.expiresAt <= Date.now()) { logEvent('check-fail', payload.username, { ip, detail: '已过期' }); return send(res, 401, { allowed: false, reason: 'expired' }); }
-      return send(res, 200, { allowed: true, expiresAt: user.expiresAt });
+      if (feature === 'ai-chat' && !elevated) {
+        if (consume && user.quota.consumed[requestId]) return send(res, 200, { allowed: true, ...accountSnapshot(user, now), duplicate: true });
+        if (user.quota.used >= FREE_BASE_QUOTA + user.quota.bonus) {
+          logEvent('quota-exhausted', user.name, { ip, detail: '免费 AI 次数已用完' });
+          saveSoon();
+          return send(res, 403, { allowed: false, code: 'AI_QUOTA_EXCEEDED', reason: '今日免费次数已用完，签到或升级会员可继续使用', ...snapshot });
+        }
+        if (consume) {
+          user.quota.used += 1;
+          saveQuotaRequest(user, requestId, now);
+          logEvent('ai-consume', user.name, { ip, detail: `消耗 1 次免费 AI，对话后剩余 ${Math.max(0, FREE_BASE_QUOTA + user.quota.bonus - user.quota.used)} 次` });
+          saveDb();
+        }
+      }
+      return send(res, 200, { allowed: true, ...accountSnapshot(user, now) });
+    }
+
+    if (req.method === 'POST' && url === '/api/account/status') {
+      if (!rateAllowed(`account-status:${ip}`, 60, 60_000)) return send(res, 429, { ok: false, code: 'RATE_LIMITED', error: '状态查询过于频繁，请稍后重试' });
+      const auth = authUser(req, ip);
+      if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
+      saveSoon();
+      return send(res, 200, { ok: true, ...accountSnapshot(auth.user) });
+    }
+
+    if (req.method === 'POST' && url === '/api/account/checkin') {
+      if (!rateAllowed(`account-checkin:${ip}`, 10, 60_000)) return send(res, 429, { ok: false, code: 'RATE_LIMITED', error: '签到请求过于频繁，请稍后重试' });
+      const auth = authUser(req, ip);
+      if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
+      const user = auth.user;
+      const today = dayKey();
+      if (user.checkinDate === today) return send(res, 200, { ok: true, alreadyCheckedIn: true, ...accountSnapshot(user) });
+      user.checkinDate = today;
+      user.quota.bonus = CHECKIN_BONUS_QUOTA;
+      logEvent('checkin', user.name, { ip, detail: '领取今日额外对话次数' });
+      saveDb();
+      return send(res, 200, { ok: true, alreadyCheckedIn: false, ...accountSnapshot(user) });
+    }
+
+    if (req.method === 'POST' && url === '/api/account/points-redeem') {
+      if (!rateAllowed(`points-redeem:${ip}`, 10, 60_000)) return send(res, 429, { ok: false, code: 'RATE_LIMITED', error: '兑换请求过于频繁，请稍后重试' });
+      const auth = authUser(req, ip);
+      if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
+      const b = await readBody(req);
+      const days = Number(b.days);
+      const cost = POINT_EXCHANGE[days];
+      if (!cost) return send(res, 400, { ok: false, code: 'INVALID_DAYS', error: '请选择 1、7 或 30 天会员' });
+      const user = auth.user;
+      if (user.points < cost) return send(res, 409, { ok: false, code: 'INSUFFICIENT_POINTS', error: '积分不足，暂时无法兑换' });
+      user.points -= cost;
+      const now = Date.now();
+      user.expiresAt = Math.max(now, Number(user.expiresAt) || 0) + days * DAY_MS;
+      user.plan = 'vip';
+      const token = issueToken(user, user.deviceId);
+      logEvent('points-redeem', user.name, { ip, days, detail: `使用 ${cost} 积分兑换 ${days} 天会员` });
+      saveDb();
+      return send(res, 200, { ok: true, token, ...accountSnapshot(user) });
+    }
+
+    if (req.method === 'POST' && url === '/api/account/points-earn') {
+      const auth = authUser(req, ip);
+      if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
+      if (!rateAllowed(`points:${auth.user.name}:${ip}`, 30, 3600_000)) {
+        return send(res, 429, { ok: false, code: 'POINTS_TOO_FREQUENT', error: '积分奖励记录过于频繁，请稍后再试' });
+      }
+      const b = await readBody(req);
+      const kind = String(b.kind || '').trim();
+      if (!POINT_REWARD_KINDS.has(kind)) {
+        return send(res, 400, { ok: false, code: 'INVALID_POINT_KIND', error: '积分奖励类型不合法' });
+      }
+      // 邀请奖励必须由服务端在“新用户注册并完成验证”时生成确认记录。
+      // 当前版本尚未开放邀请页面，拒绝客户端自行伪造 eventId 领取 +50。
+      if (kind === 'invite') {
+        return send(res, 409, { ok: false, code: 'INVITE_NOT_VERIFIED', error: '邀请关系尚未完成验证，暂不能领取该奖励' });
+      }
+      const eventId = String(b.eventId || '').trim();
+      const key = pointRewardKey(kind, eventId);
+      if (!key) {
+        return send(res, 400, { ok: false, code: 'EVENT_ID_REQUIRED', error: '这类奖励需要提供有效的完成记录' });
+      }
+      const user = auth.user;
+      // 反馈奖励是每个账号一次；论文导出按稳定事件编号逐篇幂等。
+      const feedbackAlreadyAwarded = kind === 'feedback' && Object.keys(user.pointsAwards).some((awardKey) => awardKey.startsWith('feedback:'));
+      const duplicate = feedbackAlreadyAwarded || Boolean(user.pointsAwards[key]);
+      const awarded = duplicate ? 0 : POINT_REWARDS[kind] || 0;
+      if (!duplicate) {
+        awardPoints(user, key, awarded);
+        logEvent('points-earn', user.name, {
+          ip,
+          days: 0,
+          detail: `${kind} 完成奖励 +${awarded} 积分（${eventId || '首次完成'}）`,
+        });
+        saveDb();
+      } else {
+        logEvent('points-earn-duplicate', user.name, { ip, detail: `${kind} 重复事件，未重复发放积分（${eventId}）` });
+        saveSoon();
+      }
+      return send(res, 200, {
+        ok: true,
+        kind,
+        awarded,
+        duplicate,
+        ...accountSnapshot(user),
+      });
     }
 
     // ===== 管理 =====
@@ -656,7 +919,14 @@ async function handleRequest(req, res) {
         db = loadDb();
         const now = Date.now();
         const users = Object.values(db.users);
+        users.forEach((user) => ensureUser(user));
+        saveSoon();
         const day = 86_400_000;
+        const events = Array.isArray(db.events) ? db.events : [];
+        const countType = (type, since = 0) => events.filter((e) => e.type === type && e.t >= since).length;
+        const sumPointDetails = (pattern, since = 0) => events
+          .filter((e) => e.t >= since && pattern.test(String(e.detail || '')))
+          .reduce((sum, e) => sum + (Number(String(e.detail || '').match(/\+(\d+)\s*积分/)?.[1]) || 0), 0);
         const days7 = Array.from({ length: 7 }, (_, i) => {
           const dStart = new Date(now - (6 - i) * day); dStart.setHours(0, 0, 0, 0);
           const dEnd = dStart.getTime() + day;
@@ -665,14 +935,42 @@ async function handleRequest(req, res) {
             label,
             registers: db.events.filter((e) => e.type === 'register' && e.t >= dStart.getTime() && e.t < dEnd).length,
             redeems: db.events.filter((e) => e.type === 'redeem' && e.t >= dStart.getTime() && e.t < dEnd).length,
+            checkins: db.events.filter((e) => e.type === 'checkin' && e.t >= dStart.getTime() && e.t < dEnd).length,
+            aiUses: db.events.filter((e) => e.type === 'ai-consume' && e.t >= dStart.getTime() && e.t < dEnd).length,
           };
         });
+        const vipUsers = users.filter((u) => !u.banned && u.plan === 'vip' && Number(u.expiresAt) > now).length;
+        const trialUsers = users.filter((u) => !u.banned && u.plan === 'free' && Number(u.trialExpiresAt) > now).length;
+        const expiredUsers = users.filter((u) => !u.banned && Number(u.trialExpiresAt || 0) <= now && Number(u.expiresAt || 0) <= now).length;
+        const pointsEarned = sumPointDetails(/\+\d+\s*积分/);
+        const pointsSpent = events.filter((e) => e.type === 'points-redeem').reduce((sum, e) => sum + (Number(String(e.detail || '').match(/使用\s+(\d+)\s*积分/)?.[1]) || 0), 0);
         return send(res, 200, {
           ok: true,
           totalUsers: users.length,
-          activeUsers: users.filter((u) => !u.banned && u.expiresAt > now).length,
+          activeUsers: users.filter((u) => !u.banned && ((u.plan === 'vip' && Number(u.expiresAt) > now) || (u.plan !== 'vip' && Number(u.trialExpiresAt) > now))).length,
           bannedUsers: users.filter((u) => u.banned).length,
-          expiringUsers: users.filter((u) => !u.banned && u.expiresAt > now && u.expiresAt < now + 7 * day).length,
+          trialUsers,
+          vipUsers,
+          expiredUsers,
+          trialStarted: countType('trial-start'),
+          trialExpired: countType('trial-expired'),
+          loginCount: countType('login'),
+          checkinCount: countType('checkin'),
+          aiUsage: countType('ai-consume'),
+          quotaExhausted: countType('quota-exhausted'),
+          vipBlocks: countType('vip-block'),
+          paperExports: countType('paper-export'),
+          pointsEarned,
+          pointsSpent,
+          pointsBalance: users.reduce((sum, u) => sum + Math.max(0, Number(u.points) || 0), 0),
+          pointsRewardEvents: countType('points-earn'),
+          pointsExchangeEvents: countType('points-redeem'),
+          checkinUsers: new Set(events.filter((e) => e.type === 'checkin').map((e) => e.username)).size,
+          expiringUsers: users.filter((u) => {
+            if (u.banned) return false;
+            const expiry = u.plan === 'vip' ? Number(u.expiresAt) : Number(u.trialExpiresAt);
+            return expiry > now && expiry < now + 7 * day;
+          }).length,
           totalDays: users.reduce((s, u) => s + Math.max(0, (u.expiresAt - now) / day), 0),
           cardsTotal: Object.keys(db.cards).length,
           cardsUsed: Object.values(db.cards).filter((c) => c.usedBy).length,
@@ -686,8 +984,10 @@ async function handleRequest(req, res) {
           ok: true,
           users: Object.values(db.users).map((u) => ({
             name: u.name, createdAt: u.createdAt,
-            expiresAt: u.expiresAt, banned: u.banned, deviceId: u.deviceId, lastLoginAt: u.lastLoginAt,
-            note: u.note || '', lastIp: u.lastIp || '', passwordStored: Boolean(u.passHash || u.passEnc),
+            expiresAt: u.expiresAt, plan: u.plan === 'vip' && Number(u.expiresAt) > Date.now() ? 'vip' : 'free',
+            trialActive: Number(u.trialExpiresAt) > Date.now() && u.plan !== 'vip',
+            banned: u.banned, deviceBound: Boolean(u.deviceId), lastLoginAt: u.lastLoginAt,
+            note: u.note || '', passwordStored: Boolean(u.passHash || u.passEnc),
           })).sort((a, b) => b.createdAt - a.createdAt),
         });
       }
@@ -821,7 +1121,7 @@ async function handleRequest(req, res) {
 
     return send(res, 404, { ok: false, error: 'not found' });
   } catch {
-    return send(res, 500, { ok: false, error: 'internal error' });
+    return send(res, 500, { ok: false, error: '服务暂时没有完成这次请求，请稍后重试' });
   }
 }
 

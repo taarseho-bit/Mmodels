@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   locale: 'zh-CN',
   recentProjectId: null,
   onboardingDone: false,
+  welcomeShown: false,
   permissionMode: 'full',
   planMode: false,
   multiAgentEnabled: true,
@@ -148,7 +149,14 @@ function decryptSecret(stored: string): string {
 // ─────────────────────────────────────────────────────────────
 
 export function getSettings(): AppSettings {
-  const settings = { ...DEFAULT_SETTINGS, ...store.get('settings') };
+  const storedSettings = store.get('settings');
+  const settings = { ...DEFAULT_SETTINGS, ...storedSettings };
+  // 会员首启页是当前版本新增字段。已有用户已经完成此前的首次向导时，自动视为已看过，
+  // 避免升级后突然被带回首启页；全新安装仍由默认值 false 进入欢迎页。
+  if (!Object.prototype.hasOwnProperty.call(storedSettings, 'welcomeShown') && storedSettings.onboardingDone === true) {
+    settings.welcomeShown = true;
+    store.set('settings', settings);
+  }
   // 旧 DeepSeek 名称仅在同一 DeepSeek 供应商且已发现 flash 时迁移，避免改写其他兼容接口。
   if (settings.defaultModel === 'deepseek-chat' && settings.activeProviderId) {
     const provider = listProviders().find(p => p.id === settings.activeProviderId);

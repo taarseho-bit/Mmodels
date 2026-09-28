@@ -31,6 +31,7 @@ interface LicensePolicy {
 interface LicenseCache {
   token: string;
   validUntil: number;
+  feature: string;
 }
 
 interface GraceRecord {
@@ -204,14 +205,20 @@ function clearGrace(): void {
 }
 
 /** 商业版模型调用前的在线授权确认；本地开发版直接放行。 */
-export async function assertAiEntitlement(): Promise<void> {
+export function isLicenseRequired(): boolean {
+  return readPolicy().required;
+}
+
+/** 在线检查一项能力。ai-chat 带 requestId 时每轮都会走服务端，服务端据此幂等扣减次数。 */
+export async function assertAiEntitlement(feature = 'ai-chat', requestId?: string): Promise<void> {
   const policy = readPolicy();
   if (!policy.required) return;
   if (!policy.endpoint) throw new Error('当前版本需要在线验证授权，请在设置中完成授权后重试。');
 
   const token = readLicenseToken();
   if (!token) throw new Error('当前版本需要授权令牌，请先完成授权后再调用模型。');
-  if (cache && cache.token === token && cache.validUntil > Date.now()) return;
+  const consumeBasic = feature === 'ai-chat' && Boolean(requestId);
+  if (cache && cache.token === token && cache.feature === feature && cache.validUntil > Date.now() && !consumeBasic) return;
 
   const device = deviceId();
   const controller = new AbortController();
@@ -225,24 +232,30 @@ export async function assertAiEntitlement(): Promise<void> {
         authorization: `Bearer ${token}`,
         'x-mmodels-version': app.getVersion(),
         'x-mmodels-device': device,
+        'x-mmodels-feature': feature,
+        ...(requestId ? { 'x-mmodels-request-id': requestId } : {}),
       },
-      body: JSON.stringify({ app: 'mmodels-desktop', version: app.getVersion(), deviceId: device }),
+      body: JSON.stringify({ app: 'mmodels-desktop', version: app.getVersion(), deviceId: device, feature, requestId, consume: feature === 'ai-chat' }),
     });
 
-    // 服务端明确拒绝：立即停用，并撤掉宽限记录。
-    if (response.status === 401 || response.status === 403) {
-      clearGrace();
-      cache = null;
-      throw new LicenseRejectionError('授权已失效，请重新登录或续费。');
+    // 5xx / 429 等服务端故障按网络类失败处理（走宽限）；401/403 仍需读取
+    // 响应体，以便把“今日次数用完”和“需要 VIP”显示成用户看得懂的提示。
+    if (!response.ok && response.status !== 401 && response.status !== 403) {
+      throw new LicenseTransientError(`授权服务返回 ${response.status}`);
     }
-    // 5xx / 429 等服务端故障按网络类失败处理（走宽限）。
-    if (!response.ok) throw new LicenseTransientError(`授权服务返回 ${response.status}`);
 
-    let body: { allowed?: boolean; expiresAt?: number | string };
+    let body: { allowed?: boolean; expiresAt?: number | string; code?: string; reason?: string };
     try {
       body = (await response.json()) as { allowed?: boolean; expiresAt?: number | string };
     } catch {
       throw new LicenseProtocolError('授权服务响应格式无效');
+    }
+    if (response.status === 401 || response.status === 403) {
+      clearGrace();
+      cache = null;
+      if (body.code === 'AI_QUOTA_EXCEEDED') throw new LicenseRejectionError('今日基础 AI 次数已用完，请签到或升级会员后继续。');
+      if (body.code === 'FEATURE_VIP_REQUIRED') throw new LicenseRejectionError('当前功能需要 VIP 会员，请打开会员中心升级。');
+      throw new LicenseRejectionError('授权已失效，请重新登录或续费。');
     }
     if (typeof body.allowed !== 'boolean') {
       throw new LicenseProtocolError('授权服务响应缺少校验结果');
@@ -250,6 +263,8 @@ export async function assertAiEntitlement(): Promise<void> {
     if (body.allowed !== true) {
       clearGrace();
       cache = null;
+      if (body.code === 'AI_QUOTA_EXCEEDED') throw new LicenseRejectionError('今日基础 AI 次数已用完，请签到或升级会员后继续。');
+      if (body.code === 'FEATURE_VIP_REQUIRED') throw new LicenseRejectionError('当前功能需要 VIP 会员，请打开会员中心升级。');
       throw new LicenseRejectionError('授权已失效或当前设备未被允许');
     }
 
@@ -258,7 +273,7 @@ export async function assertAiEntitlement(): Promise<void> {
       Number.isFinite(expiresAt) && expiresAt > Date.now() ? expiresAt : Date.now() + policy.cacheTtlMs,
       Date.now() + policy.cacheTtlMs,
     );
-    cache = { token, validUntil };
+    cache = { token, feature, validUntil };
     writeGrace(token, device, Date.now());
     return;
   } catch (error) {
@@ -269,7 +284,7 @@ export async function assertAiEntitlement(): Promise<void> {
     cache = null;
     if (readGrace(token, device, Date.now())) {
       // 宽限放行只缓存 60 秒，网络恢复后尽快回到真实校验。
-      cache = { token, validUntil: Date.now() + 60_000 };
+      cache = { token, feature, validUntil: Date.now() + 60_000 };
       return;
     }
     const detail = error instanceof LicenseTransientError ? error.message : '网络异常';
