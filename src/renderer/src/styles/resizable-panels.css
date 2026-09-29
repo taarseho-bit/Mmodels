@@ -511,3 +511,57 @@
   .competition-shell .newchat { padding-block: 22px; }
   .competition-shell .msg-user .msg-body { max-width: 94%; }
 }
+
+/* ── 对话页顶部操作区回归保障 ────────────────────────────────
+ * 某些窗口宽度下，旧的 max-width/overflow 组合会把 ChatQuickBar 压成一条
+ * 空白竖带，连“对话 / 工作流”也看不见。这里把上下文条和操作组恢复成
+ * 明确的单行 flex 约束；窄屏仍由路径文本让位，而不是裁剪操作按钮。 */
+.competition-shell .chat-page-context {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+}
+.competition-shell .chat-page-context-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.competition-shell .chat-page-context-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+  max-width: none;
+  height: auto;
+  min-height: 0;
+  margin-left: auto;
+  overflow: visible;
+}
+.competition-shell .chat-page-context-actions > .chat-quickbar {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  white-space: nowrap;
+  overflow: visible;
+}
+.competition-shell .chat-page-context-actions .chat-quickbar-view,
+.competition-shell .chat-page-context-actions .chat-quickbar-tools {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+}
+.competition-shell .chat-page-context-actions .workflow-switch {
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+}

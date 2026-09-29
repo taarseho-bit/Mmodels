@@ -37,8 +37,17 @@ describe('空会话快捷卡片计费', () => {
 
   it('卡片只显示积分数字，完整说明放在提示信息中', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/renderer/src/pages/ChatPage.tsx'), 'utf8');
-    expect(source).toContain('className="starter-cost"');
-    expect(source).toContain('aria-label={`${skillPointCost(s.skillId) ?? 10} 积分`}');
+    expect(source).toContain("className={`starter-cost${homepagePricingIsPaidVip ? ' is-vip' : ''}`}");
+    expect(source).toContain("aria-label={homepagePricingIsPaidVip ? 'VIP无限' : `${starterCost} 积分`}");
+    expect(source).toContain("homepagePricingIsPaidVip ? 'VIP无限' : starterCost");
     expect(source).not.toContain('积分/回合');
+  });
+
+  it('对话页右上角视图切换保留可见的单行操作区', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/renderer/src/styles/resizable-panels.css'), 'utf8');
+    const guard = css.slice(css.lastIndexOf('对话页顶部操作区回归保障'));
+    expect(guard).toContain('.competition-shell .chat-page-context-actions');
+    expect(guard).toContain('overflow: visible');
+    expect(guard).toContain('.competition-shell .chat-page-context-actions .workflow-switch');
   });
 });

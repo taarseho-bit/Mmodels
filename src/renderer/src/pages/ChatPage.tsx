@@ -23,7 +23,7 @@
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { ChatMessage, ContentBlock, InflightTurn, StreamEvent } from '@shared/types';
+import type { AccountStatusInfo, ChatMessage, ContentBlock, InflightTurn, StreamEvent } from '@shared/types';
 import { decideFollowUpAction, followUpHeadFor, readFollowUpBehavior, useApp } from '../store/app';
 import { latestTaskBlocks } from '../store/tasks';
 import {
@@ -37,7 +37,8 @@ import { DraftComposer } from '../components/DraftComposer';
 import { createComposerDraft } from '../store/composer-draft';
 import { withPendingMessage } from '../lib/optimistic-message';
 import { friendlyError } from '../lib/friendly-error';
-import { openMembership } from '../lib/membership-nav';
+import { onAccountStatus, openMembership } from '../lib/membership-nav';
+import { isPaidVip } from '../components/membership/membership-ui';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TaskProgressPanel } from '../components/TaskProgress';
 import { AgentCollaboration } from '../components/AgentCollaboration';
@@ -482,6 +483,25 @@ export function ChatPage({ actions, editorView = false }: { actions?: ReactNode;
   const activeSessionId = useApp((s) => s.activeSessionId);
   const newChatRequest = useApp((s) => s.newChatRequest);
   const settings = useApp((s) => s.settings);
+  const [membershipStatus, setMembershipStatus] = useState<AccountStatusInfo | null>(null);
+  const [membershipStatusLoaded, setMembershipStatusLoaded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void window.mathmodel.account.status().then((next) => {
+      if (!alive) return;
+      setMembershipStatus(next);
+      setMembershipStatusLoaded(true);
+    }).catch(() => {
+      if (alive) setMembershipStatusLoaded(true);
+    });
+    const unsubscribe = onAccountStatus((next) => {
+      if (!alive || !next || typeof next !== 'object') return;
+      setMembershipStatus(next as AccountStatusInfo);
+      setMembershipStatusLoaded(true);
+    });
+    return () => { alive = false; unsubscribe(); };
+  }, []);
+  const homepagePricingIsPaidVip = membershipStatusLoaded && isPaidVip(membershipStatus);
   const createSession = useApp((s) => s.createSession);
   /** 快捷功能卡点击后在卡片下方展开的内联输入框内容（null = 收起）——2026-09-25 用户要求 */
   const [starterDraft, setStarterDraft] = useState<string | null>(null);
@@ -1414,7 +1434,9 @@ export function ChatPage({ actions, editorView = false }: { actions?: ReactNode;
                 </div>
 
                 <div className="starters" id="tour-examples">
-                  {STARTERS.map((s) => (
+                  {STARTERS.map((s) => {
+                    const starterCost = skillPointCost(s.skillId) ?? 10;
+                    return (
                     <button
                       key={s.title}
                       className={`starter starter-tint-${s.tint}${starterDraft !== null && starterDraft.startsWith(s.prompt.slice(0, 24)) ? ' is-active' : ''}`}
@@ -1428,11 +1450,11 @@ export function ChatPage({ actions, editorView = false }: { actions?: ReactNode;
                         <span className="starter-head-copy">
                           <span className="starter-title">{t(s.title)}</span>
                           <span
-                            className="starter-cost"
-                            title="选择后按该技能的单回合积分计费"
-                            aria-label={`${skillPointCost(s.skillId) ?? 10} 积分`}
+                            className={`starter-cost${homepagePricingIsPaidVip ? ' is-vip' : ''}`}
+                            title={homepagePricingIsPaidVip ? '卡密 VIP：该技能不限积分' : '选择后按该技能的单回合积分计费'}
+                            aria-label={homepagePricingIsPaidVip ? 'VIP无限' : `${starterCost} 积分`}
                           >
-                            {skillPointCost(s.skillId) ?? 10}
+                            {homepagePricingIsPaidVip ? 'VIP无限' : starterCost}
                           </span>
                         </span>
                       </span>
@@ -1445,7 +1467,8 @@ export function ChatPage({ actions, editorView = false }: { actions?: ReactNode;
                         ))}
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* 点卡片 → 下方就地展开输入框（可改可发），比静默填进底部输入框更直观 */}

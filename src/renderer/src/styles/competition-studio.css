@@ -172,6 +172,7 @@
 .competition-shell .starter-icon { width: 24px; height: 24px; border-radius: 7px; margin-bottom: 0; }
 .competition-shell .starter .starter-title { display: inline; margin: 0; font-size: 12.5px; line-height: 1.35; }
 .competition-shell .starter .starter-cost { font-size: 10px; line-height: 1.3; color: var(--fg-muted); font-weight: 500; }
+.competition-shell .starter .starter-cost.is-vip { color: #c49416; font-weight: 650; font-variant-numeric: normal; }
 .competition-shell .starter .starter-desc { margin-top: 4px; font-size: 11px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .competition-shell .starter .starter-tags { margin-top: 4px; gap: 4px; }
 .competition-shell .starter .starter-tag { font-size: 10px; line-height: 1.3; padding: 1px 6px; }

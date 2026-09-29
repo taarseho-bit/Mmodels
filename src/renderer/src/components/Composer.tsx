@@ -560,6 +560,9 @@ export function Composer({
   const hashTaskDescription = (task: HashTask): string => task.description ?? tx(`composer.hashPalette.items.${task.id}Description`);
   const hashTaskCost = (task: HashTask): number | undefined =>
     task.skillId ? skillPointCost(task.skillId) : task.mode === 'chat' ? CHAT_POINT_COSTS.basic : undefined;
+  // 价格展示只服务于提示，不参与实际扣费；服务端仍会按技能白名单重新计算。
+  // 只有已兑换卡密的 VIP 才显示“VIP无限”，24 小时试用和免费账号仍显示小额数字。
+  const hashPricingIsPaidVip = membershipStatusLoaded && isPaidVip(membershipStatus);
   /** 选中一项：替换 `#token` 为插入文本；工作流项带上中文名让输入框可见（2026-09-26 用户要求） */
   const applyHashTask = (task: HashTask): void => {
     if (!hash) return;
@@ -1446,7 +1449,13 @@ export function Composer({
               </span>
               <span className="grow" />
               {hashTaskCost(it) ? (
-                <span className="hash-pop-cost">{hashTaskCost(it)} 积分 / 回合</span>
+                <span
+                  className={`hash-pop-cost${hashPricingIsPaidVip ? ' is-vip' : ''}`}
+                  title={hashPricingIsPaidVip ? '卡密 VIP：该技能不限积分' : '本技能单回合积分成本'}
+                  aria-label={hashPricingIsPaidVip ? 'VIP无限' : `${hashTaskCost(it)} 积分`}
+                >
+                  {hashPricingIsPaidVip ? 'VIP无限' : hashTaskCost(it)}
+                </span>
               ) : null}
               {it.insert ? (
                 <span className="cz-pop-hint hash-pop-cmd">{it.insert.trim()}</span>

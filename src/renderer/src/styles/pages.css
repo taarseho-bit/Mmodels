@@ -2142,6 +2142,11 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.starter-cost.is-vip {
+  color: #c49416;
+  font-weight: 650;
+  font-variant-numeric: normal;
+}
 
 /* ─────────────────────────────────────────────────────────────
  * 输入区（Composer）—— 遵循应用约定中的三层结构
@@ -2728,8 +2733,8 @@
   bottom: calc(100% + 6px);
   left: 8px;
   right: auto;
-  width: 300px;
-  max-height: 260px;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(340px, calc(100vh - 120px));
 }
 /* composer-box 默认 overflow:hidden（裁拖拽提示用），会把向上伸出的面板裁掉；
    面板存在时临时放开 —— Chromium 150 支持 :has() */
@@ -2737,8 +2742,8 @@
   overflow: visible;
 }
 .hash-pop .hash-pop-cmd {
-  flex: none;
-  max-width: 110px;
+  flex: 0 1 88px;
+  max-width: 88px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2755,20 +2760,40 @@
   gap: 1px;
 }
 .hash-pop .hash-pop-description {
-  max-width: 165px;
+  width: 100%;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--fg-muted);
   font-size: 10px;
   line-height: 1.25;
 }
 .hash-pop .hash-pop-cost {
-  flex: none;
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: 999px;
-  padding: 1px 5px;
-  color: var(--accent);
+  flex: 0 0 auto;
+  min-width: 22px;
+  border: 0;
+  border-radius: 0;
+  padding: 0 2px;
+  color: var(--fg-muted);
   font-size: 10px;
   line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   white-space: nowrap;
+}
+.hash-pop .hash-pop-cost.is-vip {
+  min-width: 52px;
+  color: #c49416;
+  font-weight: 650;
+  font-variant-numeric: normal;
+}
+.hash-pop .cz-pop-item {
+  gap: 6px;
+  padding: 6px 8px;
+}
+.hash-pop .grow {
+  display: none;
 }
 
 /* ② 附件 chips */

@@ -12,6 +12,8 @@
  * 菜单内部留给运行测试验证。
  */
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Composer } from './Composer';
 
@@ -43,5 +45,15 @@ describe('Composer 决策模式与协作开关（静态冒烟）', () => {
     const html = renderComposer();
     // 默认 decisionMode='manual'，不该出现先规划的运行横幅
     expect(html).not.toContain('先给出方案，不会改文件');
+  });
+
+  it('# 技能面板的价格列不再挤压说明，卡密 VIP 显示 VIP无限', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/renderer/src/components/Composer.tsx'), 'utf8');
+    const css = readFileSync(resolve(process.cwd(), 'src/renderer/src/styles/pages.css'), 'utf8');
+    expect(source).toContain("className={`hash-pop-cost${hashPricingIsPaidVip ? ' is-vip' : ''}`}");
+    expect(source).toContain("hashPricingIsPaidVip ? 'VIP无限' : hashTaskCost(it)");
+    expect(source).not.toContain('hashTaskCost(it)} 积分 / 回合');
+    expect(css).toContain('.hash-pop .grow {');
+    expect(css).toContain('.hash-pop .hash-pop-cost.is-vip');
   });
 });
