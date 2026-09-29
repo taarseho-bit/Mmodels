@@ -330,6 +330,7 @@
         <button onclick="loadFeedback()">刷新</button>
         <span class="muted" id="fbCount"></span>
       </div>
+      <div class="muted" style="margin:-4px 0 12px">先阅读反馈，再选择“有用”或“暂不采纳”。只有审核通过的反馈才会给用户奖励 100 积分。</div>
       <div id="fbList"></div>
     </div>
   </div>
@@ -503,7 +504,7 @@ const $ = (s) => document.querySelector(s);
 const fmt = (t) => t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '—';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const left = (t) => { const ts = Number(t); if (!Number.isFinite(ts) || ts <= 0) return '未激活'; const d = Math.floor((ts - Date.now()) / 86400000); return d >= 0 ? `${d} 天` : `过期 ${-d} 天`; };
-const LOG_TYPES = { register:'注册','register-fail':'注册失败',login:'登录','login-fail':'登录失败',redeem:'兑换','redeem-fail':'兑换失败','check-fail':'校验失败','trial-start':'试用开始','trial-expired':'试用到期','vip-expired':'会员到期','ai-consume':'对话积分消耗','quota-exhausted':'积分不足','vip-block':'会员拦截',checkin:'签到','points-earn':'积分获得','points-redeem':'积分兑换（旧入口）','paper-export':'论文导出','invite-pending':'邀请待核验','invite-settled':'邀请奖励结算','invite-capped':'邀请奖励达上限','admin':'管理操作','send-code':'发验证码','send-code-fail':'发码失败','reset-pass':'重置密码',feedback:'用户反馈' };
+const LOG_TYPES = { register:'注册','register-fail':'注册失败',login:'登录','login-fail':'登录失败',redeem:'兑换','redeem-fail':'兑换失败','check-fail':'校验失败','trial-start':'试用开始','trial-expired':'试用到期','vip-expired':'会员到期','ai-consume':'对话积分消耗','quota-exhausted':'积分不足','vip-block':'会员拦截',checkin:'签到','points-earn':'积分获得','points-redeem':'积分兑换（旧入口）','paper-export':'论文导出','invite-pending':'邀请待核验','invite-settled':'邀请奖励结算','invite-capped':'邀请奖励达上限','feedback-review':'反馈审核','admin':'管理操作','send-code':'发验证码','send-code-fail':'发码失败','reset-pass':'重置密码',feedback:'用户反馈' };
 const state = { users:[], cards:[], logs:[], config:null, feedbacks:[], reports:[], overview:null, selectedUsers:new Set(), detailUser:null, refreshing:false, loadingCore:false };
 let cardPage = 1;
 let userPage = 1;
@@ -579,7 +580,7 @@ function renderStats(o) {
     ['邀请已结算', o.inviteSettled ?? 0, '#0891b2'],
   ].map(([l,v,c]) => `<div class="qs"><div class="v" style="color:${c}">${v}</div><div class="l">${l}</div></div>`).join('');
   if ($('#navOverviewCount')) $('#navOverviewCount').textContent = o.expiringUsers || o.invitePending || '';
-  if ($('#navFeedbackCount')) $('#navFeedbackCount').textContent = o.feedbackCount || '';
+  if ($('#navFeedbackCount')) $('#navFeedbackCount').textContent = o.feedbackPending || o.feedbackCount || '';
   if ($('#navReportCount')) $('#navReportCount').textContent = o.reportCount || '';
   if ($('#overviewHint')) $('#overviewHint').textContent = `最近更新 ${new Date().toLocaleTimeString('zh-CN',{hour12:false})} · ${o.totalUsers} 个账号`;
   renderAttention(o); renderFunnel(o);
@@ -589,7 +590,7 @@ function renderAttention(o) {
   if (o.expiringUsers > 0) items.push({ cls:'', icon:'!', title:`${o.expiringUsers} 个会员或体验即将到期`, detail:'建议提前联系，避免工作中断。', action:'users', label:'查看到期账号' });
   if ((o.invitePending || 0) > 0) items.push({ cls:'info', icon:'↗', title:`${o.invitePending} 个邀请等待核验`, detail:'完成邮箱、项目和有效建模后才会结算奖励。', action:'users', label:'查看账号' });
   if ((o.reportCount || 0) > 0) items.push({ cls:'danger', icon:'!', title:`${o.reportCount} 条诊断上报待查看`, detail:'优先处理崩溃和启动失败，减少用户流失。', action:'reports', label:'打开诊断' });
-  if ((o.feedbackCount || 0) > 0) items.push({ cls:'info', icon:'✦', title:`${o.feedbackCount} 条用户反馈`, detail:'新的反馈可以直接转成产品待办。', action:'feedback', label:'打开反馈' });
+  if ((o.feedbackPending || 0) > 0) items.push({ cls:'info', icon:'✦', title:`${o.feedbackPending} 条反馈待审核`, detail:'审核为有用后才会给用户奖励 100 积分。', action:'feedback', label:'打开审核' });
   $('#attentionList').innerHTML = items.length ? items.map((item) => `<div class="attention-item"><span class="attention-icon ${item.cls}">${item.icon}</span><div class="attention-copy"><strong>${item.title}</strong><span>${item.detail}</span></div><button class="mini ghost" type="button" onclick="document.querySelector('[data-t=${item.action}]')?.click()">${item.label} ›</button></div>`).join('') : '<div class="empty-state">当前没有需要立即处理的事项。<br><span class="muted">可以继续观察趋势，或打开用户列表做主动运营。</span></div>';
 }
 function renderFunnel(o) {
@@ -908,7 +909,10 @@ async function loadFeedback() {
     const j = await api('api/feedback');
     if (!j.ok) return false;
     state.feedbacks = j.feedbacks || [];
-    if ($('#navFeedbackCount')) $('#navFeedbackCount').textContent = String(j.total ?? state.feedbacks.length ?? '');
+    if ($('#navFeedbackCount')) {
+      const pendingCount = state.feedbacks.filter((item) => (item.reviewStatus || 'pending') === 'pending').length;
+      $('#navFeedbackCount').textContent = pendingCount ? String(pendingCount) : '';
+    }
     renderFeedback();
     return true;
   } catch (error) { toast(friendlyError(error, '反馈暂时无法读取，请稍后重试')); return false; }
@@ -918,12 +922,23 @@ function renderFeedback() {
   let list = state.feedbacks;
   if (q) list = list.filter((f) => (f.username||'').toLowerCase().includes(q) || (f.text||'').toLowerCase().includes(q));
   $('#fbCount').textContent = `共 ${state.feedbacks.length} 条${list.length !== state.feedbacks.length ? `，筛选出 ${list.length} 条` : ''}`;
-  $('#fbList').innerHTML = list.map((f) => `
+  const statusMeta = (f) => {
+    const status = f.reviewStatus || 'pending';
+    if (status === 'approved') return { cls:'g', label: f.awarded ? `已采纳 · +${f.awarded} 分` : '已采纳 · 已达奖励上限' };
+    if (status === 'rejected') return { cls:'r', label:'暂不采纳' };
+    return { cls:'o', label:'待审核' };
+  };
+  $('#fbList').innerHTML = list.map((f) => {
+    const meta = statusMeta(f);
+    const pending = (f.reviewStatus || 'pending') === 'pending';
+    return `
     <div class="fb-card">
       <div class="fb-head">
         <b>${esc(f.username)}</b>
         <span class="muted">${fmt(f.t)}</span>
+        <span class="pill ${meta.cls}">${meta.label}</span>
         <span style="flex:1"></span>
+        ${pending ? `<button class="mini" onclick="reviewFeedback('${esc(f.id)}', true)">有用 · 奖励 100 分</button><button class="mini dng" onclick="reviewFeedback('${esc(f.id)}', false)">暂不采纳</button>` : ''}
         <button class="dng mini" onclick="removeFeedback('${esc(f.id)}')">删除</button>
       </div>
       <div class="fb-text">${esc(f.text)}</div>
@@ -932,8 +947,22 @@ function renderFeedback() {
         ${f.version ? `<span>版本：${esc(f.version)}</span>` : ''}
         ${f.platform ? `<span>系统：${esc(f.platform)}</span>` : ''}
         ${f.ip ? `<span>IP：${esc(f.ip)}</span>` : ''}
+        ${f.reviewedAt ? `<span>审核：${fmt(f.reviewedAt)}</span>` : ''}
       </div>
-    </div>`).join('') || '<div class="muted">暂无反馈</div>';
+    </div>`;
+  }).join('') || '<div class="muted">暂无反馈</div>';
+}
+async function reviewFeedback(id, useful) {
+  const action = useful ? '审核通过并奖励 100 积分' : '标记为暂不采纳';
+  if (!confirm(`确定${action}？`)) return;
+  try {
+    const j = await api('api/feedback/review', { method:'POST', body: JSON.stringify({ id, useful }) });
+    if (j.ok) {
+      state.feedbacks = state.feedbacks.map((f) => f.id === id ? j.feedback : f);
+      renderFeedback();
+      toast(useful ? `已审核，通过后奖励 ${j.awarded || 0} 积分` : '已标记为暂不采纳');
+    }
+  } catch (error) { toast(friendlyError(error, '审核暂时失败，请刷新后重试')); }
 }
 async function removeFeedback(id) {
   if (!confirm('确认删除这条反馈？')) return;
@@ -1066,7 +1095,7 @@ async function refreshAll() {
 }
 // ---------- 权益（与客户端同源） ----------
 const VIP_FEATURE_LABELS = { 'multi-agent':'多智能体协作', 'full-paper':'论文全文生成', 'deep-modeling':'深度建模', 'advanced-figures':'高级图表', 'large-context':'超大上下文', 'export':'论文/图表导出', 'cloud-collaboration':'云端协作', 'automation':'自动化流程' };
-const POINT_REWARD_LABELS = { register:'注册账号', firstProject:'首次完成建模', paperExport:'导出论文', feedback:'提交反馈', invite:'邀请好友' };
+const POINT_REWARD_LABELS = { register:'注册账号', firstProject:'首次完成建模', paperExport:'导出论文', feedback:'反馈审核通过', invite:'邀请好友' };
 async function loadConfig() {
   try {
     const c = await api('api/config');

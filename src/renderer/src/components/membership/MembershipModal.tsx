@@ -262,7 +262,7 @@ export function MembershipModal({
                 <li>{t('注册账号')} <b style={{ color: 'var(--green, #16a34a)' }}>+50 积分</b></li>
                 <li>{t('完成首次建模对话')} <b style={{ color: 'var(--green, #16a34a)' }}>+30</b></li>
                 <li>{t('导出论文成品（PDF/Word/LaTeX）')} <b style={{ color: 'var(--green, #16a34a)' }}>+20</b></li>
-                <li>{t('提交有效反馈')} <b style={{ color: 'var(--green, #16a34a)' }}>+10</b></li>
+                <li>{t('首次有价值反馈（审核通过）')} <b style={{ color: 'var(--green, #16a34a)' }}>+100</b></li>
                 <li>{t('邀请好友完成首次有效使用')} <b style={{ color: 'var(--green, #16a34a)' }}>+50（每日最多 3 次）</b></li>
                 <li>{t('每日签到')} <b style={{ color: 'var(--green, #16a34a)' }}>+100 对话积分</b></li>
               </ul>

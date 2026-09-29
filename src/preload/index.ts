@@ -181,7 +181,7 @@ const api = {
     redeemPoints: (days: number): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_POINTS_REDEEM, { days }),
     earnPoints: (args: { kind: AccountPointRewardKind; eventId?: string }): Promise<AccountPointsEarnResult> =>
       ipcRenderer.invoke(IPC.ACCOUNT_POINTS_EARN, args),
-    /** 提交反馈正文：服务端落库，运营后台可见；每个账号首次提交奖励积分。 */
+    /** 提交反馈正文：服务端落库，运营后台审核通过后才奖励积分。 */
     feedback: (args: { text: string; contact?: string }): Promise<AccountFeedbackResult> =>
       ipcRenderer.invoke(IPC.ACCOUNT_FEEDBACK, args),
   },

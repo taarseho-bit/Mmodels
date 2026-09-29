@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#05070b" />
-<meta name="description" content="MModels 数学建模竞赛桌面工作台 · 系统功能规格：项目任务管理、多智能体协作、工作流、数据绘图、图表库、论文交付、竞赛日历、自动化、编辑器、算法与模板库、设置与桌面小模。" />
+<meta name="description" content="MModels 数学建模竞赛桌面工作台 · 功能规格：项目、技能模板、工作流、数据图表、卡密 VIP、多智能体与论文交付。" />
 <title>MModels SYS/SPEC · 功能规格</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -76,7 +76,7 @@
     <!-- 01 总览 -->
     <section class="fsection" id="overview">
       <h2><span class="no">01</span>总览</h2>
-      <p>MModels 是面向数学建模竞赛的桌面工作台。系统以「竞赛项目」为单位组织全部工作：题目、数据、代码、论文、讨论、任务、协作记录集中存放于同一项目空间。多智能体协作、数据绘图、论文交付检查、竞赛日历、定时自动化等能力以模块形式提供。以下按模块逐项列出。</p>
+      <p>MModels 是面向数学建模竞赛的桌面工作台。系统以「竞赛项目」为单位组织全部工作：题目、数据、代码、论文、讨论、任务、协作记录集中存放于同一项目空间。基础能力可先体验；多智能体、AI 全自动、高级图表和最终成品导出由卡密 VIP 解锁。以下按模块逐项列出。</p>
       <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
         <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="建模对话主界面" />
         <figcaption>FIG.01 · 建模对话主界面：项目侧栏、赛题附件、对话与任务入口</figcaption>
@@ -91,7 +91,7 @@
         <li>项目列表支持多项目切换，每个项目独立存储其文件与状态</li>
         <li>工作项目区包含项目搜索、新建项目入口</li>
         <li>侧栏内嵌搜索框，同时匹配项目名称与任务名称</li>
-        <li>新手教程：从新建项目到提交前检查的分步引导</li>
+        <li>首启说明：先了解会员边界，再进入项目与对话</li>
         <li>比赛信息登记：题目模板、页数要求、参赛信息集中维护</li>
       </ul>
       <div class="fgrid">
@@ -103,9 +103,9 @@
           <img src="./assets/screenshots/01-workspace/search-inline.png" alt="项目与任务就地搜索" />
           <figcaption>FIG.03 · 工作项目区就地搜索</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/onboarding-tutorials.png">
-          <img src="./assets/screenshots/01-workspace/onboarding-tutorials.png" alt="新手教程列表" />
-          <figcaption>FIG.04 · 新手教程</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/membership-account.png">
+          <img src="./assets/screenshots/site/membership-account.png" alt="首启会员说明与账号入口" />
+          <figcaption>FIG.04 · 首启会员说明与账号入口</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/dialog-contest-info.png">
           <img src="./assets/screenshots/01-workspace/dialog-contest-info.png" alt="比赛信息登记弹窗" />
@@ -451,7 +451,7 @@
     <!-- 14 设置分区 -->
     <section class="fsection" id="settings">
       <h2><span class="no">14</span>设置分区</h2>
-      <p>设置页按功能分区组织，共十六个分区，覆盖论文规则、质量交付、模型、供应商、对话、提示词、环境、网络、自动化、通知、竞赛日历、快捷键、统计、教程、关于、外观。</p>
+      <p>设置页按工作场景归组，覆盖会员与账号、比赛与论文、建模资源、模型与协作、运行环境、自动化与通知、外观与帮助。</p>
       <ul class="flist">
         <li>论文默认规则</li>
         <li>建模质量与交付</li>
@@ -464,9 +464,7 @@
         <li>比赛提醒与自动化</li>
         <li>通知</li>
         <li>竞赛日历</li>
-        <li>快捷键</li>
         <li>使用统计</li>
-        <li>新手教程</li>
         <li>关于与诊断</li>
         <li>界面与外观</li>
       </ul>
@@ -515,17 +513,9 @@
           <img src="./assets/screenshots/07-misc/settings-competitions.png" alt="竞赛日历设置" />
           <figcaption>FIG.63 · 竞赛日历</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-keybindings.png">
-          <img src="./assets/screenshots/07-misc/settings-keybindings.png" alt="快捷键设置" />
-          <figcaption>FIG.64 · 快捷键</figcaption>
-        </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-profile-stats.png">
-          <img src="./assets/screenshots/07-misc/settings-profile-stats.png" alt="使用统计" />
-          <figcaption>FIG.65 · 使用统计</figcaption>
-        </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-tour.png">
-          <img src="./assets/screenshots/07-misc/settings-tour.png" alt="新手教程设置" />
-          <figcaption>FIG.66 · 新手教程</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/usage-statistics.png">
+          <img src="./assets/screenshots/site/usage-statistics.png" alt="使用统计" />
+          <figcaption>FIG.64 · 使用统计</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-about.png">
           <img src="./assets/screenshots/07-misc/settings-about.png" alt="关于与诊断" />

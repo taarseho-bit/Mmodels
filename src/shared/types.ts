@@ -959,11 +959,11 @@ export const IPC = {
   ACCOUNT_CHECKIN: 'account:checkin',
   /** 积分兑换 VIP 天数。 */
   ACCOUNT_POINTS_REDEEM: 'account:points-redeem',
-  /** 记录可核验的积分奖励事件（首个项目、论文导出、反馈、邀请）。 */
+  /** 记录可核验的积分奖励事件（首个项目、论文导出、已审核反馈、邀请）。 */
   ACCOUNT_POINTS_EARN: 'account:points-earn',
   /** 查询某项能力是否可用；渲染层只拿到脱敏权益快照。 */
   ACCOUNT_ENTITLEMENT: 'account:entitlement',
-  /** 提交用户反馈正文（落库，后台可见）。 */
+  /** 提交用户反馈正文（落库，后台审核通过后才奖励积分）。 */
   ACCOUNT_FEEDBACK: 'account:feedback',
 
   /** renderer → main：运行诊断上报（错误 / 卡顿等），默认开启，无前端开关。 */
@@ -984,6 +984,9 @@ export interface TelemetryReportPayload {
 export interface AccountFeedbackResult {
   status: AccountStatusInfo;
   awarded: number;
+  /** 服务端审核状态；提交后为 pending，只有后台审核通过才会变成 approved。 */
+  reviewStatus?: 'pending' | 'approved' | 'rejected';
+  feedbackId?: string;
 }
 
 /** 会员档位。trial 不是单独的服务端套餐，而是免费账号的限时全功能窗口。 */

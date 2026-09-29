@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#ffffff" />
-<meta name="description" content="MModels 数学建模竞赛桌面工作台功能清单：项目与任务管理、多智能体协作、工作流、数据绘图、图表库、论文交付、竞赛日历、自动化、编辑器、算法与模板库、设置与桌面小模。" />
+<meta name="description" content="MModels 数学建模竞赛桌面工作台功能清单：项目、对话、技能模板、数据图表、工作流、会员与积分、卡密 VIP、多智能体和论文交付。" />
 <title>MModels 功能清单 · 数学建模竞赛桌面工作台</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,13 +46,14 @@
         <a href="#editor">编辑器视图</a>
         <a href="#algo">算法与扩展</a>
         <a href="#settings">设置分区</a>
+        <a href="#membership">会员与积分</a>
         <a href="#pet">桌面小模</a>
         <a href="#terminal">终端面板</a>
       </nav>
 
       <div class="lsb-foot">
         <a href="index.html">← 返回叙述版</a>
-        <span>全部截图来自软件真实运行画面</span>
+        <span>关键页面截图由当前打包版真实运行生成</span>
       </div>
     </div>
   </aside>
@@ -74,7 +75,7 @@
     <!-- 总览 -->
     <section class="fsection" id="overview">
       <h2><span class="no">01</span>总览</h2>
-      <p>MModels 是面向数学建模竞赛的桌面工作台。软件围绕「一个竞赛项目」组织全部工作：题目、数据、代码、论文、讨论、任务、协作记录集中存放于同一项目空间；多智能体协作、数据绘图、论文交付检查、竞赛日历与定时自动化等能力以模块形式提供。以下按功能模块逐项列出。</p>
+      <p>MModels 是面向数学建模竞赛的桌面工作台。软件围绕「一个竞赛项目」组织全部工作：题目、数据、代码、论文、讨论、任务、协作记录集中存放于同一项目空间。基础项目与本地论文能力可先免费使用；多智能体协作、AI 全自动、高级图表、最终成品导出等能力由卡密 VIP 解锁。以下按功能模块逐项列出。</p>
       <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/modeling-chat.png">
         <img src="./assets/screenshots/01-workspace/modeling-chat.png" alt="建模对话主界面" />
         <figcaption>图 1 · 建模对话主界面：项目侧栏、赛题附件、对话与任务入口</figcaption>
@@ -89,7 +90,7 @@
         <li>项目列表支持多项目切换，每个项目独立存储其文件与状态</li>
         <li>工作项目区包含项目搜索、新建项目入口</li>
         <li>侧栏内嵌搜索框，同时匹配项目名称与任务名称</li>
-        <li>新手教程：从新建项目到提交前检查的分步引导</li>
+        <li>首启说明只负责介绍会员边界；项目本身不依赖教程才能使用</li>
         <li>比赛信息登记：题目模板、页数要求、参赛信息集中维护</li>
       </ul>
       <div class="fgrid">
@@ -101,9 +102,9 @@
           <img src="./assets/screenshots/01-workspace/search-inline.png" alt="项目与任务就地搜索" />
           <figcaption>图 3 · 工作项目区就地搜索</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/onboarding-tutorials.png">
-          <img src="./assets/screenshots/01-workspace/onboarding-tutorials.png" alt="新手教程列表" />
-          <figcaption>图 4 · 新手教程</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/membership-account.png">
+          <img src="./assets/screenshots/site/membership-account.png" alt="首启会员说明与账号入口" />
+          <figcaption>图 4 · 首启会员说明与账号入口</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/dialog-contest-info.png">
           <img src="./assets/screenshots/01-workspace/dialog-contest-info.png" alt="比赛信息登记弹窗" />
@@ -188,9 +189,9 @@
           <img src="./assets/screenshots/03-agents/live-collab-tasks.png" alt="协作任务现场" />
           <figcaption>图 14 · 协作任务推进现场</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/03-agents/agents-all-19.png">
-          <img src="./assets/screenshots/03-agents/agents-all-19.png" alt="协作全景图" />
-          <figcaption>图 15 · 协作全景：成员、交回、技能与文件统计</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/competition-workbench.png">
+          <img src="./assets/screenshots/site/competition-workbench.png" alt="当前版本协作工作流全景图" />
+          <figcaption>图 15 · 当前版本协作全景：成员、推进步骤与工作记录</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/03-agents/agents-colored.png">
           <img src="./assets/screenshots/03-agents/agents-colored.png" alt="按职能着色的协作图" />
@@ -431,17 +432,17 @@
           <img src="./assets/screenshots/07-misc/algorithms-library.png" alt="算法库总览" />
           <figcaption>图 49 · 算法库</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/extensions-skills.png">
-          <img src="./assets/screenshots/07-misc/extensions-skills.png" alt="技能扩展页" />
-          <figcaption>图 50 · 技能库</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/skills-detail.png">
+          <img src="./assets/screenshots/site/skills-detail.png" alt="技能详情页：适用环节与调用方式" />
+          <figcaption>图 50 · 技能详情：适用环节、输入、交付与调用方式</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/extensions-algorithms.png">
           <img src="./assets/screenshots/07-misc/extensions-algorithms.png" alt="算法扩展页" />
           <figcaption>图 51 · 算法扩展页</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/extensions-templates.png">
-          <img src="./assets/screenshots/07-misc/extensions-templates.png" alt="模板扩展页" />
-          <figcaption>图 52 · 模板库</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/templates-detail.png">
+          <img src="./assets/screenshots/site/templates-detail.png" alt="论文模板详情页" />
+          <figcaption>图 52 · 模板详情：竞赛、语言、章节与导出要求</figcaption>
         </figure>
       </div>
     </section>
@@ -449,7 +450,7 @@
     <!-- 设置分区 -->
     <section class="fsection" id="settings">
       <h2><span class="no">14</span>设置分区</h2>
-      <p>设置页按功能分区组织，共十六个分区，覆盖论文规则、质量交付、模型、供应商、对话、提示词、环境、网络、自动化、通知、竞赛日历、快捷键、统计、教程、关于、外观。</p>
+      <p>设置页按工作场景归组，覆盖会员与账号、比赛与论文、建模资源、模型与协作、运行环境、自动化与通知、外观与帮助。每个分区都有简短说明，改完立即生效。</p>
       <ul class="flist">
         <li>论文默认规则</li>
         <li>建模质量与交付</li>
@@ -462,9 +463,7 @@
         <li>比赛提醒与自动化</li>
         <li>通知</li>
         <li>竞赛日历</li>
-        <li>快捷键</li>
         <li>使用统计</li>
-        <li>新手教程</li>
         <li>关于与诊断</li>
         <li>界面与外观</li>
       </ul>
@@ -481,9 +480,9 @@
           <img src="./assets/screenshots/07-misc/settings-model.png" alt="模型设置" />
           <figcaption>图 55 · 模型与思考强度</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-providers.png">
-          <img src="./assets/screenshots/07-misc/settings-providers.png" alt="模型供应商设置" />
-          <figcaption>图 56 · 模型供应商</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/providers-grid.png">
+          <img src="./assets/screenshots/site/providers-grid.png" alt="模型供应商选择与连接" />
+          <figcaption>图 56 · 模型供应商：按说明选择并连接模型</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-chat.png">
           <img src="./assets/screenshots/07-misc/settings-chat.png" alt="对话与协作设置" />
@@ -513,17 +512,9 @@
           <img src="./assets/screenshots/07-misc/settings-competitions.png" alt="竞赛日历设置" />
           <figcaption>图 63 · 竞赛日历</figcaption>
         </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-keybindings.png">
-          <img src="./assets/screenshots/07-misc/settings-keybindings.png" alt="快捷键设置" />
-          <figcaption>图 64 · 快捷键</figcaption>
-        </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-profile-stats.png">
-          <img src="./assets/screenshots/07-misc/settings-profile-stats.png" alt="使用统计" />
-          <figcaption>图 65 · 使用统计</figcaption>
-        </figure>
-        <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-tour.png">
-          <img src="./assets/screenshots/07-misc/settings-tour.png" alt="新手教程设置" />
-          <figcaption>图 66 · 新手教程</figcaption>
+        <figure class="fshot" data-lightbox="./assets/screenshots/site/usage-statistics.png">
+          <img src="./assets/screenshots/site/usage-statistics.png" alt="使用统计：活跃度、模型与技能调用" />
+          <figcaption>图 64 · 使用统计：活跃度、模型与技能调用</figcaption>
         </figure>
         <figure class="fshot" data-lightbox="./assets/screenshots/07-misc/settings-about.png">
           <img src="./assets/screenshots/07-misc/settings-about.png" alt="关于与诊断" />
@@ -540,9 +531,30 @@
       </div>
     </section>
 
+    <!-- 会员与积分 -->
+    <section class="fsection" id="membership">
+      <h2><span class="no">15</span>会员与积分</h2>
+      <p>会员边界在软件内提前显示，不把基础能力藏起来：注册后先获得 24 小时基础体验；本地项目、文件管理、基础建模、普通备份和基础图表可继续使用。多智能体协作、AI 全自动、高级图表、严格建模、最终 PDF / Word / LaTeX 导出、云协作和自动化，需要用卡密兑换 VIP。</p>
+      <div class="membership-card-grid">
+        <article><span class="tag">免费账号</span><h3>先试基础流程</h3><p>24 小时基础体验；本地项目、基础 AI、单智能体建模和普通备份可继续使用。</p></article>
+        <article class="is-accent"><span class="tag">卡密 VIP</span><h3>按需解锁协作</h3><p>卡密兑换可叠加有效期；开放多智能体、AI 全自动、高级图表和最终成品导出。</p></article>
+        <article><span class="tag">积分回馈</span><h3>规则透明可查</h3><p>输入框显示预计消耗与余额；有效反馈通过审核后奖励 100 积分。</p></article>
+      </div>
+      <ul class="flist">
+        <li>免费账号：按日获得对话积分，签到可补充；输入框附近显示预计消耗与余额</li>
+        <li>卡密 VIP：会员中心兑换并可叠加有效期；不在客户端写死第三方商城地址</li>
+        <li>有效反馈通过审核后奖励 100 积分，避免空内容或重复提交刷分</li>
+        <li>普通项目 ZIP 与会话 JSON 备份不受 VIP 限制，随时可以取回自己的数据</li>
+      </ul>
+      <figure class="fshot" data-lightbox="./assets/screenshots/site/membership-account.png">
+        <img src="./assets/screenshots/site/membership-account.png" alt="账号与会员中心：体验、积分和卡密入口" />
+        <figcaption>图 65 · 账号与会员中心：体验状态、积分余额与卡密兑换入口</figcaption>
+      </figure>
+    </section>
+
     <!-- 桌面小模 -->
     <section class="fsection" id="pet">
-      <h2><span class="no">15</span>桌面小模</h2>
+      <h2><span class="no">16</span>桌面小模</h2>
       <p>桌面小模以独立窗口显示陪伴角色，可在外观设置中选择角色形象。</p>
       <ul class="flist">
         <li>角色示例：漫画研究员、太空建模员、3D 猫头鹰教授等六位</li>
@@ -562,7 +574,7 @@
 
     <!-- 终端面板 -->
     <section class="fsection" id="terminal">
-      <h2><span class="no">16</span>终端面板</h2>
+      <h2><span class="no">17</span>终端面板</h2>
       <p>侧栏提供终端标签页，可在项目内直接执行命令，输出实时显示。</p>
       <figure class="fshot" data-lightbox="./assets/screenshots/01-workspace/panel-terminal.png">
         <img src="./assets/screenshots/01-workspace/panel-terminal.png" alt="终端面板" />
@@ -572,7 +584,7 @@
 
     <footer class="ffoot">
       <span>MModels · 数学建模竞赛工作台 · 功能清单</span>
-      <span>页面中的全部截图均来自软件真实运行画面</span>
+      <span>关键页面截图由当前打包版真实运行生成，素材随版本更新</span>
     </footer>
   </main>
 </div>

@@ -91,7 +91,6 @@ const PRESETS: ProviderPreset[] = [
     baseUrl: '',
     anthropicAuthMode: 'authToken',
     defaultModels: [],
-    recommended: true,
     needsBaseUrl: true,
   },
   {
@@ -280,6 +279,26 @@ function brandOf(p: Pick<ProviderConfig, 'name' | 'baseUrl'>): BrandKey {
 /** 已连接卡状态徽标 —— 有密钥或本地端点视为「已配置」 */
 function isConfigured(p: ProviderConfig): boolean {
   return p.apiKey.trim() !== '' || /127\.0\.0\.1|localhost/.test(p.baseUrl);
+}
+
+function protocolLabel(format: ApiFormat): string {
+  return format === 'openai' ? 'OpenAI 兼容接口' : 'Anthropic 兼容接口';
+}
+
+function presetModels(p: ProviderPreset): string[] {
+  if (p.defaultModels.length > 0) return p.defaultModels.slice(0, 4);
+  if (p.key === 'openai-compatible') return ['自定义模型', '自动读取 /models'];
+  if (p.key === 'anthropic-thirdparty') return ['自定义模型', '自动读取 /v1/models'];
+  return ['连接后读取可用模型'];
+}
+
+function modelBrief(model: string): string {
+  const key = model.toLowerCase();
+  if (/flash|highspeed|latest/.test(key)) return '响应快，适合日常建模对话';
+  if (/deepseek|reason|pro|sonnet|opus|codex/.test(key)) return '推理更稳，适合复杂方案';
+  if (/qwen|glm|kimi|mimo|mini|max|ark|doubao/.test(key)) return '适合长文本、数据和论文写作';
+  if (/自定义|读取/.test(model)) return '连接后按接口返回的模型使用';
+  return '通用对话与数学建模';
 }
 
 export function ProvidersSection(): JSX.Element {
@@ -755,42 +774,44 @@ export function ProvidersSection(): JSX.Element {
 
         <h4 className="provider-group-title">{tx('settings.providerManager.chatProviders')}</h4>
 
-        {PRESETS.map((p) => (
-          <div key={p.key} className="provider-row">
-            <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-              <div className="provider-row-icon">
+        <div className="provider-preset-grid" aria-label="模型供应商列表">
+          {PRESETS.map((p) => (
+            <article key={p.key} className="provider-preset-card">
+              <div className="provider-preset-topline">
                 <BrandMark brand={p.brand} />
-              </div>
-              <div className="provider-row-main">
-                <span className="provider-name truncate">
-                  {p.nameKey ? tx(p.nameKey) : p.name}
+                <div className="provider-preset-heading">
+                  <span className="provider-name">
+                    {p.nameKey ? tx(p.nameKey) : p.name}
+                  </span>
                   {p.recommended && (
-                    <span className="provider-pill-recommended">
-                      {tx('settings.providerManager.recommended')}
-                    </span>
+                    <span className="provider-pill-recommended">推荐</span>
                   )}
-                </span>
-                <p className="provider-desc truncate">{tx(p.descKey)}</p>
-                <p className="provider-desc">
-                  {p.key === 'openai-compatible'
-                    ? t('万能模式：兼容 OpenAI /models，可接入大多数国产与本地服务。')
-                    : p.key === 'anthropic-thirdparty'
-                      ? t('万能模式：兼容 Anthropic /v1/models，可接入第三方中转服务。')
-                      : null}
-                  {p.consoleUrl && (
-                    <a className="provider-console-link" href={p.consoleUrl} target="_blank" rel="noreferrer">
-                      {t('打开官网')} ↗
-                    </a>
-                  )}
-                </p>
+                </div>
               </div>
-              <button className="provider-connect" onClick={() => fromPreset(p)}>
-                <Icon name="plus" size={14} />
-                {tx('settings.providerManager.connect')}
-              </button>
-            </div>
-          </div>
-        ))}
+              <p className="provider-preset-desc">{tx(p.descKey)}</p>
+              <div className="provider-preset-protocol">{protocolLabel(p.apiFormat)}</div>
+              <div className="provider-model-chips" aria-label="可用模型">
+                {presetModels(p).slice(0, 3).map((model) => (
+                  <span key={model} className="provider-model-chip" title={`${model}：${modelBrief(model)}`}>
+                    <strong>{model}</strong>
+                    <small>{modelBrief(model)}</small>
+                  </span>
+                ))}
+              </div>
+              <div className="provider-preset-footer">
+                {p.consoleUrl ? (
+                  <a className="provider-console-link" href={p.consoleUrl} target="_blank" rel="noreferrer">
+                    官网 ↗
+                  </a>
+                ) : <span className="provider-preset-hint">可填写自定义地址</span>}
+                <button className="provider-connect" onClick={() => fromPreset(p)}>
+                  <Icon name="plus" size={14} />
+                  {tx('settings.providerManager.connect')}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       {activeProvider && (

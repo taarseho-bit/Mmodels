@@ -258,7 +258,7 @@ export function SettingsPage({
           <span className="page-title">{current?.label ?? t('设置')}</span>
         </div>
         <div className={`page-scroll${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-scroll' : ''}`}>
-          <div className={`settings-content${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-content' : ''}`}>
+          <div className={`settings-content${['gallery', 'competitions', 'datasets', 'automation', 'extensions'].includes(section) ? ' settings-tool-content' : ''}${section === 'profile' ? ' settings-content-wide' : ''}`}>
             {section === 'gallery' && <DataChartStudioPage />}
             {section === 'competitions' && <CompetitionsPage />}
             {section === 'datasets' && <DataChartStudioPage />}

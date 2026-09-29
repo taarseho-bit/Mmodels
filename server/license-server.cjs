@@ -15,8 +15,8 @@
  *   POST /api/account/logout Bearer token + x-mmodels-device        退出登录（服务端吊销令牌）
  *   POST /api/account/checkin Bearer token + x-mmodels-device       每日签到
  *   POST /api/account/points-redeem Bearer token + x-mmodels-device  兼容积分兑换入口（现返回中文停用提示）
- *   POST /api/account/points-earn Bearer token + x-mmodels-device    记录积分奖励事件
- *   POST /api/account/feedback  Bearer token + x-mmodels-device      提交反馈（落库 + 首次奖励积分）
+ *   POST /api/account/points-earn Bearer token + x-mmodels-device    记录已核验的积分奖励事件
+ *   POST /api/account/feedback  Bearer token + x-mmodels-device      提交反馈（落库，后台审核通过后奖励积分）
  *   POST /api/telemetry        {kind, message, detail, version, platform}  客户端运行诊断上报（免登录）
  *
  * 邮件配置：/opt/mmodels/data/mail.json → {"host":"smtp.qq.com","port":465,"user":"...","pass":"授权码","from":"..."}
@@ -36,6 +36,7 @@
  *   GET  /<admin-path>/api/config            会员/积分/权益配置（与客户端同源）
  *   GET  /<admin-path>/api/logs?limit=300      审计日志（注册/登录/兑换/校验失败/管理操作，含 IP）
  *   GET  /<admin-path>/api/feedback            用户反馈列表
+ *   POST /<admin-path>/api/feedback/review     {id, useful} 审核反馈并按结果发放奖励
  *   POST /<admin-path>/api/feedback/remove     {id} 删除反馈
  *   GET  /<admin-path>/api/reports?kind=       客户端诊断上报列表
  *   POST /<admin-path>/api/reports/clear       清空诊断上报
@@ -90,7 +91,8 @@ const CHECKIN_BONUS_QUOTA = CHECKIN_BONUS_POINTS / AI_CHAT_POINTS_COST; // 旧�
 /** VIP / 试用账号签到奖励的持久积分；AI 积分统一后仍保留小额奖励。 */
 const CHECKIN_VIP_POINTS = 10;
 /** 积分只用于普通 AI 消耗；不再兑换 VIP，VIP 必须使用付费卡密。 */
-const POINT_REWARDS = Object.freeze({ register: 50, firstProject: 30, paperExport: 20, feedback: 10, invite: 50 });
+// 有价值反馈奖励 100 积分；必须由后台审核通过，且每个账号最多结算一次，避免刷分。
+const POINT_REWARDS = Object.freeze({ register: 50, firstProject: 30, paperExport: 20, feedback: 100, invite: 50 });
 const POINT_EXCHANGE = Object.freeze({});
 const POINT_REWARD_KINDS = new Set(['firstProject', 'paperExport', 'feedback', 'invite']);
 const POINT_EVENT_RE = /^[A-Za-z0-9._:-]{1,128}$/;
@@ -143,6 +145,17 @@ function loadDb() {
     const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     d.cards ||= {}; d.redemptions ||= {}; d.users ||= {}; d.events ||= [];
     d.feedbacks ||= []; d.reports ||= [];
+    // 反馈审核是后加入的字段。旧记录一律先标记为待审核，不能因为迁移
+    // 自动再发积分；历史已经发放的积分仍保留在账号账本中。
+    if (Array.isArray(d.feedbacks)) {
+      for (const feedback of d.feedbacks) {
+        if (!feedback || typeof feedback !== 'object') continue;
+        if (!['pending', 'approved', 'rejected'].includes(feedback.reviewStatus)) feedback.reviewStatus = 'pending';
+        if (!Number.isFinite(Number(feedback.reviewedAt))) feedback.reviewedAt = 0;
+        if (!Number.isFinite(Number(feedback.rewardedAt))) feedback.rewardedAt = 0;
+        if (!Number.isFinite(Number(feedback.awarded))) feedback.awarded = 0;
+      }
+    }
     return d;
   } catch (error) {
     // 只有首次部署时允许创建空库。权限错误、磁盘损坏或 JSON 截断必须让服务
@@ -1317,6 +1330,24 @@ async function handleRequest(req, res) {
       if (kind === 'firstProject' && eventId !== 'first-project') {
         return send(res, 400, { ok: false, code: 'EVENT_ID_INVALID', error: '首个项目奖励记录不合法' });
       }
+      // 反馈奖励必须先由后台审核为“有用”；客户端只能提交反馈，不能自行把
+      // pending 记录变成积分。审核接口会使用稳定的反馈 ID 发放幂等奖励。
+      if (kind === 'feedback') {
+        const feedback = db.feedbacks.find((item) => item && item.id === eventId && item.username === user.name);
+        if (!feedback) {
+          return send(res, 409, { ok: false, code: 'FEEDBACK_NOT_FOUND', error: '请先提交反馈，审核通过后才能领取奖励' });
+        }
+        if (feedback.reviewStatus !== 'approved') {
+          return send(res, 409, {
+            ok: false,
+            code: feedback.reviewStatus === 'rejected' ? 'FEEDBACK_NOT_USEFUL' : 'FEEDBACK_REVIEW_PENDING',
+            error: feedback.reviewStatus === 'rejected' ? '这条反馈暂未被采纳，暂不发放积分' : '反馈正在审核，审核通过后自动发放 100 积分',
+            feedbackId: feedback.id,
+            reviewStatus: feedback.reviewStatus || 'pending',
+            ...accountSnapshot(user),
+          });
+        }
+      }
       // 反馈奖励是每个账号一次；论文导出按稳定事件编号逐篇幂等。
       const feedbackAlreadyAwarded = kind === 'feedback' && Object.keys(user.pointsAwards).some((awardKey) => awardKey.startsWith('feedback:'));
       const duplicate = feedbackAlreadyAwarded || Boolean(user.pointsAwards[key]);
@@ -1364,7 +1395,7 @@ async function handleRequest(req, res) {
       });
     }
 
-    // 用户反馈：正文落库，后台「反馈」页可见；每个账号首次提交奖励 10 积分。
+    // 用户反馈：正文落库，后台「反馈」页可见；必须审核为有用后才奖励 100 积分。
     if (req.method === 'POST' && url === '/api/account/feedback') {
       const auth = authUser(req, ip);
       if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
@@ -1375,11 +1406,9 @@ async function handleRequest(req, res) {
       const text = String(b.text || '').trim().slice(0, 2000);
       if (text.length < 8) return send(res, 400, { ok: false, code: 'FEEDBACK_TOO_SHORT', error: '反馈内容太短，请至少写 8 个字' });
       const user = auth.user;
-      const alreadyAwarded = Object.keys(user.pointsAwards).some((awardKey) => awardKey.startsWith('feedback:'));
-      const awarded = alreadyAwarded ? 0 : POINT_REWARDS.feedback;
-      if (!alreadyAwarded) awardPoints(user, `feedback:${Date.now().toString(36)}`, awarded);
+      const id = `fb-${crypto.randomBytes(6).toString('hex')}`;
       db.feedbacks.push({
-        id: `fb-${crypto.randomBytes(6).toString('hex')}`,
+        id,
         username: user.name,
         text,
         contact: String(b.contact || '').slice(0, 120),
@@ -1388,11 +1417,23 @@ async function handleRequest(req, res) {
         ip,
         t: Date.now(),
         handled: false,
+        reviewStatus: 'pending',
+        reviewedAt: 0,
+        reviewedBy: '',
+        rewardedAt: 0,
+        awarded: 0,
       });
       if (db.feedbacks.length > 3000) db.feedbacks = db.feedbacks.slice(-2000);
       logEvent('feedback', user.name, { ip, detail: text.slice(0, 120) });
       saveDb();
-      return send(res, 200, { ok: true, awarded, ...accountSnapshot(user) });
+      return send(res, 200, {
+        ok: true,
+        feedbackId: id,
+        reviewStatus: 'pending',
+        awarded: 0,
+        message: '反馈已提交，审核通过后奖励 100 积分',
+        ...accountSnapshot(user),
+      });
     }
 
     // ===== 管理 =====
@@ -1485,6 +1526,9 @@ async function handleRequest(req, res) {
           vipBlocks: countType('vip-block'),
           paperExports: countType('paper-export'),
           feedbackCount: (Array.isArray(db.feedbacks) ? db.feedbacks : []).length,
+          feedbackPending: (Array.isArray(db.feedbacks) ? db.feedbacks : []).filter((f) => (f.reviewStatus || 'pending') === 'pending').length,
+          feedbackApproved: (Array.isArray(db.feedbacks) ? db.feedbacks : []).filter((f) => f.reviewStatus === 'approved').length,
+          feedbackRewarded: (Array.isArray(db.feedbacks) ? db.feedbacks : []).filter((f) => Number(f.awarded) > 0).length,
           reportCount: (Array.isArray(db.reports) ? db.reports : []).length,
           pointsEarned,
           pointsSpent,
@@ -1718,6 +1762,49 @@ async function handleRequest(req, res) {
         db = loadDb();
         const list = db.feedbacks.slice().reverse();
         return send(res, 200, { ok: true, feedbacks: list.slice(0, 500), total: list.length });
+      }
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/feedback/review') {
+        db = loadDb();
+        const b = await readBody(req);
+        const id = String(b.id || '').trim();
+        const useful = b.useful === true || b.useful === 'true';
+        if (!id || id.length > 80) return send(res, 400, { ok: false, error: '反馈编号不合法' });
+        const feedback = db.feedbacks.find((item) => item && item.id === id);
+        if (!feedback) return send(res, 404, { ok: false, error: '反馈不存在' });
+        if (!['pending', 'approved', 'rejected'].includes(feedback.reviewStatus)) feedback.reviewStatus = 'pending';
+        // 审核操作幂等：重复点击不会再次加分，也不会把已拒绝的反馈改成已通过。
+        if (feedback.reviewStatus !== 'pending') {
+          return send(res, 200, { ok: true, feedback, awarded: Number(feedback.awarded) || 0, duplicate: true });
+        }
+        const now = Date.now();
+        feedback.reviewStatus = useful ? 'approved' : 'rejected';
+        feedback.reviewedAt = now;
+        feedback.reviewedBy = 'admin';
+        feedback.handled = true;
+        feedback.awarded = 0;
+        if (useful) {
+          const user = db.users[feedback.username];
+          if (user) {
+            ensureUser(user);
+            const alreadyAwarded = Object.keys(user.pointsAwards || {}).some((awardKey) => awardKey.startsWith('feedback:'));
+            const caps = POINT_EARN_CAPS.feedback;
+            const stats = pointAwardStats(user, 'feedback');
+            if (!alreadyAwarded && (!caps || (stats.day < caps.day && stats.total < caps.total))) {
+              const key = `feedback:${feedback.id}`;
+              if (awardPoints(user, key, POINT_REWARDS.feedback)) {
+                feedback.awarded = POINT_REWARDS.feedback;
+                feedback.rewardedAt = now;
+                logEvent('points-earn', user.name, { ip, detail: `反馈审核通过奖励 +${POINT_REWARDS.feedback} 积分（${feedback.id}）` });
+              }
+            }
+          }
+        }
+        logEvent('feedback-review', feedback.username, {
+          ip,
+          detail: `${feedback.id} 审核${useful ? '通过' : '未采纳'}${feedback.awarded ? `，奖励 +${feedback.awarded} 积分` : ''}`,
+        });
+        saveDb();
+        return send(res, 200, { ok: true, feedback, awarded: feedback.awarded, duplicate: false });
       }
       if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/feedback/remove') {
         db = loadDb();

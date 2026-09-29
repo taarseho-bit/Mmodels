@@ -791,7 +791,12 @@ export function registerAccountHandlers(): void {
         'x-mmodels-device': deviceId(),
       });
       const status = persistAuth(local.username, local.password, { ...data, token });
-      return { status, awarded: finiteNonNegative(data.awarded) ?? 0 };
+      return {
+        status,
+        awarded: finiteNonNegative(data.awarded) ?? 0,
+        reviewStatus: data.reviewStatus === 'approved' || data.reviewStatus === 'rejected' ? data.reviewStatus : 'pending',
+        feedbackId: typeof data.feedbackId === 'string' ? data.feedbackId.slice(0, 80) : undefined,
+      };
     }, '提交反馈'),
   );
 

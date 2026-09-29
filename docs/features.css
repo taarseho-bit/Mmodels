@@ -273,6 +273,30 @@ body {
 }
 .fgrid .fshot { margin-bottom: 0; }
 .fgrid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.membership-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 20px;
+}
+.membership-card-grid article {
+  min-height: 210px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.membership-card-grid article.is-accent {
+  border-color: rgba(178, 34, 52, .35);
+  background: linear-gradient(160deg, rgba(178, 34, 52, .07), var(--surface));
+}
+.membership-card-grid h3 { margin: 0 0 8px; font-family: var(--serif); font-size: 18px; }
+.membership-card-grid p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.75; }
+.membership-card-grid .tag { display: inline-flex; margin-bottom: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(178, 34, 52, .08); color: var(--accent); font-size: 11px; font-weight: 700; }
+@media (max-width: 860px) {
+  .membership-card-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 860px) {
   .fgrid, .fgrid.three { grid-template-columns: 1fr; }
 }

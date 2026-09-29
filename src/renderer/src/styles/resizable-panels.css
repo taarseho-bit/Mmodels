@@ -36,7 +36,7 @@
 .rail-expanded-section .rail-list { flex:none; overflow:visible; }
 .competition-shell .sidepanel { position:relative; width:var(--pane-width,340px); max-width:none; }
 .editorview-col { position:relative; width:var(--pane-width,240px); }
-.editorview-chatcol:not(.is-main) { position:relative; width:var(--pane-width,360px); }
+.editorview-chatcol:not(.is-main) { position:relative; width:var(--pane-width,420px); }
 .competition-shell .settings-side { position:relative; width:var(--pane-width,240px); flex-shrink:0; }
 .composer-input-region { position:relative; height:var(--pane-height,auto); min-height:52px; }
 .composer-input-region[style*="--pane-height"] .composer-input { height:100%!important; max-height:none; }
@@ -51,6 +51,62 @@
 .fp-tree-region > .fp-tree { flex:1; min-height:0; max-height:none; }
 .competition-shell .newchat,.competition-shell .composer-inner,.competition-shell .chat-inner { width:100%; max-width:none; }
 @media (prefers-reduced-motion:reduce) { .pane-resizer::after { transition:none; } }
+
+/* 编辑器视图的空对话：对话列是窄侧栏，输入框贴右下角，避免中间大片空白。
+   示例卡片在主工作台已经有入口，编辑器里只保留标题和输入区。 */
+.editorview-chatcol .chat-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+.editorview-chatcol .chat-inner {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  padding: 0 10px 10px;
+}
+.editorview-chatcol .chat-inner.is-empty {
+  align-items: stretch;
+  justify-content: flex-end;
+}
+.editorview-chatcol .newchat {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  margin: 0;
+  padding: 12px 0 0;
+}
+.editorview-chatcol .newchat-hero {
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 0 4px 10px;
+}
+.editorview-chatcol .newchat-title {
+  min-width: 0;
+  font-size: 16px;
+}
+.editorview-chatcol .newchat-title small {
+  font-size: 11px;
+  line-height: 1.45;
+}
+.editorview-chatcol .composer-inline {
+  width: 100%;
+  margin-top: auto;
+  padding: 0;
+}
+.editorview-chatcol .composer-inline .composer-inner {
+  width: 100%;
+  max-width: none;
+}
+.editorview-chatcol .newchat-examples { display: none; }
+
+@media (max-width: 1100px) {
+  .editorview-chatcol:not(.is-main) { width: var(--pane-width, 380px); }
+}
 
 /* ═════════ 对话工作区最终尺寸契约（与可拖拽面板共存）═════════
  * 这组规则位于最后，覆盖历史主题层的宽度冲突；ResizeHandle 仍然可以

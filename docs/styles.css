@@ -294,8 +294,51 @@ body {
   color: var(--ink-2);
   border-top: 1px solid var(--line);
 }
+
+/* ── 会员与积分：把“先试用、再升级”的边界说清楚 ── */
+.membership-chapter {
+  background:
+    radial-gradient(900px 340px at 8% 0%, rgba(178, 34, 52, 0.06), transparent 65%),
+    linear-gradient(180deg, rgba(251, 250, 247, 0.82), rgba(255, 255, 255, 0.96));
+  border-top-color: rgba(178, 34, 52, 0.28);
+  border-radius: var(--radius);
+  padding: 30px clamp(14px, 3vw, 34px) clamp(34px, 5vh, 54px);
+}
+.membership-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+.membership-card {
+  min-height: 250px;
+  padding: 22px 20px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+}
+.membership-card.is-accent {
+  border-color: rgba(178, 34, 52, 0.35);
+  background: linear-gradient(160deg, rgba(178, 34, 52, 0.08), rgba(255, 255, 255, 0.96));
+}
+.membership-badge {
+  display: inline-flex;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--red-soft);
+  color: var(--red);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.membership-card h3 { margin: 12px 0 7px; font-family: var(--serif); font-size: 20px; }
+.membership-card p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.75; }
+.membership-card ul { margin: 14px 0 0; padding-left: 1.2em; color: var(--ink-2); font-size: 12.5px; line-height: 1.9; }
+.membership-note { margin: 18px 0 0; color: var(--ink-3); font-size: 12px; }
 @media (max-width: 860px) {
   .shot-grid, .shot-grid.gallery-wall, .shot-grid.settings-wall { grid-template-columns: 1fr; }
+  .membership-grid { grid-template-columns: 1fr; }
 }
 
 /* ── 结尾 ── */

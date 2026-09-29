@@ -58,6 +58,66 @@ function skillCategory(skill: SkillMeta): SkillCategory {
   return '通用协作';
 }
 
+/**
+ * 给详情面板补一层面向建模用户的说明。
+ * SKILL.md 是可编辑的原始资料，但很多技能的 frontmatter 只有一句摘要；
+ * 这里把它翻译成「做什么、需要什么、交付什么、什么时候调用」，让第一次
+ * 打开技能的人不用先读源码也能判断是否适合当前题目。
+ */
+function skillDetailProfile(skill: SkillMeta): Array<{ label: string; value: string }> {
+  const category = skillCategory(skill);
+  const stage: Record<SkillCategory, string> = {
+    '读题与资料': '读题、拆解任务、查找资料与整理证据',
+    '数据与统计': '数据导入、清洗、探索分析与统计检验',
+    '建模与求解': '提出假设、建立模型、求解并验证结果',
+    '绘图与表达': '把数据和模型结果转成论文可用的图表',
+    '论文与交付': '组织正文、引用、排版与提交前检查',
+    '通用协作': '文件处理、任务分工和过程记录',
+  };
+  const input: Record<SkillCategory, string> = {
+    '读题与资料': '题目 PDF、附件、关键词或已有参考文献',
+    '数据与统计': 'CSV、Excel、数据库结果或模型中间表',
+    '建模与求解': '题目约束、清洗后的数据、变量和评价指标',
+    '绘图与表达': '数据表、模型输出和图表样式要求',
+    '论文与交付': '章节草稿、模板、图表、引用和页数要求',
+    '通用协作': '项目文件、当前任务和其他智能体的交接结果',
+  };
+  const output: Record<SkillCategory, string> = {
+    '读题与资料': '问题清单、资料摘要、可引用来源和待确认假设',
+    '数据与统计': '质量报告、统计量、可复现的数据处理结果',
+    '建模与求解': '模型方案、计算脚本、结果表和验证结论',
+    '绘图与表达': '带中文标注的图表、图注和可复用绘图配置',
+    '论文与交付': '可直接放入论文的文字、公式、引用和检查清单',
+    '通用协作': '整理后的文件、任务状态和下一步建议',
+  };
+  const source = skill.source === 'builtin' ? '随软件内置，经过数学建模流程适配' : '你导入的本地技能，可随时修改或停用';
+  const trigger = skill.hasScripts
+    ? '需要时会同时调用技能自带的小工具；运行前会显示在工作流中。'
+    : '由智能体根据题目阶段、附件类型和当前目标自动选择，也可在对话中点名调用。';
+  return [
+    { label: '适用环节', value: stage[category] },
+    { label: '需要输入', value: input[category] },
+    { label: '会交付什么', value: output[category] },
+    { label: '技能来源', value: source },
+    { label: '调用方式', value: trigger },
+  ];
+}
+
+function templateDetailProfile(template: PaperTemplate): Array<{ label: string; value: string }> {
+  const name = template.name.toLowerCase();
+  const contest = /cumcm|国赛|华为杯|华数杯|电工杯|五一杯|数维杯/.test(name)
+    ? '按对应竞赛的常见章节顺序、字号和图表规范组织正文'
+    : '适合需要自定义章节和版式的数学建模论文';
+  const fields = template.fields?.map((field) => field.label).filter(Boolean).slice(0, 6) ?? [];
+  return [
+    { label: '适用场景', value: contest },
+    { label: '语言与入口', value: `${template.language === 'en' ? '英文' : template.language === 'zh-CN+en' ? '中英双语' : '中文'} · ${template.entryFile}` },
+    { label: '可填写信息', value: fields.length > 0 ? fields.join('、') : '题目、队伍和论文基本信息' },
+    { label: '输出结果', value: '按模板生成论文正文、公式、图表位置和参考文献占位，方便继续编辑和导出' },
+    { label: '使用建议', value: '先选择竞赛和页数要求，再让智能体按章节逐步写作，最后执行排版与提交前检查' },
+  ];
+}
+
 /** 左栏类型 tab（图标取自仓库 Icon 组件，不用 emoji） */
 const SECTIONS: Array<{ key: Tab; labelKey: string; icon: string }> = [
   { key: 'skills', labelKey: 'extensions.sections.skills', icon: 'sparkles' },
@@ -439,6 +499,8 @@ function SkillDetail({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const profile = skillDetailProfile(skill);
+
   return (
     <div className="ext-detail">
       <div className="ext-detail-head">
@@ -494,7 +556,16 @@ function SkillDetail({
           <div className="ext-field-label">{tx('extensions.detail.description')}</div>
           <div className="ext-desc-text">{skill.description}</div>
         </div>
-        <div className="ext-detail-auto"><strong>调用方式：</strong>开启“自动选择技能”后，智能体会在读题、分析数据、建模、绘图、写作和交付检查阶段按需调用；你也可以在对话中直接输入技能名称。</div>
+        <section className="ext-detail-profile" aria-label="技能详细说明">
+          <div className="ext-detail-profile-title">这项技能能帮你做什么</div>
+          {profile.map((row) => (
+            <div className="ext-detail-profile-row" key={row.label}>
+              <span className="ext-detail-profile-label">{row.label}</span>
+              <span className="ext-detail-profile-value">{row.value}</span>
+            </div>
+          ))}
+        </section>
+        <div className="ext-detail-auto"><strong>给智能体的提示：</strong>开启“自动选择技能”后，它会在合适的阶段自动调用；你也可以在对话中直接输入技能名称，工作流会记录调用过程。</div>
 
         {/* ── SKILL.md：Markdown 渲染 / 源码 ── */}
         <div className="ext-doc">
@@ -925,6 +996,15 @@ function TemplatesTab({ onNavigate }: { onNavigate?: (route: 'chat') => void }):
                 <div className="ext-field-label">{tx('extensions.detail.description')}</div>
                 <div className="ext-desc-text">{current.description}</div>
               </div>
+              <section className="ext-detail-profile" aria-label="模板详细说明">
+                <div className="ext-detail-profile-title">这套模板适合怎么用</div>
+                {templateDetailProfile(current).map((row) => (
+                  <div className="ext-detail-profile-row" key={row.label}>
+                    <span className="ext-detail-profile-label">{row.label}</span>
+                    <span className="ext-detail-profile-value">{row.value}</span>
+                  </div>
+                ))}
+              </section>
               <div className="ext-desc-block">
                 <div className="ext-field-label">
                   {tx('extensions.paperTemplatesSection.howItWorks')}

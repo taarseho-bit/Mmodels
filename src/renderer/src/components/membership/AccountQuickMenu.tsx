@@ -132,7 +132,9 @@ export function AccountQuickMenu({
       const result = await window.mathmodel.account.feedback({ text });
       notifyAccountStatus(result.status);
       setFeedbackText('');
-      setToast(result.awarded > 0 ? t('感谢反馈，积分 +10') : t('反馈已提交，感谢你的建议'));
+      setToast(result.awarded > 0
+        ? t('反馈审核通过，积分 +100')
+        : t('反馈已提交，审核通过后奖励 100 积分'));
       setDialog('none');
     } catch (error) {
       setToast(error instanceof Error ? error.message : t('反馈暂时没有提交成功，请稍后重试'));
@@ -250,7 +252,7 @@ export function AccountQuickMenu({
             {menuItem('crown', t('会员中心'), t('权益 · 套餐'), () => openMembership('plans'))}
             {menuItem('ticket', t('卡密兑换'), t('激活 / 叠加时长'), () => openMembership('redeem'))}
             {menuItem('coins', t('积分说明'), t('余额与消耗规则'), () => openMembership('points'))}
-            {menuItem('message-square', t('反馈中心'), t('建议换积分'), () => setDialog('feedback'), true)}
+            {menuItem('message-square', t('反馈中心'), t('审核通过 +100 积分'), () => setDialog('feedback'), true)}
             {menuItem('users', t('邀请好友'), t('完成首次有效使用后得积分'), () => setDialog('invite'), true)}
             {menuItem('settings', t('设置'), '', onOpenSettings)}
 
@@ -281,7 +283,7 @@ export function AccountQuickMenu({
               <button type="button" className="btn btn-sm btn-ghost" aria-label={t('关闭')} onClick={() => setDialog('none')}><Icon name="x" size={14} /></button>
             </div>
             <div className="modal-body col" style={{ gap: 10 }}>
-              <span className="muted" style={{ fontSize: 12.5 }}>{t('哪里好用、哪里需要改进？有效反馈可获得 10 积分。')}</span>
+              <span className="muted" style={{ fontSize: 12.5 }}>{t('哪里好用、哪里需要改进？提交后由团队审核，首次有价值的反馈审核通过后奖励 100 积分。')}</span>
               <textarea
                 className="input"
                 rows={5}

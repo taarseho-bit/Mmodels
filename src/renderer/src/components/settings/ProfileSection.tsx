@@ -1,23 +1,106 @@
 /**
- * 设置页 ① 个人资料（本地统计，对应应用约定账号页）
+ * 使用统计
  *
- * 资料卡交互规则：
- *   - 头部为**静态**头像 + 名字 + `@handle · org`，不直接内联输入框；
- *     名字/句柄的编辑收进右上角「编辑」按钮（应用约定同位置的入口）。
- *   - 「分享」属云端分享 → 按既定决策保留骨架并置灰。
- *   - 「活跃度洞察」7 个字段与「最常用插件」卡左右并排。
+ * 所有数字都来自本机 SQLite 聚合，不上传题目内容。页面把“用过多少”
+ * 转成趋势、构成和排名，方便快速回答三个问题：最近是否在推进、主要用的
+ * 是什么、下一步应该继续哪个项目。图形使用原生 SVG/CSS，避免引入大型依赖。
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { UsageStats } from '@shared/types';
+import type { UsageDay, UsageStats } from '@shared/types';
 import { useApp } from '../../store/app';
 import { tx, t } from '../../i18n';
-import { Section } from './shared';
 
 function fmtTokens(n: number): string {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+  return String(Math.round(n));
+}
+
+function pct(value: number, total: number): number {
+  return total > 0 ? Math.round((value / total) * 100) : 0;
+}
+
+function safeName(value: string | null | undefined): string {
+  return value && value.trim() ? value.trim() : '—';
+}
+
+function dateLabel(day: string): string {
+  return day ? `${day.slice(5, 7)}月${day.slice(8, 10)}日` : '';
+}
+
+type RingPart = { label: string; value: number; color: string };
+
+function MiniRing({ parts, label, value }: { parts: RingPart[]; label: string; value: string }): JSX.Element {
+  const total = Math.max(1, parts.reduce((sum, part) => sum + Math.max(0, part.value), 0));
+  const radius = 43;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  return (
+    <div className="usage-ring-wrap">
+      <svg className="usage-ring" viewBox="0 0 108 108" role="img" aria-label={label}>
+        <circle cx="54" cy="54" r={radius} fill="none" stroke="var(--border-weak)" strokeWidth="10" />
+        {parts.map((part) => {
+          const length = (Math.max(0, part.value) / total) * circumference;
+          const node = (
+            <circle key={part.label} cx="54" cy="54" r={radius} fill="none" stroke={part.color} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${length} ${circumference - length}`} strokeDashoffset={-offset} transform="rotate(-90 54 54)" />
+          );
+          offset += length;
+          return node;
+        })}
+      </svg>
+      <div className="usage-ring-center"><strong>{value}</strong><span>{label}</span></div>
+    </div>
+  );
+}
+
+function Sparkline({ days }: { days: UsageDay[] }): JSX.Element {
+  const max = Math.max(1, ...days.map((day) => day.tokens));
+  const points = days.map((day, index) => {
+    const x = days.length <= 1 ? 4 : 4 + (index / (days.length - 1)) * 192;
+    const y = 52 - (day.tokens / max) * 42;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const last = days[days.length - 1];
+  return (
+    <div className="usage-sparkline-wrap">
+      <svg className="usage-sparkline" viewBox="0 0 200 58" preserveAspectRatio="none" role="img" aria-label="最近两周用量趋势">
+        <path d="M4 52H196" stroke="var(--border-weak)" strokeWidth="1" />
+        <polyline points={points} fill="none" stroke="var(--accent-solid, #4f7cff)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {last && <circle cx="196" cy={52 - (last.tokens / max) * 42} r="3.5" fill="var(--accent-solid, #4f7cff)" />}
+      </svg>
+      <div className="usage-sparkline-labels"><span>{days[0] ? dateLabel(days[0].day) : '—'}</span><span>{last ? dateLabel(last.day) : '—'}</span></div>
+    </div>
+  );
+}
+
+function RankBars({
+  items,
+  valueKey,
+  empty,
+  format = (value: number) => String(value),
+}: {
+  items: { name: string; runs?: number; tokens?: number; sessions?: number }[];
+  valueKey: 'runs' | 'tokens';
+  empty: string;
+  format?: (value: number) => string;
+}): JSX.Element {
+  const visible = items.slice(0, 6);
+  const max = Math.max(1, ...visible.map((item) => Number(item[valueKey] ?? 0)));
+  if (!visible.length) return <span className="muted usage-empty">{empty}</span>;
+  return (
+    <div className="usage-rank-list">
+      {visible.map((item, index) => {
+        const value = Number(item[valueKey] ?? 0);
+        return (
+          <div className="usage-rank-item" key={`${item.name}-${index}`}>
+            <div className="usage-rank-line"><span className="usage-rank-name"><i>{index + 1}</i>{item.name}</span><strong>{format(value)}</strong></div>
+            <div className="usage-track"><span style={{ width: `${Math.max(value > 0 ? 5 : 0, (value / max) * 100)}%` }} /></div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ProfileSection(): JSX.Element {
@@ -31,364 +114,128 @@ export function ProfileSection(): JSX.Element {
     void window.mathmodel.stats.get().then(setStats).catch(() => setStats(null));
   }, []);
 
-  // 默认值使用产品内的中性身份，避免把开发环境中的个人账号带进新安装。
   const name = settings?.profileName?.trim() || '建模小组';
   const handle = settings?.profileHandle?.trim() || 'model-team';
   const initials = name.slice(0, 2).toUpperCase();
+  const dash = (value: string | null | undefined): string => safeName(value);
 
-  // 活跃度热力图：把 300 天折成按周的列
   const heatCols = useMemo(() => {
-    if (!stats) return [];
-    const days = stats.heatmap;
-    if (days.length === 0) return [];
-    // 对齐到周：第一列从周一开始
-    const cols: (typeof days)[] = [];
-    let col: typeof days = [];
-    const firstDow = (new Date(days[0].day).getDay() + 6) % 7; // 0=周一
-    for (let i = 0; i < firstDow; i++) col.push({ day: '', tokens: 0, messages: 0 });
-    for (const d of days) {
-      col.push(d);
-      if (col.length === 7) {
-        cols.push(col);
-        col = [];
-      }
+    if (!stats?.heatmap?.length) return [] as UsageDay[][];
+    const cols: UsageDay[][] = [];
+    let column: UsageDay[] = [];
+    const firstDow = (new Date(`${stats.heatmap[0].day}T00:00:00`).getDay() + 6) % 7;
+    for (let i = 0; i < firstDow; i += 1) column.push({ day: '', tokens: 0, messages: 0 });
+    for (const day of stats.heatmap) {
+      column.push(day);
+      if (column.length === 7) { cols.push(column); column = []; }
     }
-    if (col.length) cols.push(col);
+    if (column.length) cols.push(column);
     return cols;
   }, [stats]);
 
-  const maxTokens = useMemo(
-    () => Math.max(1, ...(stats?.heatmap.map((d) => d.tokens) ?? [1])),
-    [stats],
-  );
+  const maxTokens = Math.max(1, ...(stats?.heatmap ?? []).map((day) => day.tokens));
   const recentActivity = useMemo(() => (stats?.heatmap ?? []).slice(-14), [stats]);
-  const recentMax = Math.max(1, ...recentActivity.map((d) => d.tokens));
-
-  /** 本周 vs 上周对比（最近 14 天对半分）—— 2026-09-25 可视化升级 */
+  const recentMax = Math.max(1, ...recentActivity.map((day) => day.tokens));
   const weekly = useMemo(() => {
-    if (!stats || stats.heatmap.length < 7) return null;
-    const days = stats.heatmap.slice(-14);
+    const days = (stats?.heatmap ?? []).slice(-14);
+    if (days.length < 7) return null;
     const thisWeek = days.slice(-7);
-    const prevWeek = days.length === 14 ? days.slice(0, 7) : null;
-    const sum = (arr: typeof days, key: 'tokens' | 'messages') =>
-      arr.reduce((acc, d) => acc + d[key], 0);
-    const t1 = sum(thisWeek, 'tokens');
-    const t0 = prevWeek ? sum(prevWeek, 'tokens') : 0;
-    const m1 = sum(thisWeek, 'messages');
-    const m0 = prevWeek ? sum(prevWeek, 'messages') : 0;
-    const delta = t0 > 0 ? Math.round(((t1 - t0) / t0) * 100) : t1 > 0 ? 100 : 0;
-    return { t1, t0, m1, m0, delta, max: Math.max(1, t0, t1) };
+    const previous = days.length >= 14 ? days.slice(-14, -7) : [];
+    const sum = (list: UsageDay[], key: 'tokens' | 'messages') => list.reduce((total, day) => total + day[key], 0);
+    const currentTokens = sum(thisWeek, 'tokens');
+    const previousTokens = sum(previous, 'tokens');
+    const currentMessages = sum(thisWeek, 'messages');
+    const previousMessages = sum(previous, 'messages');
+    const delta = previousTokens ? Math.round(((currentTokens - previousTokens) / previousTokens) * 100) : currentTokens ? 100 : 0;
+    return { currentTokens, previousTokens, currentMessages, previousMessages, delta };
   }, [stats]);
 
-  const effortLabel =
-    settings?.effort === 'low'
-      ? tx('chat.modelPicker.effortLow')
-      : settings?.effort === 'medium'
-        ? tx('chat.modelPicker.effortMedium')
-        : settings?.effort === 'high'
-          ? tx('chat.modelPicker.effortHigh')
-          : null;
-  const topProvider = stats?.byProvider[0];
-  const topProviderName = topProvider
-    ? providers.find((p) => p.id === topProvider.providerId)?.name ?? topProvider.name
-    : null;
-  const topProject = stats?.byProject[0];
-
-  /** 空值统一显示为应用约定的占位符 `—` */
-  const dash = (v: string | null | undefined): string => (v && v.trim() ? v : '—');
+  const weekday = useMemo(() => {
+    const values = [0, 0, 0, 0, 0, 0, 0];
+    for (const day of stats?.heatmap ?? []) {
+      const index = (new Date(`${day.day}T00:00:00`).getDay() + 6) % 7;
+      values[index] += day.messages;
+    }
+    return values;
+  }, [stats]);
+  const weekdayMax = Math.max(1, ...weekday);
+  const effortLabel = settings?.effort === 'low'
+    ? tx('chat.modelPicker.effortLow')
+    : settings?.effort === 'medium'
+      ? tx('chat.modelPicker.effortMedium')
+      : settings?.effort === 'high'
+        ? tx('chat.modelPicker.effortHigh')
+        : '自动';
+  const topProvider = stats?.byProvider?.[0];
+  const topProviderName = topProvider ? providers.find((provider) => provider.id === topProvider.providerId)?.name ?? topProvider.name : null;
+  const topProject = stats?.byProject?.[0];
+  const modelTotal = (stats?.byModel ?? []).reduce((sum, item) => sum + item.tokens, 0);
+  const projectTotal = (stats?.byProject ?? []).reduce((sum, item) => sum + item.tokens, 0);
+  const capabilityParts: RingPart[] = [
+    { label: '技能', value: stats?.skillsUsed ?? 0, color: '#4f7cff' },
+    { label: '子智能体', value: stats?.agentRuns ?? 0, color: '#9b6cff' },
+    { label: '连接器', value: stats?.connectorRuns ?? 0, color: '#18a889' },
+    { label: '对话', value: stats?.promptCount ?? 0, color: '#e7a23c' },
+  ];
+  const capabilityTotal = capabilityParts.reduce((sum, part) => sum + part.value, 0);
 
   return (
-    <div className="col" style={{ gap: 22 }}>
-      {/* ── 资料卡 ── */}
-      <div className="col" style={{ alignItems: 'center', gap: 6, paddingTop: 6, position: 'relative' }}>
-        <div className="row" style={{ position: 'absolute', right: 0, top: 0, gap: 6 }}>
-          <button className="btn btn-sm btn-ghost" disabled title={tx('settings.socialLinks.soon')}>
-            {tx('common.share')}
-          </button>
-          <button className="btn btn-sm" onClick={() => setEditing((v) => !v)}>
-            {tx('common.edit')}
-          </button>
-        </div>
-
-        <div className="settings-avatar">{initials}</div>
-
-        {editing ? (
-          <div className="col" style={{ alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <input
-              className="input"
-              style={{ width: 200, textAlign: 'center', fontSize: 14, fontWeight: 600 }}
-              value={settings?.profileName ?? ''}
-              placeholder={t('显示名')}
-              onChange={(e) => void patchSettings({ profileName: e.target.value })}
-            />
-            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-              <span className="muted">@</span>
-              <input
-                className="input"
-                style={{ width: 120, fontSize: 12 }}
-                value={settings?.profileHandle ?? ''}
-                placeholder="handle"
-                onChange={(e) =>
-                  void patchSettings({ profileHandle: e.target.value.replace(/\s/g, '') })
-                }
-              />
+    <div className="usage-dashboard col">
+      <div className="usage-profile panel">
+        <div className="usage-profile-main">
+          <div className="settings-avatar">{initials}</div>
+          {editing ? (
+            <div className="usage-profile-edit col">
+              <input className="input" value={settings?.profileName ?? ''} placeholder={t('显示名')} onChange={(event) => void patchSettings({ profileName: event.target.value })} />
+              <div className="row usage-handle-input"><span className="muted">@</span><input className="input" value={settings?.profileHandle ?? ''} placeholder="handle" onChange={(event) => void patchSettings({ profileHandle: event.target.value.replace(/\s/g, '') })} /></div>
+              <button className="btn btn-sm btn-primary" onClick={() => setEditing(false)}>{tx('common.save')}</button>
             </div>
-            <button className="btn btn-sm btn-primary" onClick={() => setEditing(false)}>
-              {tx('common.save')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>{name}</span>
-            <span className="muted" style={{ fontSize: 12.5 }}>
-              @{handle} · MModels
-            </span>
-          </>
-        )}
-      </div>
-
-      {/* ── 统计大数字 ── */}
-      <div className="stat-grid">
-        <div className="stat-card col">
-          <span className="stat-num">{stats ? fmtTokens(stats.totalTokens) : '—'}</span>
-          <span className="stat-label">{tx('profile.profileSettingsPanel.lifetimeTokens')}</span>
-        </div>
-        <div className="stat-card col">
-          <span className="stat-num">{stats?.peakDay ? stats.peakDay.day.slice(5) : '—'}</span>
-          <span className="stat-label">{tx('profile.profileSettingsPanel.peakDay')}</span>
-        </div>
-        <div className="stat-card col">
-          <span className="stat-num">{stats ? String(stats.promptCount) : '—'}</span>
-          <span className="stat-label">{tx('profile.profileSettingsPanel.totalPrompts')}</span>
-        </div>
-        <div className="stat-card col">
-          <span className="stat-num">{stats ? t('{{n}} 天', { n: stats.currentStreak }) : '—'}</span>
-          <span className="stat-label">{tx('profile.profileSettingsPanel.currentStreak')}</span>
-        </div>
-        <div className="stat-card col">
-          <span className="stat-num">{stats ? t('{{n}} 天', { n: stats.longestStreak }) : '—'}</span>
-          <span className="stat-label">{tx('profile.profileSettingsPanel.longestStreak')}</span>
-        </div>
-      </div>
-
-      {/* ── 活跃度热力图 ── */}
-      <Section title={tx('profile.profileSettingsPanel.activity')}>
-        <div className="panel" style={{ padding: 14 }}>
-          {heatCols.length === 0 ? (
-            <span className="muted" style={{ fontSize: 12 }}>
-              {t('暂无数据 —— 开始第一次对话后这里会长出一片草原。')}
-            </span>
           ) : (
-            <div className="heat-scroll">
-              <div style={{ width: 'max-content' }}>
-                {/* 月份刻度（应用约定在热力图上方标 12月–9月） */}
-                <div className="row" style={{ gap: 3, marginBottom: 5 }}>
-                  {heatCols.map((col, ci) => {
-                    const first = col.find((d) => d.day);
-                    const prevFirst = ci > 0 ? heatCols[ci - 1].find((d) => d.day) : null;
-                    const m = first ? Number(first.day.slice(5, 7)) : null;
-                    const prevM = prevFirst ? Number(prevFirst.day.slice(5, 7)) : null;
-                    const show = m !== null && (ci === 0 || m !== prevM);
-                    return (
-                      <span
-                        key={ci}
-                        className="muted"
-                        style={{ width: 11, flex: 'none', fontSize: 9.5, whiteSpace: 'nowrap' }}
-                      >
-                        {show && m !== null ? t('{{m}} 月', { m }) : ''}
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="heat-grid">
-                  {heatCols.map((col, ci) => (
-                    <div key={ci} className="heat-col">
-                      {col.map((d, ri) => {
-                        const level =
-                          d.tokens <= 0 ? 0 : Math.min(4, Math.ceil((d.tokens / maxTokens) * 4));
-                        return (
-                          <span
-                            key={ri}
-                            className={`heat-cell heat-${level}`}
-                            title={
-                              d.day
-                                ? t('{{day}} · {{tokens}} tokens · {{count}} 条', {
-                                    day: d.day,
-                                    tokens: fmtTokens(d.tokens),
-                                    count: d.messages,
-                                  })
-                                : ''
-                            }
-                          />
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          {recentActivity.length > 0 && (
-            <div className="activity-summary" aria-label={t('最近14天活跃度')}>
-              <div className="activity-summary-head"><strong>{t('最近14天')}</strong><span className="muted">{t('按对话量和用量显示')}</span></div>
-              <div className="activity-bars">
-                {recentActivity.map((d) => (
-                  <span key={d.day} className="activity-bar-wrap" title={`${d.day} · ${fmtTokens(d.tokens)} tokens · ${d.messages} 条`}>
-                    <i className="activity-bar" style={{ height: `${Math.max(8, (d.tokens / recentMax) * 100)}%` }} />
-                    <small>{d.day.slice(8)}</small>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          {weekly && (
-            <div className="activity-summary" aria-label={t('本周与上周对比')}>
-              <div className="activity-summary-head">
-                <strong>{t('本周对比')}</strong>
-                <span
-                  className="muted"
-                  style={{ color: weekly.delta >= 0 ? 'var(--success, #2e9e5b)' : 'var(--danger, #d64545)' }}
-                >
-                  {weekly.delta >= 0 ? '↑' : '↓'} {Math.abs(weekly.delta)}%
-                </span>
-              </div>
-              <div className="col" style={{ gap: 8, marginTop: 8 }}>
-                {([
-                  [t('本周'), weekly.t1, weekly.m1],
-                  [t('上周'), weekly.t0, weekly.m0],
-                ] as const).map(([label, tokens, msgs]) => (
-                  <div key={label} className="col" style={{ gap: 3 }}>
-                    <div className="row" style={{ justifyContent: 'space-between', fontSize: 11.5 }}>
-                      <span className="muted">{label}</span>
-                      <span>{t('{{tokens}} · {{count}} 条', { tokens: fmtTokens(tokens), count: msgs })}</span>
-                    </div>
-                    <div className="bar-track" style={{ height: 8 }}>
-                      <div
-                        className="bar-fill"
-                        style={{ width: `${Math.max(2, (tokens / weekly.max) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="usage-profile-copy"><strong>{name}</strong><span>@{handle} · MModels</span><small>本机统计 · 数据只保存在当前电脑</small></div>
           )}
         </div>
-      </Section>
-      <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
-        <div className="col grow" style={{ gap: 10, minWidth: 0 }}>
-          <span style={{ fontWeight: 600, fontSize: 14 }}>
-            {tx('profile.profileSettingsPanel.activityInsights')}
-          </span>
-          <div className="panel col" style={{ padding: 14, gap: 10, fontSize: 12.5 }}>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">{tx('profile.profileSettingsPanel.mostUsedProvider')}</span>
-              <span>{dash(topProviderName)}</span>
-            </div>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">{tx('profile.profileSettingsPanel.mostUsedReasoning')}</span>
-              <span>{dash(effortLabel)}</span>
-            </div>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">{tx('profile.profileSettingsPanel.mostActiveHour')}</span>
-              <span>
-                {stats?.peakHour != null
-                  ? t('{{hour}}:00 前后', { hour: String(stats.peakHour).padStart(2, '0') })
-                  : '—'}
-              </span>
-            </div>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">{tx('profile.profileSettingsPanel.mostWorkedProject')}</span>
-              <span>{dash(topProject?.name)}</span>
-            </div>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">涉及的技能种类</span>
-              <span>{stats && stats.skillsExplored > 0 ? String(stats.skillsExplored) : '—'}</span>
-            </div>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">模型主动调用技能</span>
-              <span>{stats && stats.skillsUsed > 0 ? String(stats.skillsUsed) : '—'}</span>
-            </div>
-            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">已启用技能</span><span>{stats?.enabledSkillCount ?? '—'} / {stats?.skillCount ?? '—'}</span></div>
-            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">技能入口指令</span><span>{stats?.skillEntryCount ?? '—'}</span></div>
-            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">子智能体调用</span><span>{stats?.agentRuns ?? '—'}</span></div>
-            <div className="row" style={{ justifyContent: 'space-between' }}><span className="muted">连接器调用</span><span>{stats?.connectorRuns ?? '—'}</span></div>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">{tx('profile.profileSettingsPanel.totalThreads')}</span>
-              <span>{stats ? String(stats.sessionCount) : '—'}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="col grow" style={{ gap: 10, minWidth: 0 }}>
-          <span style={{ fontWeight: 600, fontSize: 14 }}>
-            常用技能（入口与调用记录）
-          </span>
-          <div className="panel col" style={{ padding: 14, gap: 10, fontSize: 12.5 }}>
-            {!stats || !stats.bySkill?.length ? (
-              <span className="muted" style={{ fontSize: 12 }}>
-                {tx('profile.profileSettingsPanel.noSkillsYet')}
-              </span>
-            ) : (
-              stats.bySkill.slice(0, 20).map((p) => {
-                const maxRuns = Math.max(1, ...(stats.bySkill ?? []).map((x) => x.runs));
-                return (
-                  <div key={p.name} className="col" style={{ gap: 3 }}>
-                    <div className="row" style={{ justifyContent: 'space-between', gap: 8, fontSize: 12.5 }}>
-                      <span className="truncate">{p.name}</span>
-                      <span className="muted" style={{ flexShrink: 0 }}>
-                        {p.runs} 条记录
-                      </span>
-                    </div>
-                    <div className="bar-track" style={{ height: 6 }}>
-                      <div
-                        className="bar-fill"
-                        style={{ width: `${Math.max(3, (p.runs / maxRuns) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          <span className="muted" style={{ fontSize: 11 }}>入口表示发起技能任务，调用表示模型加载技能；不等于任务已成功完成。子智能体与连接器单独统计。</span>
-        </div>
+        <div className="row usage-profile-actions"><button className="btn btn-sm btn-ghost" disabled title={tx('settings.socialLinks.soon')}>{tx('common.share')}</button><button className="btn btn-sm" onClick={() => setEditing((value) => !value)}>{tx('common.edit')}</button></div>
       </div>
 
-      {/* ── 模型使用情况 ── */}
-      <Section title={tx('profile.profileSettingsPanel.modelUsage')}>
-        <div className="panel col" style={{ padding: 14, gap: 10 }}>
-          {!stats ? (
-            <span className="muted" style={{ fontSize: 12 }}>
-              {t('正在加载…')}
-            </span>
-          ) : stats.byModel.length === 0 ? (
-            <span className="muted" style={{ fontSize: 12 }}>
-              {tx('profile.profileSettingsPanel.noModelActivity')}
-            </span>
-          ) : (
-            stats.byModel.map((m) => {
-              const max = Math.max(1, ...stats.byModel.map((x) => x.tokens));
-              return (
-                <div key={m.model} className="col" style={{ gap: 4 }}>
-                  <div className="row" style={{ justifyContent: 'space-between', fontSize: 12 }}>
-                    <span className="mono truncate">{m.model}</span>
-                    <span className="muted">
-                      {t('{{tokens}} · {{count}} 个会话', { tokens: fmtTokens(m.tokens), count: m.sessions })}
-                    </span>
-                  </div>
-                  <div className="bar-track">
-                    <div
-                      className="bar-fill"
-                      style={{ width: `${Math.max(2, (m.tokens / max) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </Section>
+      <div className="usage-kpi-grid">
+        <div className="usage-kpi"><span className="usage-kpi-icon blue">↗</span><div><strong>{stats ? fmtTokens(stats.totalTokens) : '—'}</strong><span>累计用量</span></div><small>输入 + 输出</small></div>
+        <div className="usage-kpi"><span className="usage-kpi-icon purple">◷</span><div><strong>{stats?.promptCount ?? '—'}</strong><span>发起对话</span></div><small>{stats?.activeDays ?? 0} 个活跃日</small></div>
+        <div className="usage-kpi"><span className="usage-kpi-icon green">✓</span><div><strong>{stats ? `${stats.currentStreak} 天` : '—'}</strong><span>当前连续</span></div><small>最长 {stats?.longestStreak ?? 0} 天</small></div>
+        <div className="usage-kpi"><span className="usage-kpi-icon orange">⌁</span><div><strong>{stats?.peakHour != null ? `${String(stats.peakHour).padStart(2, '0')}:00` : '—'}</strong><span>最常工作时段</span></div><small>最高活跃日 {stats?.peakDay ? dateLabel(stats.peakDay.day) : '—'}</small></div>
+      </div>
+
+      <div className="usage-overview-grid">
+        <section className="usage-card usage-trend-card">
+          <div className="usage-card-head"><div><strong>最近 14 天</strong><span>每天的消息量与用量走势</span></div>{weekly && <b className={weekly.delta >= 0 ? 'usage-positive' : 'usage-negative'}>{weekly.delta >= 0 ? '↑' : '↓'} {Math.abs(weekly.delta)}%</b>}</div>
+          <div className="usage-trend-body"><div className="usage-big-number">{fmtTokens(recentActivity.reduce((sum, day) => sum + day.tokens, 0))}<small> tokens</small></div><Sparkline days={recentActivity} /></div>
+          <div className="usage-day-bars">{recentActivity.map((day) => <div key={day.day} className="usage-day-bar" title={`${dateLabel(day.day)} · ${fmtTokens(day.tokens)} tokens · ${day.messages} 条`}><span style={{ height: `${Math.max(day.tokens > 0 ? 7 : 2, (day.tokens / recentMax) * 100)}%` }} /><small>{day.day.slice(8)}</small></div>)}</div>
+          {weekly && <div className="usage-compare"><span>本周 {fmtTokens(weekly.currentTokens)} · {weekly.currentMessages} 条</span><span>上周 {fmtTokens(weekly.previousTokens)} · {weekly.previousMessages} 条</span></div>}
+        </section>
+        <section className="usage-card usage-capability-card">
+          <div className="usage-card-head"><div><strong>工作方式</strong><span>你把哪些能力组合在一起</span></div></div>
+          <div className="usage-capability-body"><MiniRing parts={capabilityParts} label="能力调用" value={String(capabilityTotal)} /><div className="usage-legend">{capabilityParts.map((part) => <div key={part.label}><i style={{ background: part.color }} /><span>{part.label}</span><strong>{part.value}<small>{capabilityTotal ? ` ${pct(part.value, capabilityTotal)}%` : ''}</small></strong></div>)}</div></div>
+          <p className="usage-card-note">技能、子智能体和连接器均按本地记录统计；数字用于了解工作习惯，不代表结果质量。</p>
+        </section>
+      </div>
+
+      <section className="usage-card usage-heat-card">
+        <div className="usage-card-head"><div><strong>活跃日历</strong><span>颜色越深，代表当天处理的消息越多</span></div><span className="usage-caption">近 300 天 · {stats?.activeDays ?? 0} 天有记录</span></div>
+        {heatCols.length === 0 ? <div className="usage-empty">{t('暂无数据 —— 开始第一次对话后这里会长出一片草原。')}</div> : <div className="usage-heat-layout"><div className="usage-week-labels"><span>一</span><span>三</span><span>五</span><span>日</span></div><div className="heat-scroll"><div className="usage-heat-grid">{heatCols.map((column, columnIndex) => <div className="heat-col" key={columnIndex}>{column.map((day, rowIndex) => { const level = day.tokens <= 0 ? 0 : Math.min(4, Math.ceil((day.tokens / maxTokens) * 4)); return <span key={rowIndex} className={`heat-cell heat-${level}`} title={day.day ? `${dateLabel(day.day)} · ${fmtTokens(day.tokens)} tokens · ${day.messages} 条` : ''} />; })}</div>)}</div></div></div>}
+        <div className="usage-heat-footer"><span>少</span><i className="heat-cell heat-0" /><i className="heat-cell heat-1" /><i className="heat-cell heat-2" /><i className="heat-cell heat-3" /><i className="heat-cell heat-4" /><span>多</span></div>
+      </section>
+
+      <div className="usage-three-grid">
+        <section className="usage-card"><div className="usage-card-head"><div><strong>常用模型</strong><span>按 token 用量</span></div><span className="usage-caption">{stats?.byModel?.length ?? 0} 个</span></div><RankBars items={(stats?.byModel ?? []).map((item) => ({ name: item.model, tokens: item.tokens, sessions: item.sessions }))} valueKey="tokens" empty="还没有模型使用记录" format={fmtTokens} /><div className="usage-total-line"><span>模型总用量</span><strong>{fmtTokens(modelTotal)}</strong></div></section>
+        <section className="usage-card"><div className="usage-card-head"><div><strong>常用项目</strong><span>把时间花在哪里</span></div><span className="usage-caption">{stats?.byProject?.length ?? 0} 个</span></div><RankBars items={stats?.byProject ?? []} valueKey="tokens" empty="还没有项目使用记录" format={fmtTokens} /><div className="usage-total-line"><span>项目总用量</span><strong>{fmtTokens(projectTotal)}</strong></div></section>
+        <section className="usage-card"><div className="usage-card-head"><div><strong>一周节奏</strong><span>按星期几查看消息量</span></div></div><div className="usage-week-bars">{weekday.map((value, index) => <div className="usage-week-bar" key={index} title={`${['周一', '周二', '周三', '周四', '周五', '周六', '周日'][index]} · ${value} 条`}><span style={{ height: `${Math.max(value > 0 ? 8 : 2, (value / weekdayMax) * 100)}%` }} /><small>{['一', '二', '三', '四', '五', '六', '日'][index]}</small></div>)}</div><div className="usage-total-line"><span>最常工作的项目</span><strong className="truncate">{dash(topProject?.name)}</strong></div></section>
+      </div>
+
+      <div className="usage-two-grid">
+        <section className="usage-card"><div className="usage-card-head"><div><strong>技能与协作</strong><span>模型真正调用过的能力</span></div><span className="usage-caption">{stats?.skillsUsed ?? 0} 次调用</span></div><RankBars items={(stats?.bySkill ?? []).map((item) => ({ name: item.name, runs: item.runs }))} valueKey="runs" empty="还没有技能调用记录" /></section>
+        <section className="usage-card"><div className="usage-card-head"><div><strong>模型与供应商</strong><span>实际消耗的 token</span></div></div><RankBars items={(stats?.byProvider ?? []).map((item) => ({ name: item.name, tokens: item.tokens }))} valueKey="tokens" empty="还没有供应商使用记录" format={fmtTokens} /><div className="usage-total-line"><span>最常用供应商</span><strong>{dash(topProviderName)}</strong></div></section>
+      </div>
+
+      <section className="usage-card usage-detail-card"><div className="usage-card-head"><div><strong>统计摘要</strong><span>把复杂数字换成一句容易理解的话</span></div></div><div className="usage-detail-grid"><div><span>最常用思考强度</span><strong>{effortLabel}</strong></div><div><span>安装技能</span><strong>{stats ? `${stats.enabledSkillCount ?? 0} / ${stats.skillCount}` : '—'}</strong></div><div><span>子智能体调用</span><strong>{stats?.agentRuns ?? 0} 次</strong></div><div><span>连接器调用</span><strong>{stats?.connectorRuns ?? 0} 次</strong></div><div><span>会话总数</span><strong>{stats?.sessionCount ?? 0}</strong></div><div><span>平均每次对话</span><strong>{stats && stats.promptCount ? `${fmtTokens(stats.totalTokens / stats.promptCount)} tokens` : '—'}</strong></div></div><p className="usage-card-note">统计只读取本机的会话记录，不会上传题目、论文或文件内容。删除本地项目后，对应的统计也会随之减少。</p></section>
     </div>
   );
 }

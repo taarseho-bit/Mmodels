@@ -27,6 +27,7 @@
     "dist:portable": "npm run build:harden && electron-builder --win portable --x64",
     "release:hardened": "node scripts/release-hardened.cjs",
     "deploy:site": "node scripts/deploy-site.cjs",
+    "capture:site": "node scripts/capture-site-screenshots.cjs",
     "postinstall": "node scripts/ensure-native.cjs"
   },
   "dependencies": {
