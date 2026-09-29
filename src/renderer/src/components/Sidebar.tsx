@@ -14,13 +14,15 @@ import { useApp } from '../store/app';
 import { Icon } from './Icon';
 import { ResizeHandle } from './ResizeHandle';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
-import type { ProjectMeta, SessionMeta } from '@shared/types';
+import type { AccountStatusInfo, ProjectMeta, SessionMeta } from '@shared/types';
 import type { Route } from '../App';
 import { t, tx } from '../i18n';
 import { exportFileName } from '../lib/export-name';
 import { makeZip } from '../lib/zip';
 import { registerCommand } from '../keybindings/dispatch';
-import { openMembership } from '../lib/membership-nav';
+import { onAccountStatus } from '../lib/membership-nav';
+import { AccountQuickMenu } from './membership/AccountQuickMenu';
+import { conversationPointsLeft, isActiveTrial, isPaidVip, trialHoursLeft } from './membership/membership-ui';
 
 interface Props {
   route: Route;
@@ -59,7 +61,6 @@ function RailItem({ icon, label, active, title, onClick, id, route }: RailItemPr
 
 export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
   const projects = useApp((s) => s.projects);
-  const settings = useApp((s) => s.settings);
   const current = useApp((s) => s.currentProject);
   const sessions = useApp((s) => s.sessions);
   const activeSessionId = useApp((s) => s.activeSessionId);
@@ -86,6 +87,22 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 2400);
   }, []);
+
+  // ── 左下角账号芯片的会员状态 ──
+  // mount 拉一次；会员弹窗里登录/签到/兑换后通过事件总线广播，这里实时跟上。
+  const [account, setAccount] = useState<AccountStatusInfo | null>(null);
+  // 左下角头像的快捷弹层（签到 / 会员中心 / 反馈 / 邀请 / 设置）
+  const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void window.mathmodel.account.status().then((next) => {
+      if (alive) setAccount(next);
+    }).catch(() => { /* 服务端连不通时保持 null，芯片显示"未登录"引导 */ });
+    return () => { alive = false; };
+  }, []);
+  useEffect(() => onAccountStatus((next) => {
+    setAccount(next instanceof Object ? (next as AccountStatusInfo) : null);
+  }), []);
 
   const deleteProjectWithConfirm = useCallback(async (id: string, name: string): Promise<void> => {
     if (!window.confirm(`确定移除项目“${name}”吗？\n\n会删除项目记录、会话和 MModels 元数据目录，论文与其他项目文件会保留。此操作无法撤销。`)) return;
@@ -921,21 +938,56 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
       </div>
       </div>
 
-      {/* ── 底部：账号区（应用约定：头像 + 名称 + 徽章行）+ 设置齿轮 ── */}
+      {/* ── 底部：账号区（会员名 + 等级徽章 + 积分）+ 设置齿轮 ── */}
       <div className="rail-foot rail-account">
+        {/* 点击头像先弹「短的」快捷菜单（签到 / 会员中心 / 反馈 / 邀请 / 设置），
+            再按需进入会员大弹窗 —— 用户点名要求，2026-09-28。 */}
+        <AccountQuickMenu
+          open={quickMenuOpen}
+          onClose={() => setQuickMenuOpen(false)}
+          account={account}
+          onOpenSettings={() => setRoute('settings')}
+        />
         <button
           className="rail-account-chip"
-          title={t('打开账号与会员中心')}
-          onClick={() => openMembership('account')}
+          title={account?.loggedIn ? t('账号中心 · 签到 / 会员 / 反馈 / 邀请 / 设置') : t('登录 / 注册，注册即得 24 小时体验')}
+          onClick={() => setQuickMenuOpen((v) => !v)}
         >
-          <span className="rail-avatar" aria-hidden>
-            {(settings?.profileName ?? 'M').trim().slice(0, 1).toUpperCase()}
+          <span className={`rail-avatar${isPaidVip(account) || isActiveTrial(account) ? ' is-vip' : ''}`} aria-hidden>
+            {account?.loggedIn
+              ? account.username.trim().slice(0, 1).toUpperCase()
+              : <Icon name="user" size={14} />}
           </span>
           <span className="rail-account-text">
-            <span className="rail-account-name truncate">{settings?.profileName ?? 'MModels'}</span>
+            <span className="rail-account-name truncate">
+              {account?.loggedIn ? account.username : t('未登录 · 点击注册')}
+            </span>
             <span className="rail-account-sub">
-              <Icon name="shield-check" size={11} />
-              <span className="truncate">{t('本地工作空间')}</span>
+              {account?.loggedIn ? (
+                <>
+                  {isPaidVip(account) ? (
+                    <span className="rail-plan-badge vip">VIP</span>
+                  ) : isActiveTrial(account) ? (
+                    <span className="rail-plan-badge trial">{t(`体验·剩 ${trialHoursLeft(account)} 小时`)}</span>
+                  ) : (
+                    <span className="rail-plan-badge free">{t('免费版')}</span>
+                  )}
+                  <span className="rail-account-points">
+                    <Icon name="coins" size={10} style={{ marginRight: 3, verticalAlign: '-1px' }} />
+                    {conversationPointsLeft(account) ?? 0}
+                  </span>
+                  {isPaidVip(account) && (
+                    <span className="truncate muted" style={{ fontSize: 10 }}>
+                      {t(`剩 ${Math.max(0, Math.ceil((account.expiresAt - Date.now()) / 86_400_000))} 天`)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="rail-plan-badge trial">{t('注册得 24 小时体验')}</span>
+                  <span className="truncate muted" style={{ fontSize: 10 }}>{t('本地功能永久免费')}</span>
+                </>
+              )}
             </span>
           </span>
         </button>

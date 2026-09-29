@@ -15,11 +15,14 @@
  * 页面文案全部走应用约定 `automation.automationPage.*` 键（空态标题/描述/主按钮）。
  */
 import { useCallback, useEffect, useState } from 'react';
+import type { AccountStatusInfo } from '@shared/types';
 import { useApp } from '../store/app';
 import { PageShell, EmptyState } from '../components/PageShell';
 import { Icon } from '../components/Icon';
 import { t, tx, getLang } from '../i18n';
 import { friendlyError } from '../lib/friendly-error';
+import { onAccountStatus, openMembership } from '../lib/membership-nav';
+import { isPaidVip } from '../components/membership/membership-ui';
 
 /**
  * 主进程回传的记录形态。
@@ -146,8 +149,30 @@ export function AutomationPage(): JSX.Element {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [account, setAccount] = useState<AccountStatusInfo | null>(null);
+  const [accountLoaded, setAccountLoaded] = useState(false);
 
   const projectId = project?.id ?? null;
+  const automationLocked = accountLoaded && !isPaidVip(account);
+
+  useEffect(() => {
+    let alive = true;
+    void window.mathmodel.account.status().then((next) => {
+      if (!alive) return;
+      setAccount(next);
+      setAccountLoaded(true);
+    }).catch(() => { if (alive) setAccountLoaded(true); });
+    const off = onAccountStatus((next) => {
+      if (!alive || !next) return;
+      setAccount(next as AccountStatusInfo);
+      setAccountLoaded(true);
+    });
+    return () => { alive = false; off(); };
+  }, []);
+
+  const openVip = useCallback(() => {
+    openMembership(account?.loggedIn ? 'redeem' : 'account');
+  }, [account]);
 
   const reload = useCallback(async () => {
     if (!projectId) {
@@ -178,6 +203,7 @@ export function AutomationPage(): JSX.Element {
 
   const save = useCallback(async () => {
     if (!editing || !projectId) return;
+    if (automationLocked) { openVip(); return; }
     const name = editing.name.trim();
     const prompt = editing.prompt.trim();
     const cron = editing.cron.trim();
@@ -215,9 +241,10 @@ export function AutomationPage(): JSX.Element {
     } finally {
       setBusy(null);
     }
-  }, [editing, items, projectId]);
+  }, [automationLocked, editing, items, openVip, projectId]);
 
   const toggle = useCallback(async (a: AutomationRecord) => {
+    if (automationLocked) { openVip(); return; }
     setBusy(a.id);
     setError(null);
     try {
@@ -227,7 +254,7 @@ export function AutomationPage(): JSX.Element {
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [automationLocked, openVip]);
 
   const remove = useCallback(
     async (a: AutomationRecord) => {
@@ -245,6 +272,7 @@ export function AutomationPage(): JSX.Element {
   );
 
   const runNow = useCallback(async (a: AutomationRecord) => {
+    if (automationLocked) { openVip(); return; }
     setBusy(a.id);
     setError(null);
     try {
@@ -256,7 +284,7 @@ export function AutomationPage(): JSX.Element {
     } finally {
       setBusy(null);
     }
-  }, [reload]);
+  }, [automationLocked, openVip, reload]);
 
   const loadRuns = useCallback(async (a: AutomationRecord) => {
     if (expandedRuns === a.id) {
@@ -274,6 +302,7 @@ export function AutomationPage(): JSX.Element {
 
   const createTask = useCallback((): void => {
     if (!project) return;
+    if (automationLocked) { openVip(); return; }
     setError(null);
     setEditing({
       id: `a_${Date.now().toString(36)}`,
@@ -287,7 +316,7 @@ export function AutomationPage(): JSX.Element {
       lastRunAt: null,
       nextRunAt: null,
     });
-  }, [project]);
+  }, [automationLocked, openVip, project]);
 
   if (!project) {
     return <div className="empty">{t('请先打开一个项目，自动化任务绑定在项目上。')}</div>;
@@ -439,6 +468,13 @@ export function AutomationPage(): JSX.Element {
       }
     >
       <div className="auto-page">
+        {automationLocked ? (
+          <div className="panel membership-locked-panel" role="note">
+            <Icon name="shield-check" size={16} />
+            <span><strong>{t('自动化任务需要卡密 VIP')}</strong><small>{t('基础项目和论文流程仍可用；兑换卡密后即可创建、启用和运行定时任务。')}</small></span>
+            <button className="btn btn-sm btn-primary" type="button" onClick={openVip}>{t('去兑换卡密')}</button>
+          </div>
+        ) : null}
         {error ? (
           <div
             className="panel"

@@ -1513,6 +1513,7 @@
 /* ── 侧栏底部账号区（应用约定：头像 + 名称 + 徽章行，右侧齿轮）── */
 
 .rail-account {
+  position: relative; /* 头像快捷弹层（.quick-menu）的定位锚点 */
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1570,6 +1571,48 @@
   font-size: 10.5px;
   color: var(--fg-tertiary, var(--fg-secondary));
   opacity: 0.85;
+}
+
+/* ── 左下角账号芯片：会员等级徽标 + 积分（2026-09-28 会员体系）── */
+
+.rail-avatar.is-vip {
+  background: linear-gradient(135deg, #d4a017, #b8860b);
+  box-shadow: 0 0 0 1.5px rgba(212, 160, 23, 0.35);
+}
+
+.rail-plan-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.rail-plan-badge.vip {
+  background: rgba(212, 160, 23, 0.16);
+  color: #a8790a;
+  border: 0.5px solid rgba(212, 160, 23, 0.45);
+}
+
+.rail-plan-badge.trial {
+  background: rgba(37, 141, 96, 0.13);
+  color: #1d7a55;
+  border: 0.5px solid rgba(37, 141, 96, 0.4);
+}
+
+.rail-plan-badge.free {
+  background: var(--bg-tertiary, #f1f0ec);
+  color: var(--fg-secondary);
+  border: 0.5px solid var(--border-weak);
+}
+
+.rail-account-points {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fg-secondary);
+  white-space: nowrap;
 }
 
 /* ── 侧栏收起态：只留图标 ── */

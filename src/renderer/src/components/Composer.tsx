@@ -22,6 +22,7 @@ import {
   type PaperTemplateField,
   type PaperTemplateRef,
 } from '@shared/types';
+import type { AccountStatusInfo } from '@shared/types';
 import { followUpItemsFor, readFollowUpBehavior, useApp, type QueuedFollowUp } from '../store/app';
 import { Icon } from './Icon';
 import { ResizeHandle } from './ResizeHandle';
@@ -39,6 +40,8 @@ import { openRoute } from '../lib/settings-nav';
 import { registerCommand } from '../keybindings/dispatch';
 import { t, tx } from '../i18n';
 import { appendPasted, makePastedText, shouldFoldPasted, type PastedText } from '../lib/pasted-text';
+import { onAccountStatus, openMembership } from '../lib/membership-nav';
+import { isActiveTrial, isPaidVip } from './membership/membership-ui';
 
 export type ComposerMode = 'chat' | 'paper' | 'figure' | 'review' | 'data' | 'sprint';
 export type PermissionMode = 'full' | 'approval';
@@ -451,6 +454,27 @@ export function Composer({
   const createProject = useApp((s) => s.createProject);
   const setSidePanel = useApp((s) => s.setSidePanel);
 
+  // 会员墙只负责提前给用户清晰反馈，真正执行前仍由主进程/服务端再次校验。
+  // 试用账号可以走基础论文流程，但多智能体协作只对卡密激活的 VIP 开放。
+  const [membershipStatus, setMembershipStatus] = useState<AccountStatusInfo | null>(null);
+  const [membershipStatusLoaded, setMembershipStatusLoaded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void window.mathmodel.account.status().then((next) => {
+      if (!alive) return;
+      setMembershipStatus(next);
+      setMembershipStatusLoaded(true);
+    }).catch(() => {
+      if (alive) setMembershipStatusLoaded(true);
+    });
+    const unsubscribe = onAccountStatus((next) => {
+      if (!alive || !next || typeof next !== 'object') return;
+      setMembershipStatus(next as AccountStatusInfo);
+      setMembershipStatusLoaded(true);
+    });
+    return () => { alive = false; unsubscribe(); };
+  }, []);
+
   // ── 追问队列（「设置 → 对话 → 追问行为 = 排队」时积压的消息）──
   /**
    * 回合运行中排队的追问 —— 徽标要把「已排队 N 条」显示出来。
@@ -593,8 +617,13 @@ export function Composer({
     settings?.decisionMode ?? (settings?.planMode === true ? 'plan' : 'manual');
   const planMode = decisionMode === 'plan';
   const multiAgentEnabled = settings?.multiAgentEnabled !== false;
+  // 状态还没回来时先锁住高级入口，避免按钮先可点、随后才弹出会员限制。
+  const membershipPending = !membershipStatusLoaded;
+  const multiAgentLocked = membershipPending || !isPaidVip(membershipStatus);
   const qualityMode = settings?.modelingQualityMode ?? 'balanced';
   const qualityLabel = qualityMode === 'fast' ? '快速' : qualityMode === 'strict' ? '深度' : '标准';
+  // 24 小时体验包含深度建模；只有多智能体/云协作/自动化等团队能力要求付费卡密。
+  const strictQualityLocked = membershipPending || (!isPaidVip(membershipStatus) && !isActiveTrial(membershipStatus));
 
   // ── 决策模式切换（统一入口）──
   /** 从 plan 切走时回到的模式（Shift+Tab 来回切换用） */
@@ -1469,16 +1498,26 @@ export function Composer({
         <div className="cz-slot">
           <button
             type="button"
-            className={`cz-btn ghost${multiAgentEnabled ? ' active' : ''}`}
+            className={`cz-btn ghost${multiAgentEnabled ? ' active' : ''}${multiAgentLocked ? ' is-membership-locked' : ''}`}
             aria-label="多智能体协作"
-            aria-pressed={multiAgentEnabled}
-            title={multiAgentEnabled
-              ? '多智能体协作：开 —— 复杂任务按需分给建模伙伴并行推进（点击关闭）'
-              : '多智能体协作：关 —— 全部由主助手单干（点击开启）'}
-            onClick={() => void patchSettings({ multiAgentEnabled: !multiAgentEnabled })}
+            aria-pressed={multiAgentLocked ? false : multiAgentEnabled}
+            aria-disabled={multiAgentLocked}
+            title={multiAgentLocked
+              ? (membershipPending ? '正在读取会员状态…' : '多智能体协作需要卡密 VIP，点击打开卡密兑换')
+              : multiAgentEnabled
+                ? '多智能体协作：开 —— 复杂任务按需分给建模伙伴并行推进（点击关闭）'
+                : '多智能体协作：关 —— 全部由主助手单干（点击开启）'}
+            onClick={() => {
+              if (membershipPending) return;
+              if (multiAgentLocked) {
+                openMembership(membershipStatus?.loggedIn ? 'redeem' : 'account');
+                return;
+              }
+              void patchSettings({ multiAgentEnabled: !multiAgentEnabled });
+            }}
           >
-            <Icon name="brain" size={14} />
-            <span>多智能体协作</span>
+            <Icon name={multiAgentLocked ? 'shield-check' : 'brain'} size={14} />
+            <span>{multiAgentLocked ? '多智能体 · VIP' : '多智能体协作'}</span>
           </button>
         </div>
 
@@ -1733,8 +1772,25 @@ export function Composer({
               ['balanced', '标准', '按常规深度完成建模、写作与数据工作'],
               ['strict', '深度', '按交付标准做：复算、敏感性分析、引用核对、数据核验与反复打磨'],
             ] as const).map(([value, label, hint]) => (
-              <button key={value} className={`cz-pop-item${qualityMode === value ? ' selected' : ''}`} onClick={() => { void patchSettings({ modelingQualityMode: value }); close(); }}>
-                <Icon name="circle-check" size={13} />
+              <button
+                key={value}
+                className={`cz-pop-item${qualityMode === value ? ' selected' : ''}${value === 'strict' && strictQualityLocked ? ' is-membership-locked' : ''}`}
+                aria-disabled={value === 'strict' && strictQualityLocked}
+                title={value === 'strict' && strictQualityLocked
+                  ? (membershipPending ? '正在读取会员状态…' : '深度建模需要卡密 VIP，点击打开卡密兑换')
+                  : undefined}
+                onClick={() => {
+                  if (value === 'strict' && strictQualityLocked) {
+                    if (membershipPending) return;
+                    openMembership(membershipStatus?.loggedIn ? 'redeem' : 'account');
+                    close();
+                    return;
+                  }
+                  void patchSettings({ modelingQualityMode: value });
+                  close();
+                }}
+              >
+                <Icon name={value === 'strict' && strictQualityLocked ? 'shield-check' : 'circle-check'} size={13} />
                 <span className="col" style={{ gap: 1 }}><span>{label}</span><span className="muted" style={{ fontSize: 10 }}>{hint}</span></span>
                 <span className="grow" />
                 {qualityMode === value ? <Icon name="check" size={13} className="cz-pop-check" /> : null}

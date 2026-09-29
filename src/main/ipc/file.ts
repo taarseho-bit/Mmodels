@@ -14,6 +14,7 @@ import { IPC, type FileNode, type FilePreview, type PdfInfo, type PdfPreflight }
 import { mediaMime, mediaUrlFor } from '../media/protocol';
 import { getDb } from '../db';
 import { getSettings } from '../store/config';
+import { assertAiEntitlement } from '../security/license-gate';
 import { safeWrap, type IpcContext } from './index';
 import { managedPythonPath, sharedPythonPath, sharedRuntimeEnv } from '../runtime/shared-environment';
 
@@ -52,6 +53,14 @@ const SAVE_FILTERS: Record<string, { name: string; extensions: string[] }> = {
 /** 按默认文件名的扩展名挑过滤器；不认识就退成应用约定的 All Files */
 function saveFiltersFor(defaultPath: string): Array<{ name: string; extensions: string[] }> {
   return [SAVE_FILTERS[extname(defaultPath).toLowerCase()] ?? { name: 'All Files', extensions: ['*'] }];
+}
+
+/** 成品论文格式走独立会员闸门；JSON/HTML/ZIP 等普通会话备份仍保持免费。 */
+async function assertPaperExportFor(defaultPath: string): Promise<void> {
+  const ext = extname(defaultPath).toLowerCase();
+  if (ext === '.pdf' || ext === '.doc' || ext === '.docx' || ext === '.tex' || ext === '.latex') {
+    await assertAiEntitlement('export');
+  }
 }
 
 /** 把用户给的相对路径安全地解析到项目根内 */
@@ -437,6 +446,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
   ipcMain.handle(
     IPC.FILE_SAVE_TEXT,
     safeWrap(async (_e, defaultName: string, content: string) => {
+      await assertPaperExportFor(defaultName);
       const result = await dialog.showSaveDialog(ctx.getMainWindow() ?? undefined!, {
         title: '保存文件',
         defaultPath: defaultName,
@@ -452,6 +462,7 @@ export function registerFileHandlers(ctx: IpcContext): void {
   ipcMain.handle(
     IPC.FILE_SAVE_BINARY,
     safeWrap(async (_e, defaultName: string, base64: string) => {
+      await assertPaperExportFor(defaultName);
       const result = await dialog.showSaveDialog(ctx.getMainWindow() ?? undefined!, {
         title: '保存文件',
         defaultPath: defaultName,

@@ -51,7 +51,7 @@ const STEPS: TourStep[] = [
   },
   {
     id: 'providers',
-    selectors: ['#tour-providers', '.rail-item[data-route="settings"]'],
+    selectors: ['.settings-nav-item[data-section="providers"]', '.rail-item[data-route="settings"]'],
     placement: 'bottom',
     route: 'settings',
   },
@@ -81,22 +81,24 @@ const STEPS: TourStep[] = [
   },
   {
     // 决策模式 chip（先规划 / 精细人工 / AI 自动）—— 2026-09-20 新增的正交维度
+    // 2026-09-26 从 cz-bar 移到 cz-foot 第 3 个槽（加号 / 协作 / 决策 / 权限）
     id: 'decisionModes',
-    selectors: ['.cz-bar [title^="选择 AI 的决策方式"]', '.cz-bar'],
+    selectors: ['.cz-foot .cz-slot:nth-of-type(3) .cz-btn', '.cz-foot'],
     placement: 'top',
     route: 'chat',
   },
   {
     // 任务深度 chip（快速 / 标准 / 深度）—— 2026-09-25 用户点名要的对话区入口
+    // 在 cz-foot 最右侧（模型选择旁边）
     id: 'quality',
-    selectors: ['.cz-foot [title^="任务深度"]', '.cz-foot'],
+    selectors: ['.cz-foot .cz-slot:nth-of-type(6) .cz-btn', '.cz-foot [title^="任务深度"]', '.cz-foot'],
     placement: 'top',
     route: 'chat',
   },
   {
-    // 模型切换已收进输入框底部栏：点一下列出所有已配置供应商的全部模型
+    // 模型切换在输入框底部栏 cz-context-slot：点一下列出所有已配置供应商的全部模型
     id: 'model',
-    selectors: ['.cz-foot [title="请选择模型"]', '.topbar-model', '.badge'],
+    selectors: ['.cz-foot .cz-context-slot .cz-btn', '.cz-context-slot', '.cz-foot'],
     placement: 'top',
     route: 'chat',
   },
@@ -115,7 +117,7 @@ const STEPS: TourStep[] = [
   },
   {
     id: 'environment',
-    selectors: ['#tour-environment', '.settings-env'],
+    selectors: ['.env-root', '.settings-nav-item[data-section="env"]', '.rail-item[data-route="settings"]'],
     placement: 'left',
     route: 'settings',
   },
@@ -127,9 +129,9 @@ const STEPS: TourStep[] = [
     route: 'chat',
   },
   {
-    // 协作开关现在住在输入框底部栏（2026-09-20 从选项菜单拎出来）
+    // 协作开关现在住在输入框底部栏（2026-09-20 从选项菜单拎出来；2026-09-26 定名多智能体协作）
     id: 'collaboration',
-    selectors: ['.cz-foot [aria-label="多智能体协作"]', '#tour-collab', '.topbar-actions > button.topbar-action'],
+    selectors: ['.cz-foot [aria-label="多智能体协作"]', '.cz-foot .cz-slot:nth-of-type(2) .cz-btn'],
     placement: 'top',
     route: 'chat',
   },
@@ -154,23 +156,23 @@ const GUIDED: Record<Exclude<TourId, 'quickStart'>, TourStep[]> = {
     {
       id: 'trigger',
       i18nBase: 'onboarding.guided.modes.steps.trigger',
-      // 模式下拉在 Composer 顶部栏 `.cz-bar` 的第 2 个槽（第 1 个是项目、第 3 个是模板）
-      selectors: ['.cz-bar > .cz-slot:nth-of-type(2)', '.cz-bar', '#tour-composer'],
+      // 决策模式在 Composer 底部栏 cz-foot 的第 3 个槽（加号 / 协作 / 决策）
+      selectors: ['.cz-foot .cz-slot:nth-of-type(3) .cz-btn', '.cz-foot', '#tour-composer'],
       placement: 'top',
       route: 'chat',
     },
     {
       id: 'options',
       i18nBase: 'onboarding.guided.modes.steps.options',
-      // 下拉展开后是 `.cz-pop-item`；未展开时退化到整条顶部栏
-      selectors: ['.cz-bar > .cz-slot:nth-of-type(2) .cz-pop-item', '.cz-bar', '#tour-composer'],
+      // 下拉展开后是 `.cz-pop-item`；未展开时退化到决策模式按钮
+      selectors: ['.cz-foot .cz-slot:nth-of-type(3) .cz-pop-item', '.cz-foot .cz-slot:nth-of-type(3) .cz-btn', '#tour-composer'],
       placement: 'top',
       route: 'chat',
     },
     {
       id: 'selected',
       i18nBase: 'onboarding.guided.modes.steps.selected',
-      selectors: ['#tour-composer', '.cz-bar'],
+      selectors: ['#tour-composer', '.cz-foot'],
       placement: 'top',
       route: 'chat',
     },
@@ -179,8 +181,8 @@ const GUIDED: Record<Exclude<TourId, 'quickStart'>, TourStep[]> = {
     {
       id: 'library',
       i18nBase: 'onboarding.guided.templates.steps.library',
-      // 论文模板在「扩展 → 模板」tab（.ext-nav 的第 2 个按钮，见 ExtensionsPage 的 SECTIONS）
-      selectors: ['.ext-nav button:nth-of-type(2)', '.ext-nav'],
+      // 论文模板在「扩展 → 模板」tab（.ext-nav 的第 2 个导航项）
+      selectors: ['.ext-nav .ext-nav-item:nth-of-type(2)', '.ext-nav'],
       placement: 'right',
       go: { route: 'extensions' },
     },
@@ -201,8 +203,8 @@ const GUIDED: Record<Exclude<TourId, 'quickStart'>, TourStep[]> = {
     {
       id: 'composer',
       i18nBase: 'onboarding.guided.templates.steps.composer',
-      // 模板落在顶部栏第 3 个槽（1 项目 / 2 模式 / 3 模板）
-      selectors: ['.cz-bar > .cz-slot:nth-of-type(3)', '.cz-bar', '#tour-composer'],
+      // 模板入口现在在「比赛信息」按钮里（cz-bar 右侧），不再是独立的顶部栏槽
+      selectors: ['.cz-bar .cz-btn.ghost', '.cz-bar', '#tour-composer'],
       placement: 'top',
       route: 'chat',
     },
@@ -257,17 +259,17 @@ const GUIDED: Record<Exclude<TourId, 'quickStart'>, TourStep[]> = {
     {
       id: 'entry',
       i18nBase: 'onboarding.guided.collaboration.steps.entry',
-      selectors: ['.topbar-actions > button.topbar-action'],
-      placement: 'bottom',
+      // 多智能体协作开关在 Composer 底部栏 cz-foot 第 2 个槽
+      selectors: ['.cz-foot [aria-label="多智能体协作"]', '.cz-foot .cz-slot:nth-of-type(2) .cz-btn'],
+      placement: 'top',
       route: 'chat',
     },
     {
       id: 'panel',
       i18nBase: 'onboarding.guided.collaboration.steps.panel',
-      // 这一步要求用户先点了上一步高亮的按钮（面板才会出现）。
-      // 没点开就没有目标 → 自动跳过，而不是指向一个不存在的东西。
-      selectors: ['.collab-modal'],
-      placement: 'bottom',
+      // 协作面板由主助手在对话中触发；这里指向协作开关本身
+      selectors: ['.cz-foot [aria-label="多智能体协作"]', '.cz-foot .cz-slot:nth-of-type(2) .cz-btn'],
+      placement: 'top',
       route: 'chat',
     },
   ],
@@ -275,7 +277,8 @@ const GUIDED: Record<Exclude<TourId, 'quickStart'>, TourStep[]> = {
     {
       id: 'entry',
       i18nBase: 'onboarding.guided.paperSharing.steps.entry',
-      selectors: ['.topbar-actions > button.topbar-action:nth-of-type(2)'],
+      // 上传优秀论文入口在 ChatQuickBar 的「更多任务操作」菜单里
+      selectors: ['.chat-quickbar-btn[aria-label="更多任务操作"]', '.chat-quickbar'],
       placement: 'bottom',
       route: 'chat',
     },

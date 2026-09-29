@@ -38,9 +38,12 @@ const ROW_GAP = 22;
 const LEVEL_GAP = 52;
 const MARGIN_X = 30;
 const MARGIN_Y = 18;
-// 四列能让常见的 4~8 个成员保持接近黄金比例；超过四列时向下分行，
-// 避免演示画布被横向拉长、节点文字被压缩到看不清。
-const MAX_COLUMNS = 4;
+// 三列优先让层级图保持接近舒适的纵横比例；同一层超过三位时向下分行，
+// 避免中屏演示被横向拉长，导致“适应画布”后节点文字缩得太小。
+const MAX_COLUMNS = 3;
+// 极宽的一层如果只有最后一两个节点单独成行，会让图显得过高；
+// 七位以上才允许第四列，兼顾大屏的纵横比例和中屏的可读性。
+const WIDE_LEVEL_THRESHOLD = 7;
 
 interface LayoutItem {
   id: string;
@@ -143,8 +146,9 @@ export function layoutWorkflow(run: WorkflowRun, compact: boolean): { nodes: Flo
   let contentWidth = ROOT_WIDTH;
   for (let depth = 0; depth <= Math.max(...levels.keys()); depth++) {
     const level = levels.get(depth) ?? [];
-    for (let start = 0; start < level.length; start += MAX_COLUMNS) {
-      const rowItems = level.slice(start, start + MAX_COLUMNS);
+    const columns = level.length >= WIDE_LEVEL_THRESHOLD ? MAX_COLUMNS + 1 : MAX_COLUMNS;
+    for (let start = 0; start < level.length; start += columns) {
+      const rowItems = level.slice(start, start + columns);
       const width = rowItems.reduce((sum, item) => sum + dimensions(item)[0], 0) + Math.max(0, rowItems.length - 1) * COLUMN_GAP;
       const height = Math.max(...rowItems.map(item => dimensions(item)[1]));
       rows.push({ items: rowItems, width, height, y });

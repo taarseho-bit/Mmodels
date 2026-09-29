@@ -15,14 +15,19 @@ import { join } from 'node:path';
 import {
   IPC,
   type AccountAiQuota,
+  type AccountFeedbackResult,
   type AccountPlan,
   type AccountPointRewardKind,
   type AccountPointsEarnResult,
   type AccountStatusInfo,
   type AccountEntitlementInfo,
+  type AccountEntitlementRequest,
+  type AccountPointWallet,
   type EntitlementReason,
   type MembershipFeature,
 } from '@shared/types';
+import { isPaidVip, isTrialActive, localFeatureAccess, pointsBalanceOf } from '@shared/membership';
+import { CHAT_POINT_COSTS } from '@shared/types';
 import { safeWrap } from './index';
 import { isLicenseRequired } from '../security/license-gate';
 
@@ -32,8 +37,16 @@ interface LocalAccount {
   expiresAt: number;
   plan?: AccountPlan;
   trialDaysLeft?: number;
+  trialHoursLeft?: number;
+  trialExpiresAt?: number;
+  trialStartedAt?: number;
   trialActive?: boolean;
   points?: number;
+  pointsBalance?: number;
+  pointsPerChat?: number;
+  pointWallet?: AccountPointWallet;
+  inviteCode?: string;
+  checkedIn?: boolean;
   aiQuota?: AccountAiQuota;
   checkedAt?: number;
 }
@@ -46,8 +59,16 @@ interface StoredAccount {
   expiresAt?: number;
   plan?: AccountPlan;
   trialDaysLeft?: number;
+  trialHoursLeft?: number;
+  trialExpiresAt?: number;
+  trialStartedAt?: number;
   trialActive?: boolean;
   points?: number;
+  pointsBalance?: number;
+  pointsPerChat?: number;
+  pointWallet?: AccountPointWallet;
+  inviteCode?: string;
+  checkedIn?: boolean;
   aiQuota?: AccountAiQuota;
   checkedAt?: number;
 }
@@ -83,6 +104,33 @@ function normalizeQuota(value: unknown): AccountAiQuota | undefined {
   };
 }
 
+function normalizePointWallet(value: unknown): AccountPointWallet | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const w = value as Record<string, unknown>;
+  const balance = finiteNonNegative(w.balance);
+  if (balance === undefined) return undefined;
+  const lastCost = finiteNonNegative(w.lastCost);
+  const checkedAt = finitePositive(w.checkedAt);
+  return {
+    balance,
+    ...(lastCost !== undefined ? { lastCost } : {}),
+    ...(typeof w.transactionId === 'string' && w.transactionId.trim()
+      ? { transactionId: w.transactionId.trim().slice(0, 128) }
+      : {}),
+    ...(checkedAt !== undefined ? { checkedAt } : {}),
+  };
+}
+
+function normalizedPoints(data: Record<string, unknown>): number | undefined {
+  const wallet = normalizePointWallet(data.pointWallet ?? data.pointsWallet ?? data.aiPoints);
+  if (wallet) return wallet.balance;
+  return finiteNonNegative(data.pointsBalance)
+    ?? finiteNonNegative(data.balancePoints)
+    ?? finiteNonNegative(data.aiPoints)
+    ?? finiteNonNegative(data.points)
+    ?? finiteNonNegative(data.credits);
+}
+
 function statusFromLocal(local: LocalAccount | null): AccountStatusInfo {
   if (!local) {
     return { loggedIn: false, username: '', expiresAt: 0, authRequired: isLicenseRequired() };
@@ -94,8 +142,16 @@ function statusFromLocal(local: LocalAccount | null): AccountStatusInfo {
     authRequired: isLicenseRequired(),
     ...(local.plan ? { plan: local.plan } : {}),
     ...(local.trialDaysLeft !== undefined ? { trialDaysLeft: local.trialDaysLeft } : {}),
-    ...(local.trialActive !== undefined ? { trialActive: local.trialActive } : {}),
+    ...(local.trialHoursLeft !== undefined ? { trialHoursLeft: local.trialHoursLeft } : {}),
+    ...(local.trialExpiresAt !== undefined ? { trialExpiresAt: local.trialExpiresAt } : {}),
+    ...(local.trialStartedAt !== undefined ? { trialStartedAt: local.trialStartedAt } : {}),
+    trialActive: isTrialActive(local),
     ...(local.points !== undefined ? { points: local.points } : {}),
+    ...(local.pointsBalance !== undefined ? { pointsBalance: local.pointsBalance } : {}),
+    ...(local.pointsPerChat !== undefined ? { pointsPerChat: local.pointsPerChat } : {}),
+    ...(local.pointWallet ? { pointWallet: local.pointWallet } : {}),
+    ...(local.inviteCode ? { inviteCode: local.inviteCode } : {}),
+    ...(local.checkedIn !== undefined ? { checkedIn: local.checkedIn } : {}),
     ...(local.aiQuota ? { aiQuota: local.aiQuota } : {}),
     ...(local.checkedAt !== undefined ? { checkedAt: local.checkedAt } : {}),
   };
@@ -125,8 +181,16 @@ function readLocal(): LocalAccount | null {
           expiresAt: Number(raw.expiresAt) || 0,
           plan: raw.plan,
           trialDaysLeft: raw.trialDaysLeft,
+          trialHoursLeft: raw.trialHoursLeft,
+          trialExpiresAt: raw.trialExpiresAt,
+          trialStartedAt: raw.trialStartedAt,
           trialActive: raw.trialActive,
           points: raw.points,
+          pointsBalance: raw.pointsBalance,
+          pointsPerChat: raw.pointsPerChat,
+          pointWallet: raw.pointWallet,
+          inviteCode: raw.inviteCode,
+          checkedIn: raw.checkedIn,
           aiQuota: raw.aiQuota,
           checkedAt: raw.checkedAt,
         });
@@ -139,8 +203,16 @@ function readLocal(): LocalAccount | null {
       expiresAt: Number(raw.expiresAt) || 0,
       plan: raw.plan === 'vip' ? 'vip' : raw.plan === 'free' ? 'free' : undefined,
       trialDaysLeft: finiteNonNegative(raw.trialDaysLeft),
+      trialHoursLeft: finiteNonNegative(raw.trialHoursLeft),
+      trialExpiresAt: finitePositive(raw.trialExpiresAt),
+      trialStartedAt: finitePositive(raw.trialStartedAt),
       trialActive: raw.trialActive === true,
       points: finiteNonNegative(raw.points),
+      pointsBalance: finiteNonNegative(raw.pointsBalance),
+      pointsPerChat: finiteNonNegative(raw.pointsPerChat),
+      pointWallet: normalizePointWallet(raw.pointWallet),
+      inviteCode: typeof raw.inviteCode === 'string' ? raw.inviteCode : undefined,
+      checkedIn: raw.checkedIn === true,
       aiQuota: normalizeQuota(raw.aiQuota),
       checkedAt: finitePositive(raw.checkedAt),
     };
@@ -159,8 +231,16 @@ function writeLocal(account: LocalAccount): void {
     expiresAt: account.expiresAt,
     ...(account.plan ? { plan: account.plan } : {}),
     ...(account.trialDaysLeft !== undefined ? { trialDaysLeft: account.trialDaysLeft } : {}),
+    ...(account.trialHoursLeft !== undefined ? { trialHoursLeft: account.trialHoursLeft } : {}),
+    ...(account.trialExpiresAt !== undefined ? { trialExpiresAt: account.trialExpiresAt } : {}),
+    ...(account.trialStartedAt !== undefined ? { trialStartedAt: account.trialStartedAt } : {}),
     ...(account.trialActive !== undefined ? { trialActive: account.trialActive } : {}),
     ...(account.points !== undefined ? { points: account.points } : {}),
+    ...(account.pointsBalance !== undefined ? { pointsBalance: account.pointsBalance } : {}),
+    ...(account.pointsPerChat !== undefined ? { pointsPerChat: account.pointsPerChat } : {}),
+    ...(account.pointWallet ? { pointWallet: account.pointWallet } : {}),
+    ...(account.inviteCode ? { inviteCode: account.inviteCode } : {}),
+    ...(account.checkedIn !== undefined ? { checkedIn: account.checkedIn } : {}),
     ...(account.aiQuota ? { aiQuota: account.aiQuota } : {}),
     ...(account.checkedAt !== undefined ? { checkedAt: account.checkedAt } : {}),
   };
@@ -222,9 +302,9 @@ async function callApi(path: string, body: unknown, headers: Record<string, stri
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
     });
-    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; allowed?: boolean };
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; reason?: string; code?: string; allowed?: boolean };
     if (!res.ok || data.ok === false) {
-      throw new Error(String(data.error || `服务返回 ${res.status}`));
+      throw new Error(String(data.error || data.reason || data.code || `服务返回 ${res.status}`));
     }
     return data;
   } catch (e) {
@@ -245,6 +325,8 @@ function statusOf(): AccountStatusInfo {
 function membershipErrorText(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error ?? '');
   if (/timeout|timed out|abort|网络|fetch|socket|dns|连接/i.test(raw)) return '会员服务暂时不可用，请检查网络后重试。';
+  if (/POINTS_INSUFFICIENT|积分不足/i.test(raw)) return '当前积分不足，请先完成基础任务或兑换卡密后继续。';
+  if (/TRIAL_MULTI_AGENT_FORBIDDEN|PAID_VIP_REQUIRED|多智能体.*试用|付费 VIP/i.test(raw)) return '多智能体协作需要卡密兑换的 VIP，24 小时体验不包含这项能力。';
   if (/401|403|登录|令牌|授权/i.test(raw)) return '登录状态已失效，请重新登录后重试。';
   if (/429|频繁|rate/i.test(raw)) return '操作过于频繁，请稍后重试。';
   return raw && !/[A-Za-z]:\\|\n|stack|at \w+\s*\(/i.test(raw) ? raw : '这次会员操作没有完成，请稍后重试。';
@@ -256,23 +338,32 @@ const MEMBERSHIP_FEATURES: readonly MembershipFeature[] = [
 ];
 
 function localEntitlement(feature: MembershipFeature, account: AccountStatusInfo): AccountEntitlementInfo {
-  if (!account.loggedIn) {
-    return { feature, allowed: false, reason: 'login-required', account };
-  }
-  const activeTrial = account.trialActive === true;
-  const activeVip = account.plan === 'vip' && account.expiresAt > Date.now();
-  const elevated = activeTrial || activeVip;
-  if (feature !== 'ai-chat' && !elevated) {
-    return { feature, allowed: false, reason: activeTrial ? 'allowed' : 'vip-required', account };
-  }
-  if (feature === 'ai-chat' && !elevated) {
+  const cost = feature === 'ai-chat' ? account.pointsPerChat ?? CHAT_POINT_COSTS.basic : 0;
+  const access = localFeatureAccess(feature, account, cost);
+  // 旧服务端/旧账号没有积分余额时，继续以旧 aiQuota 做展示和兼容预检。
+  if (feature === 'ai-chat' && !isPaidVip(account) && !isTrialActive(account)) {
     const remaining = account.aiQuota?.remaining;
-    if (typeof remaining === 'number' && remaining <= 0) {
-      return { feature, allowed: false, reason: 'ai-quota-exceeded', account, remaining: 0 };
+    if (typeof remaining === 'number' && remaining <= 0 && access.allowed) {
+      return { feature, allowed: false, reason: 'ai-quota-exceeded', account, remaining: 0, costPoints: cost };
     }
-    return { feature, allowed: true, reason: 'allowed', account, ...(remaining === undefined ? {} : { remaining }) };
+    return {
+      feature,
+      allowed: access.allowed,
+      reason: access.allowed ? 'allowed' : access.reason,
+      account,
+      ...(typeof remaining === 'number' ? { remaining } : {}),
+      ...(access.costPoints !== undefined ? { costPoints: access.costPoints } : {}),
+      ...(access.balancePoints !== undefined ? { balancePoints: access.balancePoints } : {}),
+    };
   }
-  return { feature, allowed: true, reason: 'allowed', account };
+  return {
+    feature,
+    allowed: access.allowed,
+    reason: access.reason,
+    account,
+    ...(access.costPoints !== undefined ? { costPoints: access.costPoints } : {}),
+    ...(access.balancePoints !== undefined ? { balancePoints: access.balancePoints } : {}),
+  };
 }
 
 function entitlementReason(code: unknown, body: Record<string, unknown>): EntitlementReason {
@@ -280,12 +371,15 @@ function entitlementReason(code: unknown, body: Record<string, unknown>): Entitl
   switch (String(code || body.code || '')) {
     case 'LOGIN_REQUIRED': return 'login-required';
     case 'AI_QUOTA_EXCEEDED': return 'ai-quota-exceeded';
+    case 'POINTS_INSUFFICIENT': return 'points-insufficient';
+    case 'PAID_VIP_REQUIRED':
+    case 'TRIAL_MULTI_AGENT_FORBIDDEN': return 'paid-vip-required';
     case 'FEATURE_VIP_REQUIRED': return 'vip-required';
     default: return 'service-unavailable';
   }
 }
 
-async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount): Promise<AccountEntitlementInfo> {
+async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount, pointsCost = 0): Promise<AccountEntitlementInfo> {
   const token = tokenFromDisk();
   if (!token) return { feature, allowed: false, reason: 'login-required', account: statusFromLocal(local) };
   const controller = new AbortController();
@@ -301,7 +395,14 @@ async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount
         'x-mmodels-device': deviceId(),
         'x-mmodels-feature': feature,
       },
-      body: JSON.stringify({ app: 'mmodels-desktop', version: app.getVersion(), deviceId: deviceId(), feature, consume: false }),
+        body: JSON.stringify({
+          app: 'mmodels-desktop',
+          version: app.getVersion(),
+          deviceId: deviceId(),
+          feature,
+          consume: false,
+          ...(pointsCost > 0 ? { pointsCost } : {}),
+        }),
     });
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     const account = statusFromRemote(local, body);
@@ -312,8 +413,14 @@ async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount
           expiresAt: account.expiresAt,
           plan: account.plan,
           trialDaysLeft: account.trialDaysLeft,
+          trialHoursLeft: account.trialHoursLeft,
+          trialExpiresAt: account.trialExpiresAt,
+          trialStartedAt: account.trialStartedAt,
           trialActive: account.trialActive,
           points: account.points,
+          pointsBalance: account.pointsBalance,
+          pointsPerChat: account.pointsPerChat,
+          pointWallet: account.pointWallet,
           aiQuota: account.aiQuota,
           checkedAt: account.checkedAt,
         });
@@ -321,12 +428,16 @@ async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount
     }
     const allowed = response.ok && body.allowed === true;
     const remaining = account.aiQuota?.remaining;
+    const balancePoints = pointsBalanceOf(account);
+    const costPoints = finiteNonNegative(body.costPoints ?? body.pointsCost) ?? (pointsCost > 0 ? pointsCost : undefined);
     return {
       feature,
       allowed,
       reason: allowed ? 'allowed' : entitlementReason(body.code, body),
       account,
       ...(typeof remaining === 'number' ? { remaining } : {}),
+      ...(costPoints !== undefined ? { costPoints } : {}),
+      ...(balancePoints !== undefined ? { balancePoints } : {}),
     };
   } catch {
     return { feature, allowed: false, reason: 'service-unavailable', account: statusFromLocal(local) };
@@ -335,13 +446,14 @@ async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount
   }
 }
 
-async function entitlementOf(feature: MembershipFeature): Promise<AccountEntitlementInfo> {
+async function entitlementOf(feature: MembershipFeature, pointsCost = 0): Promise<AccountEntitlementInfo> {
   const local = readLocal();
   if (!local) return { feature, allowed: false, reason: 'login-required', account: statusOf() };
   if (!isLicenseRequired() && !process.env.MM_LICENSE_API?.trim()) {
-    return localEntitlement(feature, statusFromLocal(local));
+    const account = statusFromLocal(local);
+    return { ...localEntitlement(feature, account), ...(pointsCost > 0 ? { costPoints: pointsCost } : {}) };
   }
-  return remoteEntitlement(feature, local);
+  return remoteEntitlement(feature, local, pointsCost);
 }
 
 function tokenFromDisk(): string {
@@ -354,8 +466,15 @@ function tokenFromDisk(): string {
 
 function statusFromRemote(local: LocalAccount, data: Record<string, unknown>): AccountStatusInfo {
   const quota = normalizeQuota(data.aiQuota);
+  const pointWallet = normalizePointWallet(data.pointWallet ?? data.pointsWallet ?? data.aiPoints);
+  const balance = normalizedPoints(data);
   const plan = data.plan === 'vip' ? 'vip' : 'free';
   const expiresAt = Number(data.expiresAt) || local.expiresAt;
+  const trialExpiresAt = finitePositive(data.trialExpiresAt);
+  const trialActive = trialExpiresAt !== undefined && trialExpiresAt > Date.now() && plan !== 'vip';
+  const trialHoursLeft = finiteNonNegative(data.trialHoursLeft) ?? (
+    trialExpiresAt !== undefined ? Math.max(0, Math.ceil((trialExpiresAt - Date.now()) / 3_600_000)) : undefined
+  );
   return {
     loggedIn: true,
     username: local.username,
@@ -363,8 +482,17 @@ function statusFromRemote(local: LocalAccount, data: Record<string, unknown>): A
     authRequired: isLicenseRequired(),
     plan,
     trialDaysLeft: finiteNonNegative(data.trialDaysLeft) ?? 0,
-    trialActive: data.trialActive === true,
-    points: finiteNonNegative(data.points) ?? 0,
+    ...(trialHoursLeft !== undefined ? { trialHoursLeft } : {}),
+    ...(trialExpiresAt !== undefined ? { trialExpiresAt } : {}),
+    ...(finitePositive(data.trialStartedAt) !== undefined ? { trialStartedAt: finitePositive(data.trialStartedAt) } : {}),
+    trialActive,
+    points: balance ?? 0,
+    ...(balance !== undefined ? { pointsBalance: balance } : {}),
+    ...(finiteNonNegative(data.pointsPerChat ?? data.defaultPointCost ?? data.pointCost ?? data.pointsCost) !== undefined
+      ? { pointsPerChat: finiteNonNegative(data.pointsPerChat ?? data.defaultPointCost ?? data.pointCost ?? data.pointsCost) } : {}),
+    ...(pointWallet ? { pointWallet } : {}),
+    inviteCode: typeof data.inviteCode === 'string' ? data.inviteCode : local.inviteCode,
+    checkedIn: data.checkedIn === true,
     ...(quota ? { aiQuota: quota } : {}),
     checkedAt: Date.now(),
   };
@@ -386,8 +514,16 @@ async function refreshRemoteStatus(local: LocalAccount): Promise<AccountStatusIn
     expiresAt: next.expiresAt,
     plan: next.plan,
     trialDaysLeft: next.trialDaysLeft,
+    trialHoursLeft: next.trialHoursLeft,
+    trialExpiresAt: next.trialExpiresAt,
+    trialStartedAt: next.trialStartedAt,
     trialActive: next.trialActive,
     points: next.points,
+    pointsBalance: next.pointsBalance,
+    pointsPerChat: next.pointsPerChat,
+    pointWallet: next.pointWallet,
+    inviteCode: next.inviteCode,
+    checkedIn: next.checkedIn,
     aiQuota: next.aiQuota,
     checkedAt: next.checkedAt,
   });
@@ -418,8 +554,16 @@ function persistAuth(username: string, password: string, data: Record<string, un
       expiresAt: exp,
       plan: data.plan === 'vip' ? 'vip' : data.plan === 'free' ? 'free' : undefined,
       trialDaysLeft: finiteNonNegative(data.trialDaysLeft),
+      trialHoursLeft: finiteNonNegative(data.trialHoursLeft),
+      trialExpiresAt: finitePositive(data.trialExpiresAt),
+      trialStartedAt: finitePositive(data.trialStartedAt),
       trialActive: data.trialActive === true,
-      points: finiteNonNegative(data.points),
+      points: normalizedPoints(data),
+      pointsBalance: normalizedPoints(data),
+      pointsPerChat: finiteNonNegative(data.pointsPerChat ?? data.defaultPointCost ?? data.pointCost ?? data.pointsCost),
+      pointWallet: normalizePointWallet(data.pointWallet ?? data.pointsWallet ?? data.aiPoints),
+      inviteCode: typeof data.inviteCode === 'string' && data.inviteCode ? data.inviteCode : undefined,
+      checkedIn: data.checkedIn === true ? true : data.checkedIn === false ? false : undefined,
       aiQuota: normalizeQuota(data.aiQuota),
       checkedAt: Date.now(),
     };
@@ -448,8 +592,16 @@ function persistAuth(username: string, password: string, data: Record<string, un
     expiresAt: exp,
     plan: data.plan === 'vip' ? 'vip' : 'free',
     trialDaysLeft: finiteNonNegative(data.trialDaysLeft) ?? 0,
+    trialHoursLeft: finiteNonNegative(data.trialHoursLeft),
+    trialExpiresAt: finitePositive(data.trialExpiresAt),
+    trialStartedAt: finitePositive(data.trialStartedAt),
     trialActive: data.trialActive === true,
-    points: finiteNonNegative(data.points) ?? 0,
+    points: normalizedPoints(data) ?? 0,
+    pointsBalance: normalizedPoints(data) ?? 0,
+    pointsPerChat: finiteNonNegative(data.pointsPerChat ?? data.defaultPointCost ?? data.pointCost ?? data.pointsCost),
+    pointWallet: normalizePointWallet(data.pointWallet ?? data.pointsWallet ?? data.aiPoints),
+    inviteCode: typeof data.inviteCode === 'string' && data.inviteCode ? data.inviteCode : undefined,
+    checkedIn: data.checkedIn === true,
     aiQuota: normalizeQuota(data.aiQuota),
     checkedAt: Date.now(),
   };
@@ -468,26 +620,32 @@ export function registerAccountHandlers(): void {
 
   ipcMain.handle(
     IPC.ACCOUNT_ENTITLEMENT,
-    safeWrap(async (_e, featureArg: MembershipFeature): Promise<AccountEntitlementInfo> => {
+    safeWrap(async (_e, request: MembershipFeature | AccountEntitlementRequest): Promise<AccountEntitlementInfo> => {
+      const featureArg = typeof request === 'object' && request !== null ? request.feature : request;
+      const pointsCost = typeof request === 'object' && request !== null
+        ? finiteNonNegative(request.pointsCost) ?? 0
+        : 0;
       const feature = String(featureArg || '').trim() as MembershipFeature;
       if (!MEMBERSHIP_FEATURES.includes(feature)) {
         throw new Error('功能标识不合法');
       }
-      return entitlementOf(feature);
+      return entitlementOf(feature, pointsCost);
     }, '查询会员权益'),
   );
 
   ipcMain.handle(
     IPC.ACCOUNT_REGISTER,
-    safeWrap(async (_e, args: { username?: string; password?: string; email?: string; emailCode?: string; code?: string }): Promise<AccountStatusInfo> => {
+    safeWrap(async (_e, args: { username?: string; password?: string; email?: string; emailCode?: string; code?: string; inviteCode?: string }): Promise<AccountStatusInfo> => {
       assertSecureStorage();
       const username = String(args?.username || '').trim();
       const password = String(args?.password || '');
       const email = String(args?.email || '').trim().toLowerCase();
       const emailCode = String(args?.emailCode || '').trim();
       const code = String(args?.code || '').trim().toUpperCase();
+      const inviteCode = String(args?.inviteCode || '').trim().toUpperCase();
       const data = await callApi('/api/auth/register', {
         username, password, email, emailCode, deviceId: deviceId(), code: code || undefined,
+        inviteCode: /^MM-[A-Z2-9]{6}$/.test(inviteCode) ? inviteCode : undefined,
       });
       return persistAuth(username, password, data);
     }, '注册账号'),
@@ -519,7 +677,10 @@ export function registerAccountHandlers(): void {
       const username = String(args?.username || '').trim();
       const password = String(args?.password || '');
       const data = await callApi('/api/auth/login', { username, password, deviceId: deviceId() });
-      return persistAuth(username, password, data);
+      // 允许用绑定邮箱登录：服务端回传真实用户名，本地按真实用户名落盘，
+      // 否则后续卡密兑换 / 签到等接口按邮箱查不到账号。
+      const name = typeof data.username === 'string' && data.username.trim() ? data.username.trim() : username;
+      return persistAuth(name, password, data);
     }, '登录账号'),
   );
 
@@ -592,8 +753,43 @@ export function registerAccountHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC.ACCOUNT_FEEDBACK,
+    safeWrap(async (_e, args: { text?: string; contact?: string }): Promise<AccountFeedbackResult> => {
+      assertSecureStorage();
+      const local = readLocal();
+      if (!local) throw new Error('请先注册或登录账号');
+      const token = tokenFromDisk();
+      if (!token) throw new Error('登录状态已失效，请重新登录');
+      const text = String(args?.text || '').trim();
+      if (text.length < 8) throw new Error('反馈内容太短，请至少写 8 个字');
+      const data = await callApi('/api/account/feedback', {
+        text: text.slice(0, 2000),
+        contact: String(args?.contact || '').slice(0, 120),
+        version: app.getVersion(),
+        platform: `${process.platform} ${process.arch}`,
+      }, {
+        authorization: `Bearer ${token}`,
+        'x-mmodels-device': deviceId(),
+      });
+      const status = persistAuth(local.username, local.password, { ...data, token });
+      return { status, awarded: finiteNonNegative(data.awarded) ?? 0 };
+    }, '提交反馈'),
+  );
+
+  ipcMain.handle(
     IPC.ACCOUNT_LOGOUT,
-    safeWrap((): AccountStatusInfo => {
+    safeWrap(async (): Promise<AccountStatusInfo> => {
+      // 先请服务端吊销令牌（离线或服务不可用时忽略），再清本地凭证。
+      // 只删本地文件的话，令牌一旦泄漏，服务端仍会认它。
+      try {
+        const token = tokenFromDisk();
+        if (token) {
+          await callApi('/api/account/logout', {}, {
+            authorization: `Bearer ${token}`,
+            'x-mmodels-device': deviceId(),
+          });
+        }
+      } catch { /* 退出登录不能被网络问题挡住 */ }
       try { rmSync(accountFile(), { force: true }); } catch { /* 忽略 */ }
       try { rmSync(tokenFile(), { force: true }); } catch { /* 忽略 */ }
       return { loggedIn: false, username: '', expiresAt: 0 };

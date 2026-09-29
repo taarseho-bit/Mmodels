@@ -27,6 +27,7 @@ import {
   type ApprovalRequest,
   type AskUserRequest,
   type ChatMessage,
+  type ChatPointCostKind,
   type InflightTurn,
   type SessionMeta,
   type StreamEvent,
@@ -55,9 +56,10 @@ import { resolveResourcesRoot } from '../resources';
 import { collaborationPolicyFor, collaborationPolicyPrompt, DEFAULT_MAX_PARALLEL_AGENTS, skillRouteDecision } from '../agent/orchestration-policy';
 import { modelingAgentRouteForPrompt, modelingAgentsForRoute } from '../agent/modeling-agents';
 import { chooseModelRoute } from '../../shared/model-pool';
+import { pointCostForTurn } from '../../shared/membership';
 
 type SecurityEntitlementModule = {
-  assertAiEntitlement?: (feature?: string, requestId?: string) => Promise<void>;
+  assertAiEntitlement?: (feature?: string, requestId?: string, pointsCost?: number, chatMode?: ChatPointCostKind) => Promise<void>;
 };
 
 let securityEntitlement: SecurityEntitlementModule | null | undefined;
@@ -66,7 +68,7 @@ let securityEntitlement: SecurityEntitlementModule | null | undefined;
  * 商业版授权逻辑由反篡改模块统一编译进 `_security.jsc`，避免把授权闸门
  * 的实现留在主业务 bundle。开发态没有字节码文件，保持本地 API 行为不变。
  */
-export async function assertPackagedAiEntitlement(feature = 'ai-chat', requestId?: string): Promise<void> {
+export async function assertPackagedAiEntitlement(feature = 'ai-chat', requestId?: string, pointsCost?: number, chatMode?: ChatPointCostKind): Promise<void> {
   if (!app.isPackaged) return;
   if (securityEntitlement === undefined) {
     try {
@@ -79,27 +81,37 @@ export async function assertPackagedAiEntitlement(feature = 'ai-chat', requestId
   if (!securityEntitlement?.assertAiEntitlement) {
     throw new Error('授权校验模块不可用，请重新安装后重试。');
   }
-  await securityEntitlement.assertAiEntitlement(feature, requestId);
+  await securityEntitlement.assertAiEntitlement(feature, requestId, pointsCost, chatMode);
 }
 
-function membershipFeatureForTurn(text: string): { feature: string; consumesQuota: boolean } {
+export function membershipFeatureForTurn(text: string): { feature: string; consumesQuota: boolean; pointsCost: number; chatMode?: ChatPointCostKind } {
   const settings = getSettings();
   const normalized = text.toLowerCase();
   const collaboration = settings.multiAgentEnabled !== false && Boolean(multiAgentTriggerForPrompt(text));
-  if (collaboration) return { feature: 'multi-agent', consumesQuota: false };
+  if (collaboration) return { feature: 'multi-agent', consumesQuota: false, pointsCost: 0 };
+  // 模型本身支持 1M 并不代表每一轮普通对话都在使用大上下文。
+  // 以前按供应商的容量配置直接拦截，会把 deepseek-flash 等模型的所有
+  // 基础对话误判为会员能力。只有用户明确提出长上下文/超长材料处理时才检查。
+  if (/百万上下文|超长上下文|大上下文|长文档|整本论文|全量附件|1\s*m\s*(?:token)?|1000\s*k\s*(?:token)?|1000000\s*(?:token)?/i.test(normalized)) {
+    return { feature: 'large-context', consumesQuota: false, pointsCost: 0 };
+  }
   // 成品导出与发布属于会员权益。把判断放在会话入口，确保 Agent 后续通过
   // 终端生成 PDF/Word/发布链接前已经完成服务端校验，同时不影响本地项目备份。
-  if (/(导出|发布|提交).*(pdf|word|latex|论文|成品)|(?:pdf|word|latex|论文|成品).*(导出|发布|提交)/i.test(normalized)) {
-    return { feature: 'export', consumesQuota: false };
+  if (/(导出|发布|提交|分享|下载).*(pdf|word|latex|论文|成品)|(?:pdf|word|latex|论文|成品).*(导出|发布|提交|分享|下载)/i.test(normalized)) {
+    return { feature: 'export', consumesQuota: false, pointsCost: 0 };
   }
-  if (settings.modelingQualityMode === 'strict') return { feature: 'deep-modeling', consumesQuota: false };
-  if (settings.composerMode === 'figure' && /高级|多图|排版|高清|矢量|论文图/.test(normalized)) {
-    return { feature: 'advanced-figures', consumesQuota: false };
+  if (settings.modelingQualityMode === 'strict') return { feature: 'deep-modeling', consumesQuota: false, pointsCost: 0 };
+  if (/高级图表|多图排版|高清矢量|出版级图|复杂图表|高级绘图/.test(normalized)) {
+    return { feature: 'advanced-figures', consumesQuota: false, pointsCost: 0 };
   }
-  if (settings.composerMode === 'paper' && /完整论文|全文|写成论文|投稿|论文初稿|论文成稿/.test(normalized)) {
-    return { feature: 'full-paper', consumesQuota: false };
-  }
-  return { feature: 'ai-chat', consumesQuota: true };
+  // 基础模式允许免费用户完成完整论文；最终导出、严格核验和多智能体
+  // 仍由上面的会员能力单独拦截。论文轮次只按较高的积分成本结算。
+  const cost = pointCostForTurn({
+    paper: settings.composerMode === 'paper' || /论文|投稿|写作/.test(normalized),
+    review: settings.composerMode === 'review' || /评阅|审稿|核验/.test(normalized),
+    figure: settings.composerMode === 'figure',
+  });
+  return { feature: 'ai-chat', consumesQuota: true, pointsCost: cost.cost, chatMode: cost.kind };
 }
 
 /** 全局会话注册表（整个应用一份） */
@@ -1055,7 +1067,12 @@ export function registerSessionHandlers(_ctx: IpcContext): void {
       if (!targetProject) throw new Error('会话所属项目不存在');
       if (activeTurns.has(sessionId)) throw new Error('这条对话正在运行，请先停止当前任务');
       const entitlement = membershipFeatureForTurn(text);
-      await assertPackagedAiEntitlement(entitlement.feature, entitlement.consumesQuota ? randomUUID() : undefined);
+      await assertPackagedAiEntitlement(
+        entitlement.feature,
+        entitlement.consumesQuota ? randomUUID() : undefined,
+        entitlement.pointsCost,
+        entitlement.chatMode,
+      );
       const cwd = targetProject.root;
       resolveSessionModel(targetSession);
 

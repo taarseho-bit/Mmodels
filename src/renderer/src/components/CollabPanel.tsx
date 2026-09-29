@@ -13,6 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
+  AccountStatusInfo,
   CollabEvent,
   CollabJoinError,
   CollabMember,
@@ -23,6 +24,8 @@ import type {
   ProjectMeta,
 } from '@shared/types';
 import { tx } from '../i18n';
+import { openMembership } from '../lib/membership-nav';
+import { isPaidVip } from './membership/membership-ui';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -139,6 +142,8 @@ export function CollabPanel({ open, onClose }: Props): JSX.Element | null {
   /** 房主侧「加入共享」的下拉候选（项目里的文本文件） */
   const [shareable, setShareable] = useState<string[]>([]);
   const [sharePath, setSharePath] = useState('');
+  const [account, setAccount] = useState<AccountStatusInfo | null>(null);
+  const [accountLoaded, setAccountLoaded] = useState(false);
 
   /** 编辑器的当前值镜像 —— 事件回调里要拿到最新值，不能靠闭包里的 state */
   const editingRef = useRef<EditingFile | null>(null);
@@ -163,17 +168,21 @@ export function CollabPanel({ open, onClose }: Props): JSX.Element | null {
     let alive = true;
     void (async () => {
       try {
-        const [info, proj, settings] = await Promise.all([
+        const [info, proj, settings, accountStatus] = await Promise.all([
           window.mathmodel.collab.info(),
           window.mathmodel.project.current(),
           window.mathmodel.settings.get(),
+          window.mathmodel.account.status(),
         ]);
         if (!alive) return;
         setRoom(info);
         setProject(proj);
         setName((prev) => prev || settings.profileName || '');
+        setAccount(accountStatus);
+        setAccountLoaded(true);
       } catch {
         /* 拿不到就当没开房 */
+        if (alive) setAccountLoaded(true);
       }
     })();
 
@@ -523,6 +532,19 @@ export function CollabPanel({ open, onClose }: Props): JSX.Element | null {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal panel col collab-modal" onClick={(e) => e.stopPropagation()}>
+        {accountLoaded && !isPaidVip(account) ? (
+          <div className="col collab-box" style={{ gap: 12, padding: 22, textAlign: 'center' }}>
+            <div className="collab-strong">局域网协作需要卡密 VIP</div>
+            <div className="muted collab-note">基础项目和论文流程可以继续使用；兑换卡密后即可邀请队友共同编辑和派发任务。</div>
+            <div className="row" style={{ justifyContent: 'center', gap: 8 }}>
+              <button className="btn btn-primary" type="button" onClick={() => openMembership(account?.loggedIn ? 'redeem' : 'account')}>
+                {account?.loggedIn ? '输入卡密' : '登录 / 注册'}
+              </button>
+              <button className="btn btn-ghost" type="button" onClick={onClose}>稍后再说</button>
+            </div>
+          </div>
+        ) : null}
+        {accountLoaded && !isPaidVip(account) ? null : <>
         <div className="modal-title">
           {room
             ? tx(
@@ -1005,6 +1027,7 @@ export function CollabPanel({ open, onClose }: Props): JSX.Element | null {
             </button>
           </div>
         )}
+        </>}
       </div>
     </div>
   );

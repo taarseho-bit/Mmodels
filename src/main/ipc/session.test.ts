@@ -64,7 +64,7 @@ vi.mock('../agent/bridge-registry', () => ({ bridgeRegistry: {} }));
 vi.mock('./index', () => ({ safeWrap: (fn: unknown) => fn, pushToRenderer: () => {} }));
 vi.mock('./file', () => ({ currentProjectRoot: () => null }));
 
-import { buildSystemPrompt, multiAgentTriggerForPrompt, staleTaskReminder } from './session';
+import { buildSystemPrompt, membershipFeatureForTurn, multiAgentTriggerForPrompt, staleTaskReminder } from './session';
 
 afterEach(() => {
   board.systemPrompt = undefined;
@@ -286,5 +286,28 @@ describe('工作流协作优化（2026-09-19）', () => {
       prepare: () => ({ all: () => [{ blocks: '{not-json' }] }),
     } as unknown as never;
     expect(staleTaskReminder(broken, 's1')).toBeNull();
+  });
+});
+
+describe('会员权益与积分成本入口', () => {
+  it('基础论文不再被误判为 VIP 专属，按论文档位扣积分', () => {
+    board.multiAgentEnabled = false;
+    const result = membershipFeatureForTurn('/write-paper 请把当前题目写成完整论文');
+    expect(result.feature).toBe('ai-chat');
+    expect(result.consumesQuota).toBe(true);
+    expect(result.pointsCost).toBe(30);
+  });
+
+  it('开启协作时进入付费多智能体权益，试用由服务端拒绝', () => {
+    board.multiAgentEnabled = true;
+    const result = membershipFeatureForTurn('请启动多智能体协作完成整篇论文');
+    expect(result.feature).toBe('multi-agent');
+    expect(result.consumesQuota).toBe(false);
+    expect(result.pointsCost).toBe(0);
+  });
+
+  it('普通问答使用最低积分成本', () => {
+    board.multiAgentEnabled = false;
+    expect(membershipFeatureForTurn('解释一下线性规划').pointsCost).toBe(10);
   });
 });

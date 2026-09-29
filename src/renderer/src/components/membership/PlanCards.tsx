@@ -3,6 +3,7 @@ export interface MembershipPlan {
   title: string;
   price: string;
   period: string;
+  days: number;
   features: string[];
   featured?: boolean;
   badge?: string;
@@ -11,26 +12,29 @@ export interface MembershipPlan {
 export const MEMBERSHIP_PLANS: MembershipPlan[] = [
   {
     id: 'trial',
-    title: '体验卡',
+    title: '7 天冲刺卡',
     price: '¥9.9',
     period: '7 天',
-    features: ['全功能试用', '不限 AI 次数', '多智能体协作'],
+    days: 7,
+    features: ['卡密激活后立即生效', '对话积分不限量', '多智能体协作与工作流'],
   },
   {
     id: 'lifetime',
-    title: '长期卡',
+    title: '长期卡 · 3650 天',
     price: '¥99',
     period: '3650 天',
-    badge: '最受欢迎',
+    days: 3650,
+    badge: '早期长期权益',
     featured: true,
-    features: ['全部高级 AI 能力', '长期使用 · 3650 天', '未来新功能优先使用'],
+    features: ['卡密激活后长期可用', '全部高级建模能力', '已有长期卡继续有效'],
   },
   {
     id: 'monthly',
-    title: '月卡',
+    title: '30 天备赛卡',
     price: '¥29',
     period: '30 天',
-    features: ['适合备赛周期', '不限 AI 次数', '高级图表与导出'],
+    days: 30,
+    features: ['适合一次比赛周期', '对话积分不限量', '高级图表与成品导出'],
   },
 ];
 
@@ -57,7 +61,7 @@ export function PlanCards({
           <ul className="membership-plan-list">
             {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
           </ul>
-          <span className="membership-plan-hint">购卡后获得卡密</span>
+          <span className="membership-plan-hint">选择后输入卡密激活</span>
         </button>
       ))}
     </div>

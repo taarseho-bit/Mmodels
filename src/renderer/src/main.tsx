@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { DesktopPetWindow } from './components/DesktopPetWindow';
+import { installRendererTelemetry } from './lib/telemetry';
 import './styles/theme.css';
 import './styles/skins.css';
 import './styles/layout.css';
@@ -11,6 +12,9 @@ import './styles/resizable-panels.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root 不存在');
+
+// 运行诊断上报默认开启：脚本错误 / 异步异常 / 明显卡顿自动进后台，界面不设开关。
+installRendererTelemetry();
 
 const desktopPetWindow = new URLSearchParams(window.location.search).get('window') === 'desktop-pet';
 if (desktopPetWindow) {

@@ -12,33 +12,44 @@
  *   POST /api/redeem        {username, password, code, deviceId}    卡密续期（到期日叠加）
  *   POST /api/license/check Bearer token + x-mmodels-device         授权校验与额度扣减
  *   POST /api/account/status Bearer token + x-mmodels-device        账号权益快照
+ *   POST /api/account/logout Bearer token + x-mmodels-device        退出登录（服务端吊销令牌）
  *   POST /api/account/checkin Bearer token + x-mmodels-device       每日签到
- *   POST /api/account/points-redeem Bearer token + x-mmodels-device  积分兑换会员
+ *   POST /api/account/points-redeem Bearer token + x-mmodels-device  兼容积分兑换入口（现返回中文停用提示）
  *   POST /api/account/points-earn Bearer token + x-mmodels-device    记录积分奖励事件
+ *   POST /api/account/feedback  Bearer token + x-mmodels-device      提交反馈（落库 + 首次奖励积分）
+ *   POST /api/telemetry        {kind, message, detail, version, platform}  客户端运行诊断上报（免登录）
  *
  * 邮件配置：/opt/mmodels/data/mail.json → {"host":"smtp.qq.com","port":465,"user":"...","pass":"授权码","from":"..."}
  *           未配置时 send-code 返回 503「邮件服务暂未开通」
  *
- * 管理后台（HTTP Basic Auth，凭证 /opt/mmodels/data/admin-auth）：
- *   GET  /admin                       管理页（单文件 HTML）
- *   GET  /admin/api/overview          统计 + 近7天趋势
- *   GET  /admin/api/users             用户列表（不返回密码/备注/最近IP——密码只做单向校验）
- *   POST /admin/api/users/ban         {username, banned}
- *   POST /admin/api/users/reset-pass  {username, newPassword}
- *   POST /admin/api/users/unbind      {username}   解绑设备（换机）
- *   POST /admin/api/users/extend      {username, days}   手动延期（可为负）
- *   POST /admin/api/users/note        {username, note}   客服备注
- *   GET  /admin/api/logs?limit=300    审计日志（注册/登录/兑换/校验失败/管理操作，含 IP）
- *   GET  /admin/api/cards
- *   POST /admin/api/cards/gen         {days, count}
- *   POST /admin/api/cards/revoke      {code}
- *   POST /admin/api/admin-passwd      {newPassword}      网页端改管理密码
- *   GET  /admin/api/backup            立即备份并下载 db.json.gz（每日自动备份，保留 14 份）
+ * 管理后台（HTTP Basic Auth，凭证 /opt/mmodels/data/admin-auth；路径可通过 MM_ADMIN_PATH 环境变量自定义）：
+ *   GET  /<admin-path>                 管理页（单文件 HTML）
+ *   GET  /<admin-path>/api/overview    统计 + 近7天趋势
+ *   GET  /<admin-path>/api/users       用户列表（不返回密码/备注/最近IP——密码只做单向校验）
+ *   POST /<admin-path>/api/users/ban          {username, banned}
+ *   POST /<admin-path>/api/users/reset-pass   {username, newPassword}
+ *   POST /<admin-path>/api/users/unbind       {username}   解绑设备（换机）
+ *   POST /<admin-path>/api/users/extend       {username, days}   手动延期（可为负，自动同步 VIP 状态）
+ *   POST /<admin-path>/api/users/expire       {username}   取消会员与试用（降为免费版）
+ *   POST /<admin-path>/api/users/note         {username, note}   客服备注
+ *   POST /<admin-path>/api/users/adjust-points {username, delta}  积分调整
+ *   GET  /<admin-path>/api/config            会员/积分/权益配置（与客户端同源）
+ *   GET  /<admin-path>/api/logs?limit=300      审计日志（注册/登录/兑换/校验失败/管理操作，含 IP）
+ *   GET  /<admin-path>/api/feedback            用户反馈列表
+ *   POST /<admin-path>/api/feedback/remove     {id} 删除反馈
+ *   GET  /<admin-path>/api/reports?kind=       客户端诊断上报列表
+ *   POST /<admin-path>/api/reports/clear       清空诊断上报
+ *   GET  /<admin-path>/api/cards
+ *   POST /<admin-path>/api/cards/gen          {days, count}
+ *   POST /<admin-path>/api/cards/revoke       {code}
+ *   POST /<admin-path>/api/admin-passwd        {newPassword}      网页端改管理密码
+ *   GET  /<admin-path>/api/backup              立即备份并下载 db.json.gz（每日自动备份，保留 14 份）
  *
  * CLI：
  *   gen <days> [count]        生成卡密
  *   list                      查看数据
  *   passwd <newpass>          重设管理后台密码
+ *   migrate                   补齐历史账号/卡密字段（幂等，不清空业务数据）
  */
 'use strict';
 const http = require('node:http');
@@ -53,29 +64,87 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret');
 const ADMIN_FILE = path.join(DATA_DIR, 'admin-auth');
 const ADMIN_HTML = path.join(__dirname, 'admin.html');
+// 后台管理路径可通过环境变量 MM_ADMIN_PATH 自定义（默认 admin）。
+// 部署时设为随机字符串（如 MM_ADMIN_PATH=k7m3x9q2）可隐藏后台入口，
+// 访问地址变为 https://api.mmodel.top/k7m3x9q2/
+const ADMIN_PATH = String(process.env.MM_ADMIN_PATH || 'admin').replace(/^\/+|\/+$/g, '') || 'admin';
+const ADMIN_PREFIX = '/' + ADMIN_PATH;
 const PORT = Number(process.env.MM_PORT || 80);
 const DAY_MS = 86_400_000;
-const TRIAL_DAYS = 3;
-const FREE_BASE_QUOTA = 10;
-const CHECKIN_BONUS_QUOTA = 10;
-const POINT_REWARDS = Object.freeze({ register: 50, firstProject: 30, paperExport: 20, feedback: 10, invite: 50 });
-const POINT_EXCHANGE = Object.freeze({ 1: 100, 7: 600, 30: 2000 });
+// 数据结构迁移版本。迁移只补齐缺失字段，不会覆盖已有会员、积分或卡密数据。
+const DB_SCHEMA_VERSION = 1;
+/** 新账号只开放 24 小时完整体验；已有账号若保存了旧试用结束时间则保留原时间。 */
+const TRIAL_HOURS = 24;
+const TRIAL_MS = TRIAL_HOURS * 60 * 60_000;
+const TRIAL_DAYS = 1; // 旧客户端/后台仍读取该字段，真实期限以 trialExpiresAt 为准。
+/**
+ * 免费账号统一使用“积分”而不是“次数”：每天 100 积分，普通对话每次 10 积分，
+ * 签到再加 100 积分。兼容 quota 字段和 aiQuota 返回结构继续保留，便于历史账号平滑迁移。
+ */
+const FREE_DAILY_POINTS = 100;
+const CHECKIN_BONUS_POINTS = 100;
+const CHAT_POINT_COSTS = Object.freeze({ basic: 10, paper: 30, review: 30, figure: 20, strict: 50, collaboration: 80 });
+const AI_CHAT_POINTS_COST = CHAT_POINT_COSTS.basic;
+const FREE_BASE_QUOTA = FREE_DAILY_POINTS / AI_CHAT_POINTS_COST; // 旧字段兼容：10 次
+const CHECKIN_BONUS_QUOTA = CHECKIN_BONUS_POINTS / AI_CHAT_POINTS_COST; // 旧字段兼容：10 次
+/** VIP / 试用账号签到奖励的持久积分；AI 积分统一后仍保留小额奖励。 */
+const CHECKIN_VIP_POINTS = 10;
+/** 积分只用于普通 AI 消耗；不再兑换 VIP，VIP 必须使用付费卡密。 */
+const POINT_REWARDS = Object.freeze({ register: 20, firstProject: 30, paperExport: 20, feedback: 10, invite: 50 });
+const POINT_EXCHANGE = Object.freeze({});
 const POINT_REWARD_KINDS = new Set(['firstProject', 'paperExport', 'feedback', 'invite']);
 const POINT_EVENT_RE = /^[A-Za-z0-9._:-]{1,128}$/;
-const VIP_FEATURES = new Set(['multi-agent', 'full-paper', 'deep-modeling', 'advanced-figures', 'large-context', 'export', 'cloud-collaboration', 'automation']);
+
+/**
+ * 由服务端统一决定普通对话的积分档位。
+ *
+ * 历史客户端仍可以发送 pointsCost（否则协议字段不同会导致请求失败），
+ * 但该数字只作为兼容字段，绝不能作为扣费依据；否则篡改客户端就能把论文
+ * 回合伪报成普通问答。新客户端发送 chatMode，由服务端白名单映射到固定成本。
+ * 缺少模式时按 basic 处理，保证旧客户端仍能正常使用基础对话。
+ */
+const CHAT_COST_MODES = new Set(['basic', 'paper', 'review', 'figure']);
+function normalizeChatMode(value) {
+  const mode = String(value || '').trim().toLowerCase();
+  return CHAT_COST_MODES.has(mode) ? mode : 'basic';
+}
+function requestedChatCost(_legacyValue, mode = 'basic') {
+  return CHAT_POINT_COSTS[normalizeChatMode(mode)] || AI_CHAT_POINTS_COST;
+}
+/**
+ * 客户端自报的完成事件必须限次。
+ * 事件编号只是「去重键」，无法证明动作真的发生过 —— 攻击者可以每次换一个随机
+ * 编号反复领取，按 20 积分/次、限流 30 次/小时算，一小时就能换 6 天会员。
+ * 这里按类型限制「每个自然日」和「累计」的发放条数，把刷分收益压到可接受范围。
+ */
+const POINT_EARN_CAPS = Object.freeze({
+  firstProject: { day: 1, total: 1 },
+  paperExport: { day: 3, total: 20 },
+  feedback: { day: 1, total: 1 },
+});
+/** 邀请奖励只有受邀人完成首个有效项目后才发放，且采用低额/限次规则。 */
+const INVITE_REWARD_POINTS = 50;
+const INVITE_REWARD_DAY_CAP = 3;
+const INVITE_REWARD_TOTAL_CAP = 20;
+// 基础单智能体可以完成一篇完整论文；收费边界放在协作、严格建模、高级图表、成品导出和云端能力。
+// 旧客户端仍可传入 full-paper，但服务端不再把它当作会员专属功能。
+const FREE_FEATURES = new Set(['ai-chat', 'full-paper']);
+const VIP_FEATURES = new Set(['multi-agent', 'deep-modeling', 'advanced-figures', 'large-context', 'export', 'cloud-collaboration', 'automation']);
+const PAID_ONLY_FEATURES = new Set(['multi-agent', 'cloud-collaboration', 'automation']);
 
 // ---------- 存储 ----------
 function loadDb() {
   try {
     const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     d.cards ||= {}; d.redemptions ||= {}; d.users ||= {}; d.events ||= [];
+    d.feedbacks ||= []; d.reports ||= [];
     return d;
   } catch (error) {
     // 只有首次部署时允许创建空库。权限错误、磁盘损坏或 JSON 截断必须让服务
     // 失败并保留现场，不能把空对象当成正常数据再覆盖掉全部账号和卡密。
     if (error && error.code === 'ENOENT') {
       fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
-      return { cards: {}, redemptions: {}, users: {}, events: [] };
+      return { cards: {}, redemptions: {}, users: {}, events: [], feedbacks: [], reports: [] };
     }
     throw new Error(`授权数据库读取失败：${error instanceof Error ? error.message : String(error)}`);
   }
@@ -230,7 +299,9 @@ function verifyToken(token) {
   if (typeof token !== 'string' || !token.includes('.')) return null;
   const [body, sig] = token.split('.');
   const expect = crypto.createHmac('sha256', SECRET).update(body).digest('base64url');
-  if (sig !== expect) return null;
+  const actualSig = Buffer.from(String(sig || ''), 'utf8');
+  const expectedSig = Buffer.from(expect, 'utf8');
+  if (actualSig.length !== expectedSig.length || !crypto.timingSafeEqual(actualSig, expectedSig)) return null;
   try {
     const p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
     if (!p || typeof p.username !== 'string' || typeof p.deviceId !== 'string' || typeof p.expiresAt !== 'number' || p.expiresAt <= Date.now()) return null;
@@ -407,6 +478,10 @@ function ensureUser(user) {
   if (user.plan !== 'vip' && user.plan !== 'free') user.plan = user.expiresAt > now ? 'vip' : 'free';
   if (user.plan === 'vip' && !(Number(user.expiresAt) > now)) {
     user.plan = 'free';
+    // 付费会员到期后不能重新获得尚未用完的试用期；否则短期后台延期/卡密
+    // 到期会把账号再次变成试用状态。没有历史试用字段的存量 VIP 也要保留
+    // 为“已用过试用”，避免下面的迁移逻辑凭注册时间补出一段新试用。
+    user.trialExpiresAt = Math.min(Number(user.trialExpiresAt) || now, now);
     if (!user.vipExpiredLoggedAt) {
       user.vipExpiredLoggedAt = now;
       logEvent('vip-expired', user.name, { detail: '会员已到期，账号自动回到免费额度' });
@@ -414,7 +489,8 @@ function ensureUser(user) {
   }
   if (!Number.isFinite(Number(user.trialExpiresAt))) {
     const created = Number(user.createdAt) || now;
-    user.trialExpiresAt = created + TRIAL_DAYS * DAY_MS;
+    // 只有没有任何旧试用结束时间的存量账号才套用新规则；已有账号不能被迁移过程意外缩短。
+    user.trialExpiresAt = created + TRIAL_MS;
   }
   if (Number(user.trialExpiresAt) <= now && !user.trialExpiredLoggedAt) {
     user.trialExpiredLoggedAt = now;
@@ -422,6 +498,43 @@ function ensureUser(user) {
   }
   if (!Number.isFinite(Number(user.points)) || user.points < 0) user.points = 0;
   if (!user.pointsAwards || typeof user.pointsAwards !== 'object') user.pointsAwards = {};
+  // 新积分账本：dailyRemaining 是当天可用积分，points 是历史奖励积分；
+  // 对外合并为 aiPoints.balance。旧账号按旧次数余额折算，避免升级后凭空丢额度。
+  const legacyQuota = user.quota && typeof user.quota === 'object' ? user.quota : null;
+  if (!user.aiPoints || typeof user.aiPoints !== 'object') {
+    const oldBase = Math.max(0, Number(legacyQuota?.base) || FREE_BASE_QUOTA);
+    const oldBonus = Math.max(0, Number(legacyQuota?.bonus) || 0);
+    const oldUsed = Math.max(0, Number(legacyQuota?.used) || 0);
+    const oldRemainingTurns = Math.max(0, oldBase + oldBonus - oldUsed);
+    const today = dayKey(now);
+    const legacyIsToday = legacyQuota?.date === today;
+    user.aiPoints = {
+      date: today,
+      dailyGrant: FREE_DAILY_POINTS,
+      // 过期的旧额度不应带到今天；迁移当天从新的 100 分开始，避免把昨天的
+      // 已用次数误当成今天已经消耗，也避免把旧签到奖励永久复制到新账本。
+      dailyBonus: legacyIsToday ? Math.min(CHECKIN_BONUS_POINTS, Math.max(0, oldBonus * AI_CHAT_POINTS_COST)) : 0,
+      dailyRemaining: legacyIsToday
+        ? Math.min(FREE_DAILY_POINTS + CHECKIN_BONUS_POINTS, oldRemainingTurns * AI_CHAT_POINTS_COST)
+        : FREE_DAILY_POINTS,
+      pointsPerTurn: AI_CHAT_POINTS_COST,
+      consumed: {},
+    };
+  }
+  user.aiPoints.date = typeof user.aiPoints.date === 'string' ? user.aiPoints.date : dayKey(now);
+  user.aiPoints.dailyGrant = Math.max(0, Number(user.aiPoints.dailyGrant) || FREE_DAILY_POINTS);
+  user.aiPoints.dailyBonus = Math.max(0, Number(user.aiPoints.dailyBonus) || 0);
+  user.aiPoints.dailyRemaining = Math.max(0, Number(user.aiPoints.dailyRemaining) || 0);
+  user.aiPoints.dailyRemaining = Math.min(user.aiPoints.dailyRemaining, user.aiPoints.dailyGrant + user.aiPoints.dailyBonus);
+  user.aiPoints.pointsPerTurn = Math.max(1, Number(user.aiPoints.pointsPerTurn) || AI_CHAT_POINTS_COST);
+  if (!user.aiPoints.consumed || typeof user.aiPoints.consumed !== 'object') user.aiPoints.consumed = {};
+  if (user.aiPoints.date !== dayKey(now)) {
+    user.aiPoints.date = dayKey(now);
+    user.aiPoints.dailyRemaining = user.aiPoints.dailyGrant;
+    user.aiPoints.dailyBonus = 0;
+    user.aiPoints.consumed = {};
+    user.aiPoints.lastResetAt = now;
+  }
   if (!user.quota || typeof user.quota !== 'object') user.quota = {};
   if (user.quota.date !== dayKey(now)) {
     user.quota = { date: dayKey(now), used: 0, bonus: 0, consumed: {} };
@@ -442,20 +555,62 @@ function accountExpiresAt(user) {
   return user.plan === 'vip' ? Number(user.expiresAt) || 0 : Number(user.trialExpiresAt) || 0;
 }
 
+function paidVipActive(user, now = Date.now()) {
+  return user.plan === 'vip' && Number(user.expiresAt) > now;
+}
+
+function aiPointsSnapshot(user, now = Date.now()) {
+  ensureUser(user);
+  const paidVip = paidVipActive(user, now);
+  const trial = trialActive(user, now);
+  const dailyRemaining = Math.max(0, Number(user.aiPoints.dailyRemaining) || 0);
+  const dailyGrant = Math.max(0, Number(user.aiPoints.dailyGrant) || FREE_DAILY_POINTS);
+  const dailyBonus = Math.max(0, Number(user.aiPoints.dailyBonus) || 0);
+  const rewardPoints = Math.max(0, Number(user.points) || 0);
+  const balance = dailyRemaining + rewardPoints;
+  return {
+    balance,
+    dailyGrant,
+    dailyBonus,
+    dailyRemaining,
+    rewardPoints,
+    pointsPerTurn: AI_CHAT_POINTS_COST,
+    remainingTurns: Math.floor(balance / AI_CHAT_POINTS_COST),
+    unlimited: paidVip || trial,
+    date: user.aiPoints.date,
+    checkedAt: now,
+  };
+}
+
 function accountSnapshot(user, now = Date.now()) {
   ensureUser(user);
   const activeTrial = trialActive(user, now);
-  const vip = user.plan === 'vip' && Number(user.expiresAt) > now;
-  const bonus = Number(user.quota.bonus) || 0;
-  const used = Number(user.quota.used) || 0;
-  const total = FREE_BASE_QUOTA + bonus;
+  const vip = paidVipActive(user, now);
+  const points = aiPointsSnapshot(user, now);
+  const dailyTotal = points.dailyGrant + points.dailyBonus;
+  const dailyUsed = Math.max(0, dailyTotal - points.dailyRemaining);
+  const bonus = Math.max(0, Math.floor(points.dailyBonus / AI_CHAT_POINTS_COST));
+  const used = Math.max(0, Math.floor(dailyUsed / AI_CHAT_POINTS_COST));
+  const total = Math.floor(dailyTotal / AI_CHAT_POINTS_COST);
+  const trialHoursLeft = activeTrial ? Math.max(1, Math.ceil((Number(user.trialExpiresAt) - now) / 3_600_000)) : 0;
   return {
     plan: vip ? 'vip' : 'free',
     trialActive: activeTrial,
     trialDaysLeft: activeTrial ? Math.max(1, Math.ceil((Number(user.trialExpiresAt) - now) / DAY_MS)) : 0,
+    trialHoursLeft,
+    trialExpiresAt: Number(user.trialExpiresAt) || 0,
+    paidVip: vip,
+    vipSource: vip ? (typeof user.vipSource === 'string' ? user.vipSource : 'card') : '',
     expiresAt: accountExpiresAt(user),
     points: Math.max(0, Number(user.points) || 0),
-    aiQuota: { used, base: FREE_BASE_QUOTA, bonus, total, remaining: vip || activeTrial ? 0 : Math.max(0, total - used), vip: vip || activeTrial, date: user.quota.date, checkedAt: now },
+    pointsBalance: points.balance,
+    pointsPerTurn: AI_CHAT_POINTS_COST,
+    dailyPointsRemaining: points.dailyRemaining,
+    aiPoints: points,
+    inviteCode: typeof user.inviteCode === 'string' ? user.inviteCode : '',
+    checkedIn: user.checkinDate === dayKey(now),
+    // 旧客户端仍能读取 aiQuota；新客户端请优先使用 aiPoints。
+    aiQuota: { used, base: FREE_BASE_QUOTA, bonus, total, remaining: vip || activeTrial ? 0 : points.remainingTurns, vip: vip || activeTrial, date: user.quota.date, checkedAt: now, pointsPerTurn: AI_CHAT_POINTS_COST },
   };
 }
 
@@ -476,6 +631,71 @@ function pointRewardKey(kind, eventId) {
   if (kind === 'firstProject') return 'firstProject';
   if (!POINT_EVENT_RE.test(eventId)) return null;
   return `${kind}:${eventId}`;
+}
+
+/** 统计某类奖励的发放条数（累计 / 当日）。pointsAwards 的值是发放时间戳。 */
+function pointAwardStats(user, kind) {
+  const prefix = kind === 'firstProject' ? 'firstProject' : `${kind}:`;
+  const today = dayKey();
+  let total = 0;
+  let day = 0;
+  for (const [key, at] of Object.entries(user.pointsAwards || {})) {
+    if (!key.startsWith(prefix)) continue;
+    total += 1;
+    if (dayKey(Number(at)) === today) day += 1;
+  }
+  return { total, day };
+}
+
+/**
+ * 结算邀请奖励：必须由受邀人完成首个有效项目后触发，注册本身不发放。
+ * 奖励只给邀请人，额度低且有日/累计上限，避免批量注册小号直接换会员。
+ */
+function settleInviteReward(invitedUser, ip) {
+  const inviterName = String(invitedUser?.invitedBy || '').trim();
+  if (!inviterName || invitedUser.inviteRewardGrantedAt) return { settled: false, reason: 'not-pending' };
+  const inviter = db.users[inviterName];
+  if (!inviter || inviter.banned) return { settled: false, reason: 'inviter-unavailable' };
+  ensureUser(inviter);
+  // 同一设备上的自邀请不结算。邀请关系仍保留，避免误删账号数据，
+  // 但奖励必须来自另一台设备上的真实新用户。
+  if (invitedUser.deviceId && inviter.deviceId && invitedUser.deviceId === inviter.deviceId) {
+    invitedUser.inviteStatus = 'blocked-same-device';
+    logEvent('invite-blocked', inviter.name, { ip, detail: `受邀账号 ${invitedUser.name} 与邀请人使用同一设备` });
+    return { settled: false, reason: 'same-device' };
+  }
+  const stats = pointAwardStats(inviter, 'invite');
+  if (stats.day >= INVITE_REWARD_DAY_CAP || stats.total >= INVITE_REWARD_TOTAL_CAP) {
+    invitedUser.inviteStatus = 'capped';
+    logEvent('invite-capped', inviter.name, {
+      ip,
+      detail: `邀请奖励已达上限（今日 ${stats.day}/${INVITE_REWARD_DAY_CAP}，累计 ${stats.total}/${INVITE_REWARD_TOTAL_CAP}）`,
+    });
+    return { settled: false, reason: 'capped' };
+  }
+  const key = `invite:${invitedUser.name}`;
+  if (!awardPoints(inviter, key, INVITE_REWARD_POINTS)) return { settled: false, reason: 'duplicate' };
+  invitedUser.inviteRewardGrantedAt = Date.now();
+  invitedUser.inviteStatus = 'settled';
+  const detail = `好友完成首个有效建模，邀请奖励 +${INVITE_REWARD_POINTS} 积分（${invitedUser.name}）`;
+  logEvent('points-earn', inviter.name, {
+    ip,
+    detail,
+  });
+  // 单独记录邀请结算，供后台转化/邀请统计使用；积分审计事件仍保留。
+  logEvent('invite-settled', inviter.name, {
+    ip,
+    detail,
+  });
+  return { settled: true, awarded: INVITE_REWARD_POINTS };
+}
+
+/** 定长常量时间比较，避免用 === 比较口令时泄漏长度/前缀信息。 */
+function safeEqual(a, b) {
+  const ab = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
 }
 
 function authUser(req, ip) {
@@ -503,6 +723,49 @@ function saveQuotaRequest(user, requestId, now) {
   return false;
 }
 
+/**
+ * 消耗一次普通对话的统一积分。先消耗当天积分，再消耗历史奖励积分；
+ * 这样签到积分不会跨天无限累积，而用户通过建模/反馈获得的积分仍可继续使用。
+ * requestId 是幂等键，网络重试不会重复扣分。
+ */
+function consumeAiPoints(user, requestId, now = Date.now(), _requestedCost = AI_CHAT_POINTS_COST, chatMode = 'basic') {
+  ensureUser(user);
+  const legacyConsumed = user.quota.consumed || (user.quota.consumed = {});
+  const consumed = user.aiPoints.consumed || (user.aiPoints.consumed = {});
+  const legacyDuplicate = Boolean(requestId && legacyConsumed[requestId]);
+  for (const [key, at] of Object.entries(consumed)) if (Number(at) < now - 2 * DAY_MS) delete consumed[key];
+  for (const [key, at] of Object.entries(legacyConsumed)) if (Number(at) < now - 2 * DAY_MS) delete legacyConsumed[key];
+  if (requestId && (legacyDuplicate || consumed[requestId])) {
+    const snapshot = aiPointsSnapshot(user, now);
+    return { duplicate: true, cost: 0, remaining: snapshot.balance };
+  }
+  // 重新按服务端模式派生，调用方即使传入篡改后的数字也不会改变扣费。
+  const cost = requestedChatCost(undefined, chatMode);
+  const before = aiPointsSnapshot(user, now).balance;
+  if (before < cost) return { duplicate: false, cost, remaining: before, exhausted: true };
+  const fromDaily = Math.min(Math.max(0, Number(user.aiPoints.dailyRemaining) || 0), cost);
+  const fromRewards = cost - fromDaily;
+  user.aiPoints.dailyRemaining = Math.max(0, Number(user.aiPoints.dailyRemaining) - fromDaily);
+  user.points = Math.max(0, Number(user.points) - fromRewards);
+  if (requestId) {
+    consumed[requestId] = now;
+    legacyConsumed[requestId] = now;
+  }
+  // 旧字段同步为“已用对话数”，仅供旧客户端显示，不再作为扣减依据。
+  user.quota.used = Math.max(0, Math.floor((user.aiPoints.dailyGrant + user.aiPoints.dailyBonus - user.aiPoints.dailyRemaining) / cost));
+  user.quota.bonus = Math.max(0, Math.floor(user.aiPoints.dailyBonus / cost));
+  const after = aiPointsSnapshot(user, now).balance;
+  return { duplicate: false, cost, remaining: after };
+}
+
+function aiRequestAlreadyConsumed(user, requestId, now = Date.now()) {
+  if (!requestId) return false;
+  ensureUser(user);
+  const oldAt = Number(user.quota?.consumed?.[requestId]) || 0;
+  const newAt = Number(user.aiPoints?.consumed?.[requestId]) || 0;
+  return oldAt > now - 2 * DAY_MS || newAt > now - 2 * DAY_MS;
+}
+
 function activateCard(code, deviceId, username) {
   const card = db.cards[code];
   if (!card) return { status: 404, error: '卡密不存在' };
@@ -517,6 +780,7 @@ function activateCard(code, deviceId, username) {
   card.usedAt = card.usedAt || now;
   user.expiresAt = expiresAt;
   user.plan = 'vip';
+  user.vipSource = 'card';
   ensureUser(user);
   return { expiresAt, days: card.days }; // 日志由调用方记录（register 激活不应计入 redeem 统计）
 }
@@ -539,6 +803,8 @@ function send(res, status, obj) {
     'content-type': 'application/json; charset=utf-8',
     'content-length': Buffer.byteLength(body),
     'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'same-origin',
   });
   res.end(body);
 }
@@ -562,10 +828,40 @@ function checkAdmin(req) {
   const p = supplied.slice(split + 1);
   const eu = ADMIN_AUTH.slice(0, expectedSplit);
   const ep = ADMIN_AUTH.slice(expectedSplit + 1);
-  return u === eu && p === ep;
+  return safeEqual(u, eu) && safeEqual(p, ep);
+}
+
+/**
+ * 管理后台使用 Basic Auth，但浏览器会自动带上已缓存的凭据；
+ * 仅靠 Basic Auth 仍可能被第三方页面诱导发起跨站写请求。
+ * 有来源头时只接受同一 Host；命令行/健康检查没有来源头则保持兼容。
+ */
+function adminOriginAllowed(req) {
+  const fetchSite = String(req.headers['sec-fetch-site'] || '').toLowerCase();
+  if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') return false;
+  const origin = String(req.headers.origin || '').trim();
+  if (!origin) {
+    const referer = String(req.headers.referer || '').trim();
+    if (!referer) return true;
+    try {
+      return new URL(referer).host === String(req.headers.host || '').trim();
+    } catch { return false; }
+  }
+  try {
+    return new URL(origin).host === String(req.headers.host || '').trim();
+  } catch { return false; }
 }
 
 const USERNAME_RE = /^[A-Za-z0-9_]{3,24}$/;
+/** 登录标识解析：优先用户名精确匹配，其次按绑定邮箱（忽略大小写）匹配。 */
+function findUserByLogin(identifier) {
+  const key = String(identifier || '').trim();
+  if (!key) return null;
+  if (db.users[key]) return db.users[key];
+  if (!key.includes('@')) return null;
+  const mail = key.toLowerCase();
+  return Object.values(db.users).find((u) => String(u.email || '').toLowerCase() === mail) || null;
+}
 const CARD_RE = /^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/;
 const DEVICE_RE = /^[A-Za-z0-9._:-]{8,200}$/;
 const cardLabel = (code) => `****-${String(code || '').slice(-4)}`;
@@ -579,6 +875,32 @@ async function handleRequest(req, res) {
     // ===== 公开 =====
     if (req.method === 'GET' && url === '/health') {
       return send(res, 200, { ok: true, service: 'mmodels-license', version: 4, time: Date.now() });
+    }
+
+    // 客户端运行诊断上报：错误、卡顿、启动失败等。无需登录（登录前也会出错），
+    // 只存诊断文本，不采集用户内容。默认开启，客户端不做开关。
+    if (req.method === 'POST' && url === '/api/telemetry') {
+      if (!rateAllowed(`telemetry:${ip}`, 60, 3600_000)) return send(res, 429, { ok: false, error: '上报过于频繁' });
+      const b = await readBody(req);
+      const message = String(b.message || '').trim().slice(0, 500);
+      if (!message) return send(res, 400, { ok: false, error: '上报内容为空' });
+      db = loadDb();
+      db.reports.push({
+        id: `rp-${crypto.randomBytes(6).toString('hex')}`,
+        kind: String(b.kind || 'error').slice(0, 24),
+        message,
+        detail: String(b.detail || '').slice(0, 4000),
+        version: String(b.version || '').slice(0, 32),
+        platform: String(b.platform || '').slice(0, 64),
+        device: String(b.deviceId || '').slice(0, 64),
+        username: String(b.username || '').slice(0, 24),
+        ip,
+        t: Date.now(),
+        handled: false,
+      });
+      if (db.reports.length > 5000) db.reports = db.reports.slice(-3000);
+      saveDb();
+      return send(res, 200, { ok: true });
     }
 
     if (req.method === 'POST' && url === '/api/auth/register') {
@@ -601,6 +923,9 @@ async function handleRequest(req, res) {
       if (inviteCode) {
         inviter = Object.values(db.users).find((candidate) => candidate.inviteCode === inviteCode && candidate.name !== username) || null;
         if (!inviter) return send(res, 400, { ok: false, error: '邀请标识无效，请检查后重试' });
+        if (inviter.deviceId && inviter.deviceId === deviceId) {
+          return send(res, 409, { ok: false, error: '邀请人和新账号不能使用同一台设备' });
+        }
       }
       const code = String(b.code || '').trim().toUpperCase();
       if (code && !CARD_RE.test(code)) return send(res, 400, { ok: false, error: '卡密格式不正确' });
@@ -609,12 +934,15 @@ async function handleRequest(req, res) {
       const now = Date.now();
       db.users[username] = {
         name: username, passHash: hashPass(password), tokenVersion: 1, createdAt: now,
-        expiresAt: now, trialExpiresAt: now + TRIAL_DAYS * DAY_MS,
+        expiresAt: now, trialExpiresAt: now + TRIAL_MS, trialGrantedAt: now,
         plan: 'free', points: 0, pointsAwards: {},
         quota: { date: dayKey(now), used: 0, bonus: 0, consumed: {} }, checkinDate: '',
         banned: false, deviceId, lastLoginAt: now, email, inviteCode: genInviteCode(),
       };
-      if (inviter) db.users[username].invitedBy = inviter.name;
+      if (inviter) {
+        db.users[username].invitedBy = inviter.name;
+        db.users[username].inviteSourceDeviceId = inviter.deviceId || '';
+      }
       let token = '';
       let expiresAt = now;
       let usedCard = '';
@@ -633,13 +961,12 @@ async function handleRequest(req, res) {
       db.users[username].expiresAt = expiresAt;
       awardPoints(db.users[username], 'register', POINT_REWARDS.register);
       token = issueToken(db.users[username], deviceId);
-      logEvent('trial-start', username, { ip, detail: `注册后开放 ${TRIAL_DAYS} 天全功能试用` });
+      logEvent('trial-start', username, { ip, detail: `注册后开放 ${TRIAL_HOURS} 小时完整体验` });
       logEvent('points-earn', username, { ip, detail: `注册奖励 +${POINT_REWARDS.register} 积分` });
       if (inviter) {
-        const inviteKey = `invite:${username}`;
-        if (awardPoints(inviter, inviteKey, POINT_REWARDS.invite)) {
-          logEvent('points-earn', inviter.name, { ip, detail: `邀请注册奖励 +${POINT_REWARDS.invite} 积分（${username}）` });
-        }
+        // 邀请只记录待验证关系；受邀人完成首个有效建模回合后再给邀请人发放低额奖励。
+        db.users[username].inviteStatus = 'pending';
+        logEvent('invite-pending', username, { ip, detail: `已记录邀请人 ${inviter.name}，完成首个有效项目后结算奖励` });
       }
       logEvent('register', username, { ip, detail: usedCard ? `激活卡密 ${cardLabel(usedCard)}（+${Math.round((expiresAt - now) / 86_400_000)} 天）` : '未带卡密' });
       saveDb();
@@ -707,19 +1034,19 @@ async function handleRequest(req, res) {
       db = loadDb();
       if (!rateAllowed(`login:${ip}`, 15, 3600_000)) return send(res, 429, { ok: false, error: '尝试过于频繁' });
       const b = await readBody(req);
-      const username = String(b.username || '').trim();
+      const identifier = String(b.username || '').trim(); // 用户名或绑定邮箱，二者皆可登录
       const password = String(b.password || '');
       const deviceId = String(b.deviceId || '').trim();
       if (!PASSWORD_RE.test(password)) return send(res, 401, { ok: false, error: '账号或密码错误' });
-      const user = db.users[username];
+      const user = findUserByLogin(identifier);
       if (!DEVICE_RE.test(deviceId)) return send(res, 400, { ok: false, error: '设备标识不合法，请重启客户端后重试' });
       const check = user ? verifyPass(user.passHash || user.passEnc, password) : { ok: false, migrated: null };
       if (!user || !check.ok) {
-        logEvent('login-fail', username || '-', { ip, detail: '账号或密码错误' });
+        logEvent('login-fail', identifier || '-', { ip, detail: '账号或密码错误' });
         return send(res, 401, { ok: false, error: '账号或密码错误' });
       }
       if (user.banned) {
-        logEvent('login-fail', username, { ip, detail: '账号已被停用' });
+        logEvent('login-fail', user.name, { ip, detail: '账号已被停用' });
         return send(res, 403, { ok: false, error: '账号已被停用' });
       }
       user.deviceId = deviceId; // 换设备 = 重新绑定，旧设备下次 check 失效
@@ -728,9 +1055,10 @@ async function handleRequest(req, res) {
       user.lastIp = ip;
       ensureUser(user);
       const token = issueToken(user, deviceId);
-      logEvent('login', username, { ip, detail: '登录成功' });
+      logEvent('login', user.name, { ip, detail: identifier === user.name ? '登录成功' : `邮箱登录成功（${identifier}）` });
       saveDb();
-      return send(res, 200, { ok: true, token, ...accountSnapshot(user) });
+      // 回传真实用户名：客户端据此落盘，避免用邮箱登录后卡密兑换 / 签到找不到账号。
+      return send(res, 200, { ok: true, token, username: user.name, ...accountSnapshot(user) });
     }
 
     if (req.method === 'POST' && url === '/api/redeem') {
@@ -782,28 +1110,70 @@ async function handleRequest(req, res) {
       const feature = String(b.feature || 'ai-chat');
       const consume = b.consume === true;
       const requestId = String(b.requestId || '');
-    if (feature !== 'ai-chat' && !VIP_FEATURES.has(feature)) return send(res, 400, { allowed: false, code: 'INVALID_FEATURE', reason: '功能标识不合法' });
+      // pointsCost 仅保留给旧客户端的协议兼容，不参与服务端计费；实际成本由
+      // 明确的 chatMode 白名单决定，避免篡改客户端把论文/评阅回合报成低价问答。
+      const chatMode = normalizeChatMode(b.chatMode ?? b.costKind ?? b.mode);
+      const requestedCost = feature === 'ai-chat'
+        ? requestedChatCost(undefined, chatMode)
+        : AI_CHAT_POINTS_COST;
+      if (!FREE_FEATURES.has(feature) && !VIP_FEATURES.has(feature)) return send(res, 400, { allowed: false, code: 'INVALID_FEATURE', reason: '功能标识不合法' });
       if (consume && feature === 'ai-chat' && !/^[A-Za-z0-9._:-]{8,128}$/.test(requestId)) return send(res, 400, { allowed: false, code: 'INVALID_REQUEST_ID', reason: '请求标识不合法' });
       const now = Date.now();
       const snapshot = accountSnapshot(user, now);
-      const elevated = snapshot.plan === 'vip' || snapshot.trialActive;
+      const paidVip = snapshot.paidVip === true;
+      const elevated = paidVip || snapshot.trialActive;
+      // 团队型能力是付费卡密的核心权益，24 小时体验只能试用单体能力。
+      if (PAID_ONLY_FEATURES.has(feature) && !paidVip) {
+        logEvent('vip-block', user.name, { ip, detail: `拦截未兑换付费卡密的团队能力 ${feature}：${snapshot.trialActive ? '试用期' : '免费版'}` });
+        saveSoon();
+        return send(res, 403, {
+          allowed: false,
+          code: snapshot.trialActive ? 'PAID_VIP_REQUIRED' : 'FEATURE_VIP_REQUIRED',
+          reason: snapshot.trialActive
+            ? '团队协作与自动化需要兑换付费 VIP 卡密，24 小时体验可先使用单体建模和基础论文功能'
+            : '团队协作与自动化需要兑换付费 VIP 卡密，请打开会员中心兑换',
+          ...snapshot,
+        });
+      }
       if (VIP_FEATURES.has(feature) && !elevated) {
         logEvent('vip-block', user.name, { ip, detail: `拦截会员功能：${feature}` });
         saveSoon();
         return send(res, 403, { allowed: false, code: 'FEATURE_VIP_REQUIRED', reason: '当前功能需要会员，可在会员中心升级', ...snapshot });
       }
       if (feature === 'ai-chat' && !elevated) {
-        if (consume && user.quota.consumed[requestId]) return send(res, 200, { allowed: true, ...accountSnapshot(user, now), duplicate: true });
-        if (user.quota.used >= FREE_BASE_QUOTA + user.quota.bonus) {
-          logEvent('quota-exhausted', user.name, { ip, detail: '免费 AI 次数已用完' });
+        const points = aiPointsSnapshot(user, now);
+        const duplicateRequest = consume && aiRequestAlreadyConsumed(user, requestId, now);
+        if (!duplicateRequest && points.balance < requestedCost) {
+          logEvent('quota-exhausted', user.name, { ip, detail: `AI 积分不足（${chatMode} 模式，本轮需要 ${requestedCost} 积分）` });
           saveSoon();
-          return send(res, 403, { allowed: false, code: 'AI_QUOTA_EXCEEDED', reason: '今日免费次数已用完，签到或升级会员可继续使用', ...snapshot });
+          return send(res, 403, {
+            allowed: false,
+            code: 'AI_QUOTA_EXCEEDED',
+            reason: `本轮需要 ${requestedCost} 积分，当前余额不足；签到或兑换付费 VIP 卡密后可继续使用`,
+            pointsPerTurn: requestedCost,
+            costPoints: requestedCost,
+            chatMode,
+            ...snapshot,
+          });
         }
         if (consume) {
-          user.quota.used += 1;
-          saveQuotaRequest(user, requestId, now);
-          logEvent('ai-consume', user.name, { ip, detail: `消耗 1 次免费 AI，对话后剩余 ${Math.max(0, FREE_BASE_QUOTA + user.quota.bonus - user.quota.used)} 次` });
+          const spent = consumeAiPoints(user, requestId, now, requestedCost, chatMode);
+          if (spent.exhausted) {
+            logEvent('quota-exhausted', user.name, { ip, detail: `AI 积分不足（${chatMode} 模式，本轮需要 ${spent.cost} 积分）` });
+            saveSoon();
+            return send(res, 403, {
+              allowed: false,
+              code: 'AI_QUOTA_EXCEEDED',
+              reason: `本轮需要 ${spent.cost} 积分，当前余额不足；签到或兑换付费 VIP 卡密后可继续使用`,
+              pointsPerTurn: spent.cost,
+              costPoints: spent.cost,
+              chatMode,
+              ...accountSnapshot(user, now),
+            });
+          }
+          logEvent('ai-consume', user.name, { ip, detail: `消耗 ${spent.cost} 积分（${chatMode} 模式），对话后余额 ${spent.remaining}` });
           saveDb();
+          return send(res, 200, { allowed: true, duplicate: spent.duplicate, ...accountSnapshot(user, now), costPoints: spent.cost, pointsPerTurn: spent.cost, pointsBalance: spent.remaining, chatMode });
         }
       }
       return send(res, 200, { allowed: true, ...accountSnapshot(user, now) });
@@ -817,6 +1187,17 @@ async function handleRequest(req, res) {
       return send(res, 200, { ok: true, ...accountSnapshot(auth.user) });
     }
 
+    if (req.method === 'POST' && url === '/api/account/logout') {
+      if (!rateAllowed(`account-logout:${ip}`, 30, 60_000)) return send(res, 429, { ok: false, code: 'RATE_LIMITED', error: '请求过于频繁，请稍后重试' });
+      const auth = authUser(req, ip);
+      if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
+      // 退出登录必须让服务端令牌真正失效：只删本地文件的话，令牌泄漏后 10 年内都能冒用。
+      auth.user.tokenVersion = Number(auth.user.tokenVersion || 1) + 1;
+      logEvent('logout', auth.user.name, { ip, detail: '退出登录，旧令牌已失效' });
+      saveDb();
+      return send(res, 200, { ok: true });
+    }
+
     if (req.method === 'POST' && url === '/api/account/checkin') {
       if (!rateAllowed(`account-checkin:${ip}`, 10, 60_000)) return send(res, 429, { ok: false, code: 'RATE_LIMITED', error: '签到请求过于频繁，请稍后重试' });
       const auth = authUser(req, ip);
@@ -825,8 +1206,25 @@ async function handleRequest(req, res) {
       const today = dayKey();
       if (user.checkinDate === today) return send(res, 200, { ok: true, alreadyCheckedIn: true, ...accountSnapshot(user) });
       user.checkinDate = today;
-      user.quota.bonus = CHECKIN_BONUS_QUOTA;
-      logEvent('checkin', user.name, { ip, detail: '领取今日额外对话次数' });
+      // 所有状态都统一显示“积分”：免费账号签到增加当天可用积分；
+      // 试用/VIP 不扣 AI 积分，因此签到给少量持久积分作为回馈。
+      if (user.plan === 'vip' || trialActive(user)) {
+        user.points = Math.max(0, Number(user.points) || 0) + CHECKIN_VIP_POINTS;
+        logEvent('checkin', user.name, { ip, detail: `会员签到奖励 +${CHECKIN_VIP_POINTS} 积分` });
+      } else {
+        // 签到只增加当前剩余积分，不能把当天已经消耗的基础积分补回来。
+        // 例如还剩 20 分时签到，签到后应为 120 分，而不是先恢复到 100 再加到 200。
+        // dailyBonus 仍保留为兼容字段，最终余额封顶为 dailyGrant + dailyBonus。
+        user.aiPoints.dailyBonus = CHECKIN_BONUS_POINTS;
+        const dailyGrant = Math.max(0, Number(user.aiPoints.dailyGrant) || FREE_DAILY_POINTS);
+        const currentRemaining = Math.max(0, Number(user.aiPoints.dailyRemaining) || 0);
+        user.aiPoints.dailyRemaining = Math.min(
+          currentRemaining + CHECKIN_BONUS_POINTS,
+          dailyGrant + user.aiPoints.dailyBonus,
+        );
+        user.quota.bonus = CHECKIN_BONUS_QUOTA;
+        logEvent('checkin', user.name, { ip, detail: `签到奖励 +${CHECKIN_BONUS_POINTS} AI 积分` });
+      }
       saveDb();
       return send(res, 200, { ok: true, alreadyCheckedIn: false, ...accountSnapshot(user) });
     }
@@ -835,20 +1233,15 @@ async function handleRequest(req, res) {
       if (!rateAllowed(`points-redeem:${ip}`, 10, 60_000)) return send(res, 429, { ok: false, code: 'RATE_LIMITED', error: '兑换请求过于频繁，请稍后重试' });
       const auth = authUser(req, ip);
       if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
-      const b = await readBody(req);
-      const days = Number(b.days);
-      const cost = POINT_EXCHANGE[days];
-      if (!cost) return send(res, 400, { ok: false, code: 'INVALID_DAYS', error: '请选择 1、7 或 30 天会员' });
-      const user = auth.user;
-      if (user.points < cost) return send(res, 409, { ok: false, code: 'INSUFFICIENT_POINTS', error: '积分不足，暂时无法兑换' });
-      user.points -= cost;
-      const now = Date.now();
-      user.expiresAt = Math.max(now, Number(user.expiresAt) || 0) + days * DAY_MS;
-      user.plan = 'vip';
-      const token = issueToken(user, user.deviceId);
-      logEvent('points-redeem', user.name, { ip, days, detail: `使用 ${cost} 积分兑换 ${days} 天会员` });
-      saveDb();
-      return send(res, 200, { ok: true, token, ...accountSnapshot(user) });
+      // 新积分统一用于普通 AI 对话，不再兑换会员；多智能体必须由付费卡密解锁。
+      // 保留端点是为了让旧客户端得到明确中文提示，而不是落入 404 或误发 VIP。
+      logEvent('points-redeem-block', auth.user.name, { ip, detail: '积分兑换会员已停用，请使用付费卡密兑换' });
+      return send(res, 409, {
+        ok: false,
+        code: 'POINTS_REDEEM_DISABLED',
+        error: '积分现在用于 AI 对话，会员请使用付费卡密兑换',
+        ...accountSnapshot(auth.user),
+      });
     }
 
     if (req.method === 'POST' && url === '/api/account/points-earn') {
@@ -862,8 +1255,8 @@ async function handleRequest(req, res) {
       if (!POINT_REWARD_KINDS.has(kind)) {
         return send(res, 400, { ok: false, code: 'INVALID_POINT_KIND', error: '积分奖励类型不合法' });
       }
-      // 邀请奖励必须由服务端在“新用户注册并完成验证”时生成确认记录。
-      // 当前版本尚未开放邀请页面，拒绝客户端自行伪造 eventId 领取 +50。
+      // 邀请奖励必须由服务端在受邀用户完成首个有效项目后结算，
+      // 不接受客户端自行伪造 eventId 领取，避免刷积分。
       if (kind === 'invite') {
         return send(res, 409, { ok: false, code: 'INVITE_NOT_VERIFIED', error: '邀请关系尚未完成验证，暂不能领取该奖励' });
       }
@@ -873,9 +1266,35 @@ async function handleRequest(req, res) {
         return send(res, 400, { ok: false, code: 'EVENT_ID_REQUIRED', error: '这类奖励需要提供有效的完成记录' });
       }
       const user = auth.user;
+      if (kind === 'feedback') {
+        // 反馈积分只能对应服务端已经落库的反馈，不能仅凭客户端随便填一个事件号领取。
+        const feedbackExists = db.feedbacks.some((item) => item && item.id === eventId && item.username === user.name);
+        if (!feedbackExists) {
+          return send(res, 409, { ok: false, code: 'FEEDBACK_NOT_FOUND', error: '请先提交有效反馈，再领取反馈积分' });
+        }
+      }
+      if (kind === 'paperExport' && !paidVipActive(user)) {
+        // 成品导出本身属于卡密 VIP；不要让免费客户端仅凭一个事件编号
+        // 伪造“已导出论文”来领取奖励。真正的导出在 license/check 与文件保存
+        // 两层都已拦截，这里再做一次服务端兜底。
+        return send(res, 403, { ok: false, code: 'FEATURE_VIP_REQUIRED', error: '论文成品导出奖励需要卡密 VIP' });
+      }
+      if (kind === 'firstProject' && eventId !== 'first-project') {
+        return send(res, 400, { ok: false, code: 'EVENT_ID_INVALID', error: '首个项目奖励记录不合法' });
+      }
       // 反馈奖励是每个账号一次；论文导出按稳定事件编号逐篇幂等。
       const feedbackAlreadyAwarded = kind === 'feedback' && Object.keys(user.pointsAwards).some((awardKey) => awardKey.startsWith('feedback:'));
       const duplicate = feedbackAlreadyAwarded || Boolean(user.pointsAwards[key]);
+      // 限次：客户端换一个随机事件编号就能再领一次，必须按类型卡住条数。
+      const caps = POINT_EARN_CAPS[kind];
+      if (!duplicate && caps) {
+        const stats = pointAwardStats(user, kind);
+        if (stats.day >= caps.day || stats.total >= caps.total) {
+          logEvent('points-earn-capped', user.name, { ip, detail: `${kind} 已达发放上限（当日 ${stats.day}/${caps.day}，累计 ${stats.total}/${caps.total}）` });
+          saveSoon();
+          return send(res, 429, { ok: false, code: 'POINT_AWARD_CAPPED', error: '这类奖励今天的上限已到，明天再来', ...accountSnapshot(user) });
+        }
+      }
       const awarded = duplicate ? 0 : POINT_REWARDS[kind] || 0;
       if (!duplicate) {
         awardPoints(user, key, awarded);
@@ -884,10 +1303,22 @@ async function handleRequest(req, res) {
           days: 0,
           detail: `${kind} 完成奖励 +${awarded} 积分（${eventId || '首次完成'}）`,
         });
+        if (kind === 'paperExport') {
+          // 单独记录成功导出事件，供后台统计论文导出量；points-earn 仍保留作积分审计。
+          logEvent('paper-export', user.name, {
+            ip,
+            detail: `论文导出成功，奖励 ${awarded} 积分（${eventId}）`,
+          });
+        }
         saveDb();
       } else {
         logEvent('points-earn-duplicate', user.name, { ip, detail: `${kind} 重复事件，未重复发放积分（${eventId}）` });
         saveSoon();
+      }
+      if (kind === 'firstProject') {
+        // 兼容已经记过首个项目、但尚未结算邀请奖励的历史账号。
+        const settled = settleInviteReward(user, ip);
+        if (settled.settled) saveDb();
       }
       return send(res, 200, {
         ok: true,
@@ -898,35 +1329,80 @@ async function handleRequest(req, res) {
       });
     }
 
+    // 用户反馈：正文落库，后台「反馈」页可见；每个账号首次提交奖励 10 积分。
+    if (req.method === 'POST' && url === '/api/account/feedback') {
+      const auth = authUser(req, ip);
+      if (auth.error) return send(res, auth.status, { ok: false, code: 'LOGIN_REQUIRED', error: auth.error });
+      if (!rateAllowed(`feedback:${auth.user.name}:${ip}`, 5, 3600_000)) {
+        return send(res, 429, { ok: false, code: 'FEEDBACK_TOO_FREQUENT', error: '反馈提交过于频繁，请稍后再试' });
+      }
+      const b = await readBody(req);
+      const text = String(b.text || '').trim().slice(0, 2000);
+      if (text.length < 8) return send(res, 400, { ok: false, code: 'FEEDBACK_TOO_SHORT', error: '反馈内容太短，请至少写 8 个字' });
+      const user = auth.user;
+      const alreadyAwarded = Object.keys(user.pointsAwards).some((awardKey) => awardKey.startsWith('feedback:'));
+      const awarded = alreadyAwarded ? 0 : POINT_REWARDS.feedback;
+      if (!alreadyAwarded) awardPoints(user, `feedback:${Date.now().toString(36)}`, awarded);
+      db.feedbacks.push({
+        id: `fb-${crypto.randomBytes(6).toString('hex')}`,
+        username: user.name,
+        text,
+        contact: String(b.contact || '').slice(0, 120),
+        version: String(b.version || '').slice(0, 32),
+        platform: String(b.platform || '').slice(0, 64),
+        ip,
+        t: Date.now(),
+        handled: false,
+      });
+      if (db.feedbacks.length > 3000) db.feedbacks = db.feedbacks.slice(-2000);
+      logEvent('feedback', user.name, { ip, detail: text.slice(0, 120) });
+      saveDb();
+      return send(res, 200, { ok: true, awarded, ...accountSnapshot(user) });
+    }
+
     // ===== 管理 =====
-    if (req.method === 'GET' && url === '/admin.html') {
-      res.writeHead(302, { location: '/admin', 'cache-control': 'no-store' });
+    if (req.method === 'GET' && (url === '/admin.html' || url === ADMIN_PREFIX + '.html')) {
+      res.writeHead(302, { location: ADMIN_PREFIX, 'cache-control': 'no-store' });
       return res.end();
     }
-    if (url === '/admin' || url.startsWith('/admin/')) {
-      if (url === '/admin' && req.method === 'GET') {
-        try {
-          const html = fs.readFileSync(ADMIN_HTML);
-          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-          return res.end(html);
-        } catch { return send(res, 500, { ok: false, error: 'admin.html 缺失' }); }
-      }
+    if (url === ADMIN_PREFIX || url.startsWith(ADMIN_PREFIX + '/')) {
+      // 认证检查放在最前：随机路径 + Basic Auth 双重保护，未认证时
+      // 连管理页外壳都不返回（避免路径被扫描出来后确认「这里确实是后台」）。
       if (!checkAdmin(req)) {
         res.writeHead(401, { 'www-authenticate': 'Basic realm="MModels Admin", charset="UTF-8"' });
         return res.end('需要管理员登录');
       }
-      if (req.method === 'GET' && url === '/admin/api/overview') {
+      if (req.method !== 'GET' && req.method !== 'HEAD' && !adminOriginAllowed(req)) {
+        return send(res, 403, { ok: false, code: 'ADMIN_ORIGIN_REJECTED', error: '管理请求来源不受信任，请从后台页面重试' });
+      }
+      if ((url === ADMIN_PREFIX || url === `${ADMIN_PREFIX}/`) && req.method === 'GET') {
+        try {
+          const html = fs.readFileSync(ADMIN_HTML);
+          res.writeHead(200, {
+            'content-type': 'text/html; charset=utf-8',
+            'cache-control': 'no-store',
+            'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+            'x-content-type-options': 'nosniff',
+            'referrer-policy': 'same-origin',
+          });
+          return res.end(html);
+        } catch { return send(res, 500, { ok: false, error: 'admin.html 缺失' }); }
+      }
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/overview') {
         db = loadDb();
         const now = Date.now();
         const users = Object.values(db.users);
         users.forEach((user) => ensureUser(user));
         saveSoon();
         const day = 86_400_000;
+        const todayStartDate = new Date(now);
+        todayStartDate.setHours(0, 0, 0, 0);
+        const todayStart = todayStartDate.getTime();
         const events = Array.isArray(db.events) ? db.events : [];
         const countType = (type, since = 0) => events.filter((e) => e.type === type && e.t >= since).length;
         const sumPointDetails = (pattern, since = 0) => events
           .filter((e) => e.t >= since && pattern.test(String(e.detail || '')))
-          .reduce((sum, e) => sum + (Number(String(e.detail || '').match(/\+(\d+)\s*积分/)?.[1]) || 0), 0);
+          .reduce((sum, e) => sum + (Number(String(e.detail || '').match(pattern)?.[1]) || 0), 0);
         const days7 = Array.from({ length: 7 }, (_, i) => {
           const dStart = new Date(now - (6 - i) * day); dStart.setHours(0, 0, 0, 0);
           const dEnd = dStart.getTime() + day;
@@ -943,7 +1419,13 @@ async function handleRequest(req, res) {
         const trialUsers = users.filter((u) => !u.banned && u.plan === 'free' && Number(u.trialExpiresAt) > now).length;
         const expiredUsers = users.filter((u) => !u.banned && Number(u.trialExpiresAt || 0) <= now && Number(u.expiresAt || 0) <= now).length;
         const pointsEarned = sumPointDetails(/\+\d+\s*积分/);
-        const pointsSpent = events.filter((e) => e.type === 'points-redeem').reduce((sum, e) => sum + (Number(String(e.detail || '').match(/使用\s+(\d+)\s*积分/)?.[1]) || 0), 0);
+        const aiPointsSpent = sumPointDetails(/消耗\s+(\d+)\s*(?:AI\s*)?积分/);
+        const legacyExchangeSpent = events.filter((e) => e.type === 'points-redeem').reduce((sum, e) => sum + (Number(String(e.detail || '').match(/使用\s+(\d+)\s*积分/)?.[1]) || 0), 0);
+        const pointsSpent = aiPointsSpent + legacyExchangeSpent;
+        const invitePending = users.filter((u) => u.inviteStatus === 'pending').length;
+        const inviteSettled = countType('invite-settled');
+        // 只把真正叠加过有效期的账号计为转化，避免把后台手工延期算成试用转化。
+        const trialConvertedUsers = users.filter((u) => Number(u.trialGrantedAt) > 0 && Number(u.expiresAt) > Number(u.trialGrantedAt)).length;
         return send(res, 200, {
           ok: true,
           totalUsers: users.length,
@@ -957,15 +1439,29 @@ async function handleRequest(req, res) {
           loginCount: countType('login'),
           checkinCount: countType('checkin'),
           aiUsage: countType('ai-consume'),
+          todayRegisters: countType('register', todayStart),
+          todayRedeems: countType('redeem', todayStart),
+          todayCheckins: countType('checkin', todayStart),
+          todayAiUsage: countType('ai-consume', todayStart),
+          todayQuotaExhausted: countType('quota-exhausted', todayStart),
+          todayPointsEarned: sumPointDetails(/\+\d+\s*积分/, todayStart),
+          todayPointsSpent: sumPointDetails(/消耗\s+(\d+)\s*(?:AI\s*)?积分/, todayStart),
           quotaExhausted: countType('quota-exhausted'),
           vipBlocks: countType('vip-block'),
           paperExports: countType('paper-export'),
+          feedbackCount: (Array.isArray(db.feedbacks) ? db.feedbacks : []).length,
+          reportCount: (Array.isArray(db.reports) ? db.reports : []).length,
           pointsEarned,
           pointsSpent,
-          pointsBalance: users.reduce((sum, u) => sum + Math.max(0, Number(u.points) || 0), 0),
+          aiPointsSpent,
+          // 对外统一显示可用积分：包含当天基础/签到积分与奖励积分。
+          pointsBalance: users.reduce((sum, u) => sum + aiPointsSnapshot(u, now).balance, 0),
           pointsRewardEvents: countType('points-earn'),
           pointsExchangeEvents: countType('points-redeem'),
           checkinUsers: new Set(events.filter((e) => e.type === 'checkin').map((e) => e.username)).size,
+          invitePending,
+          inviteSettled,
+          trialConvertedUsers,
           expiringUsers: users.filter((u) => {
             if (u.banned) return false;
             const expiry = u.plan === 'vip' ? Number(u.expiresAt) : Number(u.trialExpiresAt);
@@ -978,20 +1474,46 @@ async function handleRequest(req, res) {
           days7,
         });
       }
-      if (req.method === 'GET' && url === '/admin/api/users') {
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/users') {
         db = loadDb();
+        const now = Date.now();
         return send(res, 200, {
           ok: true,
-          users: Object.values(db.users).map((u) => ({
+          users: Object.values(db.users).map((u) => {
+            ensureUser(u);
+            const ai = aiPointsSnapshot(u, now);
+            return {
             name: u.name, createdAt: u.createdAt,
-            expiresAt: u.expiresAt, plan: u.plan === 'vip' && Number(u.expiresAt) > Date.now() ? 'vip' : 'free',
-            trialActive: Number(u.trialExpiresAt) > Date.now() && u.plan !== 'vip',
+            expiresAt: u.expiresAt, plan: u.plan === 'vip' && Number(u.expiresAt) > now ? 'vip' : 'free',
+            trialExpiresAt: u.trialExpiresAt,
+            trialActive: Number(u.trialExpiresAt) > now && u.plan !== 'vip',
             banned: u.banned, deviceBound: Boolean(u.deviceId), lastLoginAt: u.lastLoginAt,
             note: u.note || '', passwordStored: Boolean(u.passHash || u.passEnc),
-          })).sort((a, b) => b.createdAt - a.createdAt),
+            points: Math.max(0, Number(u.points) || 0),
+            pointsBalance: ai.balance,
+            inviteStatus: u.inviteStatus || '',
+            vipSource: u.vipSource || '',
+          };
+          }).sort((a, b) => b.createdAt - a.createdAt),
         });
       }
-      if (req.method === 'GET' && url === '/admin/api/cards') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/users/adjust-points') {
+        db = loadDb();
+        const b = await readBody(req);
+        const u = db.users[String(b.username || '')];
+        const delta = Number(b.delta);
+        if (!u) return send(res, 404, { ok: false, error: '用户不存在' });
+        if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 1_000_000) {
+          return send(res, 400, { ok: false, error: '积分变动需为非 0 整数（±1~1000000）' });
+        }
+        const before = Math.max(0, Number(u.points) || 0);
+        u.points = Math.max(0, before + delta);
+        const actual = u.points - before;
+        logEvent('admin', u.name, { ip, detail: `积分调整 ${delta > 0 ? '+' : ''}${delta}（实发 ${actual > 0 ? '+' : ''}${actual}），余额 ${u.points}` });
+        saveDb();
+        return send(res, 200, { ok: true, points: u.points, delta: actual });
+      }
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/cards') {
         db = loadDb();
         return send(res, 200, {
           ok: true,
@@ -999,12 +1521,12 @@ async function handleRequest(req, res) {
             .sort((a, b) => b.createdAt - a.createdAt),
         });
       }
-      if (req.method === 'POST' && url === '/admin/api/cards/gen') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/cards/gen') {
         db = loadDb();
         const b = await readBody(req);
-        const days = Number(b.days); const count = Number(b.count || 1);
-        if (!Number.isFinite(days) || days <= 0 || days > 3650 || count < 1 || count > 200) {
-          return send(res, 400, { ok: false, error: '参数不合法' });
+        const days = Number(b.days); const count = b.count === undefined ? 1 : Number(b.count);
+        if (!Number.isInteger(days) || days < 1 || days > 3650 || !Number.isInteger(count) || count < 1 || count > 200) {
+          return send(res, 400, { ok: false, error: '天数和数量必须是合法整数（天数 1~3650，数量 1~200）' });
         }
         const made = [];
         for (let i = 0; i < count; i++) {
@@ -1016,27 +1538,30 @@ async function handleRequest(req, res) {
         saveDb();
         return send(res, 200, { ok: true, codes: made });
       }
-      if (req.method === 'POST' && url === '/admin/api/cards/revoke') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/cards/revoke') {
         db = loadDb();
         const b = await readBody(req);
         const card = db.cards[String(b.code || '').toUpperCase()];
         if (!card) return send(res, 404, { ok: false, error: '卡密不存在' });
+        if (card.usedBy) return send(res, 409, { ok: false, error: '已兑换卡密不能作废' });
+        if (card.revoked) return send(res, 409, { ok: false, error: '卡密已经作废' });
         card.revoked = true;
         logEvent('admin', 'admin', { ip, detail: `作废卡密 ${cardLabel(String(b.code || '').toUpperCase())}` });
         saveDb();
         return send(res, 200, { ok: true });
       }
-      if (req.method === 'POST' && url === '/admin/api/users/ban') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/users/ban') {
         db = loadDb();
         const b = await readBody(req);
         const u = db.users[String(b.username || '')];
         if (!u) return send(res, 404, { ok: false, error: '用户不存在' });
-        u.banned = Boolean(b.banned);
+        if (typeof b.banned !== 'boolean') return send(res, 400, { ok: false, error: '封禁状态参数不合法' });
+        u.banned = b.banned;
         logEvent('admin', u.name, { ip, detail: u.banned ? '封禁账号' : '解封账号' });
         saveDb();
         return send(res, 200, { ok: true, banned: u.banned });
       }
-      if (req.method === 'POST' && url === '/admin/api/users/reset-pass') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/users/reset-pass') {
         db = loadDb();
         const b = await readBody(req);
         const u = db.users[String(b.username || '')];
@@ -1050,7 +1575,7 @@ async function handleRequest(req, res) {
         saveDb();
         return send(res, 200, { ok: true });
       }
-      if (req.method === 'POST' && url === '/admin/api/users/unbind') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/users/unbind') {
         db = loadDb();
         const b = await readBody(req);
         const u = db.users[String(b.username || '')];
@@ -1060,22 +1585,50 @@ async function handleRequest(req, res) {
         saveDb();
         return send(res, 200, { ok: true });
       }
-      if (req.method === 'POST' && url === '/admin/api/users/extend') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/users/extend') {
         db = loadDb();
         const b = await readBody(req);
         const u = db.users[String(b.username || '')];
         const days = Number(b.days);
         if (!u) return send(res, 404, { ok: false, error: '用户不存在' });
-        if (!Number.isFinite(days) || days === 0 || Math.abs(days) > 3650) {
-          return send(res, 400, { ok: false, error: '天数需为非 0 数值（±1~3650）' });
+        if (!Number.isInteger(days) || days === 0 || Math.abs(days) > 3650) {
+          return send(res, 400, { ok: false, error: '天数需为非 0 整数（±1~3650）' });
         }
-        const base = Math.max(u.expiresAt, Date.now());
-        u.expiresAt = Math.max(Date.now(), base + days * 86_400_000);
-        logEvent('admin', u.name, { ip, detail: `手动调整 ${days > 0 ? '+' : ''}${days} 天 → 到期 ${new Date(u.expiresAt).toLocaleString('zh-CN', { hour12: false })}` });
+        // 关键：延期必须同步 plan，否则免费用户加了 expiresAt 也不是 VIP
+        //（VIP 判定 = plan==='vip' && expiresAt > now）。
+        const now = Date.now();
+        const base = Math.max(Number(u.expiresAt) || 0, now);
+        const next = base + days * DAY_MS;
+        if (next > now) {
+          u.plan = 'vip';
+          u.vipSource = 'admin';
+          u.expiresAt = next;
+        } else {
+          u.plan = 'free';
+          delete u.vipSource;
+          u.expiresAt = now;
+          u.trialExpiresAt = now;
+        }
+        logEvent('admin', u.name, { ip, detail: `调整会员 ${days > 0 ? '+' : ''}${days} 天 → ${u.plan === 'vip' ? `到期 ${new Date(u.expiresAt).toLocaleString('zh-CN', { hour12: false })}` : '已取消会员'}` });
         saveDb();
-        return send(res, 200, { ok: true, expiresAt: u.expiresAt });
+        return send(res, 200, { ok: true, expiresAt: u.expiresAt, plan: u.plan });
       }
-      if (req.method === 'POST' && url === '/admin/api/users/note') {
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/users/expire') {
+        // 一键取消会员：同时清掉 VIP 试用，回到纯免费态（与客户端「免费版」口径一致）。
+        db = loadDb();
+        const b = await readBody(req);
+        const u = db.users[String(b.username || '')];
+        if (!u) return send(res, 404, { ok: false, error: '用户不存在' });
+        const now = Date.now();
+        u.plan = 'free';
+        delete u.vipSource;
+        u.expiresAt = now;
+        u.trialExpiresAt = now;
+        logEvent('admin', u.name, { ip, detail: '取消会员与试用（降为免费版）' });
+        saveDb();
+        return send(res, 200, { ok: true });
+      }
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/users/note') {
         db = loadDb();
         const b = await readBody(req);
         const u = db.users[String(b.username || '')];
@@ -1085,10 +1638,40 @@ async function handleRequest(req, res) {
         saveDb();
         return send(res, 200, { ok: true });
       }
-      if (req.method === 'GET' && url === '/admin/api/logs') {
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/config') {
+        // 把服务端口径的会员/积分/权益定义暴露给后台，保证后台展示与客户端完全一致，
+        // 任何一处规则调整后后台会自动跟随，不会出现「后台说的和软件做的不一样」。
+        return send(res, 200, {
+          ok: true,
+          trialHours: TRIAL_HOURS,
+          trialDays: TRIAL_DAYS,
+          points: {
+            dailyGrant: FREE_DAILY_POINTS,
+            checkinBonus: CHECKIN_BONUS_POINTS,
+            perConversation: AI_CHAT_POINTS_COST,
+            conversationCosts: CHAT_POINT_COSTS,
+            rewards: POINT_REWARDS,
+            exchange: POINT_EXCHANGE,
+            exchangeDisabled: true,
+          },
+          // 兼容字段保留，避免历史管理页无法渲染。
+          quota: { base: FREE_BASE_QUOTA, checkinBonus: CHECKIN_BONUS_QUOTA, checkinVipPoints: CHECKIN_VIP_POINTS },
+          vipFeatures: [...VIP_FEATURES],
+          plans: [
+            { id: 'sprint', title: '冲刺卡', price: '¥9.9', days: 7 },
+            { id: 'monthly', title: '月卡', price: '¥29', days: 30 },
+            { id: 'season', title: '赛季卡', price: '¥59', days: 90 },
+            { id: 'annual', title: '年度卡', price: '¥99', days: 365 },
+            { id: 'legacy-lifetime', title: '早期长期权益', price: '¥99', days: 3650, legacy: true },
+          ],
+          adminPath: ADMIN_PREFIX,
+        });
+      }
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/logs') {
         db = loadDb();
         const q = new URLSearchParams((req.url || '').split('?')[1] || '');
-        const limit = Math.min(Number(q.get('limit')) || 300, 1000);
+        const rawLimit = Number(q.get('limit'));
+        const limit = Number.isInteger(rawLimit) ? Math.max(1, Math.min(rawLimit, 1000)) : 300;
         const type = q.get('type') || '';
         const qs = (q.get('q') || '').toLowerCase();
         let logs = db.events.slice().reverse(); // 最新在前
@@ -1096,17 +1679,54 @@ async function handleRequest(req, res) {
         if (qs) logs = logs.filter((e) => (e.username || '').toLowerCase().includes(qs) || (e.detail || '').toLowerCase().includes(qs) || (e.ip || '').includes(qs));
         return send(res, 200, { ok: true, logs: logs.slice(0, limit) });
       }
-      if (req.method === 'POST' && url === '/admin/api/admin-passwd') {
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/feedback') {
+        db = loadDb();
+        const list = db.feedbacks.slice().reverse();
+        return send(res, 200, { ok: true, feedbacks: list.slice(0, 500), total: list.length });
+      }
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/feedback/remove') {
+        db = loadDb();
+        const b = await readBody(req);
+        const id = String(b.id || '');
+        const before = db.feedbacks.length;
+        db.feedbacks = db.feedbacks.filter((f) => f.id !== id);
+        if (db.feedbacks.length === before) return send(res, 404, { ok: false, error: '反馈不存在' });
+        logEvent('admin', 'admin', { ip, detail: `删除反馈 ${id}` });
+        saveDb();
+        return send(res, 200, { ok: true });
+      }
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/reports') {
+        db = loadDb();
+        const q = new URLSearchParams((req.url || '').split('?')[1] || '');
+        const kind = q.get('kind') || '';
+        let list = db.reports.slice().reverse();
+        if (kind) list = list.filter((r) => r.kind === kind);
+        return send(res, 200, { ok: true, reports: list.slice(0, 500), total: list.length });
+      }
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/reports/clear') {
+        db = loadDb();
+        const n = db.reports.length;
+        db.reports = [];
+        logEvent('admin', 'admin', { ip, detail: `清空诊断上报 ${n} 条` });
+        saveDb();
+        return send(res, 200, { ok: true, cleared: n });
+      }
+      if (req.method === 'POST' && url === ADMIN_PREFIX + '/api/admin-passwd') {
         const b = await readBody(req);
         const np = String(b.newPassword || '');
         if (!PASSWORD_RE.test(np)) return send(res, 400, { ok: false, error: '密码需为 8-128 位且不能含控制字符' });
         writeAdminAuth(np);
         logEvent('admin', 'admin', { ip, detail: '修改管理后台密码' });
+        saveDb();
         return send(res, 200, { ok: true, hint: '密码已生效，请刷新页面用新密码重新登录' });
       }
-      if (req.method === 'GET' && url === '/admin/api/backup') {
+      if (req.method === 'GET' && url === ADMIN_PREFIX + '/api/backup') {
+        // 备份会写入服务端文件并记录审计事件，不能被第三方页面借助已缓存的
+        // Basic Auth 凭据跨站触发；命令行请求仍可在没有 Origin 时正常使用。
+        if (!adminOriginAllowed(req)) return send(res, 403, { ok: false, code: 'ADMIN_ORIGIN_REJECTED', error: '管理请求来源不受信任，请从后台页面重试' });
         const name = backupNow();
         logEvent('admin', 'admin', { ip, detail: `手动备份 ${name}` });
+        saveDb();
         const buf = fs.readFileSync(path.join(BACKUP_DIR, name));
         res.writeHead(200, {
           'content-type': 'application/gzip',
@@ -1136,6 +1756,32 @@ const server = http.createServer((req, res) => {
 });
 
 // ---------- CLI ----------
+function migrateDb() {
+  db = loadDb();
+  if (!db.users || typeof db.users !== 'object' || Array.isArray(db.users)) throw new Error('授权数据库 users 结构异常，已停止迁移');
+  if (!db.cards || typeof db.cards !== 'object' || Array.isArray(db.cards)) throw new Error('授权数据库 cards 结构异常，已停止迁移');
+  const before = JSON.stringify(db);
+  let migratedUsers = 0;
+  let expiredVip = 0;
+  for (const user of Object.values(db.users)) {
+    const previous = JSON.stringify(user);
+    const previousPlan = user?.plan;
+    ensureUser(user);
+    if (previousPlan === 'vip' && user.plan === 'free') expiredVip += 1;
+    if (previous !== JSON.stringify(user)) migratedUsers += 1;
+  }
+  // 只为历史卡密补齐可选字段，不改天数、使用者和作废状态。
+  for (const card of Object.values(db.cards)) {
+    if (!card || typeof card !== 'object') throw new Error('授权数据库 cards 中存在异常记录，已停止迁移');
+    if (card.usedBy === undefined) card.usedBy = null;
+    if (card.usedAt === undefined) card.usedAt = null;
+    if (card.revoked === undefined) card.revoked = false;
+  }
+  db.schemaVersion = Math.max(Number(db.schemaVersion) || 0, DB_SCHEMA_VERSION);
+  const changed = before !== JSON.stringify(db);
+  if (changed) saveDb();
+  console.log(JSON.stringify({ ok: true, changed, schemaVersion: db.schemaVersion, users: Object.keys(db.users).length, migratedUsers, expiredVip, cards: Object.keys(db.cards).length }, null, 2));
+}
 function cli() {
   db = loadDb();
   const [cmd, a, b] = process.argv.slice(2);
@@ -1165,7 +1811,10 @@ function cli() {
     writeAdminAuth(np);
     console.log('管理后台密码已更新'); return;
   }
-  console.error('usage: server.cjs [gen|list|passwd] ...（不带参数则以服务模式启动）');
+  if (cmd === 'migrate') {
+    migrateDb(); return;
+  }
+  console.error('usage: server.cjs [gen|list|passwd|migrate] ...（不带参数则以服务模式启动）');
   process.exit(2);
 }
 

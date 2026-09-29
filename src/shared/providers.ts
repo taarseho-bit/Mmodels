@@ -6,33 +6,16 @@
  *   1. baseUrl 是否真的是 SDK 期望的形态（Anthropic 协议要精确到 /v1 前缀）
  *   2. 模型名是否真实存在
  *   3. 是否需要特殊 header（如某些厂商要 anthropic-version / user-agent 绕过）
+ *
+ * ⚠️ 排序约定（2026-09-28 用户定稿）：**中国的模型排前面**——本产品面向国内
+ *    数学建模竞赛用户，引导首屏第一眼必须是国产模型；海外端点（Anthropic）
+ *    与本地推理（Ollama）排在末尾。OnboardingWizard 默认选中第一个预设，
+ *    调整顺序时务必同步检查 `firstPresetKey` 的展示位置。
  */
 import type { PresetProvider } from './types';
 
 export const PRESET_PROVIDERS: PresetProvider[] = [
-  // ── Anthropic 官方 ──────────────────────────────────────────
-  {
-    key: 'anthropic',
-    name: 'Anthropic 官方',
-    apiFormat: 'anthropic',
-    baseUrl: 'https://api.anthropic.com',
-    defaultModel: 'claude-sonnet-4-5-20250929',
-    docsUrl: 'https://docs.anthropic.com',
-    note: '官方直连，需要海外网络环境',
-  },
-
-  // ── MiniMax（应用约定默认走这家）────────────────────────────────
-  {
-    key: 'minimax',
-    name: 'MiniMax',
-    apiFormat: 'anthropic',
-    baseUrl: 'https://api.minimaxi.com/anthropic',
-    defaultModel: 'MiniMax-M2',
-    docsUrl: 'https://platform.minimaxi.com',
-    note: '国内可直连，提供 Anthropic 兼容端点',
-  },
-
-  // ── DeepSeek ───────────────────────────────────────────────
+  // ── DeepSeek（国内主力，性价比最高，用户群最大）─────────────────
   {
     key: 'deepseek',
     name: 'DeepSeek',
@@ -75,7 +58,29 @@ export const PRESET_PROVIDERS: PresetProvider[] = [
     docsUrl: 'https://platform.moonshot.cn',
   },
 
-  // ── 自定义 ─────────────────────────────────────────────────
+  // ── MiniMax ────────────────────────────────────────────────
+  {
+    key: 'minimax',
+    name: 'MiniMax',
+    apiFormat: 'anthropic',
+    baseUrl: 'https://api.minimaxi.com/anthropic',
+    defaultModel: 'MiniMax-M2',
+    docsUrl: 'https://platform.minimaxi.com',
+    note: '国内可直连，提供 Anthropic 兼容端点',
+  },
+
+  // ── Anthropic（海外）─────────────────────────────────────────
+  {
+    key: 'anthropic',
+    name: 'Anthropic',
+    apiFormat: 'anthropic',
+    baseUrl: 'https://api.anthropic.com',
+    defaultModel: 'claude-sonnet-4-5-20250929',
+    docsUrl: 'https://docs.anthropic.com',
+    note: '官方直连，需要海外网络环境',
+  },
+
+  // ── 本地推理 ───────────────────────────────────────────────
   {
     key: 'ollama',
     name: 'Ollama（本地）',

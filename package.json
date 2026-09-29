@@ -1,6 +1,6 @@
 {
   "name": "mmodels-desktop",
-  "version": "0.1.19",
+  "version": "0.1.23",
   "private": true,
   "description": "MModels · 本地数学建模智能体桌面版",
   "type": "module",
@@ -20,11 +20,13 @@
     "test:harness": "node scripts/test-git.cjs && node scripts/test-env.cjs && node scripts/test-claude-path.mjs",
     "test:native": "node scripts/clean-env.cjs node_modules/electron/dist/electron.exe scripts/test-native-abi.mjs",
     "test:e2e": "node scripts/test-real-app.cjs",
+    "start:clean": "node scripts/start-clean.cjs",
     "pack:dir": "npm run build:harden && electron-builder --win --x64 --dir",
     "build:harden": "node scripts/clean-env.cjs npm run build && node scripts/clean-env.cjs node scripts/harden.cjs",
     "dist": "npm run build:harden && electron-builder --win --x64",
     "dist:portable": "npm run build:harden && electron-builder --win portable --x64",
     "release:hardened": "node scripts/release-hardened.cjs",
+    "deploy:site": "node scripts/deploy-site.cjs",
     "postinstall": "node scripts/ensure-native.cjs"
   },
   "dependencies": {

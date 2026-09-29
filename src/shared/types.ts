@@ -963,10 +963,65 @@ export const IPC = {
   ACCOUNT_POINTS_EARN: 'account:points-earn',
   /** 查询某项能力是否可用；渲染层只拿到脱敏权益快照。 */
   ACCOUNT_ENTITLEMENT: 'account:entitlement',
+  /** 提交用户反馈正文（落库，后台可见）。 */
+  ACCOUNT_FEEDBACK: 'account:feedback',
+
+  /** renderer → main：运行诊断上报（错误 / 卡顿等），默认开启，无前端开关。 */
+  TELEMETRY_REPORT: 'telemetry:report',
 } as const;
+
+/** 客户端诊断上报类型：只在后台展示，不需要用户干预。 */
+export type TelemetryKind = 'error' | 'slow' | 'crash' | 'load-fail' | 'renderer-error';
+
+export interface TelemetryReportPayload {
+  kind: TelemetryKind;
+  /** 一句话摘要，后台列表直接展示。 */
+  message: string;
+  /** 堆栈 / 上下文等补充信息（已做长度截断）。 */
+  detail?: string;
+}
+
+export interface AccountFeedbackResult {
+  status: AccountStatusInfo;
+  awarded: number;
+}
 
 /** 会员档位。trial 不是单独的服务端套餐，而是免费账号的限时全功能窗口。 */
 export type AccountPlan = 'free' | 'vip';
+
+/**
+ * 试用窗口的统一时间口径。试用不是一个可兑换的套餐：它只是新账号在
+ * 注册后的短期体验窗口，且不会被当成付费 VIP。服务端仍是最终判定方。
+ */
+export const TRIAL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 一次对话消耗的积分档位。积分是体验额度的统一口径；兼容接口的 aiQuota
+ * 字段仍保留用于迁移和兼容历史服务端，但新代码优先读取 pointsBalance。
+ */
+export const CHAT_POINT_COSTS = Object.freeze({
+  /** 普通问答：每天 100 分约可完成 10 轮轻量交流。 */
+  basic: 10,
+  /** 论文/评阅会带来更长的上下文和整理工作，按一轮 30 分计。 */
+  paper: 30,
+  review: 30,
+  /** 图表整理一轮 20 分；严格建模和协同属于 VIP，仍保留展示用成本。 */
+  figure: 20,
+  strict: 50,
+  collaboration: 80,
+} as const);
+
+export type ChatPointCostKind = keyof typeof CHAT_POINT_COSTS;
+
+/** 积分钱包快照；balance 是服务端权威余额，客户端只用于展示。 */
+export interface AccountPointWallet {
+  balance: number;
+  /** 本轮预估/实际扣除的积分；状态快照没有时可省略。 */
+  lastCost?: number;
+  /** 服务端生成的扣减流水号，客户端不可自行伪造。 */
+  transactionId?: string;
+  checkedAt?: number;
+}
 
 /** 可由客户端上报、由服务端幂等核验的积分事件。 */
 export type AccountPointRewardKind = 'firstProject' | 'paperExport' | 'feedback' | 'invite';
@@ -995,7 +1050,10 @@ export type EntitlementReason =
   | 'login-required'
   | 'trial-expired'
   | 'vip-required'
+  /** 试用不等于付费 VIP 的能力（目前主要是多智能体协作）。 */
+  | 'paid-vip-required'
   | 'ai-quota-exceeded'
+  | 'points-insufficient'
   | 'service-unavailable';
 
 /** 免费账号每日 AI 配额；服务器是最终判定方，本地只缓存展示。 */
@@ -1021,10 +1079,26 @@ export interface AccountStatusInfo {
   plan?: AccountPlan;
   /** 试用剩余天数（服务端计算，避免客户端猜测试用窗口）。 */
   trialDaysLeft?: number;
+  /** 试用剩余小时（24 小时试用窗口的精确展示；服务端计算）。 */
+  trialHoursLeft?: number;
+  /** 试用截止时间；仅用于展示，不能作为本地放行依据。 */
+  trialExpiresAt?: number;
+  /** 试用开始时间；服务端记录，便于显示“从首次注册起 24 小时”。 */
+  trialStartedAt?: number;
   /** 试用期仍在开放全功能；不要由客户端根据注册时间自行推导。 */
   trialActive?: boolean;
   /** 当前可用积分余额。 */
   points?: number;
+  /** 统一积分余额；points 作为兼容别名保留。 */
+  pointsBalance?: number;
+  /** 服务器返回的本轮默认积分成本，供输入框提示使用。 */
+  pointsPerChat?: number;
+  /** 完整积分钱包快照；存在时优先于旧 aiQuota 展示。 */
+  pointWallet?: AccountPointWallet;
+  /** 我的邀请码（邀请好友注册双方得积分）。 */
+  inviteCode?: string;
+  /** 今天是否已签到。 */
+  checkedIn?: boolean;
   /** 免费账号当天 AI 额度快照。 */
   aiQuota?: AccountAiQuota;
   /** 服务端连通但账号被停用等异常态 */
@@ -1041,6 +1115,16 @@ export interface AccountEntitlementInfo {
   account: AccountStatusInfo;
   /** 仅供提示“还剩几次”，VIP 时为 undefined。 */
   remaining?: number;
+  /** 本次功能预估消耗；付费 VIP 通常为 0。 */
+  costPoints?: number;
+  /** 查询时的服务端积分余额快照。 */
+  balancePoints?: number;
+}
+
+/** 渲染层预检查会员能力时可选的积分成本。 */
+export interface AccountEntitlementRequest {
+  feature: MembershipFeature;
+  pointsCost?: number;
 }
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

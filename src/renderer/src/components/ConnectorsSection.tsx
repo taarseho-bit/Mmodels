@@ -103,7 +103,7 @@ export function ConnectorsSection(): JSX.Element {
   return (
     <div className="col" style={{ gap: 18 }}>
       <div className="muted" style={{ fontSize: 12, lineHeight: 1.7 }}>
-        {t('连接器 = MCP 服务器：给 Agent 挂外部工具（文献检索、网页抓取…）。配置只存本机；stdio 型命令在本机执行（uvx 由随包的 uv 运行时提供），http 型直连远端 URL。下一个会话生效。')}
+        {t('连接器：给 Agent 挂上额外的外部工具，比如查文献、抓网页、查文档。配置只保存在本机，下一个会话生效。')}
       </div>
 
       {notice && (
@@ -253,7 +253,7 @@ export function ConnectorsSection(): JSX.Element {
       {/* ── 自定义 ── */}
       <section className="col" style={{ gap: 8 }}>
         <div className="row" style={{ alignItems: 'baseline' }}>
-          <span style={{ fontWeight: 600, fontSize: 14 }}>{t('自定义 MCP 服务器')}</span>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>{t('自定义连接器（高级）')}</span>
           <div className="grow" />
           <button className="btn btn-sm" onClick={() => setCustom({ name: '', transport: 'stdio', command: '', args: [], env: {} })}>
             {'＋ ' + t('添加自定义')}

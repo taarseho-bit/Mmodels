@@ -94,12 +94,12 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
         <p className="workflow-heading-subtitle">同一项目里的多个任务，会汇总在这张工作图中。</p>
       </div>
     </div>
-    <p className="workflow-note">看看谁在做什么，用了哪些方法，交回了什么成果。</p>
-    {notice && <p role="status">{notice} <button className="btn btn-ghost" onClick={() => setRetry(v => v + 1)}>重新读取</button></p>}
+    <p className="workflow-note workflow-heading-note">看看谁在做什么，用了哪些方法，交回了什么成果。</p>
+    {notice && <p className="workflow-notice" role="status">{notice} <button className="btn btn-ghost" onClick={() => setRetry(v => v + 1)}>重新读取</button></p>}
     {!run ? <div className="workflow-empty"><Icon name="git-branch" size={32} /><h3>{loading ? '正在读取工作记录' : '从下一次任务开始，协作过程会出现在这里'}</h3>
       <p>历史对话没有完整的成员与技能关联记录，不会补造工作流。复杂任务按需协作，简单任务可由主助手独立完成。</p>
       <button className="btn btn-primary" onClick={onReturn}>回到对话，开始任务</button></div> : <>
-      <div className="workflow-summary">
+      <div className="workflow-summary workflow-meta-strip">
         <span>{runs.length} 个项目任务</span>
         <span className={`workflow-status is-${run.status}`}>{runLabel[run.status]}</span>
         <span>{workingCount} 位正在工作</span><span>{finishedCount} 位已收起</span><span>{skillCount} 项已调用技能{suggestedSkillCount ? ` · ${suggestedSkillCount} 项待确认` : ''}</span><span>{fileCount} 份文件成果</span>
@@ -118,17 +118,17 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
       {(() => {
         const stages = run.workflowStages?.length ? run.workflowStages : ['了解问题', '研究与计算', '核对结果', '整理交付'];
         const current = Math.min(Math.max(run.currentStage ?? 0, 0), stages.length - 1);
-        return <section className="workflow-stage-rail" aria-label="任务推进阶段">
+        return <section className="workflow-stage-rail workflow-meta-stage" aria-label="任务推进阶段">
           <div className="workflow-stage-heading"><span>推进到哪一步</span><small>{run.status === 'stopped' ? '本轮已停止' : run.status === 'interrupted' ? '需要复核' : run.stageStatus === 'completed' ? '本轮已收口' : `当前：${stages[current]}`}</small></div>
           <ol>{stages.map((stage, index) => <li key={`${stage}-${index}`} className={index < current || (run.stageStatus === 'completed' && index === current) ? 'is-done' : index === current && run.stageStatus !== 'completed' ? 'is-current' : 'is-next'}>
             <span className="workflow-stage-dot">{index < current || (run.stageStatus === 'completed' && index === current) ? '✓' : index + 1}</span><span>{stage}</span>
           </li>)}</ol>
         </section>;
       })()}
-      {!run.collaborationEnabled && <p className="workflow-note">本轮没有开启多智能体协作；仍会记录主助手实际完成的工作。</p>}
+      {!run.collaborationEnabled && <p className="workflow-note workflow-collaboration-note">本轮没有开启多智能体协作；仍会记录主助手实际完成的工作。</p>}
       <div className={`workflow-layout is-flow-canvas${node && detailsOpen ? ' with-details' : ''}`}>
         <WorkflowCanvas key={`${run.id}-${presentation}`} run={run} presentation={presentation} focusId={activeNodeId} selectedId={detailsOpen ? node?.id ?? null : null} onSelect={id => { setSelectedNode(id); setDetailsOpen(true); }} />
-        {node && detailsOpen && <aside className="workflow-detail" aria-label="成员工作详情" onKeyDown={e => { if (e.key === 'Escape') setDetailsOpen(false); }}>
+        {node && detailsOpen && <aside className="workflow-detail workflow-detail-drawer" role="dialog" aria-label="成员工作详情" onKeyDown={e => { if (e.key === 'Escape') setDetailsOpen(false); }}>
           <ResizeHandle storageKey="mm-workflow-detail-width-v2" label="调整成员详情宽度" edge="left" initial={280} min={220} max={340} fraction={.34} />
           <button className="flow-detail-close" aria-label="关闭成员详情" onClick={() => setDetailsOpen(false)}><Icon name="x" size={15} /></button>
           <div className="workflow-detail-heading"><span>成员详情</span><h3>{workflowAgentDisplayName(node)}</h3><p>{nodeLabel[node.status]}</p></div>
@@ -152,7 +152,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
         </aside>}
       </div>
       {run.nodes.length === 1 && <p className="workflow-note">本轮目前由主助手处理，协作成员实际启动后会自动加入画布。</p>}
-              <details className="workflow-explainer"><summary>关于这张工作图</summary><p>从上到下表示真实的派发层级，同一层超过四位会自动换行，画布会尽量保持接近舒适的横纵比例。虚线表示成员确实参与了，但没有可靠的上级信息，因此只挂在主助手下，不补造关系。已完成成员默认缩小、褪色；没有技能、操作和分工说明的结束记录会按上级合并成一个摘要，点“展开已结束”仍能查看原始成员。“已返回”只表示结果已经交回，仍需主助手核验。</p></details>
+              <details className="workflow-explainer"><summary>关于这张工作图</summary><p>同一层通常按三列换行；成员较多时会适当增加一列，避免图过高。画布会尽量保持舒适的横纵比例。虚线表示成员确实参与了，但没有可靠的上级信息，因此只挂在主助手下，不补造关系。已完成成员默认缩小、褪色；没有技能、操作和分工说明的结束记录会按上级合并成一个摘要，点“展开已结束”仍能查看原始成员。“已返回”只表示结果已经交回，仍需主助手核验。</p></details>
       {run.truncated && <p className="workflow-note">本轮事件较多，展示记录已达到上限（40 位成员、500 次工具调用），实际执行不受影响。</p>}
     </>}
   </section>;

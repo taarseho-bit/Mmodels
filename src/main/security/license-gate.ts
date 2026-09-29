@@ -210,7 +210,11 @@ export function isLicenseRequired(): boolean {
 }
 
 /** 在线检查一项能力。ai-chat 带 requestId 时每轮都会走服务端，服务端据此幂等扣减次数。 */
-export async function assertAiEntitlement(feature = 'ai-chat', requestId?: string): Promise<void> {
+/**
+ * 在模型回合开始前做一次服务端权益确认。
+ * pointsCost 是新版统一积分口径；旧授权服务忽略该字段仍可正常工作。
+ */
+export async function assertAiEntitlement(feature = 'ai-chat', requestId?: string, pointsCost?: number, chatMode?: string): Promise<void> {
   const policy = readPolicy();
   if (!policy.required) return;
   if (!policy.endpoint) throw new Error('当前版本需要在线验证授权，请在设置中完成授权后重试。');
@@ -233,13 +237,27 @@ export async function assertAiEntitlement(feature = 'ai-chat', requestId?: strin
         'x-mmodels-version': app.getVersion(),
         'x-mmodels-device': device,
         'x-mmodels-feature': feature,
+        ...(Number.isFinite(pointsCost) && Number(pointsCost) > 0
+          ? { 'x-mmodels-points-cost': String(Math.max(0, Math.round(Number(pointsCost)))) }
+          : {}),
         ...(requestId ? { 'x-mmodels-request-id': requestId } : {}),
       },
-      body: JSON.stringify({ app: 'mmodels-desktop', version: app.getVersion(), deviceId: device, feature, requestId, consume: feature === 'ai-chat' }),
+      body: JSON.stringify({
+        app: 'mmodels-desktop',
+        version: app.getVersion(),
+        deviceId: device,
+        feature,
+        requestId,
+        consume: feature === 'ai-chat',
+        ...(chatMode ? { chatMode } : {}),
+        ...(Number.isFinite(pointsCost) && Number(pointsCost) > 0
+          ? { pointsCost: Math.max(0, Math.round(Number(pointsCost))) }
+          : {}),
+      }),
     });
 
     // 5xx / 429 等服务端故障按网络类失败处理（走宽限）；401/403 仍需读取
-    // 响应体，以便把“今日次数用完”和“需要 VIP”显示成用户看得懂的提示。
+    // 响应体，以便把“积分用完”和“需要 VIP”显示成用户看得懂的提示。
     if (!response.ok && response.status !== 401 && response.status !== 403) {
       throw new LicenseTransientError(`授权服务返回 ${response.status}`);
     }
@@ -253,7 +271,11 @@ export async function assertAiEntitlement(feature = 'ai-chat', requestId?: strin
     if (response.status === 401 || response.status === 403) {
       clearGrace();
       cache = null;
-      if (body.code === 'AI_QUOTA_EXCEEDED') throw new LicenseRejectionError('今日基础 AI 次数已用完，请签到或升级会员后继续。');
+      if (body.code === 'AI_QUOTA_EXCEEDED') throw new LicenseRejectionError('今日可用积分已用完，请签到或兑换 VIP 卡密后继续。');
+      if (body.code === 'POINTS_INSUFFICIENT') throw new LicenseRejectionError('当前积分不足，完成建模或兑换卡密后继续。');
+      if (body.code === 'PAID_VIP_REQUIRED' || body.code === 'TRIAL_MULTI_AGENT_FORBIDDEN') {
+        throw new LicenseRejectionError('多智能体协作需要卡密兑换的 VIP，24 小时体验不包含这项能力。');
+      }
       if (body.code === 'FEATURE_VIP_REQUIRED') throw new LicenseRejectionError('当前功能需要 VIP 会员，请打开会员中心升级。');
       throw new LicenseRejectionError('授权已失效，请重新登录或续费。');
     }
@@ -263,7 +285,11 @@ export async function assertAiEntitlement(feature = 'ai-chat', requestId?: strin
     if (body.allowed !== true) {
       clearGrace();
       cache = null;
-      if (body.code === 'AI_QUOTA_EXCEEDED') throw new LicenseRejectionError('今日基础 AI 次数已用完，请签到或升级会员后继续。');
+      if (body.code === 'AI_QUOTA_EXCEEDED') throw new LicenseRejectionError('今日可用积分已用完，请签到或兑换 VIP 卡密后继续。');
+      if (body.code === 'POINTS_INSUFFICIENT') throw new LicenseRejectionError('当前积分不足，完成建模或兑换卡密后继续。');
+      if (body.code === 'PAID_VIP_REQUIRED' || body.code === 'TRIAL_MULTI_AGENT_FORBIDDEN') {
+        throw new LicenseRejectionError('多智能体协作需要卡密兑换的 VIP，24 小时体验不包含这项能力。');
+      }
       if (body.code === 'FEATURE_VIP_REQUIRED') throw new LicenseRejectionError('当前功能需要 VIP 会员，请打开会员中心升级。');
       throw new LicenseRejectionError('授权已失效或当前设备未被允许');
     }

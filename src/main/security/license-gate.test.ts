@@ -218,4 +218,27 @@ describe('license-gate 断网宽限', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ html: '<!doctype html>' }) })));
     await expect(gate.assertAiEntitlement()).rejects.toThrow('授权服务返回格式无效');
   });
+
+  it('统一积分成本会随请求发送，服务端可按本轮原子扣减', async () => {
+    writePolicy(true);
+    writeToken('tok-1');
+    const gate = await freshGate();
+    const fetchMock = vi.fn(async () => okResponse({ allowed: true, pointsBalance: 17, costPoints: 3 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await gate.assertAiEntitlement('ai-chat', 'turn-12345678', 3);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['x-mmodels-points-cost']).toBe('3');
+    expect(JSON.parse(String(init.body))).toMatchObject({ feature: 'ai-chat', requestId: 'turn-12345678', pointsCost: 3, consume: true });
+  });
+
+  it('试用调用多智能体时使用明确的中文付费 VIP 提示', async () => {
+    writePolicy(true);
+    writeToken('tok-1');
+    const gate = await freshGate();
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse({
+      allowed: false,
+      code: 'TRIAL_MULTI_AGENT_FORBIDDEN',
+    })));
+    await expect(gate.assertAiEntitlement('multi-agent')).rejects.toThrow('卡密兑换的 VIP');
+  });
 });

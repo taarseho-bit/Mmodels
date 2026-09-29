@@ -16,11 +16,62 @@ export interface FirstRunWelcomeProps {
 }
 
 const HIGHLIGHTS = [
-  { icon: 'workflow', title: '多智能体编排', copy: '把复杂建模任务拆成可追踪的步骤。' },
-  { icon: 'blocks', title: '可插拔技能', copy: '按题目加载数据、建模、绘图和写作能力。' },
-  { icon: 'terminal', title: '真实终端', copy: '代码、数据与产物都留在你的本地项目中。' },
-  { icon: 'file-check', title: '产物透明', copy: '每一步有证据、有文件，也方便继续修改。' },
+  { icon: 'blocks', title: '多智能体分工协作', copy: '主助手把赛题拆成子任务：题意解析、数据勘探、建模求解、制图写作各自成为节点，并行推进并交叉复核。' },
+  { icon: 'workflow', title: '从选题到成稿', copy: '读题、找数据、建模求解、绘图、写论文，一条流程走完。' },
+  { icon: 'folder-open', title: '成果留在本地', copy: '代码、数据、图表和论文都保存在你的项目文件夹里，不经过云端中转。' },
+  { icon: 'file-check', title: '过程可回放', copy: '每位成员做了什么、调用了哪些技能、交回了什么，全程留痕，随时复核与复现。' },
 ] as const;
+
+/** 数学符号水印：与营销站首屏同款「数模感」背景。
+ *  位置 / 字号 / 动画时长用确定性伪随机算，避免每次渲染跳动。 */
+const SYMBOL_FIELD = [
+  '∑', '∫', 'π', '∂', '√', 'Σ', '∏', '≈', '≠', '∞',
+  'x²', 'Δx', 'μ', 'σ', 'θ', 'λ', 'ƒ(x)', 'lim', 'dy/dx', '∅',
+].map((s, i) => ({
+  s,
+  left: `${(i * 37 + ((i * 17) % 23)) % 94}%`,
+  top: `${6 + ((i * 53) % 86)}%`,
+  fontSize: `${20 + ((i * 13) % 30)}px`,
+  animationDuration: `${18 + ((i * 7) % 16)}s`,
+  animationDelay: `${-((i * 11) % 22)}s`,
+}));
+
+const PARTICLES = [
+  { left: '36%', top: '25%', size: 6, delay: '0s' },
+  { left: '72%', top: '44%', size: 4, delay: '-0.8s' },
+  { left: '18%', top: '74%', size: 3, delay: '-1.4s' },
+  { left: '58%', top: '66%', size: 5, delay: '-1.9s' },
+] as const;
+
+/** 首启页背景：数学符号水印 + 漂移粒子。 */
+function MathField(): JSX.Element {
+  return (
+    <div className="first-run-backdrop" aria-hidden>
+      {SYMBOL_FIELD.map((item, index) => (
+        <span
+          key={`${item.s}-${index}`}
+          className="first-run-symbol"
+          style={{
+            left: item.left,
+            top: item.top,
+            fontSize: item.fontSize,
+            animationDuration: item.animationDuration,
+            animationDelay: item.animationDelay,
+          }}
+        >
+          {item.s}
+        </span>
+      ))}
+      {PARTICLES.map((p) => (
+        <i
+          key={`${p.left}-${p.top}`}
+          className="first-run-particle"
+          style={{ left: p.left, top: p.top, width: p.size, height: p.size, animationDelay: p.delay }}
+        />
+      ))}
+    </div>
+  );
+}
 
 /**
  * 首启会员欢迎页。
@@ -35,14 +86,32 @@ export function FirstRunWelcome({
   authOnly = false,
 }: FirstRunWelcomeProps): JSX.Element {
   const [compactAuth, setCompactAuth] = useState(authOnly);
+  const [darkMode, setDarkMode] = useState(false);
 
   const showAuthOnly = (): void => {
     onLater?.();
   };
 
+  /* 亮/暗配色切换：亮色为营销站白底朱红，暗色为改造前的深色配色；文案不变。 */
+  const themeClass = darkMode ? ' first-run-shell-dark' : '';
+  const themeToggle = (
+    <button
+      type="button"
+      className="first-run-theme-toggle"
+      onClick={() => setDarkMode((v) => !v)}
+      aria-pressed={darkMode}
+      title={darkMode ? t('切换到亮色') : t('切换到暗色')}
+    >
+      <Icon name="sun-moon" size={13} />
+      {darkMode ? t('亮色') : t('暗色')}
+    </button>
+  );
+
   if (compactAuth) {
     return (
-      <div className="first-run-shell first-run-shell-auth" data-testid="account-gate">
+      <div className={`first-run-shell first-run-shell-auth${themeClass}`} data-testid="account-gate">
+        <MathField />
+        <div className="first-run-theme-toggle-floating">{themeToggle}</div>
         <div className="first-run-auth-brand">
           <div className="first-run-mark" aria-hidden>∑</div>
           <div>
@@ -54,10 +123,10 @@ export function FirstRunWelcome({
           <div className="first-run-auth-copy">
             <span className="first-run-eyebrow">{t('账号中心')}</span>
             <h1>{t('登录后进入工作台')}</h1>
-            <p>{t('注册免费账号可领取 3 天全功能试用。试用结束后仍可每天使用基础 AI，本地项目与编辑功能继续可用。')}</p>
+            <p>{t('注册免费账号可领取 24 小时完整基础体验并获得 20 积分。体验结束后仍可使用基础 AI，本地项目与编辑功能继续可用。多智能体、云协作和自动化需要卡密激活 VIP。')}</p>
             <div className="first-run-mini-points">
               <span><Icon name="check" size={13} />{t('免费账号可使用基础功能')}</span>
-              <span><Icon name="check" size={13} />{t('注册即领 3 天全功能试用')}</span>
+              <span><Icon name="check" size={13} />{t('注册即领 24 小时体验')}</span>
               <span><Icon name="check" size={13} />{t('无需信用卡即可开始')}</span>
             </div>
           </div>
@@ -72,30 +141,25 @@ export function FirstRunWelcome({
   }
 
   return (
-    <div className="first-run-shell" data-testid="first-run-welcome">
-      <div className="first-run-backdrop" aria-hidden>
-        <span className="first-run-symbol first-run-symbol-a">∑</span>
-        <span className="first-run-symbol first-run-symbol-b">∂</span>
-        <span className="first-run-symbol first-run-symbol-c">π</span>
-        <span className="first-run-symbol first-run-symbol-d">∫</span>
-        <i className="first-run-particle first-run-particle-a" />
-        <i className="first-run-particle first-run-particle-b" />
-        <i className="first-run-particle first-run-particle-c" />
-      </div>
+    <div className={`first-run-shell${themeClass}`} data-testid="first-run-welcome">
+      <MathField />
 
       <header className="first-run-head">
         <div className="first-run-brand"><span className="first-run-mark" aria-hidden>∑</span><strong>MModels</strong></div>
-        <span className="first-run-local-note"><Icon name="shield-check" size={13} />{t('本地基础功能永久免费')}</span>
+        <div className="first-run-head-actions">
+          <span className="first-run-local-note"><Icon name="shield-check" size={13} />{t('本地基础功能永久免费')}</span>
+          {themeToggle}
+        </div>
       </header>
 
       <div className="first-run-grid">
         <section className="first-run-intro">
-          <span className="first-run-eyebrow">{t('数学建模工作台')}</span>
-          <h1>{t('把想法变成可提交的模型成果')}</h1>
-          <p className="first-run-lead">{t('注册一个免费账号，领取 3 天全功能试用；之后每天仍有基础 AI 次数，签到还能继续领取。')}</p>
+          <span className="first-run-eyebrow">{t('为数学建模竞赛而生的桌面工作台')}</span>
+          <h1>{t('一道题，一支队伍，')}<em>{t('一篇可以直接交的论文。')}</em></h1>
+          <p className="first-run-lead">{t('把赛题放进 MModels，先用基础流程完成从分析到论文的工作；需要多人协作时，再用卡密激活 VIP。每一步做了什么、调用了哪些技能、交回了什么，全部摆在你眼前。注册免费账号即领 24 小时体验和 20 积分。')}</p>
           <div className="first-run-offer">
             <span className="first-run-offer-icon"><Icon name="sparkles" size={18} /></span>
-            <span><strong>{t('注册送 3 天 VIP 试用')}</strong><small>{t('多智能体、深度建模、完整导出都可体验')}</small></span>
+            <span><strong>{t('注册享 24 小时体验')}</strong><small>{t('基础建模、论文写作和本地排版可直接体验；多智能体、云协作和自动化需卡密 VIP')}</small></span>
           </div>
           <div className="first-run-highlights">
             {HIGHLIGHTS.map((item) => (
@@ -106,17 +170,17 @@ export function FirstRunWelcome({
             ))}
           </div>
           <div className="first-run-actions">
-            <button type="button" className="btn btn-sm btn-primary" onClick={() => setCompactAuth(true)}>
-              {t('注册送 3 天试用')}
+            <button type="button" className="btn btn-primary" onClick={() => setCompactAuth(true)}>
+              {t('注册领取 24 小时体验')}
             </button>
-            <button type="button" className="btn btn-sm first-run-tour-btn" onClick={() => onStartTour?.()}>
-              {t('查看新手引导')}
+            <button type="button" className="btn first-run-tour-btn" onClick={() => onStartTour?.()}>
+              {t('看看它是怎么干活的')}
             </button>
             <button type="button" className="first-run-later" onClick={showAuthOnly}>
               {t('稍后再说')}
             </button>
           </div>
-          <small className="first-run-footnote">{t('本地基础功能永久免费 · 无需信用卡 · 随时可以退出')}</small>
+          <small className="first-run-footnote">{t('本地基础功能永久免费，随时可以升级会员。')}</small>
         </section>
 
         <section className="first-run-auth-wrap" aria-label={t('登录或注册')}>

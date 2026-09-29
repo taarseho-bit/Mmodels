@@ -57,9 +57,14 @@ export function friendlyIpcError(raw: unknown): string {
   if (/当前接口不支持|不支持 document|document 内容|unsupported document/i.test(message)) return '当前接口暂时不支持直接读取这类文档，正在改用本地解析方式。';
   if (/401|403|unauthori[sz]ed|forbidden|api.?key|token/i.test(message)) return '连接凭据或访问权限需要检查，请打开连接器设置后重试。';
   if (/429|too many requests|rate.?limit/i.test(message)) return '服务当前比较忙，稍后会自动重试；也可以换一个模型或连接器。';
-  if (/insufficient_points|积分不足/i.test(message)) return '当前积分不足，完成建模或签到后再来兑换。';
+  if (/insufficient_points|points_insufficient|积分不足/i.test(message)) return '当前积分不足，可以完成基础任务获取积分，或兑换卡密继续使用。';
+  if (/TRIAL_MULTI_AGENT_FORBIDDEN|PAID_VIP_REQUIRED|多智能体.*试用|付费 VIP/i.test(message)) return '多智能体协作需要卡密兑换的 VIP，24 小时体验不包含这项能力。';
   if (/invite_not_verified|邀请关系/i.test(message)) return '邀请关系还在核验中，确认注册完成后再领取奖励。';
   if (/timed? ?out|timeout|ETIMEDOUT|网络异常|fetch failed|ENETUNREACH|ECONNRESET/i.test(message)) return '网络暂时没有连通，正在重试；如果持续失败，请检查网络或代理设置。';
+  // ⚠️ 必须在文件「找不到」规则之前：ENOTFOUND（DNS 解析失败）、ECONNREFUSED、
+  //    以及服务端 404 的「接口不存在」都会命中 not found/不存在 字样，
+  //    曾经被误报成「文件或目录没有找到」误导排障方向（2026-09-28 签到事故）。
+  if (/ENOTFOUND|getaddrinfo|ECONNREFUSED|EAI_AGAIN|接口不存在|服务返回 404/i.test(message)) return '暂时连不上会员服务；如果持续失败，可能是服务端正在维护或本机网络/代理受限。';
   if (/ENOENT|not found|不存在|找不到|no such file/i.test(message)) return '需要的文件或目录没有找到，请检查项目文件后重试。';
   if (/EACCES|permission denied|权限不足|拒绝访问/i.test(message)) return '当前操作没有足够权限，请检查项目目录权限或在设置中调整访问范围。';
   if (/spawn|命令|executable|进程/i.test(message) && /failed|error|失败|找不到/i.test(message)) return '本机环境还没有准备好这个工具，正在保留当前结果；请到运行环境中检查后重试。';

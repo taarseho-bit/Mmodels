@@ -22,6 +22,7 @@ import { useApp } from '../../store/app';
 import { tx, t } from '../../i18n';
 import { Icon } from '../Icon';
 import { Section } from './shared';
+import { showOnboarding } from '../../lib/onboarding-nav';
 
 /** 已完成的短教程 id 列表 */
 const DONE_KEY = 'mm-tour-done';
@@ -95,6 +96,7 @@ function clearPending(): void {
 export function TourSection(): JSX.Element {
   const requestTour = useApp((s) => s.requestTour);
   const settings = useApp((s) => s.settings);
+  const patchSettings = useApp((s) => s.patchSettings);
   const tourFinished = useApp((s) => s.tourFinished);
   const tourDone = settings?.tourDone;
   const [done, setDone] = useState<Set<string>>(() => loadDone());
@@ -150,6 +152,17 @@ export function TourSection(): JSX.Element {
         <span className="muted" style={{ fontSize: 12 }}>
           {tx('onboarding.tutorialCenter.progress', { completed, total: CARDS.length })}
         </span>
+        <div className="grow" />
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => {
+            void patchSettings({ onboardingDone: false, tourDone: false, welcomeShown: false });
+            showOnboarding();
+          }}
+        >
+          {t('重新运行首次引导')}
+        </button>
       </div>
 
       <div className="tour-route" aria-label="新版数学建模使用路线">

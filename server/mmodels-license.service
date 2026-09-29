@@ -18,6 +18,9 @@ ReadWritePaths=/opt/mmodels/data
 Environment=MM_PORT=8080
 Environment=MM_TRUST_PROXY=1
 Environment=MM_DATA_DIR=/opt/mmodels/data
+# 部署机可在 /etc/mmodels/license.env 中放置随机管理路径等环境变量；
+# 不把生产路径写进客户端或源码，更新服务端时也不会丢失部署配置。
+EnvironmentFile=-/etc/mmodels/license.env
 
 [Install]
 WantedBy=multi-user.target

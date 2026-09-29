@@ -13,10 +13,12 @@ import { IPC } from '@shared/types';
 import { COMPETITION_IPC, type CompetitionLibraryApi } from '../shared/competition-studio';
 import { WORKFLOW_IPC, type WorkflowApi } from '../shared/workflow';
 import type {
+  AccountFeedbackResult,
   AccountPointRewardKind,
   AccountPointsEarnResult,
   AccountStatusInfo,
   AccountEntitlementInfo,
+  AccountEntitlementRequest,
   MembershipFeature,
   AppSettings,
   AskUserRequest,
@@ -51,6 +53,7 @@ import type {
   SessionMeta,
   SkillMeta,
   StreamEvent,
+  TelemetryReportPayload,
   UsageStats,
 } from '@shared/types';
 
@@ -161,9 +164,9 @@ const api = {
   // ── 账号与授权（商业化） ──────────────────────────────────
   account: {
     status: (): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_STATUS),
-    entitlement: (feature: MembershipFeature): Promise<AccountEntitlementInfo> =>
+    entitlement: (feature: MembershipFeature | AccountEntitlementRequest): Promise<AccountEntitlementInfo> =>
       ipcRenderer.invoke(IPC.ACCOUNT_ENTITLEMENT, feature),
-    register: (args: { username: string; password: string; email: string; emailCode: string; code?: string }): Promise<AccountStatusInfo> =>
+    register: (args: { username: string; password: string; email: string; emailCode: string; code?: string; inviteCode?: string }): Promise<AccountStatusInfo> =>
       ipcRenderer.invoke(IPC.ACCOUNT_REGISTER, args),
     login: (args: { username: string; password: string }): Promise<AccountStatusInfo> =>
       ipcRenderer.invoke(IPC.ACCOUNT_LOGIN, args),
@@ -178,6 +181,15 @@ const api = {
     redeemPoints: (days: number): Promise<AccountStatusInfo> => ipcRenderer.invoke(IPC.ACCOUNT_POINTS_REDEEM, { days }),
     earnPoints: (args: { kind: AccountPointRewardKind; eventId?: string }): Promise<AccountPointsEarnResult> =>
       ipcRenderer.invoke(IPC.ACCOUNT_POINTS_EARN, args),
+    /** 提交反馈正文：服务端落库，运营后台可见；每个账号首次提交奖励积分。 */
+    feedback: (args: { text: string; contact?: string }): Promise<AccountFeedbackResult> =>
+      ipcRenderer.invoke(IPC.ACCOUNT_FEEDBACK, args),
+  },
+
+  // ── 运行诊断上报（后台默认开启，界面无开关） ─────────────
+  telemetry: {
+    report: (payload: TelemetryReportPayload): Promise<boolean> =>
+      ipcRenderer.invoke(IPC.TELEMETRY_REPORT, payload),
   },
 
   // ── 文件 ──────────────────────────────────────────────────

@@ -27,6 +27,7 @@ import { collabService } from '../collab/server';
 import { getProject } from './project';
 import { getSettings } from '../store/config';
 import { pushToRenderer, safeWrap } from './index';
+import { assertAiEntitlement } from '../security/license-gate';
 
 /**
  * 本机身份 id —— 用来挡应用约定的「同一个账号不能重复加入同一协作房间」。
@@ -90,6 +91,7 @@ export function registerCollabHandlers(): void {
   ipcMain.handle(
     IPC.COLLAB_START,
     safeWrap(async (_e, name: unknown): Promise<CollabRoomInfo> => {
+      await assertAiEntitlement('cloud-collaboration');
       const project = currentProject();
       if (!project) throw new Error('当前没有打开的项目，无法开始协作');
       return collabService.startHost({
@@ -121,13 +123,14 @@ export function registerCollabHandlers(): void {
       async (
         _e,
         input: { address?: string; code?: string; name?: string },
-      ): Promise<CollabJoinResult> =>
-        collabService.join({
+      ): Promise<CollabJoinResult> => {
+        return assertAiEntitlement('cloud-collaboration').then(() => collabService.join({
           address: String(input?.address ?? ''),
           code: String(input?.code ?? ''),
           name: displayName(input?.name),
           accountId: accountId(),
-        }),
+        }));
+      },
       '加入协作房间',
     ),
   );
@@ -168,11 +171,13 @@ export function registerCollabHandlers(): void {
   ipcMain.handle(
     IPC.COLLAB_TASK_SUBMIT,
     safeWrap(
-      (_e, input: { title?: string; prompt?: string }): Promise<boolean> =>
-        collabService.submitTask({
+      async (_e, input: { title?: string; prompt?: string }): Promise<boolean> => {
+        await assertAiEntitlement('cloud-collaboration');
+        return collabService.submitTask({
           title: String(input?.title ?? '').slice(0, 200),
           prompt: String(input?.prompt ?? ''),
-        }),
+        });
+      },
       '提交协作任务',
     ),
   );

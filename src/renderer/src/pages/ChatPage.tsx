@@ -1332,7 +1332,7 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
   );
 
   return (
-    <div className="chat-page">
+    <div className={`chat-page ${taskView === 'workflow' ? 'is-workflow' : 'is-chat'}`}>
       {actions ? (
         <div className="chat-page-context">
           <div className="chat-page-context-path topbar-context-path" aria-label="当前项目与任务">

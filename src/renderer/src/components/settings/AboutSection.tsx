@@ -39,12 +39,8 @@ export function AboutSection(): JSX.Element {
     const lines = info
       ? [
           `MModels v${info.app}`,
-          `Electron ${info.electron}`,
-          `Chromium ${info.chrome}`,
-          `Node ${info.node}`,
-          `${info.platform} / ${info.arch}`,
-          `运行方式：${info.packaged ? '打包版' : '开发版'}`,
-          `本地服务：${window.mathmodel.serverBaseUrl || '未启动'}`,
+          `运行环境：${info.platform} / ${info.arch}`,
+          `运行方式：${info.packaged ? '安装版' : '开发版'}`,
         ]
       : ['MModels：版本信息暂未读取'];
     try {
@@ -67,7 +63,7 @@ export function AboutSection(): JSX.Element {
               : tx('whatsnew.changelogAccordion.version', { version: '—' })}
           </span>
           <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.6 }}>
-            {t('自动更新按既定决策未提供，当前为当前版本。')}
+            {t('已是最新版本。')}
           </span>
         </div>
         <span className="badge">{t('本地运行')}</span>
@@ -118,7 +114,7 @@ export function AboutSection(): JSX.Element {
         </div>
       </Section>
 
-      {/* ── 本机环境信息（当前实现自有，保留）── */}
+      {/* ── 本机环境信息（保留用户需要的最小信息）── */}
       <div className="panel" style={{ padding: 14 }}>
         {!info ? (
           <span className="muted">{t('读取版本信息…')}</span>
@@ -129,35 +125,17 @@ export function AboutSection(): JSX.Element {
               <span className="mono">v{info.app}</span>
             </div>
             <div className="row" style={{ gap: 8 }}>
-              <span className="muted" style={{ width: 110 }}>Electron</span>
-              <span className="mono">{info.electron}</span>
-            </div>
-            <div className="row" style={{ gap: 8 }}>
-              <span className="muted" style={{ width: 110 }}>Chromium</span>
-              <span className="mono">{info.chrome}</span>
-            </div>
-            <div className="row" style={{ gap: 8 }}>
-              <span className="muted" style={{ width: 110 }}>Node</span>
-              <span className="mono">{info.node}</span>
-            </div>
-            <div className="row" style={{ gap: 8 }}>
-              <span className="muted" style={{ width: 110 }}>{t('平台')}</span>
+              <span className="muted" style={{ width: 110 }}>{t('系统')}</span>
               <span className="mono">
                 {info.platform} / {info.arch}
-                {info.packaged ? t('（打包版）') : t('（开发版）')}
-              </span>
-            </div>
-            <div className="row" style={{ gap: 8 }}>
-              <span className="muted" style={{ width: 110 }}>{t('本地服务')}</span>
-              <span className="mono">
-                {window.mathmodel.serverBaseUrl || t('未启动')} · {window.mathmodel.serverToken ? t('已鉴权') : t('无 token')}
+                {info.packaged ? t('（安装版）') : t('（开发版）')}
               </span>
             </div>
           </div>
         )}
         <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
           <button className="btn btn-sm btn-ghost" onClick={() => void copyDiagnostics()}>
-            {copied ? t('已复制') : t('复制诊断信息')}
+            {copied ? t('已复制') : t('复制版本信息')}
           </button>
         </div>
       </div>

@@ -241,6 +241,7 @@ export function SettingsPage({
                 {open && group.items.map((s) => (
                   <button
                     key={s.id}
+                    data-section={s.id}
                     className={`settings-nav-item settings-nav-child${section === s.id ? ' active' : ''}`}
                     onClick={() => setSection(s.id)}
                   >

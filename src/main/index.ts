@@ -27,7 +27,7 @@ import { createRequire } from 'node:module';
 //    dev 模式下同样安全（纯注册无副作用）。
 import 'bytenode';
 import { LocalServer, type ServerInfo } from './server';
-import { pushToRenderer, registerIpcHandlers, shutdownIpcRuntimes } from './ipc';
+import { friendlyIpcError, pushToRenderer, registerIpcHandlers, shutdownIpcRuntimes } from './ipc';
 import { IPC } from '@shared/types';
 import { mountRoutes } from './server/routes';
 import { closeDb, initDb, isDbOpen } from './db';
@@ -42,6 +42,10 @@ import {
   syncDesktopPetWindow,
 } from './windows/desktop-pet';
 import { createAppTray, destroyAppTray } from './windows/tray';
+import { attachWindowTelemetry, initTelemetry, reportSlowStartup, reportTelemetry } from './telemetry';
+
+/** 进程启动时间：用于识别「启动明显偏慢」并自动上报。 */
+const PROCESS_STARTED_AT = Date.now();
 
 // ─────────────────────────────────────────────────────────────
 // 全局单例
@@ -138,6 +142,8 @@ function log(...args: unknown[]): void {
  * 由旧实例的 `second-instance` 监听拉到前台。
  */
 const gotLock = app.requestSingleInstanceLock();
+// 诊断上报在最早时机初始化：启动阶段的异常也要能进后台。
+initTelemetry();
 if (!gotLock) {
   // 第二个实例：退出（窗口前置由**已运行的**那个实例的 second-instance 处理）
   app.quit();
@@ -159,7 +165,8 @@ if (!gotLock) {
     } catch {
       /* 日志写不出来也不能挡住后面的提示 */
     }
-    dialog.showErrorBox('启动失败', String(err));
+    reportTelemetry('error', '启动流程失败', err instanceof Error ? err.stack || err.message : String(err));
+    dialog.showErrorBox('启动失败', `软件这次没有正常启动，可以重开一次；如果反复出现，我们已经收到这条诊断信息。\n\n提示：${friendlyIpcError(err)}`);
     app.quit();
   });
 }
@@ -243,7 +250,11 @@ function createMainWindow(): BrowserWindow {
   win.once('ready-to-show', () => {
     win.show();
     log('window shown');
+    reportSlowStartup(Date.now() - PROCESS_STARTED_AT);
   });
+
+  // 窗口级诊断：加载失败 / 渲染进程崩溃 / 界面无响应 → 自动上报后台
+  attachWindowTelemetry(win);
 
   // 外链一律走系统浏览器，不在应用内开
   win.webContents.setWindowOpenHandler(({ url }) => {

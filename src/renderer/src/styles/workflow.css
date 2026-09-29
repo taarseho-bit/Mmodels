@@ -125,15 +125,12 @@
 .workflow-assignment { display:grid; gap:4px; margin:12px 0 0; padding:10px; border-radius:8px; background:var(--bg-canvas); color:var(--fg-secondary); font-size:11px; line-height:1.55; }.workflow-assignment strong { color:var(--fg-primary); font-size:10px; font-weight:600; }
 .flow-skill-section ul { margin:0; padding:0; list-style:none; }.flow-skill-section li { padding:10px; border:1px solid var(--border); border-radius:7px; margin-bottom:8px; background:var(--bg-canvas); }.flow-skill-section li > div { display:flex; justify-content:space-between; gap:8px; align-items:center; }.flow-skill-section strong { font-size:12px; font-weight:500; }.flow-skill-section small, .flow-skill-section li > span { font-size:10px; color:var(--fg-muted); }.flow-skill-section code { display:block; font-size:10px; margin:7px 0; overflow-wrap:anywhere; color:var(--fg-secondary); }.flow-skill-section > p { font-size:11px; line-height:1.7; color:var(--fg-muted); }.flow-records-title { margin:20px 0 0; }
 @keyframes flow-blink { 0%,42%,47%,100% { transform:scaleY(1); } 44% { transform:scaleY(.15); } }
-.workflow-layout.is-flow-canvas.with-details { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:12px; }
-.workflow-layout.is-flow-canvas .workflow-detail { position:relative; top:auto; bottom:auto; right:auto; max-height:460px; padding:16px; box-shadow:none; }
 .flow-world { will-change:transform; }
 .flow-agent-name { font-size:15px; }.workflow-node.flow-agent p { font-size:13px; }.flow-agent-foot,.flow-agent-skills > span { font-size:11px; }
 .flow-world.is-overview .flow-agent-heading { flex-wrap:wrap; }.flow-world.is-overview .flow-agent-name { font-size:25px; }
 .flow-world.is-overview .flow-agent-state { font-size:20px; }.flow-world.is-overview .flow-agent-speech,.flow-world.is-overview .flow-agent-skills,.flow-world.is-overview .flow-agent-foot { display:none; }
 .workflow-explainer,.flow-records { margin-top:12px; color:var(--fg-secondary); font-size:12px; line-height:1.7; }
 .workflow-explainer summary,.flow-records summary,.flow-skill-section summary { cursor:pointer; }
-@container (max-width:800px) { .workflow-layout.is-flow-canvas.with-details { display:block; }.workflow-layout.is-flow-canvas .workflow-detail { width:100%!important; max-height:300px; margin-top:12px; }.workflow-detail > .pane-resizer { display:none; } }
 @keyframes flow-focus { 0%,100% { transform:rotate(-3deg); } 50% { transform:rotate(3deg); } }
 @keyframes flow-hand { 0%,100% { transform:rotate(-8deg); } 35%,65% { transform:rotate(12deg); } }
 @media (prefers-reduced-motion:reduce) { .flow-person-hand, .flow-person.is-working .flow-person-eyes, .flow-person.is-working .flow-person-face { animation:none; } }
@@ -160,4 +157,238 @@
   .workflow-summary { gap: 7px 11px; }
   .workflow-stage-rail ol { overflow-x: auto; }
   .workflow-stage-rail li { min-width: 120px; }
+}
+
+/*
+ * 工作流视图收口（2026-09-29）
+ *
+ * 这里的布局故意只作用于 .workflow-view：顶部是紧凑的状态栏，画布吃掉
+ * 剩余高度；成员详情是浮在画布上的抽屉，不再把画布挤成窄列。这样演示
+ * 时一眼能看到完整关系，分析时仍可打开技能和调用记录。
+ */
+.workflow-view {
+  --workflow-detail-width: clamp(250px, 24vw, 340px);
+  --workflow-canvas-min-height: clamp(260px, 42vh, 620px);
+}
+
+.workflow-view > .workflow-heading {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.workflow-view > .workflow-heading-note {
+  flex: 0 0 auto;
+  margin: 1px 0 4px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workflow-view > .workflow-notice {
+  flex: 0 0 auto;
+  max-width: 100%;
+  max-height: 30px;
+  margin: 2px 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.workflow-view > .workflow-layout.is-flow-canvas {
+  display: block;
+  position: relative;
+  flex: 1 1 0;
+  height: auto;
+  min-height: var(--workflow-canvas-min-height);
+  margin-top: 7px;
+}
+
+.workflow-view > .workflow-layout.is-flow-canvas > .flow-canvas-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 统计信息保持一行，宽度不足时横向滚动，不再把画布往下推。 */
+.workflow-view > .workflow-meta-strip {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  max-height: 30px;
+  margin: 3px 0 0;
+  padding: 3px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.workflow-meta-strip > span { flex: 0 0 auto; }
+.workflow-meta-strip .workflow-status { padding: 3px 8px; }
+
+/* 技能概览只占一条可读的横向带，点击成员仍可查看完整记录。 */
+.workflow-view > .workflow-skill-overview {
+  flex: 0 0 auto;
+  max-height: 64px;
+  margin: 4px 0 0;
+  padding: 5px 8px;
+  overflow: hidden;
+}
+
+.workflow-view .workflow-skill-overview-head {
+  gap: 8px;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.workflow-view .workflow-skill-overview-list {
+  flex-wrap: nowrap;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.workflow-view .workflow-skill-chip {
+  flex: 0 0 auto;
+  min-width: 156px;
+  max-width: 220px;
+  padding: 5px 8px;
+}
+
+.workflow-view .workflow-skill-chip small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workflow-view > .workflow-meta-stage {
+  flex: 0 0 auto;
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  max-height: 52px;
+  overflow: hidden;
+}
+
+.workflow-view .workflow-meta-stage .workflow-stage-heading {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.workflow-view .workflow-meta-stage ol {
+  min-width: 0;
+  padding-top: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.workflow-view .workflow-meta-stage li {
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.workflow-view .workflow-meta-stage .workflow-stage-dot {
+  flex-basis: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.workflow-view > .workflow-collaboration-note {
+  flex: 0 0 auto;
+  max-height: 24px;
+  margin: 3px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+/* 详情抽屉覆盖在画布上，保持画布的完整宽度；ResizeHandle 仍可调整宽度。 */
+.workflow-view > .workflow-layout.is-flow-canvas.with-details {
+  display: block;
+  position: relative;
+}
+
+.workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail,
+.workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail-drawer {
+  position: absolute;
+  z-index: 10;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  left: auto;
+  width: min(var(--pane-width, var(--workflow-detail-width)), calc(100% - 16px));
+  max-width: calc(100% - 16px);
+  max-height: none;
+  min-height: 0;
+  margin: 0;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-panel) 96%, transparent);
+  box-shadow: 0 16px 40px #0003;
+  scrollbar-width: thin;
+}
+
+.workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail > .pane-resizer,
+.workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail-drawer > .pane-resizer {
+  z-index: 11;
+}
+
+/* 中屏采用底部浮层，仍不改变画布的可用尺寸。 */
+@container (max-width: 800px) {
+  .workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail,
+  .workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail-drawer {
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto !important;
+    max-width: none;
+    height: min(46%, 330px);
+    max-height: calc(100% - 16px);
+    min-height: 150px;
+    padding: 12px 14px;
+  }
+  .workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail > .pane-resizer,
+  .workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail-drawer > .pane-resizer {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .workflow-view {
+    --workflow-canvas-min-height: 240px;
+    padding-inline: 10px;
+  }
+  .workflow-view > .workflow-heading-note { white-space: normal; }
+  .workflow-view > .workflow-layout.is-flow-canvas { margin-top: 5px; }
+  .workflow-view > .workflow-meta-stage { max-height: 58px; }
+}
+
+@media (max-width: 560px) {
+  .workflow-view {
+    --workflow-canvas-min-height: 220px;
+    padding-inline: 8px;
+  }
+  .workflow-view .workflow-heading-row { gap: 7px; }
+  .workflow-view .workflow-heading h2 { font-size: 16px; }
+  .workflow-view .workflow-view-switch .btn { padding-inline: 7px; }
+  .workflow-view > .workflow-meta-stage ol { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 5px 8px; }
+  .workflow-view > .workflow-meta-stage li:not(:last-child)::after { display: none; }
+  .workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail,
+  .workflow-view > .workflow-layout.is-flow-canvas.with-details > .workflow-detail-drawer {
+    height: 52%;
+    min-height: 140px;
+  }
 }

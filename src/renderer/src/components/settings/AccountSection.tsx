@@ -9,18 +9,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { t } from '../../i18n';
 import { Section } from './shared';
 import type { AccountStatusInfo } from '@shared/types';
+import { conversationPointsLeft, isActiveTrial, isPaidVip, pointsBalance, trialHoursLeft } from '../membership/membership-ui';
 
 const DAY = 86_400_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function feedbackEventId(text: string): string {
-  let hash = 2166136261;
-  for (const char of text.trim()) {
-    hash ^= char.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 16777619);
-  }
-  return `feedback-${(hash >>> 0).toString(36)}`;
-}
 
 function fmtDate(ts: number): string {
   if (!ts) return '—';
@@ -55,7 +47,7 @@ export function AccountSection({
   const [email, setEmail] = useState('');
   const [emailCode, setEmailCode] = useState('');
   const [regCode, setRegCode] = useState('');
-  const [redeemCode, setRedeemCode] = useState('');
+  const [regInvite, setRegInvite] = useState('');
   const [regCd, setRegCd] = useState(0);
   const [fpEmail, setFpEmail] = useState('');
   const [fpCode, setFpCode] = useState('');
@@ -65,7 +57,6 @@ export function AccountSection({
   const [busy, setBusy] = useState('');
   const [statusError, setStatusError] = useState('');
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const [feedbackText, setFeedbackText] = useState('');
 
   const refreshStatus = useCallback((): void => {
     setStatusError('');
@@ -126,28 +117,7 @@ export function AccountSection({
     }
   };
 
-  const submitFeedback = async (): Promise<void> => {
-    const text = feedbackText.trim();
-    if (text.length < 8) {
-      setMessage({ kind: 'err', text: t('请先写下至少 8 个字的有效反馈') });
-      return;
-    }
-    setBusy('feedback');
-    setMessage(null);
-    try {
-      const result = await window.mathmodel.account.earnPoints({ kind: 'feedback', eventId: feedbackEventId(text) });
-      setFeedbackText('');
-      setMessage({ kind: 'ok', text: result.awarded > 0 ? t('感谢反馈，已获得 10 积分') : t('这条反馈已经记录过了') });
-      setStatus(result.status);
-      onStatusChange?.(result.status);
-    } catch (error) {
-      setMessage({ kind: 'err', text: error instanceof Error ? error.message : t('反馈暂时没有提交成功，请稍后重试') });
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const daysLeft = status?.loggedIn ? Math.floor((status.expiresAt - Date.now()) / DAY) : 0;
+  const daysLeft = status?.loggedIn ? Math.floor((Number(status.expiresAt || 0) - Date.now()) / DAY) : 0;
   const emailOk = EMAIL_RE.test(email.trim());
   // 注册和登录的校验条件必须分开。旧逻辑把注册所需的邮箱验证码
   // 复用到了“已有账号，直接登录”，导致登录前必须先填邮箱、甚至消耗一次验证码。
@@ -187,7 +157,7 @@ export function AccountSection({
 
       <input
         className="input"
-        placeholder={t('账号（3-24 位字母 / 数字 / 下划线）')}
+        placeholder={authMode === 'login' ? t('账号或邮箱（两个都可以登录）') : t('账号（3-24 位字母 / 数字 / 下划线）')}
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         disabled={busy !== ''}
@@ -230,12 +200,19 @@ export function AccountSection({
           onChange={(e) => setRegCode(e.target.value)}
           disabled={busy !== ''}
         />
+        <input
+          className="input"
+          placeholder={t('邀请码（可选，好友完成首次有效使用后你可得 50 积分）')}
+          value={regInvite}
+          onChange={(e) => setRegInvite(e.target.value.toUpperCase().slice(0, 12))}
+          disabled={busy !== ''}
+        />
         <button
           className="btn btn-sm btn-primary"
           disabled={!canRegister}
-          onClick={() => void run('register', () => window.mathmodel.account.register({ username: username.trim(), password, email: email.trim(), emailCode: emailCode.trim(), code: regCode.trim() || undefined }), t('注册成功，已获得 3 天全功能试用'))}
+          onClick={() => void run('register', () => window.mathmodel.account.register({ username: username.trim(), password, email: email.trim(), emailCode: emailCode.trim(), code: regCode.trim() || undefined, inviteCode: regInvite.trim() || undefined }), t('注册成功，已获得 24 小时完整基础体验'))}
         >
-          {busy === 'register' ? t('注册中…') : t('注册并领取 3 天试用')}
+          {busy === 'register' ? t('注册中…') : t('注册并领取 24 小时体验')}
         </button>
       </>}
 
@@ -254,7 +231,7 @@ export function AccountSection({
         {t('忘记密码？')}
       </button>
       {authMode === 'register' && <span className="muted" style={{ fontSize: 11.5 }}>
-        {t('注册后可使用本地基础功能，并获得试用额度；高级 AI 与协作功能可在会员中心升级。')}
+        {t('注册后可使用本地项目和基础论文流程，并获得 24 小时体验；多智能体协作需卡密 VIP。')}
       </span>}
     </div>
   );
@@ -326,17 +303,17 @@ export function AccountSection({
         <span style={{ fontSize: 13.5, fontWeight: 700 }}>{status?.username}</span>
         {status?.plan === 'vip' ? (
           <span className="badge" style={{ background: '#fef3c7', color: '#92400e' }}>{daysLeft < 7 ? t(`VIP·剩 ${Math.max(daysLeft, 0)} 天`) : t('VIP 会员')}</span>
-        ) : status?.trialActive ? (
-          <span className="badge badge-accent">{t(`免费试用·剩 ${status.trialDaysLeft} 天`)}</span>
+        ) : isActiveTrial(status) ? (
+          <span className="badge badge-accent">{t(`24 小时体验·剩 ${trialHoursLeft(status)} 小时`)}</span>
         ) : (
           <span className="badge">{t('免费账号')}</span>
         )}
       </div>
       <div className="col" style={{ gap: 4, fontSize: 12.5 }}>
-        {status?.plan === 'vip' || status?.trialActive ? <div className="row" style={{ gap: 8 }}>
-          <span className="muted" style={{ width: 90 }}>{status.plan === 'vip' ? t('会员到期') : t('试用到期')}</span>
-          <span className="mono">{fmtDate(status?.expiresAt ?? 0)}</span>
-          <span className="muted">（{t(`剩余 ${Math.max(status.trialActive ? status.trialDaysLeft ?? 0 : daysLeft, 0)} 天`)}）</span>
+        {isPaidVip(status) || isActiveTrial(status) ? <div className="row" style={{ gap: 8 }}>
+          <span className="muted" style={{ width: 90 }}>{isPaidVip(status) ? t('会员到期') : t('体验到期')}</span>
+          <span className="mono">{fmtDate(isActiveTrial(status) ? (status?.trialExpiresAt ?? status?.expiresAt ?? 0) : (status?.expiresAt ?? 0))}</span>
+          <span className="muted">（{isActiveTrial(status) ? t(`剩余 ${trialHoursLeft(status)} 小时`) : t(`剩余 ${Math.max(daysLeft, 0)} 天`)}）</span>
         </div> : null}
         <div className="row" style={{ gap: 8 }}>
           <span className="muted" style={{ width: 90 }}>{t('本机绑定')}</span>
@@ -344,45 +321,12 @@ export function AccountSection({
         </div>
       </div>
       <div className="col" style={{ gap: 6 }}>
-        {status?.plan !== 'vip' && !status?.trialActive && (
-          <span className="muted" style={{ fontSize: 11.5 }}>{t('当前为免费账号：每天可使用基础 AI 额度，高级能力可升级 VIP。')}</span>
+        {status?.plan !== 'vip' && !isActiveTrial(status) && (
+          <span className="muted" style={{ fontSize: 11.5 }}>{t('当前为免费账号：每天有 100 对话积分，基础论文流程可用；多智能体与高级交付需卡密 VIP。')}</span>
         )}
-        {typeof status?.points === 'number' && <span className="muted" style={{ fontSize: 11.5 }}>{t(`积分余额：${status.points}`)}</span>}
-        {status?.aiQuota && status.plan !== 'vip' && <span className="muted" style={{ fontSize: 11.5 }}>{t(`今日 AI：剩余 ${status.aiQuota.remaining} 次`)}</span>}
-        <span style={{ fontSize: 13, fontWeight: 600 }}>{t('给我们一条建议')}</span>
-        <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
-          <textarea
-            className="input"
-            rows={2}
-            style={{ flex: 1, minWidth: 220, resize: 'vertical' }}
-            placeholder={t('哪里好用、哪里需要改进？有效反馈可获得一次 10 积分')}
-            value={feedbackText}
-            onChange={(e) => setFeedbackText(e.target.value.slice(0, 500))}
-            disabled={busy !== ''}
-          />
-          <button className="btn btn-sm btn-ghost" disabled={busy !== '' || feedbackText.trim().length < 8} onClick={() => void submitFeedback()}>
-            {busy === 'feedback' ? t('提交中…') : t('提交反馈')}
-          </button>
-        </div>
-        <span style={{ fontSize: 13, fontWeight: 600 }}>{t('卡密续费（时长自动叠加）')}</span>
-        <div className="row" style={{ gap: 8 }}>
-          <input
-            className="input"
-            style={{ width: 240 }}
-            placeholder={t('输入卡密，如 XXXX-XXXX-XXXX-XXXX')}
-            value={redeemCode}
-            onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
-            disabled={busy !== ''}
-          />
-          <button
-            className="btn btn-sm btn-primary"
-            disabled={redeemCode.trim().length < 8 || busy !== ''}
-            onClick={() => void run('redeem', () => window.mathmodel.account.redeem({ code: redeemCode.trim() }), t('兑换成功，会员时长已叠加'))}
-          >
-            {busy === 'redeem' ? t('兑换中…') : t('立即兑换')}
-          </button>
-        </div>
-        {onOpenMembership && <button className="btn btn-sm btn-primary" type="button" onClick={onOpenMembership}>{t('查看会员套餐与升级')}</button>}
+        {status?.loggedIn && <span className="muted" style={{ fontSize: 11.5 }}>{t(`可用积分：${conversationPointsLeft(status) ?? pointsBalance(status)} 分`)}</span>}
+        <span className="muted" style={{ fontSize: 11.5 }}>{t('卡密兑换、积分说明与每日签到都在左下角头像菜单里。')}</span>
+        {onOpenMembership && <button className="btn btn-sm btn-primary" type="button" onClick={onOpenMembership}>{t('进入会员中心')}</button>}
       </div>
       <div className="row" style={{ justifyContent: 'flex-end' }}>
         <button
@@ -391,7 +335,7 @@ export function AccountSection({
           onClick={() => {
             if (!window.confirm(t('退出登录后本机授权将移除，确定吗？'))) return;
             void run('logout', () => window.mathmodel.account.logout(), t('已退出登录'));
-            setUsername(''); setPassword(''); setRegCode(''); setRedeemCode(''); setEmail(''); setEmailCode('');
+            setUsername(''); setPassword(''); setRegCode(''); setRegInvite(''); setEmail(''); setEmailCode('');
           }}
         >
           {t('退出登录')}
@@ -404,7 +348,7 @@ export function AccountSection({
     <div className={`col account-section${standalone ? ' account-section-standalone' : ''}`} style={{ gap: 22 }}>
       <Section
         title={t('会员状态')}
-        hint={t('注册可领取 3 天全功能试用；试用后每天有 10 次基础 AI，签到再领 10 次。VIP 解锁协作、深度建模、自动化与完整导出。')}
+        hint={t('注册可领取 24 小时完整基础体验；体验后每天有 100 对话积分，签到再领 100 分。卡密 VIP 解锁多智能体、深度建模、自动化与完整导出。')}
       >
         {!status ? statusError ? (
           <div className="col" style={{ gap: 8, alignItems: 'flex-start' }}>
