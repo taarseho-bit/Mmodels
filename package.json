@@ -31,6 +31,7 @@
     "release:hardened": "node scripts/release-hardened.cjs",
     "deploy:site": "node scripts/deploy-site.cjs",
     "capture:site": "node scripts/capture-site-screenshots.cjs",
+    "catalog:site": "node scripts/generate-site-catalog.cjs",
     "postinstall": "node scripts/ensure-native.cjs"
   },
   "dependencies": {
@@ -78,6 +79,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "split-type": "^0.3.4",
+    "ssh2": "^1.17.0",
     "typescript": "^5.7.3",
     "vite": "^5.4.11",
     "vitest": "^2.1.8",

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#f7f8fb" />
+<meta name="description" content="MModels 内置目录：62 项建模技能、29 种算法、157 个科研图表参考、23 个连接器与 14 套论文模板。按关键词和场景查找，查看用途、输入、输出、积分与许可说明。" />
+<link rel="canonical" href="https://mmodel.top/catalog.html" />
+<title>MModels 完整能力目录 · 技能、算法、图表、连接器与模板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./catalog.css" />
+</head>
+<body>
+<header class="catalog-head">
+  <a class="brand" href="index.html"><span class="brand-mark">∑</span><span><b>MModels</b><small>数学建模竞赛工作台</small></span></a>
+  <nav aria-label="官网导航"><a href="index.html#product">产品</a><a href="index.html#workflow">工作流</a><a class="is-active" href="catalog.html">完整目录</a><a href="index.html#membership">会员权益</a><a href="index.html#download">下载</a><a href="index.html#contact">联系</a></nav>
+  <div class="head-actions"><a href="index.html#membership">卡密 VIP</a><a class="primary" href="index.html#download">下载客户端</a></div>
+</header>
+
+<main>
+  <section class="catalog-hero">
+    <p class="eyebrow">当前版本 · v0.1.27 · 数据从桌面端目录生成</p>
+    <h1>完整能力目录</h1>
+    <p>这里不是宣传用的几张截图，而是当前版本实际内置的能力清单。搜索一个技能、算法、图表、连接器或论文模板，先看它解决什么问题、需要什么输入、会交付什么，再决定是否下载和升级。</p>
+    <div class="stats" id="catalog-stats" aria-label="目录统计"></div>
+  </section>
+
+  <section class="catalog-browser" aria-label="目录浏览器">
+    <div class="browser-toolbar">
+      <label class="search"><span aria-hidden="true">⌕</span><input id="catalog-search" type="search" placeholder="搜索名称、用途、数据类型或关键词" autocomplete="off" /></label>
+      <label class="category-filter"><span>场景</span><select id="catalog-category"><option value="all">全部场景</option></select></label>
+    </div>
+    <div class="catalog-tabs" role="tablist" aria-label="目录类型">
+      <button class="is-active" data-kind="all" role="tab" aria-selected="true">全部</button>
+      <button data-kind="skills" role="tab" aria-selected="false">技能 <span data-count="skills"></span></button>
+      <button data-kind="algorithms" role="tab" aria-selected="false">算法 <span data-count="algorithms"></span></button>
+      <button data-kind="charts" role="tab" aria-selected="false">图表 <span data-count="charts"></span></button>
+      <button data-kind="connectors" role="tab" aria-selected="false">连接器 <span data-count="connectors"></span></button>
+      <button data-kind="templates" role="tab" aria-selected="false">论文模板 <span data-count="templates"></span></button>
+    </div>
+    <div class="browser-note"><span>目录由项目真实资源生成</span><span>技能卡显示单次积分成本；卡密 VIP 不扣技能积分</span><span>图表示例仅作结构参考，最终请用项目真实数据重绘</span></div>
+    <div id="catalog-grid" class="catalog-grid" aria-live="polite"></div>
+    <p id="catalog-empty" class="empty" hidden>没有找到匹配项。试试换一个关键词，或清除场景筛选。</p>
+  </section>
+</main>
+
+<footer class="catalog-foot"><span>MModels · 数学建模竞赛工作台</span><span><a href="index.html#download">下载</a> · <a href="index.html#membership">会员权益</a> · <a href="index.html#contact">联系官方</a></span></footer>
+
+<script src="./catalog-data.js"></script>
+<script src="./catalog.js"></script>
+</body>
+</html>
