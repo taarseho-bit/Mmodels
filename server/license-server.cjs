@@ -90,7 +90,7 @@ const CHECKIN_BONUS_QUOTA = CHECKIN_BONUS_POINTS / AI_CHAT_POINTS_COST; // 旧�
 /** VIP / 试用账号签到奖励的持久积分；AI 积分统一后仍保留小额奖励。 */
 const CHECKIN_VIP_POINTS = 10;
 /** 积分只用于普通 AI 消耗；不再兑换 VIP，VIP 必须使用付费卡密。 */
-const POINT_REWARDS = Object.freeze({ register: 20, firstProject: 30, paperExport: 20, feedback: 10, invite: 50 });
+const POINT_REWARDS = Object.freeze({ register: 50, firstProject: 30, paperExport: 20, feedback: 10, invite: 50 });
 const POINT_EXCHANGE = Object.freeze({});
 const POINT_REWARD_KINDS = new Set(['firstProject', 'paperExport', 'feedback', 'invite']);
 const POINT_EVENT_RE = /^[A-Za-z0-9._:-]{1,128}$/;
@@ -126,11 +126,16 @@ const POINT_EARN_CAPS = Object.freeze({
 const INVITE_REWARD_POINTS = 50;
 const INVITE_REWARD_DAY_CAP = 3;
 const INVITE_REWARD_TOTAL_CAP = 20;
-// 基础单智能体可以完成一篇完整论文；收费边界放在协作、严格建模、高级图表、成品导出和云端能力。
-// 旧客户端仍可传入 full-paper，但服务端不再把它当作会员专属功能。
-const FREE_FEATURES = new Set(['ai-chat', 'full-paper']);
-const VIP_FEATURES = new Set(['multi-agent', 'deep-modeling', 'advanced-figures', 'large-context', 'export', 'cloud-collaboration', 'automation']);
-const PAID_ONLY_FEATURES = new Set(['multi-agent', 'cloud-collaboration', 'automation']);
+// 基础单智能体可以完成一篇完整论文；2026-09-29 规则收缩：导出、长上下文、
+// 高级图表全部开放给免费用户（试用 VIP 与普通用户的唯一区别是不扣积分），
+// 付费卡密独占只剩多智能体协作、AI 全自动（automation）与深度建模三项。
+// 旧客户端仍可传入 full-paper/export 等，但服务端不再把它们当作会员专属功能。
+const FREE_FEATURES = new Set(['ai-chat', 'full-paper', 'export', 'large-context', 'advanced-figures']);
+// VIP_FEATURES 是服务端可识别的全部会员能力；PAID_ONLY_FEATURES 是其中
+// 只有卡密 VIP 才能使用的子集。严格建模必须同时出现在两个集合里，
+// 否则会在付费校验前被误判为 INVALID_FEATURE。
+const VIP_FEATURES = new Set(['multi-agent', 'cloud-collaboration', 'automation', 'deep-modeling']);
+const PAID_ONLY_FEATURES = new Set(['multi-agent', 'cloud-collaboration', 'automation', 'deep-modeling']);
 
 // ---------- 存储 ----------
 function loadDb() {
@@ -340,6 +345,14 @@ function rateAllowed(key, limit, windowMs) {
   w.count += 1;
   return w.count <= limit;
 }
+function rateAvailable(key, limit) {
+  const w = hits.get(key);
+  return !w || Date.now() > w.resetAt || w.count < limit;
+}
+function rateRetryAfter(key) {
+  const w = hits.get(key);
+  return w ? Math.max(1, Math.ceil((w.resetAt - Date.now()) / 1000)) : 0;
+}
 
 // ---------- 邮件发送（零依赖 SMTP over implicit TLS，QQ 邮箱 smtp.qq.com:465 实测） ----------
 const MAIL_FILE = path.join(DATA_DIR, 'mail.json');
@@ -498,6 +511,9 @@ function ensureUser(user) {
   }
   if (!Number.isFinite(Number(user.points)) || user.points < 0) user.points = 0;
   if (!user.pointsAwards || typeof user.pointsAwards !== 'object') user.pointsAwards = {};
+  // 注册奖励 50 分一次性补发（幂等）：老账号在首次请求时自动到账，
+  // 新注册账号则在注册流程里直接拿到——两条路径共用同一个幂等键。
+  awardPoints(user, 'register', 50);
   // 新积分账本：dailyRemaining 是当天可用积分，points 是历史奖励积分；
   // 对外合并为 aiPoints.balance。旧账号按旧次数余额折算，避免升级后凭空丢额度。
   const legacyQuota = user.quota && typeof user.quota === 'object' ? user.quota : null;
@@ -615,7 +631,12 @@ function accountSnapshot(user, now = Date.now()) {
 }
 
 function awardPoints(user, key, amount) {
-  ensureUser(user);
+  // 该函数也会在 ensureUser() 内用于补发注册奖励，不能反过来调用
+  // ensureUser()，否则历史账号迁移会形成递归。调用方会负责账号结构迁移；
+  // 这里仅补齐积分字段，保证单独奖励接口仍然具备幂等性。
+  if (!user || typeof user !== 'object') return false;
+  if (!Number.isFinite(Number(user.points)) || user.points < 0) user.points = 0;
+  if (!user.pointsAwards || typeof user.pointsAwards !== 'object') user.pointsAwards = {};
   if (user.pointsAwards[key]) return false;
   user.pointsAwards[key] = Date.now();
   user.points += Math.max(0, Number(amount) || 0);
@@ -797,7 +818,7 @@ function issueToken(user, deviceId) {
 }
 
 // ---------- HTTP 基础 ----------
-function send(res, status, obj) {
+function send(res, status, obj, extraHeaders = {}) {
   const body = JSON.stringify(obj);
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -805,6 +826,7 @@ function send(res, status, obj) {
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'same-origin',
+    ...extraHeaders,
   });
   res.end(body);
 }
@@ -1032,20 +1054,36 @@ async function handleRequest(req, res) {
 
     if (req.method === 'POST' && url === '/api/auth/login') {
       db = loadDb();
-      if (!rateAllowed(`login:${ip}`, 15, 3600_000)) return send(res, 429, { ok: false, error: '尝试过于频繁' });
       const b = await readBody(req);
       const identifier = String(b.username || '').trim(); // 用户名或绑定邮箱，二者皆可登录
       const password = String(b.password || '');
       const deviceId = String(b.deviceId || '').trim();
-      if (!PASSWORD_RE.test(password)) return send(res, 401, { ok: false, error: '账号或密码错误' });
+      // 登录限流只记录失败请求，并将公网 IP 与账号分开统计：共享网络下的
+      // 其他用户不会因为某个账号输错密码而一起被锁住。
+      const loginIpKey = `login-ip:${ip}`;
+      const loginAccountKey = `login-account:${ip}:${identifier.toLowerCase()}`;
+      const loginRetryAfter = () => Math.max(rateRetryAfter(loginIpKey), rateRetryAfter(loginAccountKey));
+      const loginBlocked = () => {
+        const retryAfter = loginRetryAfter();
+        return send(res, 429, { ok: false, code: 'LOGIN_RATE_LIMITED', error: '登录尝试过于频繁，请稍后重试', retryAfter }, { 'retry-after': String(retryAfter) });
+      };
+      const loginAvailable = rateAvailable(loginIpKey, 60) && rateAvailable(loginAccountKey, 15);
+      if (!loginAvailable) return loginBlocked();
+      const recordLoginFailure = () => {
+        rateAllowed(loginIpKey, 60, 3600_000);
+        rateAllowed(loginAccountKey, 15, 3600_000);
+      };
+      if (!PASSWORD_RE.test(password)) { recordLoginFailure(); return send(res, 401, { ok: false, error: '账号或密码错误' }); }
       const user = findUserByLogin(identifier);
-      if (!DEVICE_RE.test(deviceId)) return send(res, 400, { ok: false, error: '设备标识不合法，请重启客户端后重试' });
+      if (!DEVICE_RE.test(deviceId)) { recordLoginFailure(); return send(res, 400, { ok: false, error: '设备标识不合法，请重启客户端后重试' }); }
       const check = user ? verifyPass(user.passHash || user.passEnc, password) : { ok: false, migrated: null };
       if (!user || !check.ok) {
+        recordLoginFailure();
         logEvent('login-fail', identifier || '-', { ip, detail: '账号或密码错误' });
         return send(res, 401, { ok: false, error: '账号或密码错误' });
       }
       if (user.banned) {
+        recordLoginFailure();
         logEvent('login-fail', user.name, { ip, detail: '账号已被停用' });
         return send(res, 403, { ok: false, error: '账号已被停用' });
       }
@@ -1057,6 +1095,7 @@ async function handleRequest(req, res) {
       const token = issueToken(user, deviceId);
       logEvent('login', user.name, { ip, detail: identifier === user.name ? '登录成功' : `邮箱登录成功（${identifier}）` });
       saveDb();
+      hits.delete(loginAccountKey);
       // 回传真实用户名：客户端据此落盘，避免用邮箱登录后卡密兑换 / 签到找不到账号。
       return send(res, 200, { ok: true, token, username: user.name, ...accountSnapshot(user) });
     }
@@ -1122,16 +1161,16 @@ async function handleRequest(req, res) {
       const snapshot = accountSnapshot(user, now);
       const paidVip = snapshot.paidVip === true;
       const elevated = paidVip || snapshot.trialActive;
-      // 团队型能力是付费卡密的核心权益，24 小时体验只能试用单体能力。
+      // 团队型能力与深度建模是付费卡密的核心权益，24 小时体验也不能使用。
       if (PAID_ONLY_FEATURES.has(feature) && !paidVip) {
-        logEvent('vip-block', user.name, { ip, detail: `拦截未兑换付费卡密的团队能力 ${feature}：${snapshot.trialActive ? '试用期' : '免费版'}` });
+        logEvent('vip-block', user.name, { ip, detail: `拦截未兑换付费卡密的能力 ${feature}：${snapshot.trialActive ? '试用期' : '免费版'}` });
         saveSoon();
         return send(res, 403, {
           allowed: false,
           code: snapshot.trialActive ? 'PAID_VIP_REQUIRED' : 'FEATURE_VIP_REQUIRED',
           reason: snapshot.trialActive
-            ? '团队协作与自动化需要兑换付费 VIP 卡密，24 小时体验可先使用单体建模和基础论文功能'
-            : '团队协作与自动化需要兑换付费 VIP 卡密，请打开会员中心兑换',
+            ? '多智能体协作、AI 全自动与深度建模需要兑换付费 VIP 卡密，24 小时体验可先使用其余全部功能'
+            : '多智能体协作、AI 全自动与深度建模需要兑换付费 VIP 卡密，请打开会员中心兑换',
           ...snapshot,
         });
       }
@@ -1149,9 +1188,7 @@ async function handleRequest(req, res) {
           return send(res, 403, {
             allowed: false,
             code: 'AI_QUOTA_EXCEEDED',
-            reason: `本轮需要 ${requestedCost} 积分，当前余额不足；签到或兑换付费 VIP 卡密后可继续使用`,
-            pointsPerTurn: requestedCost,
-            costPoints: requestedCost,
+            reason: '今日 AI 积分余额不足，签到或开通 VIP 后可继续使用',
             chatMode,
             ...snapshot,
           });
@@ -1164,9 +1201,7 @@ async function handleRequest(req, res) {
             return send(res, 403, {
               allowed: false,
               code: 'AI_QUOTA_EXCEEDED',
-              reason: `本轮需要 ${spent.cost} 积分，当前余额不足；签到或兑换付费 VIP 卡密后可继续使用`,
-              pointsPerTurn: spent.cost,
-              costPoints: spent.cost,
+              reason: '今日 AI 积分余额不足，签到或开通 VIP 后可继续使用',
               chatMode,
               ...accountSnapshot(user, now),
             });

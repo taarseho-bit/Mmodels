@@ -32,6 +32,8 @@ export function ChatQuickBar({
   onTogglePanel, onOpenVersions, onOpenEnvironment, onOpenShare,
   onOpenCollab, editorView, onToggleEditorView, hasProject, onOpenProjectIn, onRevealInFolder,
 }: Props): JSX.Element {
+  // 局域网协作入口暂时隐藏（prop 保留，恢复时直接解开菜单按钮即可）
+  void onOpenCollab;
   const [moreOpen, setMoreOpen] = useState(false);
   const [envOpen, setEnvOpen] = useState(false);
   const taskView = useApp(s => s.taskView);
@@ -71,7 +73,8 @@ export function ChatQuickBar({
           <Popover open={moreOpen} onClose={() => setMoreOpen(false)} align="right">
             <div className="studio-task-menu" role="menu" aria-label="更多任务操作">
               <div className="studio-menu-label">任务与文件</div>
-              <button role="menuitem" onClick={() => action(onOpenCollab)}><Icon name="users" size={15} /><span>局域网协作</span></button>
+              {/* 局域网协作暂时隐藏（2026-09-29 用户要求，协作模块整体延后）；恢复时解开本按钮。
+                  <button role="menuitem" onClick={() => action(onOpenCollab)}><Icon name="users" size={15} /><span>局域网协作</span></button> */}
               <button role="menuitem" onClick={() => action(onOpenShare)}><Icon name="share" size={15} /><span>上传优秀论文</span></button>
               <button role="menuitem" disabled={!hasProject} onClick={() => action(onOpenVersions)}><Icon name="refresh-cw" size={15} /><span>项目版本</span></button>
               <button role="menuitem" disabled={!hasProject} onClick={() => action(onRevealInFolder)}><Icon name="folder-open" size={15} /><span>在文件夹中显示</span></button>

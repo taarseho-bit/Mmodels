@@ -5,7 +5,7 @@
  *   ① 通过代理发送 Agent 流量（开关）
  *   ② 代理来源（下拉：系统代理 / 手动配置）
  *   ③ 当前生效 + 重新检测
- * 当前实现自创的「本地模式」说明卡保留，但按审计要求排到应用约定控件之后。
+ * 说明桌面数据默认保存在本机，以及模型接口等可选网络连接。
  *
  * 代理**真的会生效**：
  *   设置存在 `settings.proxy`（conf）→ `main/store/config.ts` 每次写入都调
@@ -154,7 +154,7 @@ export function NetworkSection(): JSX.Element {
         ) : null}
       </div>
 
-      <Section title={t('本地模式')} hint={t('本项目是本地运行的桌面应用：没有云端账号、没有遥测、没有更新服务器。')}>
+      <Section title={t('数据与连接')} hint={t('项目文件、会话和配置默认保存在本机；只有启用代理或配置模型供应商后，相关请求才会通过网络发送。')}>
         <div className="panel col" style={{ padding: 14, gap: 8, fontSize: 12.5, lineHeight: 1.8 }}>
           <div className="row" style={{ gap: 8 }}>
             <Icon name="shield-check" size={14} className="network-localnote-icon" />
@@ -163,7 +163,7 @@ export function NetworkSection(): JSX.Element {
           <div className="row" style={{ gap: 8 }}>
             <Icon name="activity" size={14} className="network-localnote-icon" />
             <span>
-              {t('唯一的外联是你配置的模型供应商接口')}
+              {t('模型请求会发送到你选择的供应商接口')}
               {active ? (
                 <span className="mono">{t('（当前：{{url}}）', { url: active.baseUrl })}</span>
               ) : (
@@ -174,7 +174,7 @@ export function NetworkSection(): JSX.Element {
           </div>
           <div className="row" style={{ gap: 8 }}>
             <Icon name="circle-slash" size={14} className="network-localnote-icon" />
-            <span>{t('登录、云端分享、自动更新等在线服务按需求未实现。')}</span>
+            <span>{t('不配置供应商时，应用仍可使用本地项目、文件管理和环境检查；网络能力按你的配置启用。')}</span>
           </div>
         </div>
       </Section>

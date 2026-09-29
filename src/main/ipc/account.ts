@@ -292,29 +292,48 @@ function apiBase(): string {
   return parsed.toString().replace(/\/$/, '');
 }
 
+/** 瞬态网络错误判定：只有连接层失败才值得重试；服务端业务拒绝（带中文 error/reason）直接抛。 */
+function isTransientNetworkError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  const cause = String((e as Error & { cause?: { message?: string } }).cause?.message ?? '');
+  return /fetch failed|abort|超时|timeout|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|ENETUNREACH|EAI_AGAIN|socket|network/i.test(`${e.message} ${cause}`);
+}
+
 async function callApi(path: string, body: unknown, headers: Record<string, string> = {}): Promise<Record<string, unknown>> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
-  try {
-    const res = await fetch(`${apiBase()}${path}`, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { 'content-type': 'application/json', ...headers },
-      body: JSON.stringify(body),
-    });
-    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; reason?: string; code?: string; allowed?: boolean };
-    if (!res.ok || data.ok === false) {
-      throw new Error(String(data.error || data.reason || data.code || `服务返回 ${res.status}`));
+  // 大陆到香港服务器的 HTTPS 偶发连接失败（2026-09-29 登录排障结论：服务端
+  // 全程健康、用户端间歇失败）。单次尝试直接报错体验太差，这里对瞬态网络
+  // 错误自动重试两次（700ms/1400ms 退避）；业务拒绝不重试。
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch(`${apiBase()}${path}`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; reason?: string; code?: string; allowed?: boolean; retryAfter?: number };
+      if (!res.ok || data.ok === false) {
+        const error = new Error(String(data.error || data.reason || data.code || `服务返回 ${res.status}`)) as Error & { code?: string; retryAfter?: number; status?: number };
+        error.code = typeof data.code === 'string' ? data.code : undefined;
+        error.retryAfter = finiteNonNegative(data.retryAfter);
+        error.status = res.status;
+        throw error;
+      }
+      return data;
+    } catch (e) {
+      lastError = e instanceof Error && e.message.includes('abort')
+        ? new Error('授权服务连接超时，请检查网络后重试')
+        : e;
+      if (!isTransientNetworkError(lastError)) throw lastError;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+    } finally {
+      clearTimeout(timer);
     }
-    return data;
-  } catch (e) {
-    if (e instanceof Error && e.message.includes('abort')) {
-      throw new Error('授权服务连接超时，请检查网络后重试');
-    }
-    throw e;
-  } finally {
-    clearTimeout(timer);
   }
+  throw lastError;
 }
 
 function statusOf(): AccountStatusInfo {

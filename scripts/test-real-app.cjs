@@ -552,7 +552,7 @@ async function main() {
         await shot('task-menu');
         await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
         ok(await cdp.eval('!document.querySelector(".studio-task-menu")'), '更多菜单可按 Escape 关闭');
-        ok(await cdp.eval('(()=>{const b=document.querySelector("[aria-label=\\"多智能体协作\\"]");return !!b && b.getAttribute("aria-pressed")==="true" && !document.querySelector(".cz-foot").innerText.includes("小模");})()'), '输入栏保留默认开启的多智能体协作，小模不再挤占输入栏');
+        ok(await cdp.eval('(()=>{const b=document.querySelector("[aria-label=\\"多智能体协作\\"]");const enabled=b?.getAttribute("aria-pressed")==="true";const locked=b?.getAttribute("aria-disabled")==="true";return !!b && (enabled || locked) && !document.querySelector(".cz-foot").innerText.includes("小模");})()'), '输入栏保留多智能体入口（VIP 可用，未登录时明确锁定），小模不再挤占输入栏');
         await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
         await cdp.send('Emulation.setDeviceMetricsOverride', { width: 980, height: 700, deviceScaleFactor: 1, mobile: false });
         await sleep(200);
@@ -848,6 +848,9 @@ async function main() {
       var beforeSettings = await api.settings.get();
       var collab = document.querySelector('[aria-label="多智能体协作"]');
       var collabEnabled = collab?.getAttribute('aria-pressed') === 'true';
+      // 多智能体是卡密 VIP 能力：未登录或免费状态下，按钮仍要可见、可打开会员入口，
+      // 但不会伪装成已经可执行。回归同时接受“已启用”与“明确锁定”两种合法状态。
+      var collabLocked = collab?.getAttribute('aria-disabled') === 'true';
       document.querySelector('[aria-label="更多任务操作"]')?.click();
       await new Promise(r => setTimeout(r, 50));
       var petToggle = [...document.querySelectorAll('.studio-task-menu button')].find(el => el.textContent.includes('桌面小模'));
@@ -868,14 +871,14 @@ async function main() {
         await new Promise(r => setTimeout(r, 50));
       }
       return {
-        collab: collabEnabled, petToggle: !!petToggle,
+        collab: collabEnabled || collabLocked, collabLocked, petToggle: !!petToggle,
         desktopOnly: !document.querySelector('.modeling-pet'),
         hidden, restored,
         defaults: beforeSettings.multiAgentEnabled === true && beforeSettings.modelingPetEnabled === true
       };
     })()`,
   );
-  ok(agentPetUi.collab && agentPetUi.defaults, '多智能体协作默认启用，可从任务选项访问');
+  ok(agentPetUi.collab && agentPetUi.defaults, '多智能体协作默认开启；未登录时显示可访问的会员锁定入口');
   ok(agentPetUi.petToggle && agentPetUi.desktopOnly, '小模开关在更多菜单，主界面不重复显示宠物');
   ok(agentPetUi.hidden && agentPetUi.restored, '数学建模伙伴可以关闭并重新打开');
 

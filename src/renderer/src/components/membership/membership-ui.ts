@@ -55,6 +55,13 @@ export function conversationPointsLeft(status: AccountStatusInfo | null | undefi
 }
 
 export function pointsBalance(status: AccountStatusInfo | null | undefined): number {
-  const candidate = status?.pointWallet?.balance ?? status?.pointsBalance ?? status?.points;
-  return typeof candidate === 'number' && Number.isFinite(candidate) ? Math.max(0, Math.floor(candidate)) : 0;
+  const extended = status as ExtendedAccountStatus | null | undefined;
+  const candidate = status?.pointWallet?.balance
+    ?? status?.pointsBalance
+    ?? status?.points
+    ?? (typeof extended?.aiPoints === 'object' ? extended.aiPoints?.balance : extended?.aiPoints);
+  if (typeof candidate === 'number' && Number.isFinite(candidate)) return Math.max(0, Math.floor(candidate));
+  // 历史本地账号可能只有旧的 aiQuota.remaining；沿用统一的积分口径，
+  // 避免 VIP 登录后账号芯片误显示为 0。
+  return conversationPointsLeft(status) ?? 0;
 }

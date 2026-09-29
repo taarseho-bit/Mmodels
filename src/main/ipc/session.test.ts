@@ -42,6 +42,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const board = vi.hoisted(() => ({
   systemPrompt: undefined as string | undefined,
   multiAgentEnabled: undefined as boolean | undefined,
+  decisionMode: undefined as 'manual' | 'auto' | 'plan' | undefined,
 }));
 
 vi.mock('electron', () => ({
@@ -53,6 +54,7 @@ vi.mock('../store/config', () => ({
   getSettings: () => ({
     systemPrompt: board.systemPrompt,
     multiAgentEnabled: board.multiAgentEnabled,
+    decisionMode: board.decisionMode,
   }),
   findProvider: () => undefined,
   activeProvider: () => undefined,
@@ -69,6 +71,7 @@ import { buildSystemPrompt, membershipFeatureForTurn, multiAgentTriggerForPrompt
 afterEach(() => {
   board.systemPrompt = undefined;
   board.multiAgentEnabled = undefined;
+  board.decisionMode = undefined;
 });
 
 const CWD = 'C:\\proj\\demo';
@@ -309,5 +312,14 @@ describe('会员权益与积分成本入口', () => {
   it('普通问答使用最低积分成本', () => {
     board.multiAgentEnabled = false;
     expect(membershipFeatureForTurn('解释一下线性规划').pointsCost).toBe(10);
+  });
+
+  it('AI 全自动模式在主进程入口走付费自动化权益', () => {
+    board.multiAgentEnabled = false;
+    board.decisionMode = 'auto';
+    const result = membershipFeatureForTurn('继续完成当前任务');
+    expect(result.feature).toBe('automation');
+    expect(result.consumesQuota).toBe(false);
+    expect(result.pointsCost).toBe(0);
   });
 });

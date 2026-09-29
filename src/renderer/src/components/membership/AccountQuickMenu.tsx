@@ -194,7 +194,7 @@ export function AccountQuickMenu({
               <span className="rail-avatar"><Icon name="user" size={14} /></span>
               <div className="quick-menu-head-text">
                 <strong>{t('未登录')}</strong>
-                <span>{t('注册得 24 小时体验 + 20 积分；每天 100 积分')}</span>
+                <span>{t('注册得 24 小时体验 + 50 积分；每天 100 积分')}</span>
               </div>
             </div>
             <button type="button" className="btn btn-primary quick-menu-login" onClick={() => menuAction(() => openMembership('account'))}>

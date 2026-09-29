@@ -9,8 +9,10 @@
  *
  * 2026-09-28 商业化：账号/授权通道（account.ts）已接入，仍在此单一入口注册。
  */
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, app } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { appendFileSync, statSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
 import { IPC } from '@shared/types';
 import type { ServerInfo } from '../server';
 import { registerAppHandlers } from './app';
@@ -54,6 +56,14 @@ export interface IpcContext {
  */
 export function friendlyIpcError(raw: unknown): string {
   const message = raw instanceof Error ? raw.message : String(raw ?? '');
+  const details = raw as Error & { code?: string; retryAfter?: number };
+  if (details?.code === 'LOGIN_RATE_LIMITED' || /登录尝试过于频繁/.test(message)) {
+    const seconds = Number(details?.retryAfter);
+    const wait = Number.isFinite(seconds) && seconds > 0
+      ? (seconds >= 60 ? `约 ${Math.ceil(seconds / 60)} 分钟` : `${Math.ceil(seconds)} 秒`)
+      : '稍后';
+    return `登录尝试较多，请${wait}后重试。`;
+  }
   if (/当前接口不支持|不支持 document|document 内容|unsupported document/i.test(message)) return '当前接口暂时不支持直接读取这类文档，正在改用本地解析方式。';
   if (/401|403|unauthori[sz]ed|forbidden|api.?key|token/i.test(message)) return '连接凭据或访问权限需要检查，请打开连接器设置后重试。';
   if (/429|too many requests|rate.?limit/i.test(message)) return '服务当前比较忙，稍后会自动重试；也可以换一个模型或连接器。';
@@ -76,6 +86,20 @@ export function friendlyIpcError(raw: unknown): string {
 function wrapIpcError(label: string, err: unknown): Error {
   const diagnosticId = `MM-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 6).toUpperCase()}`;
   console.error(`[ipc] ${label} failed (${diagnosticId}):`, err);
+  // ⚠️ 打包版主进程 stdout 不可见——原始堆栈必须落盘，用户报诊断编号时才能
+  //    反查真实错误（2026-09-29 登录失败排障时只有编号没有现场，走了一段弯路）。
+  try {
+    const logPath = join(app.getPath('userData'), 'ipc-errors.log');
+    try {
+      if (statSync(logPath).size > 256 * 1024) unlinkSync(logPath); // 超限即清，滚动重启
+    } catch { /* 文件不存在属正常 */ }
+    const stack = err instanceof Error ? (err.stack ?? err.message) : String(err);
+    appendFileSync(
+      logPath,
+      `[${diagnosticId}] ${new Date().toISOString()} ${label}\n${stack}\n\n`,
+      'utf8',
+    );
+  } catch { /* 日志写不出来也不能挡住用户提示 */ }
   const wrapped = new Error(`${label}：${friendlyIpcError(err)}（诊断编号 ${diagnosticId}）`);
   (wrapped as Error & { code?: string; diagnosticId?: string }).code = 'MM_IPC_OPERATION_FAILED';
   (wrapped as Error & { code?: string; diagnosticId?: string }).diagnosticId = diagnosticId;

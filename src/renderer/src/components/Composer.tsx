@@ -41,7 +41,7 @@ import { registerCommand } from '../keybindings/dispatch';
 import { t, tx } from '../i18n';
 import { appendPasted, makePastedText, shouldFoldPasted, type PastedText } from '../lib/pasted-text';
 import { onAccountStatus, openMembership } from '../lib/membership-nav';
-import { isActiveTrial, isPaidVip } from './membership/membership-ui';
+import { isPaidVip } from './membership/membership-ui';
 
 export type ComposerMode = 'chat' | 'paper' | 'figure' | 'review' | 'data' | 'sprint';
 export type PermissionMode = 'full' | 'approval';
@@ -620,10 +620,12 @@ export function Composer({
   // 状态还没回来时先锁住高级入口，避免按钮先可点、随后才弹出会员限制。
   const membershipPending = !membershipStatusLoaded;
   const multiAgentLocked = membershipPending || !isPaidVip(membershipStatus);
+  // AI 全自动模式与多智能体同属付费卡密能力（服务端 VIP_FEATURES.automation）。
+  const autoModeLocked = membershipPending || !isPaidVip(membershipStatus);
   const qualityMode = settings?.modelingQualityMode ?? 'balanced';
   const qualityLabel = qualityMode === 'fast' ? '快速' : qualityMode === 'strict' ? '深度' : '标准';
-  // 24 小时体验包含深度建模；只有多智能体/云协作/自动化等团队能力要求付费卡密。
-  const strictQualityLocked = membershipPending || (!isPaidVip(membershipStatus) && !isActiveTrial(membershipStatus));
+  // 深度建模与多智能体、AI 全自动同属付费卡密独占（2026-09-29 用户定稿：试用 VIP 也不可用）。
+  const strictQualityLocked = membershipPending || !isPaidVip(membershipStatus);
 
   // ── 决策模式切换（统一入口）──
   /** 从 plan 切走时回到的模式（Shift+Tab 来回切换用） */
@@ -635,10 +637,15 @@ export function Composer({
    */
   const patchDecisionMode = useCallback(
     (next: DecisionMode): void => {
+      // AI 全自动是 VIP 能力：未开通时引导到会员中心/注册，不切换模式。
+      if (next === 'auto' && autoModeLocked) {
+        openMembership(membershipStatus?.loggedIn ? 'plans' : 'account');
+        return;
+      }
       if (next !== 'plan') lastDecisionRef.current = next;
       void patchSettings({ decisionMode: next, planMode: next === 'plan' });
     },
-    [patchSettings],
+    [autoModeLocked, membershipStatus, patchSettings],
   );
   /** plan ↔ 上一个非 plan 决策模式（Shift+Tab 快捷键用） */
   const toggleDecisionMode = useCallback((): void => {
@@ -1517,7 +1524,7 @@ export function Composer({
             }}
           >
             <Icon name={multiAgentLocked ? 'shield-check' : 'brain'} size={14} />
-            <span>{multiAgentLocked ? '多智能体 · VIP' : '多智能体协作'}</span>
+            <span>多智能体协作</span>
           </button>
         </div>
 
@@ -1526,8 +1533,10 @@ export function Composer({
         <div className="cz-slot">
           <button
             type="button"
-            className={`cz-btn ghost${decisionMode !== 'manual' ? ' active' : ''}`}
-            title={tx('composer.composerContextBar.decisionModeTooltip')}
+            className={`cz-btn ghost${decisionMode !== 'manual' ? ' active' : ''}${autoModeLocked && decisionMode === 'auto' ? ' is-membership-locked' : ''}`}
+            title={autoModeLocked && decisionMode === 'auto'
+              ? 'AI 全自动模式需要开通付费 VIP 后可用'
+              : tx('composer.composerContextBar.decisionModeTooltip')}
             onClick={() => setOpenMenu(openMenu === 'decision' ? null : 'decision')}
           >
             <Icon name={DECISION_MODE_ICON[decisionMode]} size={13} />
@@ -1540,7 +1549,7 @@ export function Composer({
             {DECISION_MODES.map((dm) => (
               <button
                 key={dm}
-                className={`cz-pop-item${dm === decisionMode ? ' selected' : ''}`}
+                className={`cz-pop-item${dm === decisionMode ? ' selected' : ''}${dm === 'auto' && autoModeLocked ? ' is-membership-locked' : ''}`}
                 onClick={() => {
                   patchDecisionMode(dm);
                   close();
@@ -1552,7 +1561,9 @@ export function Composer({
                     {tx(`composer.composerContextBar.decisionModes.${dm}`)}
                   </span>
                   <span className="cz-pop-hint">
-                    {tx(`composer.composerContextBar.decisionModes.${dm}Description`)}
+                    {dm === 'auto' && autoModeLocked
+                      ? '这项能力需要开通付费 VIP 后可用，点击查看会员套餐'
+                      : tx(`composer.composerContextBar.decisionModes.${dm}Description`)}
                   </span>
                 </div>
                 <span className="grow" />

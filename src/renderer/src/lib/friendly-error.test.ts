@@ -11,5 +11,10 @@ describe('friendlyError', () => {
   it('未知错误使用可行动的保留提示', () => {
     expect(friendlyError(new Error('some internal stack'))).toBe('这一步没有完成，内容已保留，可以重试。');
   });
-});
 
+  it('登录限流只显示中文等待提示，不暴露 Electron IPC 前缀', () => {
+    const text = friendlyError(new Error("Error invoking remote method 'account:login': Error: 登录账号执行失败：登录尝试较多，请约 12 分钟后重试。"));
+    expect(text).toBe('登录尝试较多，请约 12 分钟后重试。');
+    expect(text).not.toContain('remote method');
+  });
+});

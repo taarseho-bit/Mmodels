@@ -106,6 +106,18 @@ function eventShortLabel(ev: CompetitionEvent): string {
  */
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
+/** 只有主办方给出完整起止日期的赛事才进入日历。 */
+function hasConcreteSchedule(c: Competition): boolean {
+  return c.events.some((ev) => {
+    if (!ev.start || !ev.end) return false;
+    const start = dayOf(ev.start);
+    const end = dayOf(ev.end);
+    return /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end) && !Number.isNaN(Date.parse(start)) && !Number.isNaN(Date.parse(end));
+  });
+}
+
+const SCHEDULED_COMPETITIONS = COMPETITIONS.filter(hasConcreteSchedule);
+
 // ─────────────────────────────────────────────────────────────
 // 迷你月历（2026-09-25 大改：不再画跨天横条 —— 每天最多三枚事件色点，
 // 整体高度收进一屏；点日期在下方列出当日赛事，点赛事行开详情）
@@ -213,6 +225,11 @@ function MiniMonth({
               }
             >
               <span className="cal-mini-day">{c.day}</span>
+              <span className="cal-mini-events" aria-label={evs.map((x) => x.comp.shortName || x.comp.name).join('、')}>
+                {[...new Set(evs.map((x) => x.comp.shortName || x.comp.name))].slice(0, 2).map((name) => (
+                  <span key={name} className="cal-mini-event-name">{name}</span>
+                ))}
+              </span>
               <span className="cal-mini-dots" aria-hidden="true">
                 {[...new Set(evs.map((x) => x.ev.kind))].slice(0, 3).map((k) => (
                   <i key={k} className={`cal-mini-dot kind-${k}`} />
@@ -510,14 +527,14 @@ export function CompetitionsPage(): JSX.Element {
   };
 
   const years = useMemo(
-    () => [...new Set(COMPETITIONS.map((c) => c.year))].sort((a, b) => b - a),
+    () => [...new Set(SCHEDULED_COMPETITIONS.map((c) => c.year))].sort((a, b) => b - a),
     [],
   );
 
   /** 页头筛选（收藏 / 对象 / 状态 / 关键词） */
   const base = useMemo(() => {
     const kw = q.trim().toLowerCase();
-    return COMPETITIONS.filter((c) => {
+    return SCHEDULED_COMPETITIONS.filter((c) => {
       if (favOnly && !favorites.includes(c.id)) return false;
       if (aud !== 'all' && !c.audiences.includes(aud)) return false;
       if (stg !== 'all' && stageOf(c) !== stg) return false;

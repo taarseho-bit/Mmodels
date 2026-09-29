@@ -22,7 +22,7 @@ import { makeZip } from '../lib/zip';
 import { registerCommand } from '../keybindings/dispatch';
 import { onAccountStatus } from '../lib/membership-nav';
 import { AccountQuickMenu } from './membership/AccountQuickMenu';
-import { conversationPointsLeft, isActiveTrial, isPaidVip, trialHoursLeft } from './membership/membership-ui';
+import { conversationPointsLeft, isActiveTrial, isPaidVip, pointsBalance, trialHoursLeft } from './membership/membership-ui';
 
 interface Props {
   route: Route;
@@ -974,7 +974,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
                   )}
                   <span className="rail-account-points">
                     <Icon name="coins" size={10} style={{ marginRight: 3, verticalAlign: '-1px' }} />
-                    {conversationPointsLeft(account) ?? 0}
+                    {conversationPointsLeft(account) ?? pointsBalance(account)}
                   </span>
                   {isPaidVip(account) && (
                     <span className="truncate muted" style={{ fontSize: 10 }}>

@@ -2196,13 +2196,16 @@
 }
 .cz-btn.is-membership-locked {
   color: var(--fg-muted);
-  border-color: color-mix(in srgb, var(--warning, #d97706) 35%, transparent);
-  background: color-mix(in srgb, var(--warning, #d97706) 7%, transparent);
-  opacity: .9;
+  border-color: var(--border-weak);
+  background: var(--bg-sunken, var(--bg-panel));
+  opacity: .55;
+  filter: grayscale(1);
+  cursor: not-allowed;
 }
 .cz-btn.is-membership-locked:hover {
-  color: var(--fg-primary);
-  background: color-mix(in srgb, var(--warning, #d97706) 14%, var(--bg-hover));
+  color: var(--fg-muted);
+  background: var(--bg-sunken, var(--bg-panel));
+  opacity: .7;
 }
 
 .composer-work-mode {
@@ -2426,12 +2429,15 @@
 }
 .cz-pop-item.is-membership-locked {
   color: var(--fg-muted);
-  border: 1px dashed color-mix(in srgb, var(--warning, #d97706) 35%, transparent);
-  background: color-mix(in srgb, var(--warning, #d97706) 6%, transparent);
+  border: 1px dashed var(--border-weak);
+  background: var(--bg-sunken, var(--bg-panel));
+  opacity: .55;
+  filter: grayscale(1);
 }
 .cz-pop-item.is-membership-locked:hover {
-  color: var(--fg-primary);
-  background: color-mix(in srgb, var(--warning, #d97706) 12%, var(--bg-hover));
+  color: var(--fg-muted);
+  background: var(--bg-sunken, var(--bg-panel));
+  opacity: .75;
 }
 /* 两行项（模式菜单：标题 + 副标题）图标要对齐标题行而不是整块的垂直中心 */
 .cz-pop-item:has(> .col) {
@@ -4132,25 +4138,29 @@ audio.ap-media {
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: column;
 }
 
 /* ── 左栏：扩展类型 ── */
 
 .ext-nav {
-  width: 152px;
+  width: 100%;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px 8px;
-  border-right: 1px solid var(--border-weak);
-  overflow-y: auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-weak);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .ext-nav-title {
   font-size: var(--fs-sm);
   font-weight: 600;
-  padding: 0 8px 8px;
+  padding: 0 8px;
+  white-space: nowrap;
   color: var(--fg-primary);
 }
 
@@ -4158,15 +4168,16 @@ audio.ap-media {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  padding: 7px 8px;
+  width: auto;
+  flex: 0 0 auto;
+  padding: 7px 11px;
   border: none;
   border-radius: var(--radius);
   background: transparent;
   color: var(--fg-secondary);
   font-family: inherit;
   font-size: var(--fs-sm);
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition: background var(--t-fast);
 }
@@ -4183,8 +4194,8 @@ audio.ap-media {
 }
 
 .ext-nav-help {
-  margin-top: auto;
-  align-items: flex-start;
+  margin-left: auto;
+  align-items: center;
   color: var(--fg-muted);
   font-size: var(--fs-xs);
   line-height: 1.5;
@@ -5282,6 +5293,13 @@ audio.ap-media {
   padding: 10px 4px;
   border-bottom: 1px solid var(--border-weak);
 }
+.provider-row > .row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+}
 .provider-row:last-child {
   border-bottom: 0;
 }
@@ -5355,6 +5373,8 @@ audio.ap-media {
   flex-shrink: 0;
   gap: 4px;
   align-items: center;
+  justify-content: flex-end;
+  min-width: max-content;
 }
 
 .provider-connect {
@@ -5370,6 +5390,17 @@ audio.ap-media {
   color: var(--fg-primary);
   font-size: var(--fs-xs);
   transition: background var(--t-fast), border-color var(--t-fast);
+}
+@media (max-width: 720px) {
+  .provider-row > .row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+  .provider-row-actions,
+  .provider-connect {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 7px;
+  }
 }
 .provider-connect:hover {
   background: var(--bg-hover);
@@ -7903,6 +7934,8 @@ body.desktop-pet-document #root {
 .cal-mini-cell.picked { background: var(--accent-weak); border-color: var(--accent); }
 .cal-mini-cell.has-events:not(.dim):not(.picked) { background: var(--bg-active); }
 .cal-mini-day { font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.cal-mini-events { display: flex; flex-direction: column; align-items: center; width: 100%; min-height: 22px; overflow: hidden; }
+.cal-mini-event-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 9px; line-height: 1.25; }
 .cal-mini-dots { display: flex; gap: 3px; min-height: 5px; }
 .cal-mini-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .cal-mini-dot.kind-registration { background: var(--warning); }

@@ -231,13 +231,17 @@
 .workflow-meta-strip > span { flex: 0 0 auto; }
 .workflow-meta-strip .workflow-status { padding: 3px 8px; }
 
-/* 技能概览只占一条可读的横向带，点击成员仍可查看完整记录。 */
+/* 技能概览允许换行展示（2026-09-29 用户反馈：单行横滚导致右侧卡片看不到）。 */
 .workflow-view > .workflow-skill-overview {
   flex: 0 0 auto;
-  max-height: 64px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  max-height: 168px;
   margin: 4px 0 0;
   padding: 5px 8px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: visible;
 }
 
 .workflow-view .workflow-skill-overview-head {
@@ -247,13 +251,12 @@
 }
 
 .workflow-view .workflow-skill-overview-list {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 5px;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 2px;
-  scrollbar-width: thin;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .workflow-view .workflow-skill-chip {

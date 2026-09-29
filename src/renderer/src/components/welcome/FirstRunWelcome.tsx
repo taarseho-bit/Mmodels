@@ -123,7 +123,7 @@ export function FirstRunWelcome({
           <div className="first-run-auth-copy">
             <span className="first-run-eyebrow">{t('账号中心')}</span>
             <h1>{t('登录后进入工作台')}</h1>
-            <p>{t('注册免费账号可领取 24 小时完整基础体验并获得 20 积分。体验结束后仍可使用基础 AI，本地项目与编辑功能继续可用。多智能体、云协作和自动化需要卡密激活 VIP。')}</p>
+            <p>{t('注册免费账号可领取 24 小时完整基础体验并获得 50 积分。体验结束后仍可使用基础 AI，本地项目与编辑功能继续可用。多智能体、云协作和自动化需要卡密激活 VIP。')}</p>
             <div className="first-run-mini-points">
               <span><Icon name="check" size={13} />{t('免费账号可使用基础功能')}</span>
               <span><Icon name="check" size={13} />{t('注册即领 24 小时体验')}</span>
@@ -156,7 +156,7 @@ export function FirstRunWelcome({
         <section className="first-run-intro">
           <span className="first-run-eyebrow">{t('为数学建模竞赛而生的桌面工作台')}</span>
           <h1>{t('一道题，一支队伍，')}<em>{t('一篇可以直接交的论文。')}</em></h1>
-          <p className="first-run-lead">{t('把赛题放进 MModels，先用基础流程完成从分析到论文的工作；需要多人协作时，再用卡密激活 VIP。每一步做了什么、调用了哪些技能、交回了什么，全部摆在你眼前。注册免费账号即领 24 小时体验和 20 积分。')}</p>
+          <p className="first-run-lead">{t('把赛题放进 MModels，先用基础流程完成从分析到论文的工作；需要多人协作时，再用卡密激活 VIP。每一步做了什么、调用了哪些技能、交回了什么，全部摆在你眼前。注册免费账号即领 24 小时体验和 50 积分。')}</p>
           <div className="first-run-offer">
             <span className="first-run-offer-icon"><Icon name="sparkles" size={18} /></span>
             <span><strong>{t('注册享 24 小时体验')}</strong><small>{t('基础建模、论文写作和本地排版可直接体验；多智能体、云协作和自动化需卡密 VIP')}</small></span>

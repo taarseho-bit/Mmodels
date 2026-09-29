@@ -21,7 +21,8 @@ const cardCode = 'ABCD-EFGH-JKLM-NPQR';
 const user = {
   name: 'smoke', passHash, tokenVersion: 1, createdAt: now - 10 * 86_400_000,
   expiresAt: 0, trialExpiresAt: now - 86_400_000, plan: 'free', points: 0,
-  pointsAwards: {}, aiPoints: { date: new Date(now).toISOString().slice(0, 10), dailyGrant: 100, dailyBonus: 0, dailyRemaining: 100, pointsPerTurn: 10, consumed: {} },
+  // 已领取注册奖励，避免迁移补发影响本脚本对每日积分扣减的固定断言。
+  pointsAwards: { register: now }, aiPoints: { date: new Date(now).toISOString().slice(0, 10), dailyGrant: 100, dailyBonus: 0, dailyRemaining: 100, pointsPerTurn: 10, consumed: {} },
   quota: { date: '', used: 0, bonus: 0, consumed: {} },
   checkinDate: '', banned: false, deviceId: device,
 };
@@ -34,7 +35,7 @@ const trialUser = {
 const inviter = {
   name: 'inviter', passHash, tokenVersion: 1, createdAt: now - 5 * 86_400_000,
   expiresAt: 0, trialExpiresAt: now - 4 * 86_400_000, plan: 'free', points: 0,
-  pointsAwards: {}, quota: { date: '', used: 0, bonus: 0, consumed: {} }, checkinDate: '', banned: false,
+  pointsAwards: { register: now }, quota: { date: '', used: 0, bonus: 0, consumed: {} }, checkinDate: '', banned: false,
   deviceId: inviterDevice, inviteCode: 'MM-ABC234',
 };
 user.invitedBy = 'inviter';
@@ -68,11 +69,13 @@ async function run() {
     for (let i = 0; i < 50; i++) { try { if ((await fetch(base + '/health')).ok) break; } catch {} await sleep(100); }
     const trialAdvanced = await postAs('/api/license/check', trialToken, trialDevice, { feature: 'multi-agent' });
     if (trialAdvanced.status !== 403 || trialAdvanced.body.code !== 'PAID_VIP_REQUIRED') throw new Error('24 小时试用不应开放多智能体');
+    const trialStrict = await postAs('/api/license/check', trialToken, trialDevice, { feature: 'deep-modeling' });
+    if (trialStrict.status !== 403 || trialStrict.body.code !== 'PAID_VIP_REQUIRED') throw new Error('24 小时试用不应开放深度建模');
     const freePaper = await post('/api/license/check', { feature: 'full-paper' });
     if (freePaper.status !== 200 || freePaper.body.allowed !== true) throw new Error('免费基础论文不应被会员墙拦截');
     // 服务端按明确模式派生成本，故意把旧 pointsCost 写成 10 也必须按论文档位扣 30。
     const paperTurn = await post('/api/license/check', { feature: 'ai-chat', chatMode: 'paper', pointsCost: 10, requestId: 'smoke-paper-0001', consume: true });
-    if (paperTurn.status !== 200 || paperTurn.body.pointsPerTurn !== 30 || paperTurn.body.chatMode !== 'paper' || paperTurn.body.aiPoints.balance !== 70) throw new Error('论文轮次积分成本不正确');
+    if (paperTurn.status !== 200 || paperTurn.body.pointsPerTurn !== 30 || paperTurn.body.chatMode !== 'paper' || paperTurn.body.aiPoints.balance !== 70) throw new Error(`论文轮次积分成本不正确：${JSON.stringify(paperTurn)}`);
     // 没有明确模式的旧请求仍按基础档位处理；伪造高价 pointsCost 不能改变服务端扣费。
     const first = await post('/api/license/check', { feature: 'ai-chat', pointsCost: 80, requestId: 'smoke-0001', consume: true });
     if (first.status !== 200 || first.body.allowed !== true || first.body.aiPoints.balance !== 60 || first.body.pointsPerTurn !== 10) throw new Error('首次 AI 积分扣减失败');
@@ -93,6 +96,8 @@ async function run() {
     if (redeemed.status !== 200 || !redeemedBody.ok || redeemedBody.plan !== 'vip') throw new Error('卡密兑换会员失败');
     const vip = await post('/api/license/check', { feature: 'multi-agent' });
     if (!vip.body.allowed || vip.body.plan !== 'vip') throw new Error('兑换后高级能力未放行');
+    const vipStrict = await post('/api/license/check', { feature: 'deep-modeling' });
+    if (!vipStrict.body.allowed || vipStrict.body.plan !== 'vip') throw new Error('兑换后深度建模未放行');
     const firstReward = await post('/api/account/points-earn', { kind: 'firstProject', eventId: 'first-project' });
     if (!firstReward.body.ok || firstReward.body.awarded !== 30) throw new Error('首个项目积分奖励失败');
     const paperReward = await post('/api/account/points-earn', { kind: 'paperExport', eventId: 'paper-export-smoke-0001' });

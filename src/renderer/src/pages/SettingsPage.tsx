@@ -27,9 +27,7 @@ import { EnvSection } from '../components/settings/EnvSection';
 import { NetworkSection } from '../components/settings/NetworkSection';
 import { SysPromptSection } from '../components/settings/SysPromptSection';
 import { AppearanceSection } from '../components/settings/AppearanceSection';
-import { KeysSection } from '../components/settings/KeysSection';
 import { NotifySection } from '../components/settings/NotifySection';
-import { TourSection } from '../components/settings/TourSection';
 import { AboutSection } from '../components/settings/AboutSection';
 import { AccountSection } from '../components/settings/AccountSection';
 import { MembershipModal } from '../components/membership/MembershipModal';
@@ -175,9 +173,7 @@ export function SettingsPage({
     {
       id: 'appearance', label: '外观与帮助', icon: 'sun-moon', items: [
         { id: 'appearance', label: '界面与桌面小模', icon: 'sun-moon' },
-        { id: 'keys', label: '快捷键', icon: 'keyboard' },
         { id: 'profile', label: '使用统计', icon: 'user' },
-        { id: 'tour', label: '新手教程', icon: 'graduation-cap' },
         { id: 'about', label: '关于与诊断', icon: 'info' },
       ],
     },
@@ -284,9 +280,7 @@ export function SettingsPage({
             {section === 'network' && <NetworkSection />}
             {section === 'sysprompt' && <SysPromptSection />}
             {section === 'appearance' && <AppearanceSection />}
-            {section === 'keys' && <KeysSection />}
             {section === 'notify' && <NotifySection />}
-            {section === 'tour' && <TourSection />}
             {section === 'about' && <AboutSection />}
           </div>
         </div>

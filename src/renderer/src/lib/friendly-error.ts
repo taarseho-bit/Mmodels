@@ -22,6 +22,10 @@ export function friendlyError(error: unknown, fallback = '这一步没有完成�
   if (/feature_vip_required|需要 vip|需要会员|升级会员/.test(text)) return '这项能力需要卡密激活的 VIP，打开会员中心查看权益和兑换方式。';
   if (/insufficient_points|积分不足/.test(text)) return '当前积分不足，本轮内容已保留；签到或明天刷新积分后再试。';
   if (/invite_not_verified|邀请关系/.test(text)) return '邀请关系还在核验中，确认注册完成后再领取奖励。';
+  if (/login_rate_limited|登录尝试较多|登录尝试过于频繁/.test(text)) {
+    const wait = raw.match(/请(约\s*\d+\s*分钟|\d+\s*秒|稍后)后重试/);
+    return wait ? `登录尝试较多，请${wait[1]}后重试。` : '登录尝试较多，请稍后重试。';
+  }
   if (/rate_limited|过于频繁/.test(text)) return '操作比较频繁，请稍等片刻再试。';
   if (/login_required|请先.*登录|需要.*注册/.test(text)) return '注册免费账号即可开始试用，登录后继续当前操作。';
   if (/授权|会员|令牌|license|entitlement|token/.test(text)) return '当前版本需要有效授权，请到“设置 → 账号与授权”登录或续费后再试。';

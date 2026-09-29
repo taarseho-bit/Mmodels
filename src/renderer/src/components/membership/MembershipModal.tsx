@@ -23,7 +23,6 @@ import {
   isPaidVip,
   pointsBalance,
   trialHoursLeft,
-  POINTS_PER_BASIC_CHAT,
 } from './membership-ui';
 
 type MembershipTab = 'plans' | 'redeem' | 'points';
@@ -34,12 +33,13 @@ const SUPPORT_URL = String(import.meta.env.VITE_MMODELS_SUPPORT_URL ?? '').trim(
 
 const ENTITLEMENT_ROWS = [
   ['本地项目与编辑', '可用', '可用'],
-  ['基础 AI 对话', '每天 100 积分，签到再得 100 积分', '积分不限量'],
+  ['基础 AI 对话', '每日积分 100 分，签到再得 100 分', '积分不限量'],
   ['单智能体建模', '可用', '可用'],
-  ['多智能体协作', '卡密 VIP 可用', '可用'],
-  ['完整论文生成', '基础流程可用', '高级流程可用'],
-  ['严格建模与高级图表', '基础图表可用', '可用'],
-  ['最终成品导出', '基础文件可保存', '完整成品导出'],
+  ['论文写作与导出 Word/PDF', '可用', '可用'],
+  ['高级图表', '可用', '可用'],
+  ['多智能体协作', '不可用', '可用'],
+  ['AI 全自动模式', '不可用', '可用'],
+  ['深度建模', '不可用', '可用'],
   ['云端协作与自动化', '不可用', '可用'],
 ] as const;
 
@@ -255,11 +255,11 @@ export function MembershipModal({
 
           {tab === 'points' && <div className="membership-points-panel">
             <div className="membership-points-balance"><span>{t('当前可用积分')}</span><strong>{pointsBalance(status)}</strong></div>
-            <div className="membership-points-rule">{t(`普通对话每次消耗 ${POINTS_PER_BASIC_CHAT} 积分；论文与评阅会按任务复杂度消耗更多积分。免费账号每天 100 积分，签到再得 100 积分。`)}<br />{t('卡密 VIP 不受每日积分上限影响；积分不能兑换会员，会员请使用卡密。')}</div>
+            <div className="membership-points-rule">{t('普通对话与各项任务按固定规则消耗积分，无需提前支付，余额不足时本轮无法开始。免费账号每天获得基础积分，签到再得额外积分。')}<br />{t('卡密 VIP 不受每日积分上限影响；积分不能兑换会员，会员请使用卡密。')}</div>
             <div className="membership-points-earn">
               <div className="muted" style={{ marginBottom: 6, fontWeight: 600 }}>{t('如何获得积分')}</div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 2 }}>
-                <li>{t('注册账号')} <b style={{ color: 'var(--green, #16a34a)' }}>+20 积分</b></li>
+                <li>{t('注册账号')} <b style={{ color: 'var(--green, #16a34a)' }}>+50 积分</b></li>
                 <li>{t('完成首次建模对话')} <b style={{ color: 'var(--green, #16a34a)' }}>+30</b></li>
                 <li>{t('导出论文成品（PDF/Word/LaTeX）')} <b style={{ color: 'var(--green, #16a34a)' }}>+20</b></li>
                 <li>{t('提交有效反馈')} <b style={{ color: 'var(--green, #16a34a)' }}>+10</b></li>

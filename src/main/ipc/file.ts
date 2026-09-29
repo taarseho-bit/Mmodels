@@ -14,7 +14,6 @@ import { IPC, type FileNode, type FilePreview, type PdfInfo, type PdfPreflight }
 import { mediaMime, mediaUrlFor } from '../media/protocol';
 import { getDb } from '../db';
 import { getSettings } from '../store/config';
-import { assertAiEntitlement } from '../security/license-gate';
 import { safeWrap, type IpcContext } from './index';
 import { managedPythonPath, sharedPythonPath, sharedRuntimeEnv } from '../runtime/shared-environment';
 
@@ -55,12 +54,10 @@ function saveFiltersFor(defaultPath: string): Array<{ name: string; extensions: 
   return [SAVE_FILTERS[extname(defaultPath).toLowerCase()] ?? { name: 'All Files', extensions: ['*'] }];
 }
 
-/** 成品论文格式走独立会员闸门；JSON/HTML/ZIP 等普通会话备份仍保持免费。 */
-async function assertPaperExportFor(defaultPath: string): Promise<void> {
-  const ext = extname(defaultPath).toLowerCase();
-  if (ext === '.pdf' || ext === '.doc' || ext === '.docx' || ext === '.tex' || ext === '.latex') {
-    await assertAiEntitlement('export');
-  }
+/** 2026-09-29 规则收缩：成品导出（PDF/Word/LaTeX）不再作为会员闸门，
+ *  免费用户同样可以导出；函数保留为空实现以维持调用点结构，方便日后调整。 */
+async function assertPaperExportFor(_defaultPath: string): Promise<void> {
+  // 原实现：.pdf/.doc/.docx/.tex/.latex → assertAiEntitlement('export')
 }
 
 /** 把用户给的相对路径安全地解析到项目根内 */

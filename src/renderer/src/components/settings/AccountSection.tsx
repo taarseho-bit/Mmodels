@@ -10,6 +10,7 @@ import { t } from '../../i18n';
 import { Section } from './shared';
 import type { AccountStatusInfo } from '@shared/types';
 import { conversationPointsLeft, isActiveTrial, isPaidVip, pointsBalance, trialHoursLeft } from '../membership/membership-ui';
+import { friendlyError } from '../../lib/friendly-error';
 
 const DAY = 86_400_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,7 +66,7 @@ export function AccountSection({
       onStatusChange?.(next);
     }).catch((e) => {
       setStatus(null);
-      setStatusError(e instanceof Error ? e.message : t('读取账号状态失败，请重试'));
+      setStatusError(friendlyError(e, t('读取账号状态失败，请重试')));
     });
   }, [onStatusChange]);
 
@@ -93,7 +94,7 @@ export function AccountSection({
       if (next.loggedIn) onAuthenticated?.(next);
       setMessage({ kind: 'ok', text: okText });
     } catch (e) {
-      setMessage({ kind: 'err', text: e instanceof Error ? e.message : t('操作失败，请稍后重试') });
+      setMessage({ kind: 'err', text: friendlyError(e, t('操作失败，请稍后重试')) });
     } finally {
       setBusy('');
     }
@@ -111,7 +112,7 @@ export function AccountSection({
       setCd(60);
       setMessage({ kind: 'ok', text: t('验证码已发送，请查收邮箱（10 分钟内有效）') });
     } catch (e) {
-      setMessage({ kind: 'err', text: e instanceof Error ? e.message : t('发送失败，请稍后重试') });
+      setMessage({ kind: 'err', text: friendlyError(e, t('发送失败，请稍后重试')) });
     } finally {
       setBusy('');
     }
