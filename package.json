@@ -1,6 +1,6 @@
 {
   "name": "mmodels-desktop",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "private": true,
   "description": "MModels · 本地数学建模智能体桌面版",
   "type": "module",
@@ -17,6 +17,9 @@
     "test:unit:watch": "vitest",
     "audit:wording": "node scripts/audit-product-wording.cjs",
     "audit:provenance": "node scripts/audit-provenance.cjs",
+    "git:check": "node scripts/git-guard.cjs check",
+    "git:checkpoint": "node scripts/git-guard.cjs checkpoint",
+    "git:verify": "node scripts/git-guard.cjs verify",
     "test:harness": "node scripts/test-git.cjs && node scripts/test-env.cjs && node scripts/test-claude-path.mjs",
     "test:native": "node scripts/clean-env.cjs node_modules/electron/dist/electron.exe scripts/test-native-abi.mjs",
     "test:e2e": "node scripts/test-real-app.cjs",

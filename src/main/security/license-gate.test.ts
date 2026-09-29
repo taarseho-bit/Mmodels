@@ -231,6 +231,18 @@ describe('license-gate 断网宽限', () => {
     expect(JSON.parse(String(init.body))).toMatchObject({ feature: 'ai-chat', requestId: 'turn-12345678', pointsCost: 3, consume: true });
   });
 
+  it('技能计费 key 会随请求发送，服务端可按稳定 skillId 重新核算', async () => {
+    writePolicy(true);
+    writeToken('tok-1');
+    const gate = await freshGate();
+    const fetchMock = vi.fn(async () => okResponse({ allowed: true, pointsBalance: 80, costPoints: 20 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await gate.assertAiEntitlement('ai-chat', 'turn-skill-123', 20, 'basic', 'paper-page-fit');
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['x-mmodels-skill-id']).toBe('paper-page-fit');
+    expect(JSON.parse(String(init.body))).toMatchObject({ skillId: 'paper-page-fit', chatMode: 'basic' });
+  });
+
   it('试用调用多智能体时使用明确的中文付费 VIP 提示', async () => {
     writePolicy(true);
     writeToken('tok-1');

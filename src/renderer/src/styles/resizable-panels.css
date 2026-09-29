@@ -102,7 +102,73 @@
   width: 100%;
   max-width: none;
 }
-.editorview-chatcol .newchat-examples { display: none; }
+.editorview-chatcol:not(.is-main) .newchat-examples { display: none; }
+
+/* 编辑器视图最终布局契约：右侧对话栏优先保证输入框可见，
+   不让普通首屏的示例卡片和大边距挤占工作区。此段放在本文件末尾，
+   以覆盖主题/页面样式的历史宽度规则。 */
+.editorview-chatcol:not(.is-main) {
+  min-width: 380px;
+  max-width: 820px;
+}
+.editorview-chatcol .chat-page {
+  min-width: 0;
+  overflow: hidden;
+}
+.editorview-chatcol .chat-page-context {
+  display: none;
+}
+.editorview-chatcol .chat-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px;
+}
+.editorview-chatcol .chat-inner {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  padding: 0;
+}
+.editorview-chatcol .chat-inner.is-empty {
+  align-items: stretch;
+  justify-content: flex-end;
+}
+.editorview-chatcol .newchat {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  margin: 0;
+  padding: 8px 0 0;
+}
+.editorview-chatcol .newchat-hero {
+  margin: auto 4px 10px;
+  justify-content: flex-start;
+}
+.editorview-chatcol:not(.is-main) .newchat-examples,
+.editorview-chatcol:not(.is-main) .newchat-beta {
+  display: none;
+}
+.editorview-chatcol .composer,
+.editorview-chatcol .composer-inline {
+  width: 100%;
+  padding: 0 0 2px;
+}
+.editorview-chatcol .composer-inner,
+.editorview-chatcol .composer-inline .composer-inner {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.editorview-chatcol .composer-box {
+  border-radius: 13px;
+}
+
+@media (max-width: 700px) {
+  .editorview-chatcol:not(.is-main) {
+    min-width: 0;
+    max-width: none;
+  }
+}
 
 @media (max-width: 1100px) {
   .editorview-chatcol:not(.is-main) { width: var(--pane-width, 380px); }
@@ -400,14 +466,14 @@
   margin-top: 0;
 }
 .competition-shell .starter {
-  min-height: 92px;
-  padding: 12px 13px;
+  min-height: 68px;
+  padding: 9px 10px;
   border-radius: 11px;
   background: var(--bg-panel);
   box-shadow: none;
 }
 .competition-shell .starter:hover { transform: translateY(-1px); }
-.competition-shell .starter .starter-desc { line-height: 1.5; }
+.competition-shell .starter .starter-desc { line-height: 1.35; }
 
 /* 工作流需要让画布成为主内容，顶部上下文条只占一行。 */
 .competition-shell .chat-page.is-workflow {

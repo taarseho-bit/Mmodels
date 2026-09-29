@@ -999,16 +999,18 @@ export type AccountPlan = 'free' | 'vip';
 export const TRIAL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * 一次对话消耗的积分档位。积分是体验额度的统一口径；兼容接口的 aiQuota
- * 字段仍保留用于迁移和兼容历史服务端，但新代码优先读取 pointsBalance。
+ * 普通/历史客户端使用的对话档位。新客户端选择 `#` 技能时以
+ * `src/shared/skill-pricing.ts` 的 skillId 成本为优先，服务端也会按技能白名单重算；
+ * 这里保留为无技能消息和旧协议的回退。积分是体验额度的统一口径；兼容接口的
+ * aiQuota 字段仍保留用于迁移，但新代码优先读取 pointsBalance。
  */
 export const CHAT_POINT_COSTS = Object.freeze({
   /** 普通问答：每天 100 分约可完成 10 轮轻量交流。 */
   basic: 10,
-  /** 论文/评阅会带来更长的上下文和整理工作，按一轮 30 分计。 */
+  /** 旧论文/评阅模式回退成本；细分论文技能以技能目录为准。 */
   paper: 30,
   review: 30,
-  /** 图表整理一轮 20 分；严格建模和协同属于 VIP，仍保留展示用成本。 */
+  /** 旧图表模式回退成本；严格建模和协同属于 VIP。 */
   figure: 20,
   strict: 50,
   collaboration: 80,
@@ -1113,6 +1115,8 @@ export interface AccountStatusInfo {
 /** 渲染层功能墙使用的统一结果。不会把令牌、密码或设备指纹带出主进程。 */
 export interface AccountEntitlementInfo {
   feature: MembershipFeature;
+  /** 选择 # 技能时的稳定计费 key；普通模式为空。 */
+  skillId?: string;
   allowed: boolean;
   reason: EntitlementReason;
   account: AccountStatusInfo;
@@ -1128,6 +1132,8 @@ export interface AccountEntitlementInfo {
 export interface AccountEntitlementRequest {
   feature: MembershipFeature;
   pointsCost?: number;
+  /** 可选的 # 技能 id；主进程/服务端会重新按白名单核算。 */
+  skillId?: string;
 }
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

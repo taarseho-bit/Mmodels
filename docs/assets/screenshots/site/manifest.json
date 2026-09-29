@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T13:56:21.197Z",
+  "generatedAt": "2026-09-29T18:47:44.121Z",
   "app": "dist/win-unpacked/MModels.exe",
   "viewport": {
     "width": 1440,
@@ -7,6 +7,7 @@
   },
   "files": [
     "competition-workbench.png",
+    "editor-view.png",
     "membership-account.png",
     "providers-grid.png",
     "skills-detail.png",

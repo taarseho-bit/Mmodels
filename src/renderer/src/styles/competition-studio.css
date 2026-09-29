@@ -55,7 +55,12 @@
 .competition-shell .settings-shell { background: var(--bg-panel); }.competition-shell .settings-side { width: 240px; background: var(--bg-canvas); border-right: 1px solid var(--studio-line); border-radius: 0; padding: 28px 18px; }.competition-shell .settings-back { background: transparent; color: var(--fg-secondary); padding: 13px; border-radius: 6px; margin-bottom: 20px; }.competition-shell .settings-nav-item { min-height: 40px; border-radius: 5px; }.competition-shell .settings-nav-item.active { border: 0; color: var(--fg-primary); background: var(--bg-hover); box-shadow: none; }.competition-shell .settings-nav-item:nth-child(5) { margin-bottom: 22px; }.competition-shell .settings-content { max-width: 1120px; }.competition-shell .settings-content.settings-tool-content { height: 100%; max-width: none; padding: 0; }.competition-shell .settings-tool-scroll { padding: 0; overflow: hidden; min-height: 0; }.settings-tool-content > .page,.settings-tool-content > .gallery-page,.settings-tool-content > .ext-page { height: 100%; min-height: 0; }
 @media (max-width: 1150px) { .studio-two-column { grid-template-columns: 1fr; }.studio-page { padding: 24px; }.studio-mission { grid-template-columns: 1fr; }.studio-countdown { border: 0; padding: 10px 0 0; }.studio-stat-strip { gap: 20px; }.studio-page-heading { flex-wrap: wrap; }.studio-filter { flex-wrap: wrap; } }
 .competition-shell .topbar, .competition-shell .settings-side { backdrop-filter: none; }
-.competition-shell .starter-tags { display: none; }
+.competition-shell .starter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
 .competition-shell .starter-title { font-size: 13px; font-weight: 500; }
 .studio-paper { content-visibility: auto; contain-intrinsic-size: auto 160px; }
 .studio-phase button { transition: background-color 120ms ease-out; }
@@ -159,6 +164,17 @@
 .competition-shell .starter .starter-title { display: block; font-weight: 600; margin-top: 2px; }
 .competition-shell .starter .starter-desc { display: block; margin-top: 4px; line-height: 1.55; }
 .competition-shell .starter .starter-tags { margin-top: 6px; }
+
+/* 首屏快捷入口采用紧凑的工具卡：积分只作为图标旁的次要信息，
+   标题和说明跟随图标排列，避免底部出现醒目的计费胶囊。 */
+.competition-shell .starter-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.competition-shell .starter-head-copy { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.competition-shell .starter-icon { width: 24px; height: 24px; border-radius: 7px; margin-bottom: 0; }
+.competition-shell .starter .starter-title { display: inline; margin: 0; font-size: 12.5px; line-height: 1.35; }
+.competition-shell .starter .starter-cost { font-size: 10px; line-height: 1.3; color: var(--fg-muted); font-weight: 500; }
+.competition-shell .starter .starter-desc { margin-top: 4px; font-size: 11px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.competition-shell .starter .starter-tags { margin-top: 4px; gap: 4px; }
+.competition-shell .starter .starter-tag { font-size: 10px; line-height: 1.3; padding: 1px 6px; }
 
 /* 点卡片下方展开的内联输入框 */
 .starter-inline { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-weak)); border-radius: 12px; background: var(--bg-panel); box-shadow: 0 6px 20px rgba(0,0,0,.07); animation: fade-in 150ms ease-out; }

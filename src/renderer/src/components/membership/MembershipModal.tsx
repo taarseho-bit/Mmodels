@@ -17,6 +17,7 @@ import { t } from '../../i18n';
 import { Icon } from '../Icon';
 import { PlanCards, type MembershipPlan } from './PlanCards';
 import { RedeemBar } from './RedeemBar';
+import { SKILL_POINT_CATALOG, type SkillPointGroup } from '@shared/skill-pricing';
 import {
   conversationPointsLeft,
   isActiveTrial,
@@ -41,6 +42,30 @@ const ENTITLEMENT_ROWS = [
   ['AI 全自动模式', '不可用', '可用'],
   ['深度建模', '不可用', '可用'],
   ['云端协作与自动化', '不可用', '可用'],
+] as const;
+
+/**
+ * 积分说明唯一口径：普通对话 10 分/轮；选择 `#` 技能后只按该技能的
+ * 成本扣一次，不把普通档与技能档叠加。技能目录来自共享注册表，和主进程、服务端
+ * 使用同一批稳定 id。论文导出不是一个 `#` 技能，因此本身不单独扣分。
+ */
+const SKILL_GROUP_ORDER: readonly SkillPointGroup[] = [
+  '题目与建模',
+  '数据与研究',
+  '图表与交付',
+  '论文与评阅',
+  '协作与工具',
+];
+
+const SKILL_GROUPS = SKILL_GROUP_ORDER.map((group) => ({
+  group,
+  entries: SKILL_POINT_CATALOG.filter((entry) => entry.group === group),
+}));
+
+const VIP_COST_ROWS = [
+  { kind: 'strict', title: '严格建模', cost: '卡密 VIP', detail: '严格模式是付费权益，未兑换卡密时不可执行。', tone: 'vip' },
+  { kind: 'collaboration', title: '多智能体协作', cost: '卡密 VIP', detail: '试用窗口不开放；兑换卡密后才能派发协作成员。', tone: 'vip' },
+  { kind: 'automation', title: 'AI 全自动与自动化', cost: '卡密 VIP', detail: '自动推进、后台任务和云端协作属于付费权益。', tone: 'vip' },
 ] as const;
 
 function fmtDate(ts: number): string {
@@ -254,26 +279,110 @@ export function MembershipModal({
           </>}
 
           {tab === 'points' && <div className="membership-points-panel">
-            <div className="membership-points-balance"><span>{t('当前可用积分')}</span><strong>{pointsBalance(status)}</strong></div>
-            <div className="membership-points-rule">{t('普通对话与各项任务按固定规则消耗积分，无需提前支付，余额不足时本轮无法开始。免费账号每天获得基础积分，签到再得额外积分。')}<br />{t('卡密 VIP 不受每日积分上限影响；积分不能兑换会员，会员请使用卡密。')}</div>
-            <div className="membership-points-earn">
-              <div className="muted" style={{ marginBottom: 6, fontWeight: 600 }}>{t('如何获得积分')}</div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 2 }}>
-                <li>{t('注册账号')} <b style={{ color: 'var(--green, #16a34a)' }}>+50 积分</b></li>
-                <li>{t('完成首次建模对话')} <b style={{ color: 'var(--green, #16a34a)' }}>+30</b></li>
-                <li>{t('导出论文成品（PDF/Word/LaTeX）')} <b style={{ color: 'var(--green, #16a34a)' }}>+20</b></li>
-                <li>{t('首次有价值反馈（审核通过）')} <b style={{ color: 'var(--green, #16a34a)' }}>+100</b></li>
-                <li>{t('邀请好友完成首次有效使用')} <b style={{ color: 'var(--green, #16a34a)' }}>+50（每日最多 3 次）</b></li>
-                <li>{t('每日签到')} <b style={{ color: 'var(--green, #16a34a)' }}>+100 对话积分</b></li>
-              </ul>
+            <div className="membership-points-hero">
+              <div className="membership-points-hero-copy">
+                <span className="membership-section-kicker">{t('积分账本')}</span>
+                <strong>{t('普通对话与 # 技能，成本清清楚楚')}</strong>
+                <small>{t('不带 # 的普通对话每轮 10 分；选中某个 # 技能后，按该技能标注的积分扣一次。')}</small>
+              </div>
+              <div className="membership-points-hero-balance">
+                <span>{t('当前可用')}</span>
+                <strong>{pointsBalance(status)}</strong>
+                <small>{t('积分')}</small>
+              </div>
             </div>
-            <div className="membership-points-options" role="note">
-              <span>{t('想解锁多智能体、云协作、自动化和高级交付？请切换到“卡密兑换”，输入购买到的卡密即可。')}</span>
-              {(SUPPORT_URL || SUPPORT_CONTACT) ? (
-                SUPPORT_URL
-                  ? <button type="button" className="btn btn-sm btn-primary" onClick={() => void window.mathmodel.browser.openExternal(SUPPORT_URL)}>{t('联系管理员购买卡密')}</button>
-                  : <span className="muted">{t(`联系方式：${SUPPORT_CONTACT}`)}</span>
-              ) : <span className="muted">{t('购买入口待配置；收到卡密后可直接在“卡密兑换”中激活。')}</span>}
+
+            <div className="membership-points-guide" role="note">
+              <Icon name="info" size={15} />
+              <span>{t('一次发送只收一项费用，不会把普通档和技能档叠加。论文导出不是 # 技能，本身不单独扣分；成功导出奖励是否发放由服务端按资格审核。余额不足或网络失败不会扣分。')}</span>
+            </div>
+
+            <section className="membership-points-section" aria-labelledby="points-cost-title">
+              <div className="membership-points-section-head">
+                <div>
+                  <h3 id="points-cost-title">{t('每项功能消耗多少')}</h3>
+                  <span>{t('输入 # 可以从同一份目录选择技能；这里的价格与实际服务端扣分保持一致。论文导出不属于技能，放在下方奖励区说明。')}</span>
+                </div>
+                <span className="membership-points-legend"><i className="is-cost" />{t('技能回合')} <i className="is-vip" />{t('卡密 VIP')}</span>
+              </div>
+              <div className="membership-points-cost-grid">
+                <div className="membership-points-cost-card is-basic membership-points-basic-card">
+                  <div className="membership-points-cost-top">
+                    <span className="membership-points-cost-title">{t('普通对话（不带 #）')}</span>
+                    <strong>{t('10 积分 / 轮')}</strong>
+                  </div>
+                  <p>{t('解释概念、拆解题目、追问修改等没有选择技能的普通消息；免费账号按发送成功的一轮扣除。')}</p>
+                </div>
+                {SKILL_GROUPS.map(({ group, entries }) => (
+                  <div className="membership-points-skill-group" key={group}>
+                    <div className="membership-points-skill-group-head">
+                      <strong>{t(group)}</strong>
+                      <span>{t(`${entries.length} 项技能`)}</span>
+                    </div>
+                    <div className="membership-points-skill-grid">
+                      {entries.map((entry) => (
+                        <div className="membership-points-cost-card is-skill" key={entry.id} data-skill-id={entry.id}>
+                          <div className="membership-points-cost-top">
+                            <span className="membership-points-cost-title">{t(entry.label)}</span>
+                            <strong>{t(`${entry.cost} 积分`)}</strong>
+                          </div>
+                          <p>{t(entry.description)}</p>
+                          <small className="membership-points-skill-id">#{entry.id}</small>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className="membership-points-skill-group membership-points-vip-group">
+                  <div className="membership-points-skill-group-head">
+                    <strong>{t('不以积分计费的卡密 VIP 能力')}</strong>
+                    <span>{t('直接锁定')}</span>
+                  </div>
+                  <div className="membership-points-skill-grid">
+                    {VIP_COST_ROWS.map((row) => (
+                      <div className={`membership-points-cost-card is-${row.tone}`} key={row.kind}>
+                        <div className="membership-points-cost-top">
+                          <span className="membership-points-cost-title">{t(row.title)}</span>
+                          <strong>{t(row.cost)}</strong>
+                        </div>
+                        <p>{t(row.detail)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="membership-points-section membership-points-earn" aria-labelledby="points-earn-title">
+              <div className="membership-points-section-head">
+                <div>
+                  <h3 id="points-earn-title">{t('如何获得积分')}</h3>
+                  <span>{t('奖励在服务端确认后入账，重复事件不会重复发放。')}</span>
+                </div>
+                <span className="membership-points-earn-badge">{t('奖励')}</span>
+              </div>
+              <div className="membership-points-earn-grid">
+                <div><span>{t('注册账号')}</span><b>+50</b><small>{t('一次')}</small></div>
+                <div><span>{t('完成首次有效建模')}</span><b>+30</b><small>{t('一次')}</small></div>
+                <div><span>{t('论文导出奖励（不是扣费）')}</span><b>+20</b><small>{t('符合资格时每篇一次')}</small></div>
+                <div><span>{t('有效反馈审核通过')}</span><b>+100</b><small>{t('首次有效反馈')}</small></div>
+                <div><span>{t('邀请好友完成首次有效使用')}</span><b>+50</b><small>{t('每日最多 3 次')}</small></div>
+                <div><span>{t('免费账号每日签到')}</span><b>+100</b><small>{t('每日一次')}</small></div>
+              </div>
+            </section>
+
+            <div className="membership-points-cta" role="note">
+              <div>
+                <strong>{t('想直接使用，不想计算积分？')}</strong>
+                <span>{t('卡密 VIP 解锁多智能体、严格建模、AI 全自动、高级图表与最终交付；积分不会兑换会员。')}</span>
+              </div>
+              {SUPPORT_URL ? (
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => void window.mathmodel.browser.openExternal(SUPPORT_URL)}>{t('联系管理员购买卡密')}</button>
+              ) : SUPPORT_CONTACT ? (
+                <span className="membership-points-contact">{t(`联系方式：${SUPPORT_CONTACT}`)}</span>
+              ) : (
+                <span className="membership-points-contact">{t('收到卡密后，在“卡密兑换”中激活')}</span>
+              )}
             </div>
           </div>}
 

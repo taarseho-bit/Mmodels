@@ -43,6 +43,7 @@ const board = vi.hoisted(() => ({
   systemPrompt: undefined as string | undefined,
   multiAgentEnabled: undefined as boolean | undefined,
   decisionMode: undefined as 'manual' | 'auto' | 'plan' | undefined,
+  composerMode: 'paper' as 'paper' | 'review' | 'figure' | 'data' | 'chat',
 }));
 
 vi.mock('electron', () => ({
@@ -55,6 +56,7 @@ vi.mock('../store/config', () => ({
     systemPrompt: board.systemPrompt,
     multiAgentEnabled: board.multiAgentEnabled,
     decisionMode: board.decisionMode,
+    composerMode: board.composerMode,
   }),
   findProvider: () => undefined,
   activeProvider: () => undefined,
@@ -66,12 +68,20 @@ vi.mock('../agent/bridge-registry', () => ({ bridgeRegistry: {} }));
 vi.mock('./index', () => ({ safeWrap: (fn: unknown) => fn, pushToRenderer: () => {} }));
 vi.mock('./file', () => ({ currentProjectRoot: () => null }));
 
-import { buildSystemPrompt, membershipFeatureForTurn, multiAgentTriggerForPrompt, staleTaskReminder } from './session';
+import {
+  buildSystemPrompt,
+  hasExplicitCollaborationRequest,
+  membershipFeatureForTurn,
+  multiAgentTriggerForPrompt,
+  shouldSuppressAutomaticCollaboration,
+  staleTaskReminder,
+} from './session';
 
 afterEach(() => {
   board.systemPrompt = undefined;
   board.multiAgentEnabled = undefined;
   board.decisionMode = undefined;
+  board.composerMode = 'paper';
 });
 
 const CWD = 'C:\\proj\\demo';
@@ -111,6 +121,8 @@ describe('长时任务与多智能体协作', () => {
       false,
       false,
       '/write-paper\n参考以下文件：\n- C:\\题目.pdf\n解决问题',
+      null,
+      true,
     );
     expect(required).toContain('# 本轮自动协作（已触发）');
     expect(required).toContain('必须实际调用 Agent 工具组织协作');
@@ -118,6 +130,38 @@ describe('长时任务与多智能体协作', () => {
     expect(required).toContain('绝不为展示效果凑人数');
     expect(required).toContain('不要使用“协作研究员”');
     expect(buildSystemPrompt(CWD, false, false, '把标题改短一点')).not.toContain('# 本轮自动协作（已触发）');
+  });
+
+  it('显式技能不会因附件或长文本自动打开协作；同条消息明确要求协作时才允许', () => {
+    const skillPrompt = '/write-paper\n参考以下文件：\n- C:\\题目.pdf\n请完成整篇论文';
+    expect(shouldSuppressAutomaticCollaboration(skillPrompt)).toBe(true);
+    expect(hasExplicitCollaborationRequest(skillPrompt)).toBe(false);
+    expect(hasExplicitCollaborationRequest('/write-paper 参考文献中的多智能体协作模型，不要启动子智能体')).toBe(false);
+    // buildRunOptions 会把该回合的开关显式传为 false；直接调用纯函数时也应能复现。
+    const single = buildSystemPrompt(CWD, false, false, skillPrompt);
+    expect(single).not.toContain('# 数学建模协作组');
+    expect(single).not.toContain('# 本轮自动协作（已触发）');
+
+    const collaborative = '/write-paper 请启动多智能体协作完成整篇论文';
+    expect(shouldSuppressAutomaticCollaboration(collaborative)).toBe(false);
+    expect(hasExplicitCollaborationRequest(collaborative)).toBe(true);
+    const grouped = buildSystemPrompt(CWD, false, false, collaborative, 'complex', true);
+    expect(grouped).toContain('# 数学建模协作组');
+    expect(grouped).toContain('# 本轮自动协作（已触发）');
+  });
+
+  it('协作词表统一覆盖常见说法，并正确排除否定句', () => {
+    for (const prompt of [
+      '请使用多个智能体并行分析',
+      '让智能体协作完成数据核验',
+      '请开启协同模式处理这个项目',
+      '请调用协作组复核结果',
+    ]) {
+      expect(hasExplicitCollaborationRequest(prompt)).toBe(true);
+      expect(multiAgentTriggerForPrompt(prompt)).toBe('complex');
+    }
+    expect(hasExplicitCollaborationRequest('题目讨论智能体协作模型，不要启用多智能体')).toBe(false);
+    expect(multiAgentTriggerForPrompt('题目讨论智能体协作模型，不要启用多智能体')).not.toBe('complex');
   });
 
   it('协作组提示词绑定角色-技能映射，并要求注册角色优先', () => {
@@ -293,12 +337,38 @@ describe('工作流协作优化（2026-09-19）', () => {
 });
 
 describe('会员权益与积分成本入口', () => {
+  it('默认开启协作时，显式技能仍按技能积分，不被附件条件升级成 VIP 协作', () => {
+    board.multiAgentEnabled = true;
+    const result = membershipFeatureForTurn('/write-paper\n参考以下文件：\n- C:\\题目.pdf\n请完成整篇论文');
+    expect(result.feature).toBe('ai-chat');
+    expect(result.consumesQuota).toBe(true);
+    expect(result.skillId).toBe('write-paper');
+    expect(result.pointsCost).toBe(30);
+  });
+
+  it('显式技能同时要求多智能体时仍进入 VIP 协作闸门', () => {
+    board.multiAgentEnabled = true;
+    const result = membershipFeatureForTurn('/write-paper 请启动多智能体协作完成整篇论文');
+    expect(result.feature).toBe('multi-agent');
+    expect(result.consumesQuota).toBe(false);
+    expect(result.pointsCost).toBe(0);
+  });
+
   it('基础论文不再被误判为 VIP 专属，按论文档位扣积分', () => {
     board.multiAgentEnabled = false;
     const result = membershipFeatureForTurn('/write-paper 请把当前题目写成完整论文');
     expect(result.feature).toBe('ai-chat');
     expect(result.consumesQuota).toBe(true);
     expect(result.pointsCost).toBe(30);
+    expect(result.skillId).toBe('write-paper');
+  });
+
+  it('显式技能命令使用技能目录的独立积分成本，而不是宽泛模式成本', () => {
+    board.multiAgentEnabled = false;
+    const result = membershipFeatureForTurn('/paper-page-fit 请压缩到 20 页');
+    expect(result.feature).toBe('ai-chat');
+    expect(result.skillId).toBe('paper-page-fit');
+    expect(result.pointsCost).toBe(20);
   });
 
   it('开启协作时进入付费多智能体权益，试用由服务端拒绝', () => {
@@ -312,6 +382,12 @@ describe('会员权益与积分成本入口', () => {
   it('普通问答使用最低积分成本', () => {
     board.multiAgentEnabled = false;
     expect(membershipFeatureForTurn('解释一下线性规划').pointsCost).toBe(10);
+    expect(membershipFeatureForTurn('/write-paper 写出论文摘要').pointsCost).toBe(30);
+    // 工作台默认是论文上下文，但没有明确选择 # 技能时，写作/导出字样也不升级计费档位。
+    expect(membershipFeatureForTurn('请把当前题目写成完整论文并说明方法').pointsCost).toBe(10);
+    expect(membershipFeatureForTurn('请导出当前论文 PDF').pointsCost).toBe(10);
+    // 选择过论文技能不会把后续普通消息留在论文计费档；每一轮都按自身输入重新判定。
+    expect(membershipFeatureForTurn('把刚才那句话改得更通顺').pointsCost).toBe(10);
   });
 
   it('AI 全自动模式在主进程入口走付费自动化权益', () => {

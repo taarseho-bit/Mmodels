@@ -180,8 +180,51 @@ async function main() {
       }
     };
 
+    // 官网素材不能泄露开发机盘符、用户名或安装目录；这些信息只对本机诊断有用，
+    // 对访客没有展示价值。只处理扩展详情里的叶子文本，不改变应用本身的数据。
+    const sanitizeExtensionPaths = async () => evaluate(`(() => {
+      const detail = document.querySelector('.ext-detail');
+      if (!detail) return 0;
+      let replaced = 0;
+      for (const node of detail.querySelectorAll('.ext-field-value.mono')) {
+        const text = node.textContent || '';
+        if (/^[A-Za-z]:[\\\\/]|\\\\|\\/Users\\//.test(text)) {
+          node.textContent = '内置资源目录（随应用提供）';
+          replaced += 1;
+        }
+      }
+      return replaced;
+    })()`);
+
     await route('chat');
     await screenshot('workspace-chat', '.chat-page');
+
+    // 编辑器视图是当前版本的重要卖点：用真实菜单进入，确保官网素材能看到
+    // 文件树、代码区和贴近右下角的对话框，而不是只截普通对话首页。
+    await evaluate(`(() => {
+      const more = document.querySelector('[aria-label="更多任务操作"]');
+      if (!more) return false;
+      more.click();
+      return true;
+    })()`);
+    await waitFor('[role="menu"]');
+    await evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemcheckbox"]')]
+        .find((el) => (el.textContent || '').includes('编辑器视图'));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`);
+    await sleep(800);
+    await screenshot('editor-view', '.editorview-chatcol');
+    // 后续截图回到普通应用布局，避免编辑器模式遮住工作台路由。
+    await evaluate(`(() => {
+      const exit = document.querySelector('[title="退出编辑器"]');
+      if (!exit) return false;
+      exit.click();
+      return true;
+    })()`);
+    await sleep(500);
 
     await route('workbench');
     await screenshot('competition-workbench', '.studio-workbench');
@@ -191,12 +234,14 @@ async function main() {
     await sleep(800);
     await evaluate(`(() => { const item = document.querySelector('.ext-item'); if (item) item.click(); return !!item; })()`);
     await sleep(500);
+    await sanitizeExtensionPaths();
     await screenshot('skills-detail', '.ext-page');
 
     await route('extensions', 'templates');
     await sleep(800);
     await evaluate(`(() => { const item = document.querySelector('.ext-item'); if (item) item.click(); return !!item; })()`);
     await sleep(500);
+    await sanitizeExtensionPaths();
     await screenshot('templates-detail', '.ext-page');
 
     await route('settings', 'providers');

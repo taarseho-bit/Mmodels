@@ -110,7 +110,42 @@ function normalizeChatMode(value) {
   const mode = String(value || '').trim().toLowerCase();
   return CHAT_COST_MODES.has(mode) ? mode : 'basic';
 }
-function requestedChatCost(_legacyValue, mode = 'basic') {
+/**
+ * 内置 skill 的服务端计费白名单。这里刻意复制共享目录中的 id/cost，
+ * 不能直接信任渲染层传来的 pointsCost；客户端只负责展示，服务器才是最终计费方。
+ * 新增技能时必须同时更新 src/shared/skill-pricing.ts 和此表，并通过测试核对。
+ */
+const SKILL_POINT_COSTS = Object.freeze({
+  'problem-parser': 15, 'problem-classifier': 15, 'model-assumptions-builder': 20,
+  'symbol-table-builder': 15, 'method-selector': 20, 'model-selection-audit': 25,
+  'modeling-algorithms': 25, 'python-model-code-generator': 30, 'baseline-comparison': 20,
+  'metaheuristic-optimization': 30, 'robustness-checker': 25, 'result-reproducibility': 20,
+  'experiment-audit': 25, 'proof-audit': 20, 'quality-assurance-auditor': 25, 'novelty-assessment': 20,
+  'modeler-decision-logger': 10, 'decision-prompt-builder': 15, 'time-planner': 15,
+  'competition-rules': 15, 'competition-audit': 25, 'competition-sprint': 40,
+  'data-search': 20, 'data-auditor-cleaner': 20, 'data-provenance': 15,
+  'deep-research': 30, 'literature-search': 20, 'paper-search': 20,
+  'related-paper-analyzer': 25, 'literature-positioning': 20, 'doctor': 20,
+  'draw-figures': 20, 'academic-figures': 25, 'scientific-figure-making': 25,
+  'scipilot-figure-skill': 25, 'nature-figure': 30, 'figure-quality-audit': 20,
+  'figure-table-planner': 20, 'mathmodel-figure-templates': 20, 'paper-diagram': 20,
+  'table-layout-audit': 20, 'paper-table-repair': 20, 'pdf': 15,
+  'submission-package-audit': 25, 'paper-sharing': 15,
+  'write-paper': 30, 'paper-writing': 30, 'paper-section-writer': 25,
+  'abstract-writer': 20, 'paper-polisher': 20, 'review-paper': 30,
+  'paper-review': 30, 'literature-review': 25, 'citation-management': 15,
+  'reference-manager': 15, 'verifying-bibliography': 20, 'claim-evidence-audit': 20,
+  'latex-paper-audit': 20, 'paper-page-fit': 20, 'defense-ppt': 30,
+  'defense-question-simulator': 25, 'skill-creator': 20,
+});
+const SKILL_POINT_COST_KEYS = new Set(Object.keys(SKILL_POINT_COSTS));
+function normalizeSkillId(value) {
+  const id = String(value || '').trim().toLowerCase();
+  return SKILL_POINT_COST_KEYS.has(id) ? id : '';
+}
+function requestedChatCost(_legacyValue, mode = 'basic', skillId = '') {
+  const normalizedSkill = normalizeSkillId(skillId);
+  if (normalizedSkill) return SKILL_POINT_COSTS[normalizedSkill];
   return CHAT_POINT_COSTS[normalizeChatMode(mode)] || AI_CHAT_POINTS_COST;
 }
 /**
@@ -762,7 +797,7 @@ function saveQuotaRequest(user, requestId, now) {
  * 这样签到积分不会跨天无限累积，而用户通过建模/反馈获得的积分仍可继续使用。
  * requestId 是幂等键，网络重试不会重复扣分。
  */
-function consumeAiPoints(user, requestId, now = Date.now(), _requestedCost = AI_CHAT_POINTS_COST, chatMode = 'basic') {
+function consumeAiPoints(user, requestId, now = Date.now(), _requestedCost = AI_CHAT_POINTS_COST, chatMode = 'basic', skillId = '') {
   ensureUser(user);
   const legacyConsumed = user.quota.consumed || (user.quota.consumed = {});
   const consumed = user.aiPoints.consumed || (user.aiPoints.consumed = {});
@@ -773,8 +808,9 @@ function consumeAiPoints(user, requestId, now = Date.now(), _requestedCost = AI_
     const snapshot = aiPointsSnapshot(user, now);
     return { duplicate: true, cost: 0, remaining: snapshot.balance };
   }
-  // 重新按服务端模式派生，调用方即使传入篡改后的数字也不会改变扣费。
-  const cost = requestedChatCost(undefined, chatMode);
+  // 重新按服务端技能白名单派生，调用方即使传入篡改后的数字也不会改变扣费。
+  const normalizedSkill = normalizeSkillId(skillId);
+  const cost = requestedChatCost(undefined, chatMode, normalizedSkill);
   const before = aiPointsSnapshot(user, now).balance;
   if (before < cost) return { duplicate: false, cost, remaining: before, exhausted: true };
   const fromDaily = Math.min(Math.max(0, Number(user.aiPoints.dailyRemaining) || 0), cost);
@@ -785,11 +821,13 @@ function consumeAiPoints(user, requestId, now = Date.now(), _requestedCost = AI_
     consumed[requestId] = now;
     legacyConsumed[requestId] = now;
   }
-  // 旧字段同步为“已用对话数”，仅供旧客户端显示，不再作为扣减依据。
-  user.quota.used = Math.max(0, Math.floor((user.aiPoints.dailyGrant + user.aiPoints.dailyBonus - user.aiPoints.dailyRemaining) / cost));
-  user.quota.bonus = Math.max(0, Math.floor(user.aiPoints.dailyBonus / cost));
+  // 旧字段同步为“按基础 10 分折算的已用对话数”，仅供旧客户端显示，
+  // 不再作为扣减依据。技能成本不同，不能用本轮 cost 反推，否则上一轮高价技能
+  // 会让旧客户端把剩余次数显示错；积分余额和 aiPoints 才是新协议权威值。
+  user.quota.used = Math.max(0, Math.floor((user.aiPoints.dailyGrant + user.aiPoints.dailyBonus - user.aiPoints.dailyRemaining) / AI_CHAT_POINTS_COST));
+  user.quota.bonus = Math.max(0, Math.floor(user.aiPoints.dailyBonus / AI_CHAT_POINTS_COST));
   const after = aiPointsSnapshot(user, now).balance;
-  return { duplicate: false, cost, remaining: after };
+  return { duplicate: false, cost, remaining: after, skillId: normalizedSkill || undefined };
 }
 
 function aiRequestAlreadyConsumed(user, requestId, now = Date.now()) {
@@ -1162,11 +1200,12 @@ async function handleRequest(req, res) {
       const feature = String(b.feature || 'ai-chat');
       const consume = b.consume === true;
       const requestId = String(b.requestId || '');
-      // pointsCost 仅保留给旧客户端的协议兼容，不参与服务端计费；实际成本由
-      // 明确的 chatMode 白名单决定，避免篡改客户端把论文/评阅回合报成低价问答。
+      // pointsCost 仅保留给旧客户端的协议兼容，不参与服务端计费；实际成本优先由
+      // skillId 白名单决定，其次才回退到 chatMode，避免篡改客户端把技能回合报成低价问答。
       const chatMode = normalizeChatMode(b.chatMode ?? b.costKind ?? b.mode);
+      const skillId = normalizeSkillId(b.skillId);
       const requestedCost = feature === 'ai-chat'
-        ? requestedChatCost(undefined, chatMode)
+        ? requestedChatCost(undefined, chatMode, skillId)
         : AI_CHAT_POINTS_COST;
       if (!FREE_FEATURES.has(feature) && !VIP_FEATURES.has(feature)) return send(res, 400, { allowed: false, code: 'INVALID_FEATURE', reason: '功能标识不合法' });
       if (consume && feature === 'ai-chat' && !/^[A-Za-z0-9._:-]{8,128}$/.test(requestId)) return send(res, 400, { allowed: false, code: 'INVALID_REQUEST_ID', reason: '请求标识不合法' });
@@ -1196,35 +1235,43 @@ async function handleRequest(req, res) {
         const points = aiPointsSnapshot(user, now);
         const duplicateRequest = consume && aiRequestAlreadyConsumed(user, requestId, now);
         if (!duplicateRequest && points.balance < requestedCost) {
-          logEvent('quota-exhausted', user.name, { ip, detail: `AI 积分不足（${chatMode} 模式，本轮需要 ${requestedCost} 积分）` });
+          logEvent('quota-exhausted', user.name, { ip, detail: `AI 积分不足（${skillId ? `技能 ${skillId}` : `${chatMode} 模式`}，本轮需要 ${requestedCost} 积分）` });
           saveSoon();
           return send(res, 403, {
             allowed: false,
             code: 'AI_QUOTA_EXCEEDED',
             reason: '今日 AI 积分余额不足，签到或开通 VIP 后可继续使用',
             chatMode,
+            ...(skillId ? { skillId } : {}),
+            requestedCost,
             ...snapshot,
           });
         }
         if (consume) {
-          const spent = consumeAiPoints(user, requestId, now, requestedCost, chatMode);
+          const spent = consumeAiPoints(user, requestId, now, requestedCost, chatMode, skillId);
           if (spent.exhausted) {
-            logEvent('quota-exhausted', user.name, { ip, detail: `AI 积分不足（${chatMode} 模式，本轮需要 ${spent.cost} 积分）` });
+            logEvent('quota-exhausted', user.name, { ip, detail: `AI 积分不足（${skillId ? `技能 ${skillId}` : `${chatMode} 模式`}，本轮需要 ${spent.cost} 积分）` });
             saveSoon();
             return send(res, 403, {
               allowed: false,
               code: 'AI_QUOTA_EXCEEDED',
               reason: '今日 AI 积分余额不足，签到或开通 VIP 后可继续使用',
               chatMode,
+              ...(skillId ? { skillId } : {}),
+              requestedCost: spent.cost,
               ...accountSnapshot(user, now),
             });
           }
-          logEvent('ai-consume', user.name, { ip, detail: `消耗 ${spent.cost} 积分（${chatMode} 模式），对话后余额 ${spent.remaining}` });
+          logEvent('ai-consume', user.name, { ip, detail: `消耗 ${spent.cost} 积分（${skillId ? `技能 ${skillId}` : `${chatMode} 模式`}），对话后余额 ${spent.remaining}` });
           saveDb();
-          return send(res, 200, { allowed: true, duplicate: spent.duplicate, ...accountSnapshot(user, now), costPoints: spent.cost, pointsPerTurn: spent.cost, pointsBalance: spent.remaining, chatMode });
+          return send(res, 200, { allowed: true, duplicate: spent.duplicate, ...accountSnapshot(user, now), costPoints: spent.cost, pointsPerTurn: spent.cost, pointsBalance: spent.remaining, chatMode, ...(skillId ? { skillId } : {}) });
         }
       }
-      return send(res, 200, { allowed: true, ...accountSnapshot(user, now) });
+      return send(res, 200, {
+        allowed: true,
+        ...accountSnapshot(user, now),
+        ...(feature === 'ai-chat' ? { chatMode, requestedCost, ...(skillId ? { skillId } : {}) } : {}),
+      });
     }
 
     if (req.method === 'POST' && url === '/api/account/status') {
@@ -1729,6 +1776,8 @@ async function handleRequest(req, res) {
             checkinBonus: CHECKIN_BONUS_POINTS,
             perConversation: AI_CHAT_POINTS_COST,
             conversationCosts: CHAT_POINT_COSTS,
+            // 具体 # 技能的单回合成本；此表是后台与客户端展示的服务端权威副本。
+            skillCosts: SKILL_POINT_COSTS,
             rewards: POINT_REWARDS,
             exchange: POINT_EXCHANGE,
             exchangeDisabled: true,

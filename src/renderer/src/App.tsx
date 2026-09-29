@@ -655,7 +655,7 @@ export function App(): JSX.Element {
                       </div>
                     )}
 
-                    {editorView && <ResizeHandle storageKey="mm-editor-chat-width" label="调整编辑器对话宽度" edge="left" initial={420} min={340} max={760} fraction={.45} />}
+                    {editorView && <ResizeHandle storageKey="mm-editor-chat-width" label="调整编辑器对话宽度" edge="left" initial={480} min={380} max={820} fraction={.45} />}
 
                     {editorView && editorHistoryOpen && (
                       <div className="editorview-chatlist">
@@ -687,7 +687,7 @@ export function App(): JSX.Element {
                       </div>
                     )}
 
-                    <ChatPage actions={chatActions} />
+                    <ChatPage actions={chatActions} editorView={editorView} />
                   </div>
                 </>
               ) : (

@@ -15,6 +15,7 @@ import type { AccountStatusInfo } from '@shared/types';
 import { t } from '../../i18n';
 import { Icon } from '../Icon';
 import { openMembership, notifyAccountStatus } from '../../lib/membership-nav';
+import { useApp } from '../../store/app';
 import { conversationPointsLeft, isActiveTrial, isPaidVip, pointsBalance, trialHoursLeft } from './membership-ui';
 
 const DAY = 86_400_000;
@@ -39,6 +40,8 @@ export function AccountQuickMenu({
   const [copied, setCopied] = useState(false);
   /** 弹层位置：跟随左下角账号芯片，fixed 定位后不受侧栏裁剪。 */
   const [position, setPosition] = useState<{ left: number; bottom: number } | null>(null);
+  const petEnabled = useApp((state) => state.settings?.modelingPetEnabled !== false);
+  const patchSettings = useApp((state) => state.patchSettings);
   /** 邀请弹层要在打开瞬间自动复制，用 ref 读取最新快照避免重复触发。 */
   const accountRef = useRef(account);
   accountRef.current = account;
@@ -180,6 +183,21 @@ export function AccountQuickMenu({
     </button>
   );
 
+  const petMenuItem = (): JSX.Element => (
+    <button
+      type="button"
+      role="menuitemcheckbox"
+      aria-checked={petEnabled}
+      className="quick-menu-item quick-menu-toggle-item"
+      onClick={() => menuAction(() => { void patchSettings({ modelingPetEnabled: !petEnabled }); })}
+    >
+      <Icon name="sigma" size={15} />
+      <span className="quick-menu-item-label">{t('桌面小模')}</span>
+      <span className="quick-menu-item-hint">{petEnabled ? t('已开启') : t('已关闭')}</span>
+      <span className={`quick-menu-switch${petEnabled ? ' is-on' : ''}`} aria-hidden="true"><span /></span>
+    </button>
+  );
+
   // 挂到 body 并用 fixed 定位：侧栏自身会裁剪溢出内容，留在侧栏内会被切掉右侧文字。
   return createPortal(
     <>
@@ -203,6 +221,7 @@ export function AccountQuickMenu({
               {t('登录 / 注册')}
             </button>
             <div className="quick-menu-sep" />
+            {petMenuItem()}
             {menuItem('settings', t('设置'), '', onOpenSettings)}
           </>
         ) : (
@@ -254,6 +273,7 @@ export function AccountQuickMenu({
             {menuItem('coins', t('积分说明'), t('余额与消耗规则'), () => openMembership('points'))}
             {menuItem('message-square', t('反馈中心'), t('审核通过 +100 积分'), () => setDialog('feedback'), true)}
             {menuItem('users', t('邀请好友'), t('完成首次有效使用后得积分'), () => setDialog('invite'), true)}
+            {petMenuItem()}
             {menuItem('settings', t('设置'), '', onOpenSettings)}
 
             <div className="quick-menu-sep" />

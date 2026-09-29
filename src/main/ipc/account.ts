@@ -28,6 +28,7 @@ import {
 } from '@shared/types';
 import { isPaidVip, isTrialActive, localFeatureAccess, pointsBalanceOf } from '@shared/membership';
 import { CHAT_POINT_COSTS } from '@shared/types';
+import { skillPointCost } from '@shared/skill-pricing';
 import { safeWrap } from './index';
 import { isLicenseRequired } from '../security/license-gate';
 
@@ -356,17 +357,18 @@ const MEMBERSHIP_FEATURES: readonly MembershipFeature[] = [
   'large-context', 'export', 'cloud-collaboration', 'automation',
 ];
 
-function localEntitlement(feature: MembershipFeature, account: AccountStatusInfo): AccountEntitlementInfo {
-  const cost = feature === 'ai-chat' ? account.pointsPerChat ?? CHAT_POINT_COSTS.basic : 0;
+function localEntitlement(feature: MembershipFeature, account: AccountStatusInfo, pointsCost?: number, skillId?: string): AccountEntitlementInfo {
+  const cost = feature === 'ai-chat' ? pointsCost ?? account.pointsPerChat ?? CHAT_POINT_COSTS.basic : 0;
   const access = localFeatureAccess(feature, account, cost);
   // 旧服务端/旧账号没有积分余额时，继续以旧 aiQuota 做展示和兼容预检。
   if (feature === 'ai-chat' && !isPaidVip(account) && !isTrialActive(account)) {
     const remaining = account.aiQuota?.remaining;
     if (typeof remaining === 'number' && remaining <= 0 && access.allowed) {
-      return { feature, allowed: false, reason: 'ai-quota-exceeded', account, remaining: 0, costPoints: cost };
+      return { feature, ...(skillId ? { skillId } : {}), allowed: false, reason: 'ai-quota-exceeded', account, remaining: 0, costPoints: cost };
     }
     return {
       feature,
+      ...(skillId ? { skillId } : {}),
       allowed: access.allowed,
       reason: access.allowed ? 'allowed' : access.reason,
       account,
@@ -377,6 +379,7 @@ function localEntitlement(feature: MembershipFeature, account: AccountStatusInfo
   }
   return {
     feature,
+    ...(skillId ? { skillId } : {}),
     allowed: access.allowed,
     reason: access.reason,
     account,
@@ -398,7 +401,7 @@ function entitlementReason(code: unknown, body: Record<string, unknown>): Entitl
   }
 }
 
-async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount, pointsCost = 0): Promise<AccountEntitlementInfo> {
+async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount, pointsCost = 0, skillId?: string): Promise<AccountEntitlementInfo> {
   const token = tokenFromDisk();
   if (!token) return { feature, allowed: false, reason: 'login-required', account: statusFromLocal(local) };
   const controller = new AbortController();
@@ -421,6 +424,7 @@ async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount
           feature,
           consume: false,
           ...(pointsCost > 0 ? { pointsCost } : {}),
+          ...(skillId ? { skillId } : {}),
         }),
     });
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
@@ -451,6 +455,7 @@ async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount
     const costPoints = finiteNonNegative(body.costPoints ?? body.pointsCost) ?? (pointsCost > 0 ? pointsCost : undefined);
     return {
       feature,
+      ...(skillId ? { skillId } : {}),
       allowed,
       reason: allowed ? 'allowed' : entitlementReason(body.code, body),
       account,
@@ -465,14 +470,15 @@ async function remoteEntitlement(feature: MembershipFeature, local: LocalAccount
   }
 }
 
-async function entitlementOf(feature: MembershipFeature, pointsCost = 0): Promise<AccountEntitlementInfo> {
+async function entitlementOf(feature: MembershipFeature, pointsCost = 0, skillId?: string): Promise<AccountEntitlementInfo> {
+  const resolvedCost = skillPointCost(skillId) ?? pointsCost;
   const local = readLocal();
-  if (!local) return { feature, allowed: false, reason: 'login-required', account: statusOf() };
+  if (!local) return { feature, ...(skillId ? { skillId } : {}), allowed: false, reason: 'login-required', account: statusOf() };
   if (!isLicenseRequired() && !process.env.MM_LICENSE_API?.trim()) {
     const account = statusFromLocal(local);
-    return { ...localEntitlement(feature, account), ...(pointsCost > 0 ? { costPoints: pointsCost } : {}) };
+    return { ...localEntitlement(feature, account, resolvedCost, skillId), ...(resolvedCost > 0 ? { costPoints: resolvedCost } : {}) };
   }
-  return remoteEntitlement(feature, local, pointsCost);
+  return remoteEntitlement(feature, local, resolvedCost, skillId);
 }
 
 function tokenFromDisk(): string {
@@ -644,11 +650,14 @@ export function registerAccountHandlers(): void {
       const pointsCost = typeof request === 'object' && request !== null
         ? finiteNonNegative(request.pointsCost) ?? 0
         : 0;
+      const skillId = typeof request === 'object' && request !== null && typeof request.skillId === 'string'
+        ? request.skillId.trim().toLowerCase()
+        : undefined;
       const feature = String(featureArg || '').trim() as MembershipFeature;
       if (!MEMBERSHIP_FEATURES.includes(feature)) {
         throw new Error('功能标识不合法');
       }
-      return entitlementOf(feature, pointsCost);
+      return entitlementOf(feature, pointsCost, skillId);
     }, '查询会员权益'),
   );
 

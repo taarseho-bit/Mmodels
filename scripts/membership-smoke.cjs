@@ -73,17 +73,25 @@ async function run() {
     if (trialStrict.status !== 403 || trialStrict.body.code !== 'PAID_VIP_REQUIRED') throw new Error('24 小时试用不应开放深度建模');
     const freePaper = await post('/api/license/check', { feature: 'full-paper' });
     if (freePaper.status !== 200 || freePaper.body.allowed !== true) throw new Error('免费基础论文不应被会员墙拦截');
+    // `skillId` 是服务端白名单的计费依据；即使 chatMode 写成 basic、pointsCost 写成 1，
+    // 预检也必须返回 paper-page-fit 的真实成本 20，且预检不扣余额。
+    const skillPreview = await post('/api/license/check', { feature: 'ai-chat', skillId: 'paper-page-fit', chatMode: 'basic', pointsCost: 1 });
+    if (skillPreview.status !== 200 || skillPreview.body.requestedCost !== 20 || skillPreview.body.skillId !== 'paper-page-fit') throw new Error(`技能计费预检不正确：${JSON.stringify(skillPreview)}`);
     // 服务端按明确模式派生成本，故意把旧 pointsCost 写成 10 也必须按论文档位扣 30。
     const paperTurn = await post('/api/license/check', { feature: 'ai-chat', chatMode: 'paper', pointsCost: 10, requestId: 'smoke-paper-0001', consume: true });
     if (paperTurn.status !== 200 || paperTurn.body.pointsPerTurn !== 30 || paperTurn.body.chatMode !== 'paper' || paperTurn.body.aiPoints.balance !== 70) throw new Error(`论文轮次积分成本不正确：${JSON.stringify(paperTurn)}`);
+    // 真实技能回合也必须按 skillId 白名单扣分：客户端把旧模式和 pointsCost
+    // 写成 basic/1 不能把 paper-page-fit 的 20 分降成普通档。
+    const skillTurn = await post('/api/license/check', { feature: 'ai-chat', skillId: 'paper-page-fit', chatMode: 'basic', pointsCost: 1, requestId: 'smoke-skill-0001', consume: true });
+    if (skillTurn.status !== 200 || skillTurn.body.pointsPerTurn !== 20 || skillTurn.body.skillId !== 'paper-page-fit' || skillTurn.body.aiPoints.balance !== 50) throw new Error(`技能回合积分扣减不正确：${JSON.stringify(skillTurn)}`);
     // 没有明确模式的旧请求仍按基础档位处理；伪造高价 pointsCost 不能改变服务端扣费。
     const first = await post('/api/license/check', { feature: 'ai-chat', pointsCost: 80, requestId: 'smoke-0001', consume: true });
-    if (first.status !== 200 || first.body.allowed !== true || first.body.aiPoints.balance !== 60 || first.body.pointsPerTurn !== 10) throw new Error('首次 AI 积分扣减失败');
-    // 先在只剩 60 分时签到：只能增加 100 分，不能把已用的 40 分补回。
+    if (first.status !== 200 || first.body.allowed !== true || first.body.aiPoints.balance !== 40 || first.body.pointsPerTurn !== 10) throw new Error('首次 AI 积分扣减失败');
+    // 先在只剩 40 分时签到：只能增加 100 分，不能把已用的 60 分补回。
     const checkin = await post('/api/account/checkin');
-    if (!checkin.body.ok || checkin.body.aiPoints.dailyBonus !== 100 || checkin.body.aiPoints.balance !== 160) throw new Error('签到应按当前剩余积分增加，不能返还已用积分');
-    for (let i = 2; i <= 17; i++) { const r = await post('/api/license/check', { feature: 'ai-chat', requestId: `smoke-${String(i).padStart(4, '0')}`, consume: true }); if (!r.body.allowed) throw new Error(`第 ${i} 次不应被拦截`); }
-    const over = await post('/api/license/check', { feature: 'ai-chat', requestId: 'smoke-0018', consume: true });
+    if (!checkin.body.ok || checkin.body.aiPoints.dailyBonus !== 100 || checkin.body.aiPoints.balance !== 140) throw new Error('签到应按当前剩余积分增加，不能返还已用积分');
+    for (let i = 2; i <= 15; i++) { const r = await post('/api/license/check', { feature: 'ai-chat', requestId: `smoke-${String(i).padStart(4, '0')}`, consume: true }); if (!r.body.allowed) throw new Error(`第 ${i} 次不应被拦截`); }
+    const over = await post('/api/license/check', { feature: 'ai-chat', requestId: 'smoke-0016', consume: true });
     if (over.body.code !== 'AI_QUOTA_EXCEEDED' || over.body.aiPoints.balance !== 0) throw new Error('AI 积分耗尽错误不正确');
     const duplicateCheckin = await post('/api/account/checkin');
     if (!duplicateCheckin.body.ok || !duplicateCheckin.body.alreadyCheckedIn || duplicateCheckin.body.aiPoints.balance !== 0) throw new Error('重复签到不应再次增加积分');

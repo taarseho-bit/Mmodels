@@ -73,6 +73,7 @@ import {
   toolInputForDisplay,
 } from '../lib/activity-copy';
 import { registerCommand } from '../keybindings/dispatch';
+import { skillPointCost } from '@shared/skill-pricing';
 
 /**
  * `session.get` 的**真实**返回。
@@ -381,46 +382,55 @@ export const STARTER_HINT =
  * 点击后**在卡片下方展开输入框**（可改可发），不是静默填进底部输入框。
  * icon/tint 让卡片有自己的视觉身份（tint 对应 .starter-tint-* 的渐变底色）。
  */
-const STARTERS: Array<{ title: string; desc: string; tags: string[]; prompt: string; icon: string; tint: string }> = [
+export const STARTERS: Array<{
+  title: string;
+  desc: string;
+  tags: string[];
+  prompt: string;
+  icon: string;
+  tint: string;
+  /** 选择这张卡时使用的共享技能计费 key；空会话普通输入仍走基础 10 分。 */
+  skillId: string;
+}> = [
   {
     title: '找公开数据', desc: '全网检索并下载到 data/，记录来源与许可', tags: ['数据'],
     prompt: '/data-search 请围绕当前题目的数据需求检索公开数据源，核验可得性后下载到项目 data/ 目录，逐条记录来源链接、获取时间与许可；找不到就说明并给出替代口径。',
-    icon: 'globe', tint: 'blue',
+    icon: 'globe', tint: 'blue', skillId: 'data-search',
   },
   {
     title: '数据体检', desc: '缺失、异常、口径与分布一次查清', tags: ['清洗'],
-    prompt: '请对项目 data/ 下的数据做一次体检：字段口径、缺失值、异常值、分布与相关性概览，给出清洗建议与可直接用于建模的处理步骤；先不动原文件，等我确认后再执行。',
-    icon: 'activity', tint: 'teal',
+    prompt: '/data-auditor-cleaner 请对项目 data/ 下的数据做一次体检：字段口径、缺失值、异常值、分布与相关性概览，给出清洗建议与可直接用于建模的处理步骤；先不动原文件，等我确认后再执行。',
+    icon: 'activity', tint: 'teal', skillId: 'data-auditor-cleaner',
   },
   {
     title: '方法选型', desc: '按题目与数据推荐 2-3 个候选模型', tags: ['建模'],
-    prompt: '请根据当前题目与数据特点推荐 2-3 个候选模型，说明适用性、假设条件、实现难度与风险，给出你的首选方案与理由，等我确认后再开始实现。',
-    icon: 'sigma', tint: 'violet',
+    prompt: '/method-selector 请根据当前题目与数据特点推荐 2-3 个候选模型，说明适用性、假设条件、实现难度与风险，给出你的首选方案与理由，等我确认后再开始实现。',
+    icon: 'sigma', tint: 'violet', skillId: 'method-selector',
   },
   {
     title: '求解与复现', desc: '可复现脚本 + 运行验证 + 稳健性检查', tags: ['求解'],
-    prompt: '请为当前选定的模型编写可复现的求解脚本，运行验证并输出关键数值结果、误差或目标值，附必要的稳健性检查；脚本和结果落盘到项目内并报出路径。',
-    icon: 'code-xml', tint: 'blue',
+    prompt: '/result-reproducibility 请为当前选定的模型编写可复现的求解脚本，运行验证并输出关键数值结果、误差或目标值，附必要的稳健性检查；脚本和结果落盘到项目内并报出路径。',
+    icon: 'code-xml', tint: 'blue', skillId: 'result-reproducibility',
   },
   {
     title: '灵敏度分析', desc: '参数扰动下结论稳不稳', tags: ['检验'],
-    prompt: '请对当前模型的关键参数做灵敏度分析：给出扰动范围、指标变化和结论是否改变的判断，输出灵敏度图表与简表到项目 figures/。',
-    icon: 'chart-line', tint: 'orange',
+    prompt: '/robustness-checker 请对当前模型的关键参数做灵敏度分析：给出扰动范围、指标变化和结论是否改变的判断，输出灵敏度图表与简表到项目 figures/。',
+    icon: 'chart-line', tint: 'orange', skillId: 'robustness-checker',
   },
   {
     title: '论文成稿', desc: '按比赛模板完成正文、图表与参考文献', tags: ['论文'],
     prompt: '/write-paper 请读取当前项目的题目、数据、比赛规则和已有结果，先复核关键结论再成文；不以写作代替求解，完成后报出 PDF 路径、页数与内容构成。',
-    icon: 'pen-line', tint: 'rose',
+    icon: 'pen-line', tint: 'rose', skillId: 'write-paper',
   },
   {
     title: '投稿级图表', desc: '数据图与示意图按出版标准出图', tags: ['图表'],
     prompt: '/draw-figures 请根据当前项目的结果与数据规划一组投稿级图表（先给清单再逐张绘制），统一风格与中文标注，输出到 figures/ 并给出 LaTeX 插图片段。',
-    icon: 'chart-column', tint: 'violet',
+    icon: 'chart-column', tint: 'violet', skillId: 'draw-figures',
   },
   {
     title: '评审与打分', desc: '评委视角的评分与逐条修改清单', tags: ['评审'],
     prompt: '/review-paper 请以数学建模竞赛评委视角审读当前论文，输出分项评分、总评与按严重程度排序的修改清单（review.md），不直接改动论文正文。',
-    icon: 'clipboard-check', tint: 'teal',
+    icon: 'clipboard-check', tint: 'teal', skillId: 'review-paper',
   },
 ];
 
@@ -463,7 +473,7 @@ function BrandMark({ size = 40 }: { size?: number }): JSX.Element {
   );
 }
 
-export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
+export function ChatPage({ actions, editorView = false }: { actions?: ReactNode; editorView?: boolean }): JSX.Element {
   const taskView = useApp(s => s.taskView);
   const setTaskView = useApp(s => s.setTaskView);
   const returnToChat = useCallback(() => setTaskView('chat'), [setTaskView]);
@@ -1332,7 +1342,7 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
   );
 
   return (
-    <div className={`chat-page ${taskView === 'workflow' ? 'is-workflow' : 'is-chat'}`}>
+    <div className={`chat-page ${taskView === 'workflow' ? 'is-workflow' : 'is-chat'}${editorView ? ' is-editor-chat' : ''}`}>
       {actions ? (
         <div className="chat-page-context">
           <div className="chat-page-context-path topbar-context-path" aria-label="当前项目与任务">
@@ -1395,8 +1405,10 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
                 </div>
               </div>
 
-              {/* ── 真题案例 ── */}
-              <div className="newchat-examples">
+              {/* ── 真题案例 ──
+                  编辑器视图的右侧栏只保留对话输入，不重复铺开快捷卡片；
+                  卡片仍在普通空会话首屏提供，避免窄栏里把输入框挤到看不见。 */}
+              {!editorView && <div className="newchat-examples">
                 <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
                   选择一个起点 · 填入后可修改，不会自动发送
                 </div>
@@ -1409,10 +1421,21 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
                       onClick={() => setStarterDraft((prev) => (prev !== null && prev.startsWith(s.prompt.slice(0, 24)) ? null : s.prompt))}
                       disabled={isRunning}
                     >
-                      <span className={`starter-icon starter-icon-${s.tint}`}>
-                        <Icon name={s.icon} size={15} />
+                      <span className="starter-head">
+                        <span className={`starter-icon starter-icon-${s.tint}`}>
+                          <Icon name={s.icon} size={14} />
+                        </span>
+                        <span className="starter-head-copy">
+                          <span className="starter-title">{t(s.title)}</span>
+                          <span
+                            className="starter-cost"
+                            title="选择后按该技能的单回合积分计费"
+                            aria-label={`${skillPointCost(s.skillId) ?? 10} 积分`}
+                          >
+                            {skillPointCost(s.skillId) ?? 10}
+                          </span>
+                        </span>
                       </span>
-                      <span className="starter-title">{t(s.title)}</span>
                       <span className="starter-desc">{t(s.desc)}</span>
                       <span className="starter-tags">
                         {s.tags.map((tg) => (
@@ -1468,7 +1491,7 @@ export function ChatPage({ actions }: { actions?: ReactNode }): JSX.Element {
                 <div className="newchat-beta">
                   题目、数据和比赛规则越清楚，协作越有方向。重要结论请保留复算依据。
                 </div>
-              </div>
+              </div>}
             </div>
           )}
 

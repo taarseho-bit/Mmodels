@@ -214,7 +214,13 @@ export function isLicenseRequired(): boolean {
  * 在模型回合开始前做一次服务端权益确认。
  * pointsCost 是新版统一积分口径；旧授权服务忽略该字段仍可正常工作。
  */
-export async function assertAiEntitlement(feature = 'ai-chat', requestId?: string, pointsCost?: number, chatMode?: string): Promise<void> {
+export async function assertAiEntitlement(
+  feature = 'ai-chat',
+  requestId?: string,
+  pointsCost?: number,
+  chatMode?: string,
+  skillId?: string,
+): Promise<void> {
   const policy = readPolicy();
   if (!policy.required) return;
   if (!policy.endpoint) throw new Error('当前版本需要在线验证授权，请在设置中完成授权后重试。');
@@ -241,6 +247,7 @@ export async function assertAiEntitlement(feature = 'ai-chat', requestId?: strin
           ? { 'x-mmodels-points-cost': String(Math.max(0, Math.round(Number(pointsCost)))) }
           : {}),
         ...(requestId ? { 'x-mmodels-request-id': requestId } : {}),
+        ...(skillId ? { 'x-mmodels-skill-id': skillId } : {}),
       },
       body: JSON.stringify({
         app: 'mmodels-desktop',
@@ -250,6 +257,7 @@ export async function assertAiEntitlement(feature = 'ai-chat', requestId?: strin
         requestId,
         consume: feature === 'ai-chat',
         ...(chatMode ? { chatMode } : {}),
+        ...(skillId ? { skillId } : {}),
         ...(Number.isFinite(pointsCost) && Number(pointsCost) > 0
           ? { pointsCost: Math.max(0, Math.round(Number(pointsCost))) }
           : {}),

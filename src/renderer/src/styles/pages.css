@@ -2111,6 +2111,19 @@
   gap: 6px;
   margin-top: 10px;
 }
+.starter-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.starter-head-copy {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
 .starter-tag {
   font-size: 12px;
   padding: 2px 10px;
@@ -2118,6 +2131,16 @@
   background: transparent;
   border: 1px solid var(--border);
   color: var(--fg-secondary);
+}
+.starter-cost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  color: var(--fg-muted);
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2722,6 +2745,30 @@
   font-family: ui-monospace, Consolas, monospace;
   font-size: 10px;
   opacity: 0.75;
+}
+.hash-pop .hash-pop-text {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+.hash-pop .hash-pop-description {
+  max-width: 165px;
+  color: var(--fg-muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+.hash-pop .hash-pop-cost {
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 999px;
+  padding: 1px 5px;
+  color: var(--accent);
+  font-size: 10px;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 /* ② 附件 chips */
@@ -8174,6 +8221,54 @@ body.desktop-pet-document #root {
 .membership-points-options button strong { font-size: 13.5px; font-weight: 700; }
 .membership-points-options button span { font-size: 11.5px; color: var(--fg-muted); }
 .membership-points-options button em { font-style: normal; font-size: 10.5px; color: var(--warning); margin-top: 2px; }
+.membership-points-hero { display: flex; align-items: stretch; justify-content: space-between; gap: 18px; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--accent) 23%, var(--border-weak)); border-radius: 14px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--bg-panel)), color-mix(in srgb, #8b5cf6 4%, var(--bg-panel))); }
+.membership-points-hero-copy { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 4px; }
+.membership-section-kicker { color: var(--accent); font-size: 11px; font-weight: 750; letter-spacing: .04em; }
+.membership-points-hero-copy strong { color: var(--fg-primary); font-size: 16px; line-height: 1.35; }
+.membership-points-hero-copy small { color: var(--fg-muted); font-size: 11.5px; line-height: 1.5; }
+.membership-points-hero-balance { display: grid; min-width: 104px; place-items: center; align-content: center; padding: 8px 14px; border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--bg-panel) 88%, var(--accent)); }
+.membership-points-hero-balance span, .membership-points-hero-balance small { color: var(--fg-muted); font-size: 10.5px; }
+.membership-points-hero-balance strong { color: var(--accent); font-size: 25px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.membership-points-guide { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border-weak)); border-radius: 10px; background: var(--bg-sunken); color: var(--fg-muted); font-size: 11.5px; line-height: 1.5; }
+.membership-points-guide svg { margin-top: 1px; color: var(--accent); }
+.membership-points-section { display: flex; flex-direction: column; gap: 10px; }
+.membership-points-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.membership-points-section-head > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.membership-points-section-head h3 { margin: 0; color: var(--fg-primary); font-size: 13.5px; }
+.membership-points-section-head span:not(.membership-points-legend):not(.membership-points-earn-badge) { color: var(--fg-muted); font-size: 11px; line-height: 1.4; }
+.membership-points-legend { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; color: var(--fg-muted); font-size: 10.5px; white-space: nowrap; }
+.membership-points-legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.membership-points-legend i.is-vip { background: #d97706; }
+.membership-points-cost-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.membership-points-cost-card { display: flex; min-height: 72px; flex-direction: column; gap: 7px; padding: 10px 11px; border: 1px solid var(--border-weak); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--bg-panel); }
+.membership-points-cost-card.is-vip { border-left-color: #d97706; background: color-mix(in srgb, #d97706 4%, var(--bg-panel)); }
+.membership-points-cost-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.membership-points-cost-title { min-width: 0; color: var(--fg-primary); font-size: 12px; font-weight: 650; }
+.membership-points-cost-top strong { flex: 0 0 auto; color: var(--accent); font-size: 11.5px; font-weight: 750; white-space: nowrap; }
+.membership-points-cost-card.is-vip .membership-points-cost-top strong { color: #b45309; }
+.membership-points-cost-card p { margin: 0; color: var(--fg-muted); font-size: 10.5px; line-height: 1.45; }
+.membership-points-basic-card, .membership-points-export-card { min-height: 86px; }
+.membership-points-skill-group { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; margin-top: 3px; }
+.membership-points-skill-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 4px 2px 0; }
+.membership-points-skill-group-head strong { color: var(--fg-primary); font-size: 12px; }
+.membership-points-skill-group-head span { color: var(--fg-muted); font-size: 10.5px; }
+.membership-points-skill-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.membership-points-cost-card.is-skill { min-height: 84px; border-left-color: color-mix(in srgb, #2563eb 65%, var(--accent)); }
+.membership-points-skill-id { overflow: hidden; color: var(--fg-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.membership-points-vip-group { padding-top: 3px; }
+.membership-points-vip-group .membership-points-cost-card { min-height: 78px; }
+.membership-points-earn { padding: 12px; border: 1px solid var(--border-weak); border-radius: 11px; background: var(--bg-sunken); }
+.membership-points-earn-badge { flex: 0 0 auto; padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, #16a34a 10%, var(--bg-panel)); color: #15803d; font-size: 10.5px; font-weight: 700; }
+.membership-points-earn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 10px; }
+.membership-points-earn-grid > div { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 7px; padding: 7px 8px; border-radius: 8px; background: var(--bg-panel); }
+.membership-points-earn-grid span { overflow: hidden; color: var(--fg-secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.membership-points-earn-grid b { color: #16a34a; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.membership-points-earn-grid small { color: var(--fg-muted); font-size: 9.5px; white-space: nowrap; }
+.membership-points-cta { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid color-mix(in srgb, #d97706 20%, var(--border-weak)); border-radius: 11px; background: color-mix(in srgb, #d97706 5%, var(--bg-panel)); }
+.membership-points-cta > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.membership-points-cta strong { color: var(--fg-primary); font-size: 12px; }
+.membership-points-cta span { color: var(--fg-muted); font-size: 10.5px; line-height: 1.4; }
+.membership-points-contact { flex: 0 0 auto; color: #b45309 !important; font-weight: 650; }
 .membership-checkin { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 13px; border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--accent) 6%, var(--bg-panel)); }
 .membership-checkin > span:first-child { font-size: 23px; }
 .membership-checkin-copy { display: flex; flex: 1; flex-direction: column; gap: 2px; }
@@ -8204,6 +8299,12 @@ body.desktop-pet-document #root {
 .quick-menu-item:hover { background: var(--bg-hover); }
 .quick-menu-item-label { flex: 0 0 auto; font-weight: 600; white-space: nowrap; }
 .quick-menu-item-hint { min-width: 0; margin-left: auto; overflow: hidden; font-size: 11px; color: var(--fg-tertiary, var(--fg-muted)); text-overflow: ellipsis; white-space: nowrap; }
+.quick-menu-toggle-item { gap: 8px; }
+.quick-menu-toggle-item .quick-menu-item-hint { margin-left: auto; }
+.quick-menu-switch { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; width: 28px; height: 16px; padding: 2px; border-radius: 999px; background: var(--border-strong, #cbd5e1); transition: background .15s ease; }
+.quick-menu-switch > span { width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 18%); transition: transform .15s ease; }
+.quick-menu-switch.is-on { background: var(--accent); }
+.quick-menu-switch.is-on > span { transform: translateX(12px); }
 .quick-menu-sep { height: 1px; margin: 4px 2px; background: var(--border-weak); }
 .quick-menu-login { margin: 4px 2px 2px; min-height: 36px; }
 .quick-menu-logout { min-height: 30px; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--fg-muted); font-size: 12px; text-align: left; cursor: pointer; }
@@ -8216,6 +8317,7 @@ body.desktop-pet-document #root {
 
 @media (max-width: 620px) { .membership-reminder-toast { right: 12px; bottom: 12px; width: calc(100vw - 24px); }.membership-reminder-toast .btn-primary { display: none; } }
 @media (max-width: 700px) { .membership-plans { grid-template-columns: 1fr; }.membership-plan-card { min-height: 0; }.membership-plan-hint { margin-top: 8px; }.membership-stats { grid-template-columns: 1fr; }.membership-redeem { flex-wrap: wrap; }.membership-redeem .input { flex-basis: 100%; }.membership-comparison { padding: 11px; }.membership-comparison-head { flex-direction: column; gap: 5px; }.membership-comparison-row { grid-template-columns: minmax(125px, 1.1fr) minmax(105px, 1fr) minmax(72px, .75fr); font-size: 10.5px; }.membership-comparison-row > span { padding: 6px; } }
+@media (max-width: 700px) { .membership-points-hero { align-items: flex-start; flex-direction: column; gap: 10px; }.membership-points-hero-balance { width: 100%; min-height: 54px; grid-template-columns: auto auto auto; gap: 8px; }.membership-points-cost-grid, .membership-points-skill-grid, .membership-points-earn-grid { grid-template-columns: 1fr; }.membership-points-section-head { align-items: flex-start; flex-direction: column; gap: 6px; }.membership-points-cta { align-items: flex-start; flex-direction: column; }.membership-points-cta .btn { width: 100%; } }
 .md img { cursor: zoom-in; }
 .image-lightbox { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 56px 24px 24px; background: rgba(0,0,0,.82); }
 .image-lightbox img { max-width: 96vw; max-height: calc(100vh - 88px); object-fit: contain; cursor: default; }

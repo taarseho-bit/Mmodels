@@ -9,10 +9,12 @@
  * 文案来源于项目资料 `composer.composerContextBar.*` / `composer.composerPermissionPicker.*` /
  * `chat.modelPicker.*` / `composer.composerAttachments.*`。
  *
- * 应用约定发送按钮左侧的计费提示依赖在线积分体系，当前版本不显示这一项。
+ * 计费提示以输入框里的 `#` 面板和会员中心为准：普通消息显示基础 10 分，
+ * 选择具体 skill 后显示该 skill 的单回合成本；发送按钮本身不重复叠加提示。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  CHAT_POINT_COSTS,
   makeLocalizedText,
   pickLocalizedText,
   type PaperConfigPatch,
@@ -22,6 +24,7 @@ import {
   type PaperTemplateField,
   type PaperTemplateRef,
 } from '@shared/types';
+import { SKILL_POINT_CATALOG, skillPointCost } from '@shared/skill-pricing';
 import type { AccountStatusInfo } from '@shared/types';
 import { followUpItemsFor, readFollowUpBehavior, useApp, type QueuedFollowUp } from '../store/app';
 import { Icon } from './Icon';
@@ -69,6 +72,21 @@ const DECISION_MODE_SHORT: Record<DecisionMode, string> = {
   auto: 'AI 全自动',
 };
 
+/**
+ * 显式模式对应的技能命令注册表。
+ *
+ * 这张表只服务于 # 面板和旧工作流的命令对照，不会再把命令隐式前置到
+ * 每一条普通消息；没有明确选技能时，主进程按基础 10 积分处理。
+ */
+const MODE_COMMAND: Record<ComposerMode, string | null> = {
+  chat: null,
+  paper: '/write-paper',
+  figure: '/draw-figures',
+  review: '/review-paper',
+  data: '/data-search',
+  sprint: '/competition-sprint',
+};
+
 interface PaperPageLimitDraft {
   maxPages: string;
   scope: PaperPageLimit['scope'];
@@ -102,16 +120,6 @@ function pageLimitFromDraft(draft: PaperPageLimitDraft): PaperPageLimit | null {
   };
 }
 
-/** 模式 → 发送时自动附加的斜杠命令（应用约定行为：模式本质是预设命令） */
-const MODE_COMMAND: Record<ComposerMode, string | null> = {
-  chat: null,
-  paper: '/write-paper',
-  figure: '/draw-figures',
-  review: '/review-paper',
-  data: '/data-search',
-  sprint: '/competition-sprint',
-};
-
 /**
  * 自定义比赛字段的 id 前缀。
  *
@@ -138,9 +146,8 @@ const CUSTOM_FIELD_PREFIX = 'custom';
  * 现在这个本质上也是选择哪个 skill 吧，改成大量的进行选择自己想要的，
  * 把全流程论文写作放在最上面的位置。」
  *
- * 与旧「任务模式」菜单的关系：
- *  - 旧菜单的六种模式 = 这里前六项（工作流项）：选中即切 `composerMode`（隐式命令前缀
- *    机制不变，`MODE_COMMAND` / WorkbenchPage 的 ask 流零漂移），并在输入框**显式**落下
+ * 与工作台上下文的关系：
+ *  - 前六项仍是常用工作流入口：选中即切 `composerMode`，并在输入框**显式**落下
  *    斜杠命令 —— 用户看得见自己选了什么；
  *  - 其余为细分任务项（对应真实内置技能）：只插入一句指令模板，不切模式；
  *  - 「全流程论文写作」按用户要求固定在第一位。
@@ -154,31 +161,52 @@ interface HashTask {
   mode?: ComposerMode;
   /** 过滤关键词（中英混合，仅用于匹配不进 i18n） */
   keywords: string[];
+  /** 共享技能目录中的稳定 id；普通工作流项可以没有该字段。 */
+  skillId?: string;
+  /** 自定义技能项的中文显示名称；内置工作流仍使用 i18n。 */
+  label?: string;
+  /** 自定义技能项的中文说明；内置工作流仍使用 i18n。 */
+  description?: string;
 }
-const HASH_TASKS: HashTask[] = [
-  { id: 'paper', icon: 'file-text', insert: '/write-paper ', mode: 'paper', keywords: ['论文', '写作', 'write', 'paper', 'latex', '成稿', 'wp'] },
-  { id: 'sprint', icon: 'zap', insert: '/competition-sprint ', mode: 'sprint', keywords: ['冲刺', '参赛', '72', '赛程', '比赛', 'sprint', 'schedule', 'cs'] },
-  { id: 'figure', icon: 'chart-column', insert: '/draw-figures ', mode: 'figure', keywords: ['图', '绘图', '图表', '画图', 'figure', 'plot', 'chart', 'df'] },
-  { id: 'review', icon: 'clipboard-check', insert: '/review-paper ', mode: 'review', keywords: ['评审', '评阅', '打分', '诊断', 'review', 'score', 'rp'] },
-  { id: 'data', icon: 'database', insert: '/data-search ', mode: 'data', keywords: ['数据', '找数据', '下载', '数据集', 'data', 'dataset', 'ds'] },
+const CURATED_HASH_TASKS: HashTask[] = [
+  { id: 'paper', skillId: 'write-paper', icon: 'file-text', insert: '/write-paper ', mode: 'paper', keywords: ['论文', '写作', 'write', 'paper', 'latex', '成稿', 'wp'] },
+  { id: 'sprint', skillId: 'competition-sprint', icon: 'zap', insert: '/competition-sprint ', mode: 'sprint', keywords: ['冲刺', '参赛', '72', '赛程', '比赛', 'sprint', 'schedule', 'cs'] },
+  { id: 'figure', skillId: 'draw-figures', icon: 'chart-column', insert: '/draw-figures ', mode: 'figure', keywords: ['图', '绘图', '图表', '画图', 'figure', 'plot', 'chart', 'df'] },
+  { id: 'review', skillId: 'review-paper', icon: 'clipboard-check', insert: '/review-paper ', mode: 'review', keywords: ['评审', '评阅', '打分', '诊断', 'review', 'score', 'rp'] },
+  { id: 'data', skillId: 'data-search', icon: 'database', insert: '/data-search ', mode: 'data', keywords: ['数据', '找数据', '下载', '数据集', 'data', 'dataset', 'ds'] },
   { id: 'chat', icon: 'message-square', insert: '', mode: 'chat', keywords: ['聊天', '对话', '自由', 'chat'] },
-  { id: 'abstract', icon: 'pen-line', insert: '请使用 abstract-writer 技能撰写并润色摘要：', keywords: ['摘要', 'abstract', 'summary'] },
-  { id: 'problem', icon: 'scan-eye', insert: '请使用 problem-parser 技能解析题目，输出目标、约束、决策变量与数据需求：', keywords: ['题目', '审题', '解析', 'problem', 'parser'] },
-  { id: 'method', icon: 'target', insert: '请使用 method-selector 技能对比候选建模方法并给出选型建议：', keywords: ['方法', '选型', '模型选择', 'method'] },
-  { id: 'literature', icon: 'book-open', insert: '请使用 literature-search 技能检索真实文献并核验可得性：', keywords: ['文献', '检索', 'literature', 'search', '论文搜索'] },
-  { id: 'litReview', icon: 'notebook-tabs', insert: '请使用 literature-review 技能撰写文献综述：', keywords: ['综述', '文献综述', 'review'] },
-  { id: 'citation', icon: 'text-quote', insert: '请使用 citation-management 技能整理文中引用与参考文献：', keywords: ['引用', '参考文献', 'citation', 'reference'] },
-  { id: 'bibVerify', icon: 'shield-check', insert: '请使用 verifying-bibliography 技能逐条核验参考文献真实性：', keywords: ['核真', '参考文献', '真实性', 'bibliography', 'verify'] },
-  { id: 'dataAudit', icon: 'file-spreadsheet', insert: '请使用 data-auditor-cleaner 技能审计并清洗 data/ 目录下的数据：', keywords: ['数据', '审计', '清洗', 'audit', 'clean'] },
-  { id: 'robust', icon: 'activity', insert: '请使用 robustness-checker 技能做灵敏度与稳健性分析：', keywords: ['灵敏度', '稳健', '敏感性', 'robustness', 'sensitivity'] },
-  { id: 'proof', icon: 'sigma', insert: '请使用 proof-audit 技能逐条审查推导与公式：', keywords: ['推导', '公式', '证明', 'proof', 'audit'] },
-  { id: 'pagefit', icon: 'gauge', insert: '请使用 paper-page-fit 技能核验论文页数并压缩到比赛上限内：', keywords: ['页数', '压缩', 'page', 'fit'] },
-  { id: 'table', icon: 'columns-2', insert: '请使用 table-layout-audit 技能检查表格宽度、裁切与分页：', keywords: ['表格', 'table', '裁切'] },
-  { id: 'diagram', icon: 'git-branch', insert: '请使用 paper-diagram 技能绘制问题求解流程 / 模型结构图：', keywords: ['流程图', '结构图', 'diagram', 'flow'] },
-  { id: 'figureTpl', icon: 'blocks', insert: '请使用 mathmodel-figure-templates 技能按论文场景选择建模图表模板：', keywords: ['图表', '模板', 'template'] },
-  { id: 'submission', icon: 'package-check', insert: '请使用 submission-package-audit 技能按竞赛要求逐项检查提交材料：', keywords: ['提交', '检查', 'submission', '材料'] },
-  { id: 'defense', icon: 'graduation-cap', insert: '请使用 defense-ppt 技能生成答辩提纲与幻灯片：', keywords: ['答辩', 'ppt', '幻灯片', 'defense'] },
+  { id: 'abstract', skillId: 'abstract-writer', icon: 'pen-line', insert: '请使用 abstract-writer 技能撰写并润色摘要：', keywords: ['摘要', 'abstract', 'summary'] },
+  { id: 'problem', skillId: 'problem-parser', icon: 'scan-eye', insert: '请使用 problem-parser 技能解析题目，输出目标、约束、决策变量与数据需求：', keywords: ['题目', '审题', '解析', 'problem', 'parser'] },
+  { id: 'method', skillId: 'method-selector', icon: 'target', insert: '请使用 method-selector 技能对比候选建模方法并给出选型建议：', keywords: ['方法', '选型', '模型选择', 'method'] },
+  { id: 'literature', skillId: 'literature-search', icon: 'book-open', insert: '请使用 literature-search 技能检索真实文献并核验可得性：', keywords: ['文献', '检索', 'literature', 'search', '论文搜索'] },
+  { id: 'litReview', skillId: 'literature-review', icon: 'notebook-tabs', insert: '请使用 literature-review 技能撰写文献综述：', keywords: ['综述', '文献综述', 'review'] },
+  { id: 'citation', skillId: 'citation-management', icon: 'text-quote', insert: '请使用 citation-management 技能整理文中引用与参考文献：', keywords: ['引用', '参考文献', 'citation', 'reference'] },
+  { id: 'bibVerify', skillId: 'verifying-bibliography', icon: 'shield-check', insert: '请使用 verifying-bibliography 技能逐条核验参考文献真实性：', keywords: ['核真', '参考文献', '真实性', 'bibliography', 'verify'] },
+  { id: 'dataAudit', skillId: 'data-auditor-cleaner', icon: 'file-spreadsheet', insert: '请使用 data-auditor-cleaner 技能审计并清洗 data/ 目录下的数据：', keywords: ['数据', '审计', '清洗', 'audit', 'clean'] },
+  { id: 'robust', skillId: 'robustness-checker', icon: 'activity', insert: '请使用 robustness-checker 技能做灵敏度与稳健性分析：', keywords: ['灵敏度', '稳健', '敏感性', 'robustness', 'sensitivity'] },
+  { id: 'proof', skillId: 'proof-audit', icon: 'sigma', insert: '请使用 proof-audit 技能逐条审查推导与公式：', keywords: ['推导', '公式', '证明', 'proof', 'audit'] },
+  { id: 'pagefit', skillId: 'paper-page-fit', icon: 'gauge', insert: '请使用 paper-page-fit 技能核验论文页数并压缩到比赛上限内：', keywords: ['页数', '压缩', 'page', 'fit'] },
+  { id: 'table', skillId: 'table-layout-audit', icon: 'columns-2', insert: '请使用 table-layout-audit 技能检查表格宽度、裁切与分页：', keywords: ['表格', 'table', '裁切'] },
+  { id: 'diagram', skillId: 'paper-diagram', icon: 'git-branch', insert: '请使用 paper-diagram 技能绘制问题求解流程 / 模型结构图：', keywords: ['流程图', '结构图', 'diagram', 'flow'] },
+  { id: 'figureTpl', skillId: 'mathmodel-figure-templates', icon: 'blocks', insert: '请使用 mathmodel-figure-templates 技能按论文场景选择建模图表模板：', keywords: ['图表', '模板', 'template'] },
+  { id: 'submission', skillId: 'submission-package-audit', icon: 'package-check', insert: '请使用 submission-package-audit 技能按竞赛要求逐项检查提交材料：', keywords: ['提交', '检查', 'submission', '材料'] },
+  { id: 'defense', skillId: 'defense-ppt', icon: 'graduation-cap', insert: '请使用 defense-ppt 技能生成答辩提纲与幻灯片：', keywords: ['答辩', 'ppt', '幻灯片', 'defense'] },
 ];
+
+/** 共享目录中的其余技能也从 # 面板进入，避免用户只能看到少量预设。 */
+const CURATED_SKILL_IDS = new Set(CURATED_HASH_TASKS.map((task) => task.skillId).filter(Boolean));
+const GENERATED_HASH_TASKS: HashTask[] = SKILL_POINT_CATALOG
+  .filter((entry) => !CURATED_SKILL_IDS.has(entry.id))
+  .map((entry) => ({
+    id: `skill-${entry.id}`,
+    skillId: entry.id,
+    icon: entry.group === '数据与研究' ? 'database' : entry.group === '图表与交付' ? 'chart-column' : entry.group === '论文与评阅' ? 'file-text' : entry.group === '协作与工具' ? 'blocks' : 'sigma',
+    insert: `请使用 ${entry.id} 技能${entry.label}：`,
+    label: entry.label,
+    description: entry.description,
+    keywords: [entry.id, entry.label, entry.group],
+  }));
+const HASH_TASKS: HashTask[] = [...CURATED_HASH_TASKS, ...GENERATED_HASH_TASKS];
 
 // ── 思考强度 ──
 /**
@@ -521,13 +549,17 @@ export function Composer({
     if (!q) return HASH_TASKS;
     return HASH_TASKS.filter(
       (it) =>
-        tx(`composer.hashPalette.items.${it.id}`).toLowerCase().includes(q) ||
-        tx(`composer.hashPalette.items.${it.id}Description`).toLowerCase().includes(q) ||
+        (it.label ?? tx(`composer.hashPalette.items.${it.id}`)).toLowerCase().includes(q) ||
+        (it.description ?? tx(`composer.hashPalette.items.${it.id}Description`)).toLowerCase().includes(q) ||
         it.keywords.some((k) => k.toLowerCase().includes(q)),
     );
     // tx 是模块级函数（非 hook），不进依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
+  const hashTaskLabel = (task: HashTask): string => task.label ?? tx(`composer.hashPalette.items.${task.id}`);
+  const hashTaskDescription = (task: HashTask): string => task.description ?? tx(`composer.hashPalette.items.${task.id}Description`);
+  const hashTaskCost = (task: HashTask): number | undefined =>
+    task.skillId ? skillPointCost(task.skillId) : task.mode === 'chat' ? CHAT_POINT_COSTS.basic : undefined;
   /** 选中一项：替换 `#token` 为插入文本；工作流项带上中文名让输入框可见（2026-09-26 用户要求） */
   const applyHashTask = (task: HashTask): void => {
     if (!hash) return;
@@ -535,8 +567,11 @@ export function Composer({
     const caret = el?.selectionStart ?? value.length;
     // 工作流项：'/write-paper ' + '全流程论文写作' + '：' —— 命令仍可被 SDK 识别，
     // 后面的中文是给用户看的任务名，接着写题目即可；细分任务项 insert 本身已是完整句子
+    const explicitInsert = task.mode && !task.insert
+      ? `${MODE_COMMAND[task.mode] ?? ''} `
+      : task.insert;
     const insert = task.mode
-      ? `${task.insert}${tx(`composer.hashPalette.items.${task.id}`)}：`
+      ? `${explicitInsert}${hashTaskLabel(task)}：`
       : task.insert;
     const next = value.slice(0, hash.start) + insert + value.slice(caret);
     onChange(next);
@@ -1064,9 +1099,11 @@ export function Composer({
     openRoute('extensions', undefined, section);
   }, []);
 
-  // ── 模式覆盖：用户在输入框里手打了 /命令 就不再附加预设 ──
-  const manualCommand = /^\s*\/\S+/.test(value);
-  const effectiveCommand = manualCommand ? null : MODE_COMMAND[mode];
+  // ── 技能命令只来自明确选择，不从工作台上下文隐式补齐 ──
+  // `composerMode` 仍负责模板、页数和占位文案，但不再把每条普通消息
+  // 自动改写成 `/write-paper` 或其他技能。用户从 # 面板、快捷卡或加号菜单
+  // 选择技能时，命令已经显式插入正文；没有选择技能就按普通 10 分计费。
+  const effectiveCommand: string | null = null;
 
   /**
    * 真正发送时把模式命令、附件、比赛信息拼进去，交给父级发送。
@@ -1395,7 +1432,7 @@ export function Composer({
               role="option"
               aria-selected={i === hashIndex}
               className={`cz-pop-item${i === hashIndex ? ' active' : ''}`}
-              title={tx(`composer.hashPalette.items.${it.id}Description`)}
+              title={hashTaskDescription(it)}
               onMouseDown={(e) => {
                 e.preventDefault();
                 applyHashTask(it);
@@ -1403,8 +1440,14 @@ export function Composer({
               onMouseEnter={() => setHashIndex(i)}
             >
               <Icon name={it.icon} size={13} />
-              <span className="truncate">{tx(`composer.hashPalette.items.${it.id}`)}</span>
+              <span className="hash-pop-text">
+                <span className="truncate">{hashTaskLabel(it)}</span>
+                <span className="hash-pop-description truncate">{hashTaskDescription(it)}</span>
+              </span>
               <span className="grow" />
+              {hashTaskCost(it) ? (
+                <span className="hash-pop-cost">{hashTaskCost(it)} 积分 / 回合</span>
+              ) : null}
               {it.insert ? (
                 <span className="cz-pop-hint hash-pop-cmd">{it.insert.trim()}</span>
               ) : null}
