@@ -9,6 +9,7 @@ import './styles/layout.css';
 import './styles/pages.css';
 import './styles/competition-studio.css';
 import './styles/resizable-panels.css';
+import './styles/desktop-ios.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root 不存在');

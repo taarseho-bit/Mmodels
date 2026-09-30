@@ -34,6 +34,7 @@ if (session?.title !== '城市应急资源调度 · 从题意到论文' || sessi
 }
 
 const now = Date.now();
+const runStart = now - 18 * 60 * 1000;
 const addMessage = db.prepare(
   'INSERT INTO messages (id, session_id, role, blocks, model, created_at, input_tokens, output_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
 );
@@ -79,8 +80,8 @@ const node = (id, name, agentType, assignment, tools, status = 'returned') => ({
   agentType,
   assignment,
   status,
-  startedAt: now,
-  endedAt: status === 'running' ? undefined : now + 1000,
+  startedAt: runStart + Number(id === 'main' ? 0 : id.length) * 12000,
+  endedAt: status === 'running' ? undefined : now - 45000,
   tools,
 });
 const tool = (id, name, label, skill, artifact, status = 'completed') => ({
@@ -92,40 +93,50 @@ const tool = (id, name, label, skill, artifact, status = 'completed') => ({
   verified: true,
   artifact,
   status,
-  startedAt: now,
-  endedAt: status === 'running' ? undefined : now + 1000,
+  startedAt: runStart + 45000,
+  endedAt: status === 'running' ? undefined : now - 60000,
 });
 const run = {
   id: randomUUID(),
   sessionId,
   projectId,
   sessionTitle: session.title,
-  startedAt: now,
+  startedAt: runStart,
   updatedAt: now,
-  revision: 18,
+  revision: 72,
   status: 'running',
   collaborationEnabled: true,
   truncated: false,
-  workflowStages: ['理解题目', '研究与计算', '核对结果', '整理交付'],
+  workflowStages: ['理解题目', '并行研究与计算', '交叉核验', '论文与复算交付'],
   currentStage: 3,
   stageStatus: 'running',
   exchanges: [
-    { id: 'ex-1', source: 'main', target: 'problem' },
-    { id: 'ex-2', source: 'problem', target: 'data' },
-    { id: 'ex-3', source: 'data', target: 'solver' },
-    { id: 'ex-4', source: 'solver', target: 'review' },
+    ...[['main','problem'],['problem','data'],['problem','assumptions'],['literature','baseline'],['data','forecast'],['data','solver'],['assumptions','solver'],['baseline','solver'],['forecast','simulation'],['solver','simulation'],['simulation','review'],['solver','review'],['review','figure'],['literature','paper'],['figure','paper'],['paper','citation'],['citation','audit'],['audit','reproduce'],['reproduce','main']].map(([source,target],i)=>({id:`ex-${i+1}`,source,target})),
   ],
   nodes: [
-    node('main', '建模主助手', 'main', '统筹本轮目标与最终结果', [tool('m1', 'Skill', '题意解析', 'mathmodel:problem-parser'), tool('m2', 'Agent', '分配协作任务')], 'running'),
-    node('problem', '题意约束分析员', 'problem-analyst', '提取目标、变量、约束和数据需求', [tool('p1', 'Read', '阅读题目资料', undefined, '题目说明.md'), tool('p2', 'Skill', '题型识别', 'mathmodel:problem-classifier')]),
-    node('data', '数据特征分析员', 'data-analyst', '检查 3 座仓库与 4 个服务区数据', [tool('d1', 'Skill', '数据体检与清洗', 'mathmodel:data-auditor-cleaner'), tool('d2', 'Write', '整理数据报告', undefined, 'data/应急资源需求.csv')]),
-    node('solver', '模型求解研究员', 'model-solver', 'HiGHS 求解 · 运输成本降低 23.53%', [tool('s1', 'Skill', '方法选型', 'mathmodel:method-selector'), tool('s2', 'Bash', '运行模型计算', undefined, 'code/solver.py'), tool('s3', 'Write', '保存分配矩阵', undefined, 'results/metrics.json')]),
-    node('review', '稳健性核验员', 'general-purpose', '检查扰动下的结论稳定性', [tool('r1', 'Skill', '稳健性分析', 'mathmodel:robustness-checker'), tool('r2', 'Skill', '结果复现', 'mathmodel:result-reproducibility')]),
-    node('figure', '科研图表设计员', 'general-purpose', '分配方案、成本比较与灵敏度曲线', [tool('f1', 'Skill', '科研绘图', 'mathmodel:paper-diagram'), tool('f2', 'Write', '导出结果图', undefined, 'figures/模型结果.png')]),
-    node('paper', '论文结构研究员', 'paper-reviewer', '整理假设、模型、结果与局限', [tool('w1', 'Skill', '论文写作', 'mathmodel:write-paper', undefined, 'running'), tool('w2', 'Write', '整理结果报告', undefined, '模型结果报告.md')], 'running'),
+    node('main', '建模主控', 'main', '推理模型 · 统筹 14 位成员与交付闭环', [tool('m1','Skill','问题拆解','mathmodel:problem-parser'),...['研究任务','计算任务','核验任务','论文任务'].map((x,i)=>tool(`m${i+2}`,'Agent',`派发${x}`)),tool('m6','TaskOutput','汇总成员结果')], 'running'),
+    node('problem','题意解析','problem-analyst','推理模型 · 目标、变量、约束与验收口径',[tool('p1','Read','阅读赛题',undefined,'题目说明.md'),tool('p2','Skill','题型识别','mathmodel:problem-classifier'),tool('p3','Skill','约束提取','mathmodel:problem-parser'),tool('p4','Write','保存问题拆解',undefined,'results/问题拆解.md')]),
+    node('data','数据审计','data-analyst','分析模型 · 3 座仓库、4 个服务区的数据核验',[tool('d1','Read','检查原始数据',undefined,'data/应急资源需求.csv'),tool('d2','Skill','单位与缺失检查','mathmodel:data-auditor-cleaner'),tool('d3','Bash','计算供需统计'),tool('d4','Write','保存质量报告',undefined,'results/数据质量.md')]),
+    node('literature','文献调研','literature-researcher','研究模型 · 比较应急调度的建模方法',[tool('l1','Skill','文献检索','mathmodel:paper-search'),tool('l2','WebSearch','检索运输规划研究'),tool('l3','WebFetch','阅读方法与适用条件'),tool('l4','Write','整理方法证据',undefined,'paper/方法依据.md')]),
+    node('assumptions','假设审查','general-purpose','推理模型 · 需求确定性与容量边界',[tool('a1','Read','核对题意与数据'),tool('a2','Skill','模型方法选型','mathmodel:method-selector'),tool('a3','Write','保存假设与局限',undefined,'results/假设清单.md')]),
+    node('baseline','基线方案','model-solver','代码模型 · 最邻近分配与可行基线',[tool('b1','Skill','优化方法比较','mathmodel:method-selector'),tool('b2','Bash','求解基线成本 12,450'),tool('b3','Write','保存基线矩阵',undefined,'results/基线方案.csv')]),
+    node('solver','规划求解','model-solver','代码模型 · HiGHS 最优成本 9,520',[tool('s1','Skill','选择规划方法','mathmodel:method-selector'),tool('s2','Read','检查容量与成本矩阵'),tool('s3','Bash','执行 SciPy / HiGHS',undefined,'code/solver.py'),tool('s4','Bash','校验约束残差'),tool('s5','Write','保存求解指标',undefined,'results/metrics.json')]),
+    node('forecast','需求分析','data-analyst','分析模型 · ±5%、±10% 需求情景',[tool('q1','Skill','需求数据审计','mathmodel:data-auditor-cleaner'),tool('q2','Bash','构造需求扰动场景'),tool('q3','Write','保存情景参数',undefined,'results/需求场景.csv')]),
+    node('simulation','情景仿真','model-solver','代码模型 · 5% 可行、10% 供给不足',[tool('c1','Read','读取扰动场景'),tool('c2','Bash','复算 +5% 需求'),tool('c3','Bash','复算 +10% 需求'),tool('c4','Write','记录不可行反馈',undefined,'results/情景结果.csv')]),
+    node('review','稳健性核验','general-purpose','推理模型 · 成本改善 23.53% 的适用边界',[tool('r1','Skill','稳健性检查','mathmodel:robustness-checker'),tool('r2','Skill','独立结果复算','mathmodel:result-reproducibility'),tool('r3','Read','核对求解指标'),tool('r4','Write','记录敏感性结论',undefined,'results/敏感性分析.md')]),
+    node('figure','科研图表','general-purpose','视觉模型 · 分配、成本与灵敏度表达',[tool('f1','Skill','科研绘图','mathmodel:nature-figure'),tool('f2','Skill','技术路线图','mathmodel:paper-diagram'),tool('f3','Bash','绘制三联结果图'),tool('f4','Write','导出高清图',undefined,'figures/模型结果.png')]),
+    node('paper','论文写作','paper-reviewer','写作模型 · 摘要、假设、模型、结果与局限',[tool('w1','Skill','论文写作','mathmodel:write-paper'),tool('w2','Read','读取核验结果与图表'),tool('w3','Write','编排论文结构',undefined,'模型结果报告.md'),tool('w4','Skill','学术表达润色','mathmodel:paper-polish',undefined,'running')], 'running'),
+    node('citation','引用核验','paper-reviewer','研究模型 · 引用对应原文与结论',[tool('v1','Skill','论文审阅','mathmodel:review-paper'),tool('v2','Read','检查方法依据与引用'),tool('v3','Write','保存引用检查单',undefined,'paper/引用核验.md')]),
+    node('audit','交付审计','paper-reviewer','推理模型 · 数值、页数、匿名信息与附件',[tool('u1','Skill','比赛交付核对','mathmodel:competition-delivery-check'),tool('u2','Skill','页数与版式检查','mathmodel:paper-page-fit'),tool('u3','Read','交叉核对正文与结果'),tool('u4','Write','整理交付清单',undefined,'paper/交付检查单.md')], 'running'),
+    node('reproduce','复算交付','general-purpose','代码模型 · 脚本、数据、图表与说明打包',[tool('z1','Skill','复现验证','mathmodel:result-reproducibility'),tool('z2','Bash','复跑模型脚本'),tool('z3','Read','比较指标与分配矩阵'),tool('z4','Write','保存复算说明',undefined,'results/复算说明.md')]),
   ],
 };
-for (const item of run.nodes.slice(1)) item.parentId = 'main';
+const parentByAgent = {
+  problem: 'main', data: 'main', literature: 'main', assumptions: 'problem', baseline: 'data',
+  forecast: 'data', solver: 'assumptions', simulation: 'forecast', review: 'solver', figure: 'review',
+  paper: 'figure', citation: 'paper', audit: 'paper', reproduce: 'audit',
+};
+for (const item of run.nodes.slice(1)) item.parentId = parentByAgent[item.id] || 'main';
 
 const writeAll = db.transaction(() => {
   for (let i = 0; i < messages.length; i += 1) {

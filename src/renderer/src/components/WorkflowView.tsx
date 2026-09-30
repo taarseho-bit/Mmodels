@@ -152,7 +152,7 @@ export const WorkflowView = memo(function WorkflowView({ projectId, onReturn }: 
         </aside>}
       </div>
       {run.nodes.length === 1 && <p className="workflow-note">本轮目前由主助手处理，协作成员实际启动后会自动加入画布。</p>}
-              <details className="workflow-explainer"><summary>关于这张工作图</summary><p>同一层通常按三列换行；成员较多时会适当增加一列，避免图过高。画布会尽量保持舒适的横纵比例。虚线表示成员确实参与了，但没有可靠的上级信息，因此只挂在主助手下，不补造关系。已完成成员默认缩小、褪色；没有技能、操作和分工说明的结束记录会按上级合并成一个摘要，点“展开已结束”仍能查看原始成员。“已返回”只表示结果已经交回，仍需主助手核验。</p></details>
+              <details className="workflow-explainer"><summary>关于这张工作图</summary><p>画布按照父级派发关系展开树形分支，每个分支根据成员数量自然分配空间；较宽的成员簇会沿弧形错落排列。虚线表示成员确实参与了，但没有可靠的上级信息，因此只挂在主助手下，不补造关系。已完成成员默认缩小、褪色；没有技能、操作和分工说明的结束记录会按上级合并成一个摘要，点“展开已结束”仍能查看原始成员。“已返回”只表示结果已经交回，仍需主助手核验。</p></details>
       {run.truncated && <p className="workflow-note">本轮事件较多，展示记录已达到上限（40 位成员、500 次工具调用），实际执行不受影响。</p>}
     </>}
   </section>;

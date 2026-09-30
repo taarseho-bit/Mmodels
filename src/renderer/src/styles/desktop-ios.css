@@ -1,0 +1,136 @@
+/* Desktop adaptation of iOS grouped surfaces and segmented controls.
+   Scoped to the workbench so the transparent desktop pet stays independent. */
+.competition-shell {
+  --radius-sm: 8px;
+  --radius: 11px;
+  --radius-lg: 16px;
+  --topbar-h: 42px;
+}
+.competition-shell .sidebar {
+  padding: 12px 8px 8px;
+  background: color-mix(in srgb, var(--bg-canvas) 92%, var(--bg-panel));
+}
+.competition-shell .studio-brand > span {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 9px;
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.competition-shell .rail-create-strip { gap: 6px; padding: 2px 6px 8px; }
+.competition-shell .rail-create-strip button { min-height: 34px; border-radius: 10px; }
+.competition-shell .rail-nav { padding: 3px 4px 8px; }
+.competition-shell .sidebar .rail-item { min-height: 32px; border-radius: 8px; margin-bottom: 2px; }
+.competition-shell .sidebar .rail-item.sm { min-height: 28px; }
+.competition-shell .sidebar .rail-item.active {
+  background: var(--accent-weak);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+.competition-shell .rail-project-section.is-open { height: var(--pane-height, 112px); }
+.competition-shell .rail-sec-head { margin-top: 4px; padding: 5px 9px; }
+.competition-shell .rail-account-chip { border-radius: 12px; background: var(--bg-panel); border: 1px solid var(--border-weak); }
+.competition-shell .rail-foot { border-top: 0; }
+.competition-shell .topbar,
+.competition-shell .chat-page-context {
+  min-height: 42px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border-weak);
+}
+.competition-shell .btn { border-radius: 9px; }
+.competition-shell .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.competition-shell .input { border-radius: 9px; background: var(--bg-panel); }
+.competition-shell :is(.workflow-switch, .workflow-view-switch, .data-chart-tabs) {
+  padding: 3px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--bg-sunken);
+}
+.competition-shell .workflow-switch button { min-height: 26px; border-radius: 7px; border: 0; }
+.competition-shell .workflow-switch button[aria-pressed='true'] {
+  background: var(--bg-panel);
+  box-shadow: 0 1px 4px #00000014;
+  color: var(--fg-primary);
+}
+.competition-shell .chat-scroll { padding: 16px 0 12px; background: var(--bg-canvas); }
+.competition-shell .chat-inner { width: 100%; max-width: none; padding: 0 20px; gap: 14px; }
+.competition-shell .chat-inner.is-empty { min-height: 0; justify-content: flex-start; align-items: stretch; }
+.competition-shell .newchat { width: 100%; max-width: none; margin: 0; padding: 10px 0; }
+.competition-shell .newchat-hero { margin-bottom: 16px; }
+.competition-shell .newchat-title { font-size: 24px; letter-spacing: -.035em; }
+.competition-shell .newchat-title small { font-size: 12px; }
+.competition-shell .newchat-examples { margin-top: 14px; }
+.competition-shell .newchat-examples > .muted { display: block; }
+.competition-shell .starters { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.competition-shell .starter { min-height: 90px; padding: 12px; border-radius: 12px; border-color: var(--border-weak); }
+.competition-shell .starter .starter-desc { white-space: normal; line-height: 1.5; font-size: 11.5px; }
+.competition-shell .starter:hover { transform: none; border-color: var(--accent); box-shadow: 0 2px 6px #00000008; }
+.competition-shell .msg { column-gap: 8px; row-gap: 4px; }
+.competition-shell .msg-body { max-width: none; font-size: 13px; line-height: 1.7; }
+.competition-shell .msg-assistant .msg-body {
+  padding: 12px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-weak);
+  border-radius: 3px 14px 14px;
+}
+.competition-shell .msg-user .msg-body { padding: 10px 14px; border-radius: 14px 14px 3px 14px; }
+.competition-shell .msg-avatar.assistant { background: var(--accent); border-radius: 7px; margin-top: 12px; }
+.competition-shell .composer { padding: 8px 20px 12px; background: var(--bg-canvas); border-top: 0; }
+.competition-shell .composer-inner { width: 100%; max-width: none; border: 0; border-radius: 15px; }
+.competition-shell .composer-box { border-radius: 15px; border: 1px solid var(--border); background: var(--bg-panel); box-shadow: 0 2px 7px #00000006; }
+.competition-shell .composer-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+.competition-shell .composer-inline { padding: 0; }
+.competition-shell .settings-shell,
+.competition-shell .settings-main { background: var(--bg-canvas); }
+.competition-shell .settings-side { padding: 12px 10px; background: var(--bg-canvas); }
+.competition-shell .settings-back { margin-bottom: 8px; padding: 9px; background: var(--bg-panel); border-radius: 10px; }
+.competition-shell .settings-nav-group { margin: 3px 0 7px; padding-bottom: 5px; }
+.competition-shell .settings-nav-group-head { padding: 7px 8px 5px; font-size: 12px; }
+.competition-shell .settings-nav-item { min-height: 32px; border-radius: 8px; }
+.competition-shell .settings-nav-item:nth-child(5) { margin-bottom: 0; }
+.competition-shell .settings-nav-item.active { background: var(--accent-weak); color: var(--accent-contrast); }
+.competition-shell .settings-nav-item:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.competition-shell .settings-content { width: 100%; max-width: none; padding: 16px 22px 24px; }
+.competition-shell .settings-content.settings-tool-content { padding: 0; }
+.competition-shell .settings-section { padding: 14px 16px; border-radius: 14px; background: var(--bg-panel); border: 1px solid var(--border-weak); }
+.competition-shell .settings-section-title { letter-spacing: -.015em; }
+.competition-shell .settings-section .model-rows { padding: 0; }
+.competition-shell .model-row { padding: 10px 0; }
+.competition-shell .panel { border-radius: 12px; box-shadow: none; }
+.competition-shell .studio-page { padding: 18px 22px 24px; background: var(--bg-canvas); }
+.competition-shell .studio-page-heading { margin-bottom: 16px; gap: 14px; }
+.competition-shell .studio-page h1 { font-size: 23px; margin: 3px 0; }
+.competition-shell .studio-page-heading p { margin-top: 5px; font-size: 12px; }
+.competition-shell .studio-two-column { gap: 14px; }
+.competition-shell .studio-card { padding: 16px; margin-bottom: 10px; border: 1px solid var(--border-weak); background: var(--bg-panel); border-radius: 14px; }
+.competition-shell .studio-card > header { margin-bottom: 12px; }
+.competition-shell .studio-mission { min-height: 0; padding: 16px; margin-bottom: 14px; border-radius: 14px; background: var(--bg-panel); }
+.competition-shell .studio-stat-strip { padding: 14px 16px; margin-bottom: 14px; gap: 24px; background: var(--bg-panel); border: 1px solid var(--border-weak); border-radius: 12px; }
+.competition-shell .studio-empty { padding: 24px 18px; border-radius: 14px; background: var(--bg-panel); border: 1px solid var(--border-weak); }
+.competition-shell .studio-paper { gap: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid var(--border-weak); border-radius: 14px; background: var(--bg-panel); }
+.competition-shell .workflow-view { padding: 10px 16px; background: var(--bg-canvas); }
+.competition-shell .workflow-heading { margin-bottom: 4px; }
+.competition-shell .workflow-layout { margin-top: 8px; }
+.competition-shell .flow-canvas-shell { border-radius: 14px; }
+.competition-shell .flow-toolbar { padding: 7px 10px; }
+.competition-shell .workflow-detail { background: var(--bg-panel); border-radius: 12px; padding: 14px; }
+/* Mermaid's embedded styles are stripped by the Markdown sanitizer. Restore
+   presentation in trusted app CSS, particularly fill:none on edge paths. */
+.md-mermaid .flowchart-link, .md-mermaid .edgePath path { fill: none !important; stroke: var(--fg-muted) !important; }
+.md-mermaid marker path { fill: var(--fg-muted) !important; stroke: var(--fg-muted) !important; }
+.md-mermaid .node :is(rect, polygon, circle, ellipse) { fill: var(--accent-weak) !important; stroke: var(--accent) !important; }
+.md-mermaid .nodeLabel, .md-mermaid .edgeLabel { color: var(--fg-primary) !important; }
+.md-mermaid .edgeLabel :is(rect, .labelBkg) { fill: var(--bg-panel) !important; background: var(--bg-panel) !important; }
+.md-mermaid text { fill: var(--fg-primary) !important; }
+@media (max-width: 900px) {
+  .competition-shell .settings-content { padding: 12px 14px 20px; }
+  .competition-shell .chat-inner { padding-inline: 12px; }
+  .competition-shell .composer { padding-inline: 12px; }
+  .competition-shell .studio-page { padding: 14px; }
+  .competition-shell .studio-stat-strip { gap: 14px; flex-wrap: wrap; }
+}
+/* Editor columns already have their own bottom-aligned empty state. */
+.competition-shell .editorview-chatcol .chat-inner { padding: 0 10px 10px; }
+.competition-shell .editorview-chatcol .newchat { padding: 8px 0 0; }
+.competition-shell .editorview-chatcol .composer { padding: 0; }
+.competition-shell .editorview-chatcol .msg-assistant .msg-body { padding: 9px 10px; }

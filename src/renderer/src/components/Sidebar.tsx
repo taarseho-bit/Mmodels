@@ -668,7 +668,7 @@ export function Sidebar({ route, setRoute, topSlot }: Props): JSX.Element {
 
       {/* ── 项目 ── */}
       <div className={`rail-sec rail-expanded-section rail-project-section${projectSwitcherOpen ? ' is-open' : ''}`}>
-        {!collapsed && projectSwitcherOpen && <ResizeHandle storageKey="mm-project-list-height" label="调整项目列表高度" edge="bottom" initial={180} min={100} max={400} fraction={.45} />}
+        {!collapsed && projectSwitcherOpen && <ResizeHandle storageKey="mm-project-list-height" label="调整项目列表高度" edge="bottom" initial={112} min={100} max={400} fraction={.45} />}
         <div className="rail-sec-head">
           <span>工作项目</span>
           <span className="rail-sec-head-actions">

@@ -153,6 +153,16 @@ async function main() {
     })()`);
     await hideStartupOverlays();
     await sleep(450);
+    // 官网素材统一采用亮色模式：同时固定 Electron nativeTheme、应用缓存和
+    // 当前 DOM，避免截图机器的系统深色偏好把营销站素材染成深色。
+    const forceLightTheme = async () => evaluate(`(async () => {
+      try { await window.mathmodel.app.setNativeTheme('light'); } catch (_) { /* 旧打包版无此接口时继续用 DOM 兜底 */ }
+      try { localStorage.setItem('mm-theme', 'light'); } catch (_) { /* ignore */ }
+      document.documentElement.dataset.theme = 'light';
+      document.documentElement.style.colorScheme = 'light';
+      return document.documentElement.dataset.theme;
+    })()`);
+    await forceLightTheme();
 
     /**
      * 可选的商业版官网素材会话：只有调用者显式提供临时环境变量时才登录，
@@ -303,6 +313,7 @@ async function main() {
       await send('Page.reload');
       await sleep(1600);
       await hideStartupOverlays();
+      await forceLightTheme();
       await sleep(350);
     }
 
@@ -398,6 +409,17 @@ async function main() {
         console.warn(`[site-shots] 跳过 ${name}：${error.message}`);
       }
     };
+    const screenshotClip = async (name, selector) => {
+      const rect = await evaluate(`(() => { const r=document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect(); return r && r.width && r.height ? {x:r.left,y:r.top,width:r.width,height:r.height} : null; })()`);
+      if (!rect) throw new Error(`工作流裁切区域不存在：${selector}`);
+      await redactPrivateAccount();
+      const image = await send('Page.captureScreenshot', {format:'png',captureBeyondViewport:false,clip:{...rect,scale:1}});
+      const outPath = path.join(OUT, `${name}.png`);
+      fs.writeFileSync(outPath, Buffer.from(image.data, 'base64'));
+      fs.copyFileSync(outPath, path.join(DOCS_OUT, `${name}.png`));
+      currentFiles.push(`${name}.png`);
+      console.log(`[site-shots] ${name}.png`);
+    };
 
     // 官网素材不能泄露开发机盘符、用户名或安装目录；这些信息只对本机诊断有用，
     // 对访客没有展示价值。只处理扩展详情里的叶子文本，不改变应用本身的数据。
@@ -450,6 +472,15 @@ async function main() {
       await evaluate(`document.querySelector('[aria-label="适应画布"]')?.click()`);
       await sleep(400);
       await screenshot('workflow-case', '.workflow-view');
+      // 独立高清画布：扩大真实应用视口后重新适应画布，保留所有成员与连线。
+      await send('Emulation.setDeviceMetricsOverride', {width:3000,height:2000,deviceScaleFactor:2,mobile:false});
+      await sleep(600);
+      await evaluate(`document.querySelector('[aria-label="适应画布"]')?.click()`);
+      await sleep(500);
+      await screenshotClip('workflow-large', '.flow-world');
+      await send('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false});
+      await sleep(400);
+      await evaluate(`document.querySelector('[aria-label="适应画布"]')?.click()`);
       await evaluate(`(() => { const b=[...document.querySelectorAll('.workflow-node')].find(x=>x.textContent.includes('求解')); b?.click(); return !!b; })()`);
       await sleep(500);
       await screenshot('workflow-details', '.workflow-detail');
@@ -573,6 +604,80 @@ async function main() {
       failures.push('membership-center: 页面未出现 .membership-dialog');
       console.warn('[site-shots] 跳过 membership-center：页面未出现 .membership-dialog');
     }
+
+    /**
+     * 扩展官网素材：每一张都是当前打包版真实页面状态，统一在同一份
+     * VIP 隔离会话中截取。这里刻意按功能入口逐项取证，避免用一张总图
+     * 代表多个能力；素材目录最终保持 50--60 张，方便官网功能清单逐项引用。
+     */
+    const clickText = async (selector, pattern) => evaluate(`(() => {
+      const re = new RegExp(${JSON.stringify(pattern)}, 'i');
+      const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find(x => re.test(x.textContent || '') || re.test(x.getAttribute('title') || '') || re.test(x.getAttribute('aria-label') || ''));
+      if (!el) return false; el.click(); return true;
+    })()`);
+    const clickTitle = async (pattern) => evaluate(`(() => {
+      const re = new RegExp(${JSON.stringify(pattern)}, 'i');
+      const el = [...document.querySelectorAll('button,[role="button"]')].find(x => re.test(x.getAttribute('title') || '') || re.test(x.getAttribute('aria-label') || ''));
+      if (!el) return false; el.click(); return true;
+    })()`);
+    const extra = async (name, selector = null, delay = 450) => { await sleep(delay); await screenshot(name, selector); };
+
+    // 对话输入区：项目、附件、技能、模板、模型、决策、权限、深度、上下文。
+    await route('chat');
+    for (const [name, pattern] of [
+      ['chat-project-menu', '项目'], ['chat-plus-menu', '添加附件|更多内容'], ['chat-model-menu', '模型'],
+      ['chat-decision-menu', '决策'], ['chat-quality-menu', '任务深度|建模质量'], ['chat-permission-menu', '权限'],
+      ['chat-template-menu', '模板'], ['chat-context-menu', '上下文用量'],
+    ]) {
+      await clickTitle(pattern); await extra(name, null, 350); await clickText('.cz-pop button,.popover button', '关闭|取消');
+    }
+    await clickText('button', '比赛信息'); await extra('chat-paper-setup', '.modal-backdrop', 500);
+    await clickText('button', '取消|关闭');
+    await evaluate(`(() => { const el=document.querySelector('textarea'); if (!el) return false; el.focus(); return true; })()`);
+    await send('Input.insertText', { text: '#' }).catch(() => {});
+    // 不同打包版本可能把 # 面板命名为 hash-pop 或直接显示在输入层；
+    // 保留当前可见输入状态，避免因选择器差异丢失这一张素材。
+    await extra('chat-task-palette', null, 500);
+
+    // 工作流：演示、分析、成员详情和阶段记录。
+    await route('chat');
+    await clickText('.workflow-switch button', '工作流'); await sleep(800);
+    await extra('workflow-demo', '.workflow-view', 300);
+    await clickText('.workflow-view-switch button', '分析'); await clickTitle('适应画布');
+    await extra('workflow-analysis', '.workflow-view', 350);
+    await clickText('.workflow-node', '数据|求解'); await extra('workflow-member-detail', '.workflow-detail', 450);
+
+    // 竞赛工作台的概要与详情。
+    await route('workbench'); await extra('competition-workbench-overview', '.studio-workbench', 500);
+    await clickText('button,[role="button"]', '详情|比赛信息|检查'); await extra('competition-workbench-detail', null, 400);
+
+    // 数据绘图：推荐库、绘图工具、CSV/TSV 项目数据。
+    await route('settings', 'datasets'); await extra('data-gallery-overview', '.data-chart-studio', 400);
+    await clickText('.data-chart-tabs button', '数据绘图'); await extra('data-plot-panel', '.data-chart-studio', 600);
+    await clickText('.data-chart-tabs button', '当前项目'); await extra('data-project-files', '.data-chart-studio', 450);
+
+    // 扩展中心五个分区，均进入真实条目详情。
+    for (const tab of ['skills', 'templates', 'algorithms', 'plugins', 'connectors']) {
+      await route('extensions', tab); await sleep(850);
+      await clickText('.ext-item', '.+');
+      await extra(`extension-${tab}`, '.ext-page', 450);
+    }
+
+    // 设置中的完整功能分区。
+    for (const section of ['account', 'competitions', 'paper', 'quality', 'model', 'providers', 'chat', 'sysprompt', 'env', 'network', 'automation', 'notify', 'appearance', 'profile', 'about']) {
+      await route('settings', section);
+      await extra(`settings-${section}`, '.settings-shell', 420);
+    }
+    // 自动化编辑态与论文库/竞赛详情态再各取一张，覆盖“可操作状态”。
+    await route('settings', 'automation'); await clickText('button', '新建|创建任务'); await extra('automation-editor', '.auto-page', 500);
+    await route('papers'); await extra('paper-library', '.studio-page', 500);
+    await clickText('button', '上传优秀论文|上传'); await extra('paper-upload-dialog', '.modal-backdrop', 450);
+    await clickText('button', '取消|关闭');
+
+    // 终端面板和文件面板属于工作台底层能力，各单独保留画面。
+    await route('chat'); await clickTitle('更多任务操作'); await clickText('[role="menuitemcheckbox"]', '终端|编辑器视图');
+    await sleep(700); await extra('terminal-or-editor-panel', null, 300);
+    await evaluate(`(() => { document.querySelector('[title="退出编辑器"]')?.click(); return true; })()`); await sleep(400);
 
     // 记录截图清单，官网和后续接手者可快速判断素材是否来自当前版本。
     const manifest = {

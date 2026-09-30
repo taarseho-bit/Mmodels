@@ -44,13 +44,20 @@ describe('动态有向工作流布局', () => {
       expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
     }
   });
-  it('同层成员超过四位会自动换行，画布不会无限横向拉长', () => {
+  it('宽大的成员簇保持可读宽度并沿弧形展开', () => {
     const graph = layoutWorkflow(run([n('main'), ...Array.from({ length: 7 }, (_, i) => n(`a${i}`, 'main'))]), false);
     const at = (id: string) => graph.nodes.find(node => node.id === id)!;
     expect(at('a4').y).toBeGreaterThan(at('a0').y);
     expect(graph.width).toBeLessThan(1300);
     expect(graph.width / graph.height).toBeGreaterThan(1.25);
     expect(graph.width / graph.height).toBeLessThan(2.1);
+  });
+  it('20 位直接协作者的卡片和点击区域互不覆盖', () => {
+    const graph = layoutWorkflow(run([n('main'), ...Array.from({length:20},(_,i)=>n(`member-${i}`,'main'))]), false);
+    expect(graph.width).toBeLessThan(1600);
+    for (const a of graph.nodes) for (const b of graph.nodes) if(a !== b) {
+      expect(a.x+a.width <= b.x || b.x+b.width <= a.x || a.y+a.height <= b.y || b.y+b.height <= a.y).toBe(true);
+    }
   });
   it('多个无操作的已结束通用成员默认合并，展开后仍全部存在', () => {
     const nodes = [n('main'), n('a', 'main', 'returned'), n('b', 'main', 'returned'), n('c', 'main')];

@@ -34,16 +34,9 @@ const FOLDED_HEIGHT = 66;
 const GROUP_WIDTH = 196;
 const GROUP_HEIGHT = 58;
 const COLUMN_GAP = 28;
-const ROW_GAP = 22;
 const LEVEL_GAP = 52;
 const MARGIN_X = 30;
 const MARGIN_Y = 18;
-// 三列优先让层级图保持接近舒适的纵横比例；同一层超过三位时向下分行，
-// 避免中屏演示被横向拉长，导致“适应画布”后节点文字缩得太小。
-const MAX_COLUMNS = 3;
-// 极宽的一层如果只有最后一两个节点单独成行，会让图显得过高；
-// 七位以上才允许第四列，兼顾大屏的纵横比例和中屏的可读性。
-const WIDE_LEVEL_THRESHOLD = 7;
 
 interface LayoutItem {
   id: string;
@@ -60,7 +53,7 @@ function stableColor(id: string): string {
 const genericName = (name: string): boolean => /^(?:专项研究员|协作研究员|综合研究员)(?:\s*[·#]?\s*\d+)?$/.test(name);
 
 /**
- * 真实父子关系决定层级；同一层超过四位时在本层内部换行，避免无限横向延伸。
+ * 真实父子关系决定分支；宽大的叶子簇沿弧形错落展开，避免无限横向延伸。
  * 没有工具、没有分工且已经结束的短时成员，在默认收起状态按父级合并成一个摘要节点。
  */
 export function layoutWorkflow(run: WorkflowRun, compact: boolean): { nodes: FlowPosition[]; edges: FlowEdge[]; width: number; height: number } {
@@ -140,35 +133,85 @@ export function layoutWorkflow(run: WorkflowRun, compact: boolean): { nodes: Flo
     if (compact && item.node?.status !== 'running') return [FOLDED_WIDTH, FOLDED_HEIGHT];
     return [CARD_WIDTH, CARD_HEIGHT];
   };
-  interface RowPlan { items: LayoutItem[]; width: number; height: number; y: number }
-  const rows: RowPlan[] = [];
-  let y = MARGIN_Y;
-  let contentWidth = ROOT_WIDTH;
-  for (let depth = 0; depth <= Math.max(...levels.keys()); depth++) {
-    const level = levels.get(depth) ?? [];
-    const columns = level.length >= WIDE_LEVEL_THRESHOLD ? MAX_COLUMNS + 1 : MAX_COLUMNS;
-    for (let start = 0; start < level.length; start += columns) {
-      const rowItems = level.slice(start, start + columns);
-      const width = rowItems.reduce((sum, item) => sum + dimensions(item)[0], 0) + Math.max(0, rowItems.length - 1) * COLUMN_GAP;
-      const height = Math.max(...rowItems.map(item => dimensions(item)[1]));
-      rows.push({ items: rowItems, width, height, y });
-      contentWidth = Math.max(contentWidth, width);
-      y += height + ROW_GAP;
+  // 采用“树形簇”而不是固定列矩阵：每个父节点拥有自己的横向子树宽度，
+  // 子节点围绕父节点自然展开；分支多的节点变宽，分支少的节点保持紧凑。
+  // 这样工作流会更接近真实编排图，交接关系也比“每行四张卡”更容易追踪。
+  const subtreeWidth = new Map<string, number>();
+  const fans = new Map<string, { id: string; x: number; y: number }[]>();
+  const fanHeight = new Map<string, number>();
+  const measure = (id: string): number => {
+    const cached = subtreeWidth.get(id);
+    if (cached) return cached;
+    const item = items.get(id)!;
+    const own = dimensions(item)[0];
+    const kids = children.get(id) ?? [];
+    if (kids.length > 4 && kids.every(child => !(children.get(child)?.length))) {
+      const firstBand = Math.min(5, Math.ceil(Math.sqrt(kids.length) * 1.35));
+      const bandWidth = kids.slice(0, firstBand).reduce((sum, child) => sum + measure(child), 0) + (firstBand - 1) * COLUMN_GAP;
+      const offsets: { id: string; x: number; y: number }[] = [];
+      let cursor = 0, bandY = 0, bandCount = firstBand;
+      while (cursor < kids.length) {
+        const band = kids.slice(cursor, cursor + bandCount);
+        const bandTotal = band.reduce((sum, child) => sum + measure(child), 0) + (band.length - 1) * COLUMN_GAP;
+        let x = (bandWidth - bandTotal) / 2;
+        let bottom = bandY;
+        for (const child of band) {
+          const [childW, childH] = dimensions(items.get(child)!);
+          // A shallow arc makes the cluster read as branches, while horizontal
+          // separation keeps every card and its hit area free of overlaps.
+          const offsetY = bandY + Math.abs(x + childW / 2 - bandWidth / 2) * .12;
+          offsets.push({ id: child, x, y: offsetY });
+          bottom = Math.max(bottom, offsetY + childH);
+          x += measure(child) + COLUMN_GAP;
+        }
+        cursor += band.length;
+        bandY = bottom + COLUMN_GAP;
+        bandCount = Math.max(2, bandCount - 1);
+      }
+      fans.set(id, offsets);
+      fanHeight.set(id, bandY - COLUMN_GAP);
+      subtreeWidth.set(id, Math.max(own, bandWidth));
+      return Math.max(own, bandWidth);
     }
-    y += LEVEL_GAP - ROW_GAP;
-  }
+    const childWidth = kids.reduce((sum, child) => sum + measure(child), 0) + Math.max(0, kids.length - 1) * COLUMN_GAP;
+    const width = Math.max(own, childWidth);
+    subtreeWidth.set(id, width);
+    return width;
+  };
+  const contentWidth = measure(FLOW_ROOT);
+  const maxDepth = Math.max(...levels.keys());
+  const depthHeights = Array.from({ length: maxDepth + 1 }, (_, depth) => Math.max(...(levels.get(depth) ?? []).map(item => dimensions(item)[1]), ROOT_HEIGHT));
+  for (const [parent, height] of fanHeight) { const childDepth = (depthById.get(parent) ?? 0) + 1; depthHeights[childDepth] = Math.max(depthHeights[childDepth], height); }
+  const depthY: number[] = [];
+  depthY[0] = MARGIN_Y;
+  for (let depth = 1; depth <= maxDepth; depth += 1) depthY[depth] = depthY[depth - 1] + depthHeights[depth - 1] + LEVEL_GAP;
   const canvasWidth = contentWidth + MARGIN_X * 2;
   const positions: FlowPosition[] = [];
-  for (const row of rows) {
-    let x = (canvasWidth - row.width) / 2;
-    for (const item of row.items) {
-      const [width, height] = dimensions(item);
-      positions.push({ id: item.id, node: item.node, aggregateCount: item.aggregateCount,
-        x, y: row.y + (row.height - height) / 2, width, height,
-        color: item.id === FLOW_ROOT ? '#6a7d96' : item.aggregateCount ? '#8b95a3' : stableColor(item.id) });
-      x += width + COLUMN_GAP;
+  const place = (id: string, left: number, depth: number): void => {
+    const item = items.get(id)!;
+    const [width, height] = dimensions(item);
+    const clusterWidth = subtreeWidth.get(id) ?? width;
+    const x = left + (clusterWidth - width) / 2;
+    positions.push({ id: item.id, node: item.node, aggregateCount: item.aggregateCount,
+      x, y: depthY[depth] + (depthHeights[depth] - height) / 2, width, height,
+      color: item.id === FLOW_ROOT ? '#6a7d96' : item.aggregateCount ? '#8b95a3' : stableColor(item.id) });
+    const kids = children.get(id) ?? [];
+    const fan = fans.get(id);
+    if (fan) {
+      for (const child of fan) {
+        const childItem = items.get(child.id)!;
+        const [childW, childH] = dimensions(childItem);
+        positions.push({id:child.id,node:childItem.node,aggregateCount:childItem.aggregateCount,
+          x:left+child.x,y:depthY[depth+1]+child.y,width:childW,height:childH,
+          color:childItem.aggregateCount?'#8b95a3':stableColor(child.id)});
+      }
+      return;
     }
-  }
+    const childrenTotal = kids.reduce((sum, child) => sum + (subtreeWidth.get(child) ?? 0), 0) + Math.max(0, kids.length - 1) * COLUMN_GAP;
+    let childLeft = left + (clusterWidth - childrenTotal) / 2;
+    for (const child of kids) { place(child, childLeft, depth + 1); childLeft += (subtreeWidth.get(child) ?? 0) + COLUMN_GAP; }
+  };
+  place(FLOW_ROOT, MARGIN_X, 0);
 
   const positionById = new Map(positions.map(position => [position.id, position]));
   const curve = (sourceId: string, targetId: string): { path: string; labelX: number; labelY: number } | undefined => {

@@ -6,9 +6,9 @@
 
 export function Section({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }): JSX.Element {
   return (
-    <section className="col" style={{ gap: 10 }}>
-      <span style={{ fontWeight: 600, fontSize: 14 }}>{title}</span>
-      {hint ? <div className="muted" style={{ fontSize: 12, lineHeight: 1.7 }}>{hint}</div> : null}
+    <section className="col settings-section" style={{ gap: 10 }}>
+      <span className="settings-section-title" style={{ fontWeight: 600, fontSize: 14 }}>{title}</span>
+      {hint ? <div className="muted settings-section-hint" style={{ fontSize: 12, lineHeight: 1.7 }}>{hint}</div> : null}
       {children}
     </section>
   );
