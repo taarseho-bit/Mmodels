@@ -58,11 +58,19 @@ const messages = [
   {
     role: 'assistant',
     blocks: [
-      { kind: 'text', text: '已完成基线方案与优化方案对比。建议论文按以下结构推进：\n\n1. 问题重述与符号说明\n2. 数据来源与预处理\n3. 目标函数和约束条件\n4. 求解结果与方案比较\n5. 灵敏度分析与稳健性\n6. 结论、局限与推广\n\n所有中间数据、模型脚本和图表清单都已写入项目目录，后续可以直接复算。' },
+      { kind: 'text', text: '### 模型已经求解，结论可以复核\n\n> 教学演示 · 合成数据 · 本地 SciPy / HiGHS 求解\n\n| 验证项 | 结果 |\n| --- | --- |\n| 需求 / 供给 | 1,170 / 1,250 单位 |\n| 基线 → 优化成本 | 12,450 → 9,520 单位·km |\n| 运输成本改善 | **23.53%** |\n| 需求与容量约束 | 全部满足 |\n\n**边界检查：**需求增加 5% 时仍可行；增加 10% 时供给不足，需要追加资源。当前结论描述运输成本，不能直接等同于到达时间。\n\n复算脚本、分配矩阵、结果图与技术路线已保存在项目中。下一步：把假设、模型、结果与局限整理进论文。' },
       { kind: 'tool_use', toolName: 'TaskUpdate', toolUseId: 'case-task-update-1', toolInput: { taskId: '1', status: 'completed' }, toolResult: '任务 #1 已完成：核对题目与约束' },
       { kind: 'tool_use', toolName: 'Write', toolUseId: 'case-write-1', toolInput: { file_path: 'results/模型摘要.md' }, toolResult: '文件已写入 results/模型摘要.md' },
       { kind: 'tool_use', toolName: 'Skill', toolUseId: 'case-skill-2', toolInput: { skill: 'mathmodel:paper-diagram' }, toolResult: '已生成论文结构与图表规划清单' },
     ],
+  },
+  {
+    role: 'user',
+    blocks: [{ kind: 'text', text: '把整个建模过程画成流程图，保留不可行场景的反馈路径。' }],
+  },
+  {
+    role: 'assistant',
+    blocks: [{ kind: 'text', text: '### 从题意到交付，一张图看清路线\n\n```mermaid\nflowchart LR\n A[赛题与约束] --> B[数据体检]\n B --> C[基线方案]\n B --> D[线性规划]\n C --> E[结果比较]\n D --> E\n E --> F[灵敏度分析]\n F --> G{容量核验}\n G -->|满足| H[论文与图表]\n G -->|不足| I[补充供给]\n I --> D\n H --> J[复算交付]\n```\n\n**模型、代码、图表与论文共用一个项目。** 图中的反馈分支对应已经求解的供给不足场景。\n\n> 官网演示案例；对话与协作记录用于功能回放，本地数值结果可复算。' }],
   },
 ];
 const node = (id, name, agentType, assignment, tools, status = 'returned') => ({
@@ -99,7 +107,7 @@ const run = {
   collaborationEnabled: true,
   truncated: false,
   workflowStages: ['理解题目', '研究与计算', '核对结果', '整理交付'],
-  currentStage: 2,
+  currentStage: 3,
   stageStatus: 'running',
   exchanges: [
     { id: 'ex-1', source: 'main', target: 'problem' },
@@ -110,10 +118,11 @@ const run = {
   nodes: [
     node('main', '建模主助手', 'main', '统筹本轮目标与最终结果', [tool('m1', 'Skill', '题意解析', 'mathmodel:problem-parser'), tool('m2', 'Agent', '分配协作任务')], 'running'),
     node('problem', '题意约束分析员', 'problem-analyst', '提取目标、变量、约束和数据需求', [tool('p1', 'Read', '阅读题目资料', undefined, '题目说明.md'), tool('p2', 'Skill', '题型识别', 'mathmodel:problem-classifier')]),
-    node('data', '数据特征分析员', 'data-analyst', '检查需求数据的口径、缺失与异常', [tool('d1', 'Skill', '数据体检与清洗', 'mathmodel:data-auditor-cleaner'), tool('d2', 'Write', '整理数据报告', undefined, 'results/数据体检.md')], 'running'),
-    node('solver', '模型求解研究员', 'model-solver', '比较线性规划与启发式方案', [tool('s1', 'Skill', '方法选型', 'mathmodel:method-selector'), tool('s2', 'Bash', '运行模型计算', undefined, 'results/solver.py')]),
+    node('data', '数据特征分析员', 'data-analyst', '检查 3 座仓库与 4 个服务区数据', [tool('d1', 'Skill', '数据体检与清洗', 'mathmodel:data-auditor-cleaner'), tool('d2', 'Write', '整理数据报告', undefined, 'data/应急资源需求.csv')]),
+    node('solver', '模型求解研究员', 'model-solver', 'HiGHS 求解 · 运输成本降低 23.53%', [tool('s1', 'Skill', '方法选型', 'mathmodel:method-selector'), tool('s2', 'Bash', '运行模型计算', undefined, 'code/solver.py'), tool('s3', 'Write', '保存分配矩阵', undefined, 'results/metrics.json')]),
     node('review', '稳健性核验员', 'general-purpose', '检查扰动下的结论稳定性', [tool('r1', 'Skill', '稳健性分析', 'mathmodel:robustness-checker'), tool('r2', 'Skill', '结果复现', 'mathmodel:result-reproducibility')]),
-    node('paper', '论文结构研究员', 'paper-reviewer', '把结果整理为可复核的论文结构', [tool('w1', 'Skill', '论文写作', 'mathmodel:write-paper'), tool('w2', 'Write', '生成论文提纲', undefined, 'results/paper-outline.md')]),
+    node('figure', '科研图表设计员', 'general-purpose', '分配方案、成本比较与灵敏度曲线', [tool('f1', 'Skill', '科研绘图', 'mathmodel:paper-diagram'), tool('f2', 'Write', '导出结果图', undefined, 'figures/模型结果.png')]),
+    node('paper', '论文结构研究员', 'paper-reviewer', '整理假设、模型、结果与局限', [tool('w1', 'Skill', '论文写作', 'mathmodel:write-paper', undefined, 'running'), tool('w2', 'Write', '整理结果报告', undefined, '模型结果报告.md')], 'running'),
   ],
 };
 for (const item of run.nodes.slice(1)) item.parentId = 'main';

@@ -25,7 +25,8 @@ const PORT = Number(process.env.MATHMODEL_SITE_PORT || 9367);
 const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-site-shots-'));
 const USER_DATA = path.join(SANDBOX, 'userdata');
 const OUT = path.join(ROOT, 'out', 'site-shots');
-const DOCS_OUT = path.join(ROOT, 'docs', 'assets', 'screenshots', 'site');
+const DOCS_OUT = path.join(ROOT, 'docs', 'assets', 'screenshots', '2026-09-30');
+const currentFiles = [];
 const failures = [];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -236,14 +237,19 @@ async function main() {
       for (let i = 1; i < offsets.length; i += 1) pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n ${NL}`;
       pdf += `trailer${NL}<< /Size ${pdfObjects.length + 1} /Root 1 0 R >>${NL}startxref${NL}${xrefOffset}${NL}%%EOF${NL}`;
       fs.writeFileSync(pdfPath, pdf, 'utf8');
+      // 用真实求解产物替换初始占位文件，展示同一套可复算案例。
+      const caseRoot = path.join(ROOT, 'out', 'site-case');
+      if (!fs.existsSync(path.join(caseRoot, 'results', 'metrics.json'))) throw new Error('请先运行 build-site-case.py');
+      fs.cpSync(caseRoot, project.root, { recursive: true });
+      fs.copyFileSync(path.join(ROOT, 'scripts', 'build-site-case.py'), path.join(project.root, 'code', 'solver.py'));
       const competitionConfig = {
         id: project.id,
         name: projectName,
         calendarId: 'A01-2026',
-        competition: '高教社杯全国大学生数学建模竞赛（CUMCM／国赛）',
+        competition: '城市应急资源调度 · 教学演示',
         year: 2026,
-        problem: 'D题 · 城市应急资源调度',
-        deadline: '2026-09-13T20:00:00+08:00',
+        problem: '合成数据 · 运输优化与灵敏度分析',
+        deadline: '2026-10-03T20:00:00+08:00',
         pageLimit: '20 页',
         phase: '核验',
         rules: '匿名提交；正文不超过 20 页；数据来源与模型假设需可追溯。',
@@ -261,7 +267,7 @@ async function main() {
         evidence: [
           { id: 'e1', claim: '四个服务区的需求量口径一致', source: 'data/应急资源需求.csv', checked: true },
           { id: 'e2', claim: '重点区域最低保障量满足约束', source: 'results/模型摘要.md', checked: true },
-          { id: 'e3', claim: '扰动 ±10% 时方案仍可行', source: 'figures/图表清单.md', checked: true },
+          { id: 'e3', claim: '需求增加 5% 可行，增加 10% 供给不足', source: 'results/metrics.json', checked: true },
         ],
       };
       fs.mkdirSync(path.join(project.root, '.mathmodel'), { recursive: true });
@@ -385,6 +391,7 @@ async function main() {
         const outPath = path.join(OUT, `${name}.png`);
         fs.writeFileSync(outPath, Buffer.from(image.data, 'base64'));
         fs.copyFileSync(outPath, path.join(DOCS_OUT, `${name}.png`));
+        currentFiles.push(`${name}.png`);
         console.log(`[site-shots] ${name}.png`);
       } catch (error) {
         failures.push(`${name}: ${error.message}`);
@@ -423,6 +430,11 @@ async function main() {
     }
     await screenshot('workspace-chat', '.chat-page');
 
+    // 对话内的 Mermaid 图由真实应用渲染，展示完整技术路线。
+    await evaluate(`(() => { const el = document.querySelector('.md-mermaid'); el?.scrollIntoView({block:'center'}); return !!el; })()`);
+    await sleep(900);
+    await screenshot('conversation-flowchart', '.md-mermaid');
+
     if (caseStudy?.sessionId) {
       // 同一个真实会话再切到工作流视图，展示成员分工、技能调用和有向关系。
       await evaluate(`(() => {
@@ -433,7 +445,14 @@ async function main() {
         return true;
       })()`);
       await sleep(800);
+      await evaluate(`(() => { const b=[...document.querySelectorAll('.workflow-view-switch button')].find(x=>x.textContent.includes('分析')); b?.click(); return !!b; })()`);
+      await sleep(600);
+      await evaluate(`document.querySelector('[aria-label="适应画布"]')?.click()`);
+      await sleep(400);
       await screenshot('workflow-case', '.workflow-view');
+      await evaluate(`(() => { const b=[...document.querySelectorAll('.workflow-node')].find(x=>x.textContent.includes('求解')); b?.click(); return !!b; })()`);
+      await sleep(500);
+      await screenshot('workflow-details', '.workflow-detail');
       await evaluate(`(() => {
         const buttons = [...document.querySelectorAll('.workflow-switch button')];
         const chat = buttons.find((el) => (el.textContent || '').includes('对话')) || buttons[0];
@@ -471,6 +490,11 @@ async function main() {
       await sleep(450);
     }
     await screenshot('editor-view', '.editorview-chatcol');
+    for (const [fileName, shotName] of [['建模路线.md','editor-flowchart'],['模型结果报告.md','results-report']]) {
+      await evaluate(`(() => { const el=[...document.querySelectorAll('.file-row')].find(x=>x.textContent.includes(${JSON.stringify(fileName)})); el?.click(); return !!el; })()`);
+      await sleep(1200);
+      await screenshot(shotName, '.editorview-chatcol');
+    }
     // 后续截图回到普通应用布局，避免编辑器模式遮住工作台路由。
     await evaluate(`(() => {
       const exit = document.querySelector('[title="退出编辑器"]');
@@ -482,6 +506,12 @@ async function main() {
 
     await route('workbench');
     await screenshot('competition-workbench', '.studio-workbench');
+
+    await route('settings', 'datasets');
+    await screenshot('chart-gallery', '.data-chart-studio');
+    await evaluate(`(() => { const b=[...document.querySelectorAll('.data-chart-tabs button')].find(x=>x.textContent.includes('当前项目')); b?.click(); return !!b; })()`);
+    await sleep(600);
+    await screenshot('project-data', '.data-chart-studio');
 
     await route('extensions', 'skills');
     await evaluate(`(() => { const style=document.createElement('style'); style.id='mm-site-extension-fit'; style.textContent='.ext-page{height:100%!important;display:flex!important;flex-direction:column!important}.ext-layout{height:100%!important;min-height:0!important;display:grid!important;grid-template-columns:300px minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr)!important}.ext-nav{grid-column:1 / -1!important;grid-row:1!important}.ext-list{grid-column:1!important;grid-row:2!important;min-height:0!important}.ext-detail{grid-column:2!important;grid-row:2!important;min-height:0!important}'; document.head.appendChild(style); return true; })()`);
@@ -550,7 +580,9 @@ async function main() {
       // 清单会随官网源码一起提交，不记录开发机的绝对路径。
       app: path.relative(ROOT, APP).replace(/\\/g, '/'),
       viewport: { width: 1440, height: 900 },
-      files: fs.readdirSync(OUT).filter((file) => file.endsWith('.png')).sort(),
+      files: currentFiles.sort(),
+      authenticatedVip: vipStatus?.plan === 'vip',
+      caseType: 'synthetic local solver results; curated conversation and workflow replay',
       failures,
     };
     fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
