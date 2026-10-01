@@ -66,5 +66,5 @@
   <!-- ⑧ 快捷技能 -->
   <rect x="250" y="770" width="1170" height="122" class="box"/>
   <path d="M810 892 C810 910 810 930 810 950" class="line"/>
-  <g transform="translate(650 950)"><rect width="430" height="48" class="tag"/><circle cx="18" cy="18" r="12" class="num"/><text x="18" y="22" class="numtext">8</text><text x="38" y="20" class="label call">快捷技能卡</text><text x="38" y="38" class="label call-small">找数据、数据体检、方法选型、求解、灵敏度、论文、图表、评审</text></g>
+  <g transform="translate(340 944)"><rect width="760" height="74" class="tag"/><circle cx="18" cy="18" r="12" class="num"/><text x="18" y="22" class="numtext">8</text><text x="38" y="20" class="label call">快捷技能卡 · 每张卡对应一个明确动作</text><text x="38" y="40" class="label call-small">找公开数据=数据入口 · 数据体检=质量检查 · 方法选型=候选模型 · 求解与复现=脚本验证</text><text x="38" y="57" class="label call-small">灵敏度分析=稳健性 · 论文成稿=章节写作 · 投稿级图表=发表图形 · 评审与打分=交付审阅</text></g>
 </svg>
