@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T12:34:02.145Z",
+  "generatedAt": "2026-10-01T09:17:09.577Z",
   "app": "dist/win-unpacked/MModels.exe",
   "viewport": {
     "width": 1440,
@@ -7,7 +7,25 @@
   },
   "files": [
     "automation-editor.png",
+    "chart-bar-comparison.png",
+    "chart-boxplot.png",
+    "chart-confidence-band.png",
+    "chart-confusion-matrix.png",
+    "chart-contour.png",
+    "chart-correlation-heatmap.png",
+    "chart-error-band.png",
     "chart-gallery.png",
+    "chart-gantt.png",
+    "chart-histogram.png",
+    "chart-network.png",
+    "chart-process-flow.png",
+    "chart-radar.png",
+    "chart-sankey.png",
+    "chart-scatter.png",
+    "chart-sunburst.png",
+    "chart-surface-3d.png",
+    "chart-time-series.png",
+    "chart-waterfall.png",
     "chat-context-menu.png",
     "chat-decision-menu.png",
     "chat-model-menu.png",
@@ -32,6 +50,16 @@
     "extension-plugins.png",
     "extension-skills.png",
     "extension-templates.png",
+    "gallery-category-comparison.png",
+    "gallery-category-distribution.png",
+    "gallery-category-evaluation.png",
+    "gallery-category-hierarchy.png",
+    "gallery-category-matrix.png",
+    "gallery-category-network.png",
+    "gallery-category-process.png",
+    "gallery-category-relation.png",
+    "gallery-category-surface.png",
+    "gallery-category-trend.png",
     "membership-account.png",
     "membership-center.png",
     "paper-library.png",
@@ -64,10 +92,10 @@
     "workflow-details.png",
     "workflow-large.png",
     "workflow-member-detail.png",
-    "workspace-chat.png"
+    "workspace-chat.png",
+    "workspace-idle.png"
   ],
   "authenticatedVip": true,
   "caseType": "synthetic local solver results; curated conversation and workflow replay",
   "failures": []
 }
-

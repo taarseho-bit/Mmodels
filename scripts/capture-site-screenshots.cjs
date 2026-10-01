@@ -376,6 +376,18 @@ async function main() {
         return true;
       })()`);
     };
+    const neutralizeVipCopyForHomepage = async () => evaluate(`(() => {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach((node) => {
+        if (!node.nodeValue || !node.parentElement) return;
+        const style = getComputedStyle(node.parentElement);
+        if (style.display === 'none' || style.visibility === 'hidden') return;
+        node.nodeValue = node.nodeValue.replace(/VIP(?:无限)?/gi, '增强能力');
+      });
+      return true;
+    })()`);
 
     const route = async (name, section = null) => {
       if (name === 'settings') {
@@ -392,6 +404,27 @@ async function main() {
         await sleep(180);
       }
       return false;
+    };
+    const waitForImage = async (selector, timeout = 12_000) => {
+      const started = Date.now();
+      while (Date.now() - started < timeout) {
+        if (await evaluate(`(() => { const img = document.querySelector(${JSON.stringify(selector)}); return !!img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0; })()`)) return true;
+        await sleep(180);
+      }
+      return false;
+    };
+    const loadGalleryThumbs = async () => {
+      const scroll = '.gallery-scroll';
+      const before = await evaluate(`(() => { const root = document.querySelector(${JSON.stringify(scroll)}); return root ? { total: root.querySelectorAll('.gallery-card img').length, loaded: [...root.querySelectorAll('.gallery-card img')].filter((img) => img.complete && img.naturalWidth > 0).length } : { total: 0, loaded: 0 }; })()`);
+      for (let i = 0; i < 24; i += 1) {
+        await evaluate(`(() => { const root = document.querySelector(${JSON.stringify(scroll)}); if (!root) return false; root.scrollTop = Math.min(root.scrollHeight, Math.round((root.scrollHeight - root.clientHeight) * ${i / 23})); return true; })()`);
+        await sleep(180);
+      }
+      await evaluate(`(() => { const root = document.querySelector(${JSON.stringify(scroll)}); if (root) root.scrollTop = 0; return true; })()`);
+      await sleep(350);
+      const after = await evaluate(`(() => { const root = document.querySelector(${JSON.stringify(scroll)}); return root ? { total: root.querySelectorAll('.gallery-card img').length, loaded: [...root.querySelectorAll('.gallery-card img')].filter((img) => img.complete && img.naturalWidth > 0).length } : { total: 0, loaded: 0 }; })()`);
+      console.log(`[site-shots] 图表缩略图加载：${before.loaded}/${before.total} → ${after.loaded}/${after.total}`);
+      return after;
     };
     const screenshot = async (name, selector = null) => {
       try {
@@ -438,6 +471,18 @@ async function main() {
     })()`);
 
     await route('chat');
+    // 先截一张“刚打开、还没有对话”的整体工作台，作为官网首屏主视觉。
+    // VIP 隔离项目里新建一个空会话，只展示布局和入口，不发送任何请求。
+    if (caseStudy?.projectId) {
+      const idle = await evaluate(`window.mathmodel.session.create(${JSON.stringify(caseStudy.projectId)}, ${JSON.stringify('新题目 · 待开始')})`);
+      await sleep(500);
+      if (idle?.id) {
+        await evaluate(`(() => { const item = [...document.querySelectorAll('[title]')].find((el) => el.getAttribute('title') === ${JSON.stringify('新题目 · 待开始')}); if (item) { item.click(); return true; } const text = [...document.querySelectorAll('button, [role="button"]')].find((el) => (el.textContent || '').includes('新题目 · 待开始')); if (text) { text.click(); return true; } return false; })()`);
+        await sleep(700);
+      }
+    }
+    await neutralizeVipCopyForHomepage();
+    await screenshot('workspace-idle', '.chat-page');
     if (caseStudy?.sessionId) {
       // 重新载入后从侧栏选中样例会话，走真实的会话加载链路，确保截图里
       // 看到的是数据库里的对话记录，而不是脚本拼出的静态 DOM。
@@ -651,8 +696,80 @@ async function main() {
     await route('workbench'); await extra('competition-workbench-overview', '.studio-workbench', 500);
     await clickText('button,[role="button"]', '详情|比赛信息|检查'); await extra('competition-workbench-detail', null, 400);
 
-    // 数据绘图：推荐库、绘图工具、CSV/TSV 项目数据。
-    await route('settings', 'datasets'); await extra('data-gallery-overview', '.data-chart-studio', 400);
+    // 数据绘图：先把推荐库的懒加载缩略图滚动到全部完成，再逐张打开灯箱。
+    // 旧流程只截到页面壳，图表还没完成加载就保存了 PNG；这里把“可见、已解码”
+    // 作为截图前置条件，并跨每个主要绘图类目各取一张，保留真实应用的图表说明。
+    await route('settings', 'datasets'); await extra('data-gallery-overview', '.data-chart-studio', 500);
+    await loadGalleryThumbs();
+    const chartCaptures = [
+      ['标准流程图参考', 'chart-process-flow'],
+      ['频数直方图', 'chart-histogram'],
+      ['分组箱线图', 'chart-boxplot'],
+      ['散点图基础', 'chart-scatter'],
+      ['曲线误差带', 'chart-error-band'],
+      ['相关系数与敏感性矩阵', 'chart-correlation-heatmap'],
+      ['连续时间序列', 'chart-time-series'],
+      ['预测区间与置信带', 'chart-confidence-band'],
+      ['方案指标横向比较', 'chart-bar-comparison'],
+      ['成本收益瀑布图', 'chart-waterfall'],
+      ['多指标方案画像', 'chart-radar'],
+      ['能量与资源流向', 'chart-sankey'],
+      ['任务时间排程图', 'chart-gantt'],
+      ['等高线图', 'chart-contour'],
+      ['三维曲面', 'chart-surface-3d'],
+      ['分类结果混淆矩阵', 'chart-confusion-matrix'],
+      ['多层指标分解', 'chart-sunburst'],
+      ['网络关系与关键节点', 'chart-network'],
+    ];
+    for (const [title, name] of chartCaptures) {
+      const clicked = await evaluate(`(() => {
+        const card = [...document.querySelectorAll('.gallery-card')].find((el) => (el.querySelector('.gallery-card-title')?.textContent || '').trim() === ${JSON.stringify(title)});
+        if (!card) return false;
+        card.scrollIntoView({ block: 'center' });
+        card.click();
+        return true;
+      })()`);
+      if (!clicked) {
+        failures.push(`${name}: 未找到图表卡片「${title}」`);
+        continue;
+      }
+      if (!(await waitForImage('.gallery-dialog .gallery-stage-img'))) {
+        failures.push(`${name}: 灯箱图表未完成解码`);
+        await evaluate(`document.querySelector('.gallery-close')?.click()`);
+        continue;
+      }
+      await sleep(650);
+      await screenshot(name, '.gallery-dialog');
+      await evaluate(`document.querySelector('.gallery-close')?.click()`);
+      await sleep(250);
+    }
+    // 官网还需要“按大类直接看整页”的素材：每张图都保留软件原有的
+    // 多卡片预览，不把一个类目缩成单张代表图。逐类目等待当前网格内的
+    // 缩略图全部解码后再截图，访客可以看见该类目下的完整预览集合。
+    const galleryCategories = [
+      ['建模流程图', 'gallery-category-process'],
+      ['数据探索与分布', 'gallery-category-distribution'],
+      ['变量关系与拟合', 'gallery-category-relation'],
+      ['相关与矩阵', 'gallery-category-matrix'],
+      ['趋势与预测', 'gallery-category-trend'],
+      ['比较与构成', 'gallery-category-comparison'],
+      ['综合评价与决策', 'gallery-category-evaluation'],
+      ['网络与资源流向', 'gallery-category-network'],
+      ['等高线、场与三维', 'gallery-category-surface'],
+      ['层级与分解', 'gallery-category-hierarchy'],
+    ];
+    for (const [category, name] of galleryCategories) {
+      const selected = await evaluate(`(() => { const chip = [...document.querySelectorAll('.gallery-chip')].find((el) => (el.textContent || '').trim().startsWith(${JSON.stringify(category)})); if (!chip) return false; chip.click(); return true; })()`);
+      if (!selected) {
+        failures.push(`${name}: 未找到绘图类目「${category}」`);
+        continue;
+      }
+      await sleep(450);
+      await loadGalleryThumbs();
+      await screenshot(name, '.data-chart-studio');
+    }
+    await evaluate(`(() => { const chip = [...document.querySelectorAll('.gallery-chip')].find((el) => (el.textContent || '').trim().startsWith('全部')); if (chip) chip.click(); return true; })()`);
+    await sleep(350);
     await clickText('.data-chart-tabs button', '数据绘图'); await extra('data-plot-panel', '.data-chart-studio', 600);
     await clickText('.data-chart-tabs button', '当前项目'); await extra('data-project-files', '.data-chart-studio', 450);
 
