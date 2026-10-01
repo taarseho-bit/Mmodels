@@ -14,6 +14,11 @@ body:has(.mode-bar) .mm-showcase{width:calc(100% - 48px)}
 .mm-role-scroll td:nth-child(3){white-space:nowrap;font-variant-numeric:tabular-nums}
 .mm-original{display:inline-block;margin:15px 0 0;color:var(--accent,#655cf6);font-size:13px;text-decoration:none}
 .mm-gallery-filters{display:flex;flex-wrap:wrap;gap:6px;margin:28px 0 18px}
+.mm-gallery-tools{display:flex;align-items:end;gap:16px;margin-top:28px}
+.mm-gallery-search{display:grid;gap:6px;min-width:min(420px,100%);font-size:11px;color:inherit}
+.mm-gallery-search input{border:1px solid #8884;border-radius:9px;background:transparent;color:inherit;padding:10px 12px;font:12px "Noto Sans SC",sans-serif;outline:none}
+.mm-gallery-search input:focus{border-color:var(--accent,#655cf6);box-shadow:0 0 0 3px #655cf622}
+.mm-gallery-result{font:11px monospace;opacity:.65;padding-bottom:10px}
 .mm-gallery-filters button{border:1px solid #8883;border-radius:8px;background:transparent;padding:8px 12px;color:inherit;font:12px "Noto Sans SC",sans-serif;cursor:pointer}
 .mm-gallery-filters button.is-active{background:var(--accent,#655cf6);border-color:var(--accent,#655cf6);color:#fff}
 .mm-gallery-filters small{margin-left:6px;opacity:.75}
@@ -28,5 +33,5 @@ body:has(.mode-bar) .mm-showcase{width:calc(100% - 48px)}
 .mm-gallery-card small{font:10px monospace;opacity:.65}
 .mm-gallery-card h3{font-size:15px;font-weight:600;margin:8px 0}
 .mm-gallery-card p{font-size:12px;line-height:1.8;margin:0;opacity:.76}
-@media(max-width:700px){.mm-gallery{grid-template-columns:1fr}.mm-showcase{margin:35px auto}.mm-agent-plan{padding:14px}.workflow-spotlight-head{flex-direction:column;align-items:flex-start}}
+@media(max-width:700px){.mm-gallery{grid-template-columns:1fr}.mm-showcase{margin:35px auto}.mm-agent-plan{padding:14px}.workflow-spotlight-head{flex-direction:column;align-items:flex-start}.mm-gallery-tools{display:block}.mm-gallery-search{min-width:0}.mm-gallery-result{display:block;margin-top:9px}}
 @media(prefers-reduced-motion:reduce){.mm-gallery-card img{transition:none}}
