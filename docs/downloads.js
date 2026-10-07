@@ -26,7 +26,7 @@
         node.classList.remove('is-unconfigured');
         if (/待配置|联系获取/.test(node.textContent || '')) node.textContent = '立即下载';
       } else {
-        node.href = '#contact';
+        node.href = '#community';
         node.removeAttribute('target');
         node.classList.add('is-unconfigured');
       }
@@ -50,21 +50,6 @@
     setChannel('lanzou', CONFIG.lanzou, '蓝奏云');
     setChannel('direct', CONFIG.direct, '官方直链');
 
-    document.addEventListener('click', function (event) {
-      var button = event.target && event.target.closest ? event.target.closest('[data-copy-qq]') : null;
-      if (!button) return;
-      var value = button.getAttribute('data-copy-qq') || '';
-      var done = function () {
-        var old = button.textContent;
-        button.textContent = '已复制群号';
-        setTimeout(function () { button.textContent = old; }, 1600);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(value).then(done, done);
-      } else {
-        done();
-      }
-    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

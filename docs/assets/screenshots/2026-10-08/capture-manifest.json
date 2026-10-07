@@ -1,0 +1,19 @@
+{
+  "version": "1.0.1",
+  "date": "2026-10-08",
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "source": "当前 1.0.1 客户端渲染界面；演示对话和协作记录为隔离样例，不代表模型真实运行结果。",
+  "files": [
+    "workspace-idle.png",
+    "workspace-chat.png",
+    "standard-workflow-menu.png",
+    "workflow-overview.png",
+    "workflow-graph.png",
+    "settings-about.png",
+    "community.png",
+    "release-features.png"
+  ]
+}
