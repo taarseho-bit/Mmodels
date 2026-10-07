@@ -3,12 +3,21 @@
   const data = window.MM_CATALOG;
   if (!data) return;
 
-  const $ = (selector) => document.querySelector(selector);
+  const root = document.querySelector('[data-mm-catalog]') || document;
+  const $ = (selector) => root.querySelector(selector);
   const grid = $('#catalog-grid');
   const empty = $('#catalog-empty');
   const search = $('#catalog-search');
   const category = $('#catalog-category');
+  if (!grid || !empty || !search || !category) return;
+  const pageSize = Number(root.dataset?.pageSize) || 0;
+  const result = $('[data-catalog-result]');
+  const pager = $('[data-catalog-pager]');
+  const previous = $('[data-catalog-previous]');
+  const next = $('[data-catalog-next]');
+  const pageLabel = $('[data-catalog-page]');
   let kind = 'all';
+  let page = 1;
 
   const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const list = (items, className = 'tag-list') => items?.length ? `<div class="${className}">${items.map((item) => `<span>${escape(item)}</span>`).join('')}</div>` : '';
@@ -35,7 +44,7 @@
   function renderStats() {
     const stats = $('#catalog-stats');
     stats.innerHTML = Object.entries(data.counts).map(([key, value]) => `<div><strong>${escape(value)}</strong><span>${escape(labels[key] || key)}</span></div>`).join('');
-    document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = data.counts[node.dataset.count] ?? ''; });
+    root.querySelectorAll('[data-count]').forEach((node) => { node.textContent = data.counts[node.dataset.count] ?? ''; });
   }
 
   function renderCategoryOptions() {
@@ -70,20 +79,33 @@
       if (!query) return true;
       return JSON.stringify(item).toLowerCase().includes(query);
     });
-    grid.innerHTML = filtered.map(card).join('');
+    const pages = pageSize ? Math.max(1, Math.ceil(filtered.length / pageSize)) : 1;
+    page = Math.max(1, Math.min(page, pages));
+    const start = pageSize ? (page - 1) * pageSize : 0;
+    const visible = pageSize ? filtered.slice(start, start + pageSize) : filtered;
+    grid.innerHTML = visible.map(card).join('');
     empty.hidden = filtered.length !== 0;
+    if (result) result.textContent = filtered.length ? `显示 ${start + 1}–${start + visible.length} 项，共 ${filtered.length} 项` : '没有匹配的资源';
+    if (pager) pager.hidden = pages <= 1;
+    if (pageLabel) pageLabel.textContent = `第 ${page} / ${pages} 页`;
+    if (previous) previous.disabled = page <= 1;
+    if (next) next.disabled = page >= pages;
   }
 
-  document.querySelectorAll('.catalog-tabs button').forEach((button) => button.addEventListener('click', () => {
+  root.querySelectorAll('.catalog-tabs button').forEach((button) => button.addEventListener('click', () => {
     kind = button.dataset.kind;
-    document.querySelectorAll('.catalog-tabs button').forEach((item) => { item.classList.toggle('is-active', item === button); item.setAttribute('aria-selected', item === button ? 'true' : 'false'); });
+    page = 1;
+    root.querySelectorAll('.catalog-tabs button').forEach((item) => { item.classList.toggle('is-active', item === button); item.setAttribute('aria-selected', item === button ? 'true' : 'false'); });
     const source = kind === 'all' ? all : collections[kind];
     const values = [...new Set(source.map((item) => item.category).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'zh-CN'));
     category.innerHTML = '<option value="all">全部场景</option>' + values.map((value) => `<option value="${escape(value)}">${escape(value)}</option>`).join('');
     update();
   }));
-  search.addEventListener('input', update);
-  category.addEventListener('change', update);
+  search.addEventListener('input', () => { page = 1; update(); });
+  category.addEventListener('change', () => { page = 1; update(); });
+  $('[data-catalog-reset]')?.addEventListener('click', () => { search.value = ''; category.value = 'all'; page = 1; update(); search.focus(); });
+  previous?.addEventListener('click', () => { page -= 1; update(); grid.scrollIntoView({ block: 'start' }); });
+  next?.addEventListener('click', () => { page += 1; update(); grid.scrollIntoView({ block: 'start' }); });
   renderStats();
   renderCategoryOptions();
   update();
